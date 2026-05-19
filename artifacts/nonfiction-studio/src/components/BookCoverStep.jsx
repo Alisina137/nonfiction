@@ -82,7 +82,6 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, de
       return {
         subtitle: p.subtitle || "",
         tagline: p.tagline || "",
-        authorLine: p.authorLine || author,
         layoutStyle: p.layoutStyle || "typographic",
         primaryColor: p.primaryColor || "#0c4a6e",
         accentColor: p.accentColor || "#38bdf8",
