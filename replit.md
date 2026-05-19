@@ -59,9 +59,10 @@ An AI-guided, multi-step book builder that takes a raw idea and turns it into a 
 ## Gotchas
 
 - All component files are `.jsx` (not `.js`) — Vite requires explicit JSX extension
-- The `src/lib/ai.jsx`, `supabaseClient.jsx`, `supabaseServer.jsx`, `db.jsx` files are inert stubs from the original Next.js app; they are not imported by any component
+- Running `pnpm --filter @workspace/nonfiction-studio run build` directly requires `PORT` and `BASE_PATH` env vars to be set (e.g. `PORT=21617 BASE_PATH=/ pnpm ...`); Replit workflows set these automatically
 - OpenAI 429 errors mean the API key's account needs billing credits at platform.openai.com
 - RAINFOREST_API_KEY is optional — the app shows a friendly message and disables live search if missing
+- The Vite dev server does NOT proxy `/api` to port 8080 in local dev — the Replit platform handles path routing in preview mode, but a `server.proxy` entry in `vite.config.ts` would be needed for fully offline local dev
 
 ## User preferences
 
