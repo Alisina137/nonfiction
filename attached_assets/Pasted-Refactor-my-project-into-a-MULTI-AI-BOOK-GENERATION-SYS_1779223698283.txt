@@ -1,0 +1,110 @@
+Refactor my project into a MULTI-AI BOOK GENERATION SYSTEM.
+
+IMPORTANT: Remove OpenAI completely from the project.
+
+Build a robust AI Router that uses 3 AI providers with fallback logic.
+
+---
+
+# 1. AI PROVIDERS (UPDATED WORKING MODELS)
+
+## 🥇 Gemini (PRIMARY AI - BEST QUALITY)
+Endpoint:
+https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=GEMINI_API_KEY
+
+Model:
+gemini-1.5-flash-latest
+
+Use this as the main AI for book writing and long-form content.
+
+---
+
+## ⚡ Groq (FAST FALLBACK)
+Endpoint:
+https://api.groq.com/openai/v1/chat/completions
+
+Model:
+llama-3.3-70b-versatile
+
+Use this for fast generation and fallback when Gemini fails.
+
+---
+
+## 🧠 HuggingFace (FINAL BACKUP)
+Model:
+mistralai/Mistral-7B-Instruct-v0.2
+
+Endpoint:
+https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2
+
+---
+
+# 2. CREATE AI ROUTER FILE
+
+Create a file called:
+aiRouter.js (or aiService.js)
+
+It must include a function:
+
+generateContent(prompt)
+
+---
+
+# 3. ROUTER LOGIC (IMPORTANT)
+
+The function must work like this:
+
+1. Try Gemini first
+2. If Gemini fails → try Groq
+3. If Groq fails → try HuggingFace
+4. If all fail → return error message "All AI providers failed"
+
+---
+
+# 4. REQUIREMENTS
+
+- Use axios for all API calls
+- Use async/await
+- Use proper try/catch error handling
+- Do NOT break frontend UI
+- Only backend should handle AI calls
+- Keep code clean and modular
+
+---
+
+# 5. ENV VARIABLES
+
+Update .env file:
+
+GEMINI_API_KEY=your_key_here
+GROQ_API_KEY=your_key_here
+HF_API_KEY=your_key_here
+
+---
+
+# 6. SMART ROUTING (IMPORTANT)
+
+- Gemini → long book chapters, storytelling, high-quality writing
+- Groq → fast responses, outlines, short content
+- HuggingFace → fallback only
+
+---
+
+# 7. OUTPUT RULE
+
+The function must return ONLY the final generated text.
+
+---
+
+# 8. CLEANUP TASKS
+
+- Remove all OpenAI SDK usage
+- Remove OPENAI_API_KEY completely
+- Replace all OpenAI calls with this new router
+
+---
+
+After completing the changes, show:
+- which files were modified
+- where OpenAI was removed
+- confirm AI router is working

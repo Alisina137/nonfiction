@@ -9,7 +9,7 @@
  */
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const HF_URL =
   "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
@@ -60,7 +60,7 @@ async function tryGroq(prompt: string, system?: string): Promise<string> {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ model: "llama-3.1-70b-versatile", messages })
+    body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages })
   });
 
   const data = await res.json().catch(() => ({}));
