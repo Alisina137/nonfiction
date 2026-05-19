@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Nonfiction AI Studio"
+version = "1.0.0"
+id = "artifacts/nonfiction-studio"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21617
+
+[services.development]
+run = "pnpm --filter @workspace/nonfiction-studio run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/nonfiction-studio", "run", "build" ]
+publicDir = "artifacts/nonfiction-studio/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21617"
+BASE_PATH = "/"
