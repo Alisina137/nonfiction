@@ -645,11 +645,9 @@ function validateWrite(lessons, bookOutline) {
   if (!blocks.length) {
     return { form: "Add chapters in Outline before drafting your manuscript." };
   }
-  const missing = blocks.filter((b) => !blockHasContent(lessons, b.id));
-  if (missing.length) {
-    return {
-      form: `${missing.length} section${missing.length === 1 ? "" : "s"} still need a draft (about 40+ characters each). Generate or paste text for every block in the map.`
-    };
+  const written = blocks.filter((b) => blockHasContent(lessons, b.id));
+  if (!written.length) {
+    return { form: "Write at least one section to continue — you can finish the rest later." };
   }
   return {};
 }
