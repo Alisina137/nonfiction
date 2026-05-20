@@ -1,0 +1,194 @@
+Upgrade the “Generate Niche Native Outline” feature in my AI Book Creation app.
+
+Current Problem:
+
+* The outline generator creates placeholder subsection titles like:
+
+  * Beat 1
+  * Beat 2
+  * Scene 1
+  * Placeholder Section
+* This makes the outline feel unfinished and low quality.
+
+Goal:
+Create a fully professional outline generation system where EVERY level of the outline has meaningful, niche-aware titles.
+
+Requirements:
+
+1. Generate Real Titles for All Levels
+   The AI must generate:
+
+* Chapter titles
+* Section titles
+* Subsection titles
+
+No placeholders allowed.
+
+Forbidden outputs:
+
+* Beat 1
+* Beat 2
+* Section A
+* Placeholder
+* Topic 1
+* Subtopic 1
+
+Every title must feel:
+
+* professionally published
+* commercially viable
+* emotionally engaging
+* aligned with the niche/subniche
+* logically connected to the parent section
+
+2. Niche-Aware Structure
+   Titles must adapt based on:
+
+* niche
+* sub niche
+* book tone
+* target audience
+* book objective
+
+Example:
+If the niche is:
+“Teen Resilience Stories”
+
+Then subsection titles should feel like:
+
+* The Fear of Falling Behind
+* When Failure Becomes Identity
+* The Quiet Weight of Comparison
+* Learning to Continue Anyway
+
+NOT:
+
+* Beat 1
+* Emotional Topic
+* Section 3
+
+3. Hierarchical Consistency
+   The outline should feel structurally connected.
+
+Example:
+Chapter:
+“The Hidden Cost of Comparison”
+
+Sections:
+
+* Social Media and Invisible Competition
+* Why Teenagers Feel Behind Earlier Than Ever
+* Identity Built Through External Validation
+
+Subsections:
+
+* Curated Success vs Real Life
+* The Anxiety of Constant Exposure
+* Losing Confidence Through Comparison
+
+Each level should naturally support the level above it.
+
+4. Editable UI
+   After generation:
+
+* every chapter title must be editable
+* every section title must be editable
+* every subsection title must be editable
+
+Implementation Requirements:
+
+* convert all titles into editable input fields
+  OR
+* use inline editing on click
+
+User should be able to:
+
+* rename titles
+* add new sections/subsections
+* delete sections/subsections
+* reorder items via drag-and-drop
+
+5. Smart Regeneration
+   Add a “Regenerate Title” button beside:
+
+* chapters
+* sections
+* subsections
+
+The regenerate function should:
+
+* preserve context from parent titles
+* generate only that specific title
+* remain consistent with niche and tone
+
+6. AI Prompting Logic
+   The AI should generate outlines using:
+
+* niche
+* sub niche
+* target audience
+* tone
+* book goal
+* emotional themes
+* commercial positioning
+
+The AI should think like:
+
+* a professional nonfiction editor
+* a bestselling author
+* a publishing strategist
+
+NOT like a generic outline generator.
+
+7. Output Quality Rules
+   All generated titles should:
+
+* avoid clichés
+* avoid repetition
+* avoid generic wording
+* feel specific and emotionally intelligent
+* sound like real published book outlines
+
+8. UX Improvements
+   Add:
+
+* collapsible chapters
+* expand/collapse all
+* autosave edits
+* loading states during generation
+* smooth transitions/animations
+* clean professional typography
+
+9. Future-Proof Structure
+   Store the outline in a deeply nested editable JSON structure like:
+
+{
+"chapters": [
+{
+"title": "",
+"sections": [
+{
+"title": "",
+"subsections": [
+{
+"title": ""
+}
+]
+}
+]
+}
+]
+}
+
+All fields should remain editable after generation.
+
+10. Important Final Rule
+    The generated outline should feel like:
+
+* a real bestselling nonfiction book
+* professionally edited
+* commercially intentional
+* emotionally compelling
+* deeply structured
+
+It should NEVER feel AI-generated or templated.

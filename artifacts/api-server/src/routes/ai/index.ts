@@ -9,6 +9,7 @@ import {
   nicheOutlinePrompt,
   nicheSystemPrompt,
   outlinePrompt,
+  regenTitlePrompt,
   structurePrompt,
   systemPrompt,
   titlesPrompt
@@ -132,7 +133,6 @@ router.post("/lesson", async (req, res) => {
 router.post("/improve", async (req, res) => {
   try {
     const { action, currentText, tone } = req.body || {};
-    // Improvement returns plain text, not JSON
     const text = await generateContentFast(
       improvementPrompt({ action, currentText, tone }),
       systemPrompt()
@@ -140,6 +140,21 @@ router.post("/improve", async (req, res) => {
     return res.json({ text });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || "Failed to improve text" });
+  }
+});
+
+router.post("/regenerate-title", async (req, res) => {
+  try {
+    const { level, currentTitle, parentChapter, parentSection, architecture, research } = req.body || {};
+    if (!level) return res.status(400).json({ error: "Missing level" });
+    const text = await generateContentFast(
+      regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }),
+      systemPrompt()
+    );
+    const data = extractJSON(text);
+    return res.json({ title: data.title || currentTitle });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || "Failed to regenerate title" });
   }
 });
 

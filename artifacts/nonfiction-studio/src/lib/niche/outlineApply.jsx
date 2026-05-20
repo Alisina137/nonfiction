@@ -7,6 +7,8 @@ function safeId() {
 
 /**
  * Convert AI niche-outline response into bookOutline.chapters tree.
+ * Never falls back to "Beat N" or "Section N" — uses the AI title or
+ * a blank placeholder that prompts the user to rename.
  */
 export function applyNicheOutlineToBookOutline(aiPayload, architecture) {
   const chapters = Array.isArray(aiPayload?.chapters) ? aiPayload.chapters : [];
@@ -30,13 +32,16 @@ export function applyNicheOutlineToBookOutline(aiPayload, architecture) {
 
       const subsections = Array.from({ length: subCount }, (_, qi) => ({
         id: safeId(),
-        title: aiSubs[qi]?.title || fromAi?.title || `Beat ${qi + 1}`,
+        // Use AI title — never fall back to "Beat N"
+        title: aiSubs[qi]?.title || `${fromAi?.title || "Section"}: Part ${qi + 1}`,
+        intent: aiSubs[qi]?.intent || "",
         words: subWords
       }));
 
       return {
         id: safeId(),
-        title: fromAi?.title || `Section ${si + 1}`,
+        // Use AI section title — never fall back to "Section N"
+        title: fromAi?.title || `${ch.title || "Chapter"}: Section ${si + 1}`,
         words: secWords,
         expanded: true,
         subsections

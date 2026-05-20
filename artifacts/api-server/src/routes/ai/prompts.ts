@@ -99,11 +99,94 @@ export function nicheOutlinePrompt({ research, architecture, title, description 
   const a = architecture || {};
   const chapterCount = a.recommendedChapters?.default || 10;
   const flow = (a.chapterFlow || []).map((beat: string, i: number) => `${i + 1}. ${beat}`).join("\n");
-  return `Design a ${chapterCount}-chapter book outline.
-MAIN NICHE: ${a.mainNicheLabel}, SUB-NICHE: ${a.subNicheLabel}
-TOPIC: ${research.bookTopic || ""}, TITLE: ${title || ""}
-BEAT FLOW:\n${flow || "(use sub-niche-native escalation)"}
-Return JSON: {"chapters":[{"title":"...","summary":"...","arcRole":"...","sections":[{"title":"...","subsections":[{"title":"...","intent":"..."}]}]}],"architectureNotes":"..."}`;
+  const tones = Array.isArray(research?.authorTones) && research.authorTones.length
+    ? research.authorTones.join(", ")
+    : "";
+  return `You are an elite publishing strategist and nonfiction architect.
+
+CRITICAL RULES — follow exactly:
+1. Every title at every level must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY.
+2. FORBIDDEN outputs (never use): "Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder", "Chapter N", "Key Point", "Emotional Theme", any numbered generic label.
+3. Chapter titles must signal a clear emotional or intellectual transformation.
+4. Section titles must identify a specific idea, conflict, or concept within the chapter.
+5. Subsection titles must name a precise angle, tactic, story beat, or insight — never a generic label.
+6. Every level must feel like it was written by a bestselling author — specific, emotionally intelligent, commercially viable.
+
+GOOD subsection title examples:
+- "The Fear of Falling Behind"
+- "When Failure Becomes Identity"
+- "Curated Success vs Real Life"
+- "Learning to Continue Anyway"
+- "The Quiet Weight of Comparison"
+
+BAD subsection titles (STRICTLY FORBIDDEN):
+- "Beat 1", "Beat 2", "Scene 1"
+- "Emotional Topic", "Key Point", "Section A"
+- "Topic 1", "Subtopic 1", "Placeholder"
+
+BOOK PROFILE:
+TITLE: ${title || ""}
+TOPIC: ${research?.bookTopic || ""}
+NICHE: ${a.mainNicheLabel || ""} › ${a.subNicheLabel || ""}
+TARGET AUDIENCE: ${research?.targetAudience || ""}
+AUTHOR TONE: ${tones || "direct and authoritative"}
+PUBLISHING GOAL: ${research?.publishingGoal || ""}
+STANCE: ${research?.stanceOnTopic || ""}
+STANDOUT FACTOR: ${research?.standout || ""}
+
+STRUCTURAL BLUEPRINT:
+Structure type: ${a.structureType || "narrative"}
+Pacing: ${a.pacingType || "standard"}
+Emotional arc: ${a.emotionalArc || "progressive"}
+Bestseller patterns: ${(a.bestsellerPatterns || []).join("; ") || ""}
+Reader psychology: ${a.readerPsychology || ""}
+Beat flow:
+${flow || "(use sub-niche-native escalation)"}
+
+CHAPTERS TO GENERATE: ${chapterCount}
+SECTIONS PER CHAPTER: 2-3 (generate exactly, with real titles)
+SUBSECTIONS PER SECTION: 2-3 (generate exactly, with real titles)
+
+Return ONLY valid JSON:
+{"chapters":[{"title":"Specific chapter title signaling transformation","summary":"2-sentence summary of what this chapter achieves","arcRole":"opening hook|escalation|climax|resolution|transformation|etc","sections":[{"title":"Specific concept or angle — not generic","subsections":[{"title":"Precise emotionally-specific insight or tactic","intent":"What shift or insight this delivers to the reader"}]}]}],"architectureNotes":"Brief structural strategy note"}`;
+}
+
+export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
+  const a = architecture || {};
+  const niche = `${a.mainNicheLabel || ""} › ${a.subNicheLabel || ""}`;
+  const audience = research?.targetAudience || "";
+  const tones = Array.isArray(research?.authorTones) ? research.authorTones.join(", ") : "";
+
+  if (level === "chapter") {
+    return `You are a publishing strategist. Generate ONE specific, emotionally compelling chapter title.
+BOOK TOPIC: ${research?.bookTopic || ""}
+NICHE: ${niche}
+AUDIENCE: ${audience}
+TONE: ${tones}
+CURRENT TITLE (replace this, keep the same chapter position/role): ${currentTitle}
+Rules: No generic labels. No "Chapter N". No "Beat N". Title must signal a transformation or insight.
+Return JSON: {"title":"..."}`;
+  }
+  if (level === "section") {
+    return `Generate ONE specific section title for this chapter context.
+CHAPTER: ${parentChapter || ""}
+NICHE: ${niche}
+AUDIENCE: ${audience}
+CURRENT TITLE (replace): ${currentTitle}
+The title must address a specific concept, conflict, or angle within the chapter.
+No generic labels. No "Section N". No "Topic N".
+Return JSON: {"title":"..."}`;
+  }
+  return `Generate ONE specific subsection title.
+CHAPTER: ${parentChapter || ""}
+SECTION: ${parentSection || ""}
+NICHE: ${niche}
+AUDIENCE: ${audience}
+CURRENT TITLE (replace): ${currentTitle}
+Must be emotionally specific — a precise insight, tactic, or story angle.
+Example good titles: "The Fear of Falling Behind", "When Failure Becomes Identity", "Curated Success vs Real Life"
+No generic labels. No "Beat N". No "Scene N".
+Return JSON: {"title":"..."}`;
 }
 
 export function structurePrompt({ chapterTitle, chapterSummary, fullOutline, audience, tone }: any) {

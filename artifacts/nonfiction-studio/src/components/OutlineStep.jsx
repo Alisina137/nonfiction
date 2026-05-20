@@ -10,7 +10,6 @@ function safeId() {
   return `o-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** Midpoint words from Details band like `10k–15k`; fallback ~45k. */
 export function midpointTargetWords(wordCountRange) {
   const s = String(wordCountRange || "").trim();
   if (!BOOK_WORD_COUNT_RANGES.includes(s)) return 45000;
@@ -25,12 +24,7 @@ function newSubsection() {
   return { id: safeId(), title: "New subsection", words: 200 };
 }
 
-/** Default tree seeded from Details chapter count & word-range band */
-export function seedBookOutline(
-  previous,
-  chapterCountFromDetails,
-  wordCountRangeBand,
-) {
+export function seedBookOutline(previous, chapterCountFromDetails, wordCountRangeBand) {
   const prev =
     previous && typeof previous === "object"
       ? previous
@@ -44,10 +38,7 @@ export function seedBookOutline(
     };
   }
 
-  const n = Math.min(
-    40,
-    Math.max(1, Math.round(Number(chapterCountFromDetails) || 8)),
-  );
+  const n = Math.min(40, Math.max(1, Math.round(Number(chapterCountFromDetails) || 8)));
   const budget = midpointTargetWords(wordCountRangeBand);
   const reserve = Math.max(700, Math.round(budget * 0.035));
   const introW = reserve;
@@ -62,15 +53,9 @@ export function seedBookOutline(
     const sw = Math.max(100, Math.round(perCh / Math.max(sc.length, 1)));
     ch.sections = sc.map((sec) => {
       let next = resizeSectionSubs(sec, 3);
-      const subWs = Math.max(
-        80,
-        Math.round(sw / Math.max(next.subsections?.length || 1, 1)),
-      );
+      const subWs = Math.max(80, Math.round(sw / Math.max(next.subsections?.length || 1, 1)));
       next.words = sw;
-      next.subsections = (next.subsections || []).map((su) => ({
-        ...su,
-        words: subWs,
-      }));
+      next.subsections = (next.subsections || []).map((su) => ({ ...su, words: subWs }));
       return next;
     });
     return ch;
@@ -78,18 +63,14 @@ export function seedBookOutline(
 
   return {
     introduction: {
-      ...(prev.introduction && typeof prev.introduction === "object"
-        ? prev.introduction
-        : {}),
+      ...(prev.introduction && typeof prev.introduction === "object" ? prev.introduction : {}),
       id: (prev.introduction && prev.introduction.id) || "intro",
       title: (prev.introduction && prev.introduction.title) || "Introduction",
       words: introW,
     },
     chapters,
     conclusion: {
-      ...(prev.conclusion && typeof prev.conclusion === "object"
-        ? prev.conclusion
-        : {}),
+      ...(prev.conclusion && typeof prev.conclusion === "object" ? prev.conclusion : {}),
       id: (prev.conclusion && prev.conclusion.id) || "concl",
       title: (prev.conclusion && prev.conclusion.title) || "Conclusion",
       words: outroW,
@@ -99,21 +80,12 @@ export function seedBookOutline(
 
 function normalizeIntro(i) {
   const x = i && typeof i === "object" ? i : {};
-  return {
-    id: x.id || "intro",
-    title: x.title || "Introduction",
-    words: Number(x.words) || 0,
-    expanded: x.expanded,
-  };
+  return { id: x.id || "intro", title: x.title || "Introduction", words: Number(x.words) || 0, expanded: x.expanded };
 }
 
 function normalizeConclusion(c) {
   const x = c && typeof c === "object" ? c : {};
-  return {
-    id: x.id || "concl",
-    title: x.title || "Conclusion",
-    words: Number(x.words) || 0,
-  };
+  return { id: x.id || "concl", title: x.title || "Conclusion", words: Number(x.words) || 0 };
 }
 
 function normalizeChapter(ch) {
@@ -123,9 +95,7 @@ function normalizeChapter(ch) {
     title: ch.title || "Chapter",
     words: Number(ch.words) || 0,
     expanded: ch.expanded !== false,
-    sections: Array.isArray(ch.sections)
-      ? ch.sections.map(normalizeSection)
-      : [],
+    sections: Array.isArray(ch.sections) ? ch.sections.map(normalizeSection) : [],
   };
 }
 
@@ -136,19 +106,13 @@ function normalizeSection(s) {
     title: s.title || "Section",
     words: Number(s.words) || 0,
     expanded: s.expanded !== false,
-    subsections: Array.isArray(s.subsections)
-      ? s.subsections.map(normalizeSub)
-      : [],
+    subsections: Array.isArray(s.subsections) ? s.subsections.map(normalizeSub) : [],
   };
 }
 
 function normalizeSub(su) {
   if (!su || typeof su !== "object") return newSubsection();
-  return {
-    id: su.id || safeId(),
-    title: su.title || "Subsection",
-    words: Number(su.words) || 0,
-  };
+  return { id: su.id || safeId(), title: su.title || "Subsection", words: Number(su.words) || 0 };
 }
 
 function normalizedBookOutline(raw) {
@@ -161,13 +125,7 @@ function normalizedBookOutline(raw) {
 }
 
 function makeChapter(ci, words) {
-  return {
-    id: safeId(),
-    title: `Chapter ${ci + 1}`,
-    words,
-    expanded: true,
-    sections: [],
-  };
+  return { id: safeId(), title: `Chapter ${ci + 1}`, words, expanded: true, sections: [] };
 }
 
 function newSectionSkeleton(baseWords) {
@@ -182,7 +140,6 @@ function newSectionSkeleton(baseWords) {
   return sec;
 }
 
-/** Adjust chapter.section count — keeps first N sections, pads with new blanks */
 function resizeChapterSections(chapter, target) {
   const n = Math.min(15, Math.max(0, Math.round(Number(target))));
   let next = [...(chapter.sections || [])];
@@ -190,10 +147,7 @@ function resizeChapterSections(chapter, target) {
     Number(chapter.words) > 0 && n > 0
       ? Math.max(120, Math.round(Number(chapter.words) / Math.max(n, 1)))
       : 650;
-
-  while (next.length < n) {
-    next.push(newSectionSkeleton(avg));
-  }
+  while (next.length < n) next.push(newSectionSkeleton(avg));
   if (next.length > n) next = next.slice(0, n);
   return { ...chapter, sections: next };
 }
@@ -201,12 +155,12 @@ function resizeChapterSections(chapter, target) {
 function resizeSectionSubs(section, target) {
   const n = Math.min(15, Math.max(0, Math.round(Number(target))));
   let next = Array.isArray(section.subsections) ? [...section.subsections] : [];
-  while (next.length < n) {
-    next.push(newSubsection());
-  }
+  while (next.length < n) next.push(newSubsection());
   if (next.length > n) next = next.slice(0, n);
   return { ...section, subsections: next };
 }
+
+// ─── Editable title component ─────────────────────────────────────────────────
 
 function EditableTitle({ value, onCommit, dense }) {
   const [edit, setEdit] = useState(false);
@@ -224,16 +178,10 @@ function EditableTitle({ value, onCommit, dense }) {
           value={draft}
           autoFocus
           onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => {
-            onCommit(draft.trim() || "");
-            setEdit(false);
-          }}
+          onBlur={() => { onCommit(draft.trim() || ""); setEdit(false); }}
           onKeyDown={(e) => {
             if (e.key === "Escape") setEdit(false);
-            if (e.key === "Enter") {
-              onCommit(draft.trim() || "");
-              setEdit(false);
-            }
+            if (e.key === "Enter") { onCommit(draft.trim() || ""); setEdit(false); }
           }}
         />
       </span>
@@ -260,7 +208,32 @@ function EditableTitle({ value, onCommit, dense }) {
   );
 }
 
+// ─── Regenerate button ────────────────────────────────────────────────────────
+
+function RegenBtn({ busy, onClick, title = "Regenerate title" }) {
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="shrink-0 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-40"
+    >
+      {busy ? (
+        <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
+      ) : (
+        "↻"
+      )}
+    </button>
+  );
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const COUNT_OPTS = Array.from({ length: 15 }, (_, i) => i + 1);
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function OutlineStep({
   bookOutline,
@@ -272,14 +245,23 @@ export default function OutlineStep({
 }) {
   const [genBusy, setGenBusy] = useState(false);
   const [genStatus, setGenStatus] = useState("");
-  const boRaw =
-    bookOutline && typeof bookOutline === "object" ? bookOutline : {};
+  const [regenBusy, setRegenBusy] = useState({});
+
+  const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const intro = normalizeIntro(boRaw.introduction);
   const conclusion = normalizeConclusion(boRaw.conclusion);
-  const chapters = Array.isArray(boRaw.chapters)
-    ? boRaw.chapters.map(normalizeChapter)
-    : [];
+  const chapters = Array.isArray(boRaw.chapters) ? boRaw.chapters.map(normalizeChapter) : [];
   const seededRef = useRef(false);
+
+  const arch =
+    fullProject?.research?.architectureSnapshot ||
+    resolveArchitecture(
+      loadNicheRegistry(),
+      fullProject?.research?.mainNicheId,
+      fullProject?.research?.subNicheId
+    );
+
+  // ─── Outline state helpers ─────────────────────────────────────────────────
 
   function commit(patcher) {
     setBookOutline((prevRaw) => {
@@ -289,27 +271,13 @@ export default function OutlineStep({
   }
 
   useEffect(() => {
-    if (currentStep !== outlineStepIndex) {
-      seededRef.current = false;
-      return;
-    }
+    if (currentStep !== outlineStepIndex) { seededRef.current = false; return; }
     if (seededRef.current) return;
     seededRef.current = true;
-
     setBookOutline((prev) =>
-      seedBookOutline(
-        prev,
-        bookDetails?.chapterCount,
-        bookDetails?.wordCountRange || "",
-      ),
+      seedBookOutline(prev, bookDetails?.chapterCount, bookDetails?.wordCountRange || "")
     );
-  }, [
-    bookDetails?.chapterCount,
-    bookDetails?.wordCountRange,
-    currentStep,
-    outlineStepIndex,
-    setBookOutline,
-  ]);
+  }, [bookDetails?.chapterCount, bookDetails?.wordCountRange, currentStep, outlineStepIndex, setBookOutline]);
 
   function patchIntro(patch) {
     commit((draft) => ({ ...draft, introduction: { ...intro, ...patch } }));
@@ -322,53 +290,36 @@ export default function OutlineStep({
   function patchChaptersUpdater(fn) {
     commit((draft) => {
       const cs = [...(draft.chapters || [])];
-      const nextCs = fn(cs);
-      return { ...draft, chapters: nextCs };
+      return { ...draft, chapters: fn(cs) };
     });
   }
 
   function updateChapterById(cid, updater) {
     patchChaptersUpdater((cs) =>
-      cs.map((c) =>
-        c.id === cid
-          ? normalizeChapter(updater({ ...normalizeChapter(c) }))
-          : c,
-      ),
+      cs.map((c) => c.id === cid ? normalizeChapter(updater({ ...normalizeChapter(c) })) : c)
     );
   }
 
   function updateSectionById(cid, sid, updater) {
     patchChaptersUpdater((cs) =>
       cs.map((ch) =>
-        ch.id !== cid
-          ? ch
-          : {
-              ...ch,
-              sections: (ch.sections || []).map((s) =>
-                s.id !== sid
-                  ? s
-                  : normalizeSection(updater({ ...normalizeSection(s) })),
-              ),
-            },
-      ),
+        ch.id !== cid ? ch : {
+          ...ch,
+          sections: (ch.sections || []).map((s) =>
+            s.id !== sid ? s : normalizeSection(updater({ ...normalizeSection(s) }))
+          ),
+        }
+      )
     );
   }
 
   function addChapterRow() {
     patchChaptersUpdater((cs) => {
       const per = cs.length
-        ? Math.max(
-            450,
-            Math.round(
-              cs.reduce((a, ch) => a + Number(ch.words || 0), 0) /
-                Math.max(cs.length, 1),
-            ),
-          )
+        ? Math.max(450, Math.round(cs.reduce((a, ch) => a + Number(ch.words || 0), 0) / Math.max(cs.length, 1)))
         : 1400;
       const next = [...cs, normalizeChapter(makeChapter(cs.length, per))];
-      return next.map((ch, ii) =>
-        ii === next.length - 1 ? resizeChapterSections({ ...ch }, 0) : ch,
-      );
+      return next.map((ch, ii) => ii === next.length - 1 ? resizeChapterSections({ ...ch }, 0) : ch);
     });
   }
 
@@ -379,22 +330,14 @@ export default function OutlineStep({
   function addSectionToChapter(cid, ciAbs) {
     patchChaptersUpdater((cs) =>
       cs.map((ch) =>
-        ch.id !== cid
-          ? ch
-          : (() => {
-              const secs = [...(ch.sections || [])];
-              const bw = Math.max(
-                150,
-                Math.round(
-                  Number(ch.words || 1200) / Math.max(secs.length + 1, 1),
-                ),
-              );
-              secs.push(normalizeSection(newSectionSkeleton(bw)));
-              secs[secs.length - 1].title =
-                `${ciAbs + 1}.${secs.length}: New section`;
-              return normalizeChapter({ ...ch, sections: secs });
-            })(),
-      ),
+        ch.id !== cid ? ch : (() => {
+          const secs = [...(ch.sections || [])];
+          const bw = Math.max(150, Math.round(Number(ch.words || 1200) / Math.max(secs.length + 1, 1)));
+          secs.push(normalizeSection(newSectionSkeleton(bw)));
+          secs[secs.length - 1].title = `${ciAbs + 1}.${secs.length}: New section`;
+          return normalizeChapter({ ...ch, sections: secs });
+        })()
+      )
     );
   }
 
@@ -406,13 +349,20 @@ export default function OutlineStep({
     }));
   }
 
-  const arch =
-    fullProject?.research?.architectureSnapshot ||
-    resolveArchitecture(
-      loadNicheRegistry(),
-      fullProject?.research?.mainNicheId,
-      fullProject?.research?.subNicheId
-    );
+  // ─── Expand / collapse all ─────────────────────────────────────────────────
+
+  function setAllExpanded(expanded) {
+    commit((draft) => ({
+      ...draft,
+      chapters: (draft.chapters || []).map((ch) => ({
+        ...ch,
+        expanded,
+        sections: (ch.sections || []).map((sec) => ({ ...sec, expanded })),
+      })),
+    }));
+  }
+
+  // ─── Generate full niche-native outline ───────────────────────────────────
 
   async function generateNicheNativeOutline() {
     if (!arch?.subNicheLabel) {
@@ -447,27 +397,75 @@ export default function OutlineStep({
     }
   }
 
+  // ─── Regenerate a single title ────────────────────────────────────────────
+
+  async function regenTitle({ level, id, currentTitle, parentChapterId, parentSectionId }) {
+    setRegenBusy((prev) => ({ ...prev, [id]: true }));
+    try {
+      const parentChapter = parentChapterId
+        ? chapters.find((c) => c.id === parentChapterId)?.title
+        : undefined;
+      const parentSection = parentSectionId
+        ? chapters
+            .find((c) => c.id === parentChapterId)
+            ?.sections?.find((s) => s.id === parentSectionId)?.title
+        : undefined;
+
+      const res = await fetch("/api/ai/regenerate-title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          level,
+          currentTitle,
+          parentChapter,
+          parentSection,
+          architecture: arch,
+          research: fullProject?.research,
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Regeneration failed");
+      const newTitle = data.title || currentTitle;
+
+      if (level === "chapter") {
+        updateChapterById(id, (c) => ({ ...c, title: newTitle }));
+      } else if (level === "section") {
+        updateSectionById(parentChapterId, id, (s) => ({ ...s, title: newTitle }));
+      } else {
+        // subsection
+        updateSectionById(parentChapterId, parentSectionId, (s) => ({
+          ...s,
+          subsections: (s.subsections || []).map((su) =>
+            su.id === id ? { ...su, title: newTitle } : su
+          ),
+        }));
+      }
+    } catch (e) {
+      // silently ignore — title stays unchanged
+    } finally {
+      setRegenBusy((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    }
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   const rowShell =
     "flex flex-wrap items-start gap-x-5 gap-y-3 rounded-xl border border-slate-200/95 bg-white/95 px-3 py-3 shadow-sm md:flex-nowrap md:px-4 md:py-3.5";
 
   return (
     <div className="mx-auto max-w-5xl pb-24">
       <p className="text-sm leading-relaxed text-slate-600">
-        Structure follows your Research niche architecture—beats, pacing, and escalation are sub-niche specific.
+        Structure follows your Research niche architecture — beats, pacing, and escalation are sub-niche specific.
       </p>
 
       {arch && (
         <aside className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3 text-xs text-indigo-950">
-          <span className="font-semibold">
-            {arch.mainNicheLabel} › {arch.subNicheLabel}
-          </span>
-          <span className="text-indigo-800">
-            {" "}
-            · {arch.pacingType} · {arch.structureType}
-          </span>
+          <span className="font-semibold">{arch.mainNicheLabel} › {arch.subNicheLabel}</span>
+          <span className="text-indigo-800"> · {arch.pacingType} · {arch.structureType}</span>
         </aside>
       )}
 
+      {/* Toolbar */}
       <section className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -475,111 +473,91 @@ export default function OutlineStep({
           onClick={generateNicheNativeOutline}
           className="rounded-full bg-gradient-to-r from-indigo-600 to-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-50"
         >
-          {genBusy ? "Generating architecture…" : "Generate niche-native outline"}
+          {genBusy ? "Generating…" : "Generate niche-native outline"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setAllExpanded(true)}
+          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+        >
+          Expand all
+        </button>
+        <button
+          type="button"
+          onClick={() => setAllExpanded(false)}
+          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+        >
+          Collapse all
         </button>
         {genStatus && <p className="text-sm text-slate-600">{genStatus}</p>}
       </section>
 
       <div className="mt-8 space-y-4">
+
+        {/* Introduction */}
         <div className={rowShell}>
           <div className="flex min-w-0 flex-[2] gap-3">
-            <EditableTitle
-              dense
-              value={intro.title}
-              onCommit={(t) => patchIntro({ title: t || "Introduction" })}
-            />
+            <EditableTitle dense value={intro.title} onCommit={(t) => patchIntro({ title: t || "Introduction" })} />
           </div>
           <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-600">
             Words
             <input
-              type="number"
-              min={0}
+              type="number" min={0}
               className="input-light w-[6.25rem] py-2 text-xs"
               value={Number(intro.words) || 0}
-              onChange={(e) =>
-                patchIntro({ words: Math.max(0, Number(e.target.value) || 0) })
-              }
+              onChange={(e) => patchIntro({ words: Math.max(0, Number(e.target.value) || 0) })}
             />
           </label>
         </div>
 
+        {/* Chapters */}
         {chapters.map((ch, ci) => {
           const secs = Array.isArray(ch.sections) ? ch.sections : [];
-          const secCountShown = secs.length;
-
           return (
             <div key={ch.id} className="space-y-2">
+              {/* Chapter row */}
               <div className={rowShell}>
                 <div className="min-w-0 flex-[2] md:max-w-xl">
-                  <EditableTitle
-                    dense
-                    value={ch.title}
-                    onCommit={(t) =>
-                      updateChapterById(ch.id, () => ({
-                        ...ch,
-                        title: t || `Chapter ${ci + 1}`,
-                      }))
-                    }
-                  />
+                  <div className="flex items-start gap-1">
+                    <EditableTitle
+                      dense
+                      value={ch.title}
+                      onCommit={(t) => updateChapterById(ch.id, () => ({ ...ch, title: t || `Chapter ${ci + 1}` }))}
+                    />
+                    <RegenBtn
+                      busy={!!regenBusy[ch.id]}
+                      onClick={() => regenTitle({ level: "chapter", id: ch.id, currentTitle: ch.title })}
+                      title="Regenerate chapter title"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-1 flex-wrap items-center gap-3 md:justify-end lg:gap-5">
                   <label className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-700">
                     Sections
                     <select
                       className="input-light w-[4.75rem] py-2 text-xs font-medium"
-                      value={Math.min(secCountShown, 15)}
-                      onChange={(e) =>
-                        updateChapterById(ch.id, (c) =>
-                          resizeChapterSections(c, Number(e.target.value)),
-                        )
-                      }
+                      value={Math.min(secs.length, 15)}
+                      onChange={(e) => updateChapterById(ch.id, (c) => resizeChapterSections(c, Number(e.target.value)))}
                     >
-                      {[0, ...COUNT_OPTS].map((v) => (
-                        <option key={v} value={v}>
-                          {v}
-                        </option>
-                      ))}
+                      {[0, ...COUNT_OPTS].map((v) => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </label>
                   <label className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-700">
                     Words
                     <input
-                      type="number"
-                      min={0}
+                      type="number" min={0}
                       className="input-light w-[6.75rem] py-2 text-xs"
                       value={Number(ch.words) || 0}
-                      onChange={(e) =>
-                        updateChapterById(ch.id, () => ({
-                          ...ch,
-                          words: Math.max(0, Number(e.target.value) || 0),
-                        }))
-                      }
+                      onChange={(e) => updateChapterById(ch.id, () => ({ ...ch, words: Math.max(0, Number(e.target.value) || 0) }))}
                     />
                   </label>
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      title="Remove chapter"
-                      aria-label="Delete chapter"
-                      onClick={() => deleteChapter(ch.id)}
-                      className="rounded-lg px-2 py-1.5 text-lg text-red-600 transition hover:bg-red-50"
-                    >
-                      🗑
-                    </button>
+                    <button type="button" title="Remove chapter" onClick={() => deleteChapter(ch.id)}
+                      className="rounded-lg px-2 py-1.5 text-lg text-red-600 transition hover:bg-red-50">🗑</button>
                     <button
                       type="button"
                       aria-expanded={ch.expanded !== false}
-                      aria-label={
-                        ch.expanded === false
-                          ? "Expand sections"
-                          : "Collapse sections"
-                      }
-                      onClick={() =>
-                        updateChapterById(ch.id, (c) => ({
-                          ...c,
-                          expanded: !(c.expanded !== false),
-                        }))
-                      }
+                      onClick={() => updateChapterById(ch.id, (c) => ({ ...c, expanded: !(c.expanded !== false) }))}
                       className="rounded-lg px-2 py-1.5 text-slate-600 transition hover:bg-slate-100"
                     >
                       {ch.expanded === false ? "▼" : "▲"}
@@ -588,45 +566,40 @@ export default function OutlineStep({
                 </div>
               </div>
 
-              {ch.expanded !== false &&
-                (secs.length === 0 ? (
+              {/* Sections */}
+              {ch.expanded !== false && (
+                secs.length === 0 ? (
                   <div className="ml-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/85 px-4 py-8 text-center text-sm text-slate-600 md:ml-10">
                     No sections yet. Increase the Sections count above, tap{" "}
-                    <span className="font-semibold text-slate-800">
-                      + Add section
-                    </span>
-                    , or pick a nonzero count in the dropdown.
+                    <span className="font-semibold text-slate-800">+ Add section</span>, or pick a nonzero count.
                   </div>
                 ) : (
                   secs.map((sec, si) => {
-                    const subs = Array.isArray(sec.subsections)
-                      ? sec.subsections
-                      : [];
-                    const subCountShown = subs.length;
+                    const subs = Array.isArray(sec.subsections) ? sec.subsections : [];
                     const displaySec = `${ci + 1}.${si + 1}`;
-
                     return (
-                      <div
-                        key={sec.id}
-                        className="ml-4 border-l border-sky-100 pl-4 md:ml-8 md:pl-6"
-                      >
+                      <div key={sec.id} className="ml-4 border-l border-sky-100 pl-4 md:ml-8 md:pl-6">
+                        {/* Section row */}
                         <div className={rowShell}>
                           <div className="min-w-0 flex-[2]">
                             <div className="flex items-start gap-2">
-                              <span className="mt-0.5 shrink-0 text-[11px] font-bold uppercase tracking-wide text-sky-700">
-                                {displaySec}
-                              </span>
-                              <div className="min-w-0 flex-1">
+                              <span className="mt-0.5 shrink-0 text-[11px] font-bold uppercase tracking-wide text-sky-700">{displaySec}</span>
+                              <div className="min-w-0 flex-1 flex items-start gap-1">
                                 <EditableTitle
                                   dense
                                   key={`${sec.id}-t`}
                                   value={sec.title}
-                                  onCommit={(t) =>
-                                    updateSectionById(ch.id, sec.id, () => ({
-                                      ...sec,
-                                      title: t || `${displaySec}`,
-                                    }))
-                                  }
+                                  onCommit={(t) => updateSectionById(ch.id, sec.id, () => ({ ...sec, title: t || displaySec }))}
+                                />
+                                <RegenBtn
+                                  busy={!!regenBusy[sec.id]}
+                                  onClick={() => regenTitle({
+                                    level: "section",
+                                    id: sec.id,
+                                    currentTitle: sec.title,
+                                    parentChapterId: ch.id,
+                                  })}
+                                  title="Regenerate section title"
                                 />
                               </div>
                             </div>
@@ -636,77 +609,31 @@ export default function OutlineStep({
                               Subsections
                               <select
                                 className="input-light w-[4.75rem] py-2 text-[11px] font-medium"
-                                value={Math.min(subCountShown, 15)}
-                                onChange={(e) =>
-                                  updateSectionById(ch.id, sec.id, (s) =>
-                                    resizeSectionSubs(
-                                      s,
-                                      Number(e.target.value),
-                                    ),
-                                  )
-                                }
+                                value={Math.min(subs.length, 15)}
+                                onChange={(e) => updateSectionById(ch.id, sec.id, (s) => resizeSectionSubs(s, Number(e.target.value)))}
                               >
-                                {[0, ...COUNT_OPTS].map((v) => (
-                                  <option key={v} value={v}>
-                                    {v}
-                                  </option>
-                                ))}
+                                {[0, ...COUNT_OPTS].map((v) => <option key={v} value={v}>{v}</option>)}
                               </select>
                             </label>
                             <label className="flex items-center gap-2 whitespace-nowrap text-[11px] font-semibold text-slate-700">
                               Words
                               <input
-                                type="number"
-                                min={0}
+                                type="number" min={0}
                                 className="input-light w-[6.5rem] py-2 text-[11px]"
                                 value={Number(sec.words) || 0}
-                                onChange={(e) =>
-                                  updateSectionById(ch.id, sec.id, () => ({
-                                    ...sec,
-                                    words: Math.max(
-                                      0,
-                                      Number(e.target.value) || 0,
-                                    ),
-                                  }))
-                                }
+                                onChange={(e) => updateSectionById(ch.id, sec.id, () => ({ ...sec, words: Math.max(0, Number(e.target.value) || 0) }))}
                               />
                             </label>
                             <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                aria-label="Delete section"
-                                onClick={() =>
-                                  patchChaptersUpdater((cs) =>
-                                    cs.map((cx) =>
-                                      cx.id !== ch.id
-                                        ? cx
-                                        : {
-                                            ...cx,
-                                            sections: (
-                                              cx.sections || []
-                                            ).filter((s) => s.id !== sec.id),
-                                          },
-                                    ),
-                                  )
-                                }
-                                className="rounded-lg px-2 py-1.5 text-base text-red-600 transition hover:bg-red-50"
-                              >
-                                🗑
-                              </button>
+                              <button type="button" aria-label="Delete section"
+                                onClick={() => patchChaptersUpdater((cs) =>
+                                  cs.map((cx) => cx.id !== ch.id ? cx : { ...cx, sections: (cx.sections || []).filter((s) => s.id !== sec.id) })
+                                )}
+                                className="rounded-lg px-2 py-1.5 text-base text-red-600 transition hover:bg-red-50">🗑</button>
                               <button
                                 type="button"
                                 aria-expanded={sec.expanded !== false}
-                                aria-label={
-                                  sec.expanded === false
-                                    ? "Expand subsections"
-                                    : "Collapse subsections"
-                                }
-                                onClick={() =>
-                                  updateSectionById(ch.id, sec.id, (s) => ({
-                                    ...s,
-                                    expanded: !(s.expanded !== false),
-                                  }))
-                                }
+                                onClick={() => updateSectionById(ch.id, sec.id, (s) => ({ ...s, expanded: !(s.expanded !== false) }))}
                                 className="rounded-lg px-2 py-1.5 text-slate-600 transition hover:bg-slate-100"
                               >
                                 {sec.expanded === false ? "▼" : "▲"}
@@ -715,172 +642,123 @@ export default function OutlineStep({
                           </div>
                         </div>
 
-                        {sec.expanded !== false &&
-                          (subs.length === 0 ? (
+                        {/* Subsections */}
+                        {sec.expanded !== false && (
+                          subs.length === 0 ? (
                             <div className="relative mt-2 ml-6 rounded-lg border border-dashed border-slate-200 bg-white px-4 py-4 text-center text-xs text-slate-600 md:ml-8">
-                              Subsections aren&apos;t scaffolded yet. Bump the
-                              dropdown or tap below.
-                              <button
-                                type="button"
-                                onClick={() => addSubsection(ch.id, sec.id)}
-                                className="mt-2 block w-full rounded-lg bg-gradient-to-r from-sky-600 to-sky-500 py-2.5 text-xs font-semibold text-white md:inline md:w-auto md:px-6"
-                              >
+                              No subsections yet.
+                              <button type="button" onClick={() => addSubsection(ch.id, sec.id)}
+                                className="mt-2 block w-full rounded-lg bg-gradient-to-r from-sky-600 to-sky-500 py-2.5 text-xs font-semibold text-white md:inline md:w-auto md:px-6">
                                 + Add subsection
                               </button>
                             </div>
                           ) : (
-                            subs.map((su, qi) => {
-                              const slug = `${ci + 1}.${si + 1}.${qi + 1}`;
-                              return (
-                                <div
-                                  key={su.id}
-                                  className="relative mt-2 ml-8 md:ml-12"
-                                >
-                                  <div
-                                    className={`${rowShell} border-sky-100/85 py-3`}
-                                  >
-                                    <div className="min-w-0 flex-[2]">
-                                      <div className="flex items-start gap-2">
-                                        <span className="mt-0.5 shrink-0 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sky-800">
-                                          {slug}
-                                        </span>
-                                        <EditableTitle
-                                          dense
-                                          key={`${su.id}-t`}
-                                          value={su.title}
-                                          onCommit={(t) =>
-                                            updateSectionById(
-                                              ch.id,
-                                              sec.id,
-                                              (s0) => ({
-                                                ...s0,
-                                                subsections: subs.map((x) =>
-                                                  x.id === su.id
-                                                    ? { ...x, title: t || slug }
-                                                    : x,
-                                                ),
-                                              }),
-                                            )
+                            <>
+                              {subs.map((su, qi) => {
+                                const slug = `${ci + 1}.${si + 1}.${qi + 1}`;
+                                return (
+                                  <div key={su.id} className="relative mt-2 ml-8 md:ml-12">
+                                    <div className={`${rowShell} border-sky-100/85 py-3`}>
+                                      <div className="min-w-0 flex-[2]">
+                                        <div className="flex items-start gap-2">
+                                          <span className="mt-0.5 shrink-0 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sky-800">{slug}</span>
+                                          <div className="min-w-0 flex-1 flex items-start gap-1">
+                                            <EditableTitle
+                                              dense
+                                              key={`${su.id}-t`}
+                                              value={su.title}
+                                              onCommit={(t) =>
+                                                updateSectionById(ch.id, sec.id, (s0) => ({
+                                                  ...s0,
+                                                  subsections: subs.map((x) => x.id === su.id ? { ...x, title: t || slug } : x),
+                                                }))
+                                              }
+                                            />
+                                            <RegenBtn
+                                              busy={!!regenBusy[su.id]}
+                                              onClick={() => regenTitle({
+                                                level: "subsection",
+                                                id: su.id,
+                                                currentTitle: su.title,
+                                                parentChapterId: ch.id,
+                                                parentSectionId: sec.id,
+                                              })}
+                                              title="Regenerate subsection title"
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px] font-semibold text-slate-700">
+                                        Words
+                                        <input
+                                          type="number" min={0}
+                                          className="input-light w-[6rem] py-2 text-[11px]"
+                                          value={Number(su.words) || 0}
+                                          onChange={(e) =>
+                                            updateSectionById(ch.id, sec.id, (s0) => ({
+                                              ...s0,
+                                              subsections: (s0.subsections || []).map((x) =>
+                                                x.id === su.id ? { ...x, words: Math.max(0, Number(e.target.value) || 0) } : x
+                                              ),
+                                            }))
                                           }
                                         />
-                                      </div>
-                                    </div>
-                                    <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px] font-semibold text-slate-700">
-                                      Words
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        className="input-light w-[6rem] py-2 text-[11px]"
-                                        value={Number(su.words) || 0}
-                                        onChange={(e) =>
-                                          updateSectionById(
-                                            ch.id,
-                                            sec.id,
-                                            (s0) => ({
-                                              ...s0,
-                                              subsections: (
-                                                s0.subsections || []
-                                              ).map((x) =>
-                                                x.id === su.id
-                                                  ? {
-                                                      ...x,
-                                                      words: Math.max(
-                                                        0,
-                                                        Number(
-                                                          e.target.value,
-                                                        ) || 0,
-                                                      ),
-                                                    }
-                                                  : x,
-                                              ),
-                                            }),
-                                          )
-                                        }
-                                      />
-                                    </label>
-                                    <button
-                                      type="button"
-                                      aria-label="Delete subsection"
-                                      onClick={() =>
-                                        updateSectionById(
-                                          ch.id,
-                                          sec.id,
-                                          () => ({
+                                      </label>
+                                      <button type="button" aria-label="Delete subsection"
+                                        onClick={() =>
+                                          updateSectionById(ch.id, sec.id, () => ({
                                             ...sec,
-                                            subsections: subs.filter(
-                                              (x) => x.id !== su.id,
-                                            ),
-                                          }),
-                                        )
-                                      }
-                                      className="rounded-lg px-2 py-1.5 text-sm text-red-600 transition hover:bg-red-50"
-                                    >
-                                      🗑
-                                    </button>
+                                            subsections: subs.filter((x) => x.id !== su.id),
+                                          }))
+                                        }
+                                        className="rounded-lg px-2 py-1.5 text-sm text-red-600 transition hover:bg-red-50">🗑</button>
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })
-                          ))}
-
-                        {sec.expanded !== false && subs.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => addSubsection(ch.id, sec.id)}
-                            className="mb-4 ml-8 mt-2 rounded-xl border border-sky-200 bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-2 text-[11px] font-semibold text-white shadow-md transition hover:from-sky-700 hover:to-sky-600 md:ml-12"
-                          >
-                            + Add subsection
-                          </button>
+                                );
+                              })}
+                              <button type="button" onClick={() => addSubsection(ch.id, sec.id)}
+                                className="mb-4 ml-8 mt-2 rounded-xl border border-sky-200 bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-2 text-[11px] font-semibold text-white shadow-md transition hover:from-sky-700 hover:to-sky-600 md:ml-12">
+                                + Add subsection
+                              </button>
+                            </>
+                          )
                         )}
                       </div>
                     );
                   })
-                ))}
+                )
+              )}
 
               {ch.expanded !== false && secs.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => addSectionToChapter(ch.id, ci)}
-                  className="mb-6 ml-4 rounded-xl bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-2.5 text-xs font-semibold text-white shadow-md transition hover:from-sky-700 hover:to-sky-600 md:ml-8"
-                >
+                <button type="button" onClick={() => addSectionToChapter(ch.id, ci)}
+                  className="mb-6 ml-4 rounded-xl bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-2.5 text-xs font-semibold text-white shadow-md transition hover:from-sky-700 hover:to-sky-600 md:ml-8">
                   + Add section
                 </button>
               )}
             </div>
           );
         })}
-      </div>
 
-      <div className={`${rowShell} mt-10`}>
-        <div className="flex min-w-0 flex-[2] gap-3">
-          <EditableTitle
-            dense
-            value={conclusion.title}
-            onCommit={(t) => patchConclusion({ title: t || "Conclusion" })}
-          />
+        {/* Conclusion */}
+        <div className={`${rowShell} mt-10`}>
+          <div className="flex min-w-0 flex-[2] gap-3">
+            <EditableTitle dense value={conclusion.title} onCommit={(t) => patchConclusion({ title: t || "Conclusion" })} />
+          </div>
+          <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-600">
+            Words
+            <input
+              type="number" min={0}
+              className="input-light w-[6.25rem] py-2 text-xs"
+              value={Number(conclusion.words) || 0}
+              onChange={(e) => patchConclusion({ words: Math.max(0, Number(e.target.value) || 0) })}
+            />
+          </label>
         </div>
-        <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-600">
-          Words
-          <input
-            type="number"
-            min={0}
-            className="input-light w-[6.25rem] py-2 text-xs"
-            value={Number(conclusion.words) || 0}
-            onChange={(e) =>
-              patchConclusion({
-                words: Math.max(0, Number(e.target.value) || 0),
-              })
-            }
-          />
-        </label>
       </div>
 
       <div className="mt-12 flex justify-center">
-        <button
-          type="button"
-          onClick={addChapterRow}
-          className="rounded-xl border-2 border-slate-900/85 bg-white px-10 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-        >
+        <button type="button" onClick={addChapterRow}
+          className="rounded-xl border-2 border-slate-900/85 bg-white px-10 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50">
           + Add chapter
         </button>
       </div>
