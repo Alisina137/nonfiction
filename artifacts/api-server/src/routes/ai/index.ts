@@ -2,6 +2,8 @@ import { Router } from "express";
 import {
   contextualBookTitlesPrompt,
   coverBriefPrompt,
+  coverCriticPrompt,
+  coverVariantsPrompt,
   descriptionPrompt,
   improvementPrompt,
   lessonPrompt,
@@ -84,6 +86,24 @@ router.post("/cover", async (req, res) => {
     return res.json(data);
   } catch (error: any) {
     return res.status(500).json({ error: error.message || "Failed to generate cover brief" });
+  }
+});
+
+router.post("/cover-critic", async (req, res) => {
+  try {
+    const data = await chatJSONFast(coverCriticPrompt(req.body));
+    return res.json(data);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || "Failed to critique cover" });
+  }
+});
+
+router.post("/cover-variants", async (req, res) => {
+  try {
+    const data = await chatJSONFast(coverVariantsPrompt(req.body));
+    return res.json({ variants: data.variants || [] });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || "Failed to generate cover variants" });
   }
 });
 

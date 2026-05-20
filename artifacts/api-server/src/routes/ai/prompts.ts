@@ -101,17 +101,112 @@ MANUSCRIPT SAMPLE: ${sample}
 Return JSON: {"description":"120-200 word description","shortHook":"one sentence hook under 18 words","keywords":"7 comma-separated Amazon keywords"}`;
 }
 
-export function coverBriefPrompt({ title, subtitle, audience, tone, genre, usp, authorName, description }: any) {
-  return `Design an ebook cover brief.
+export function coverBriefPrompt({ title, subtitle, audience, tone, genre, usp, authorName, description, genrePreset, styleMode }: any) {
+  return `You are a world-class Amazon KDP cover designer, brand strategist, and bestseller positioning expert. Generate a complete, professional KDP cover brief.
+
+BOOK DETAILS:
 TITLE: ${title}
-SUBTITLE: ${subtitle || "(generate one)"}
+SUBTITLE: ${subtitle || "(generate a compelling subtitle)"}
 AUTHOR: ${authorName}
-NICHE: ${genre || "General"}
+GENRE/NICHE: ${genre || "General"}${genrePreset ? ` (preset: ${genrePreset})` : ""}
 AUDIENCE: ${audience}
 TONE: ${tone}
 USP: ${usp || ""}
+COVER STYLE MODE: ${styleMode || "typographic"}
 DESCRIPTION: ${(description || "").slice(0, 600)}
-Return JSON: {"subtitle":"...","tagline":"...","authorLine":"...","layoutStyle":"typographic|split-band|minimal|bold-stack","primaryColor":"hex","accentColor":"hex","textColor":"hex","designNotes":"..."}`;
+
+Generate a COMPLETE KDP cover design brief. Return valid JSON only:
+{
+  "subtitle": "compelling subtitle if not provided",
+  "tagline": "short punchy hook for top of cover",
+  "authorLine": "author name as it should appear",
+  "layoutStyle": "typographic|split-band|minimal|bold-stack",
+  "primaryColor": "#hex — dominant background/brand color",
+  "accentColor": "#hex — contrast highlight color",
+  "textColor": "#hex — primary text color (ensure strong contrast)",
+  "mood": "1-sentence emotional target — what the reader feels seeing this cover",
+  "typographyDirection": "font personality guidance (bold+modern, elegant+serif, etc.)",
+  "imagerySuggestions": "visual elements and composition without copyrighted references",
+  "colorPsychology": "why these specific colors work for this audience and genre",
+  "audienceTargeting": "how the cover visually signals this is for the right reader",
+  "compositionGuidance": "hierarchy and visual flow — where the eye goes first, second, third",
+  "designNotes": "comprehensive notes for a professional cover designer",
+  "backCoverHook": "opening line for back cover — hooks the browser",
+  "backCoverCTA": "final call to action line for back cover"
+}`;
+}
+
+export function coverCriticPrompt(cover: any) {
+  return `You are a veteran Amazon KDP cover art director with 20+ years critiquing bestselling covers.
+
+Critique this cover design with expert precision:
+TITLE: ${cover.title || ""}
+LAYOUT STYLE: ${cover.layoutStyle || "typographic"}
+STYLE MODE: ${cover.styleMode || "typographic"}
+GENRE PRESET: ${cover.genrePreset || "not set"}
+PRIMARY COLOR: ${cover.primaryColor || "#0c4a6e"}
+ACCENT COLOR: ${cover.accentColor || "#38bdf8"}
+TEXT COLOR: ${cover.textColor || "#ffffff"}
+FONT PAIRING: ${cover.fontPairingLabel || "default"}
+SUBTITLE: ${cover.subtitle || "(none)"}
+TAGLINE: ${cover.tagline || "(none)"}
+
+Score each dimension 1-10 and give specific, actionable feedback.
+
+Return valid JSON only:
+{
+  "scores": {
+    "hierarchy": N,
+    "readability": N,
+    "contrast": N,
+    "kdpFriendliness": N,
+    "bestsellerPotential": N
+  },
+  "overall": N,
+  "feedback": {
+    "hierarchy": "Is title dominant? Readable at thumbnail size?",
+    "readability": "Text contrast and legibility at all sizes",
+    "contrast": "Color separation and visual impact",
+    "kdpFriendliness": "Print-safe, KDP compliant, clean margins",
+    "bestsellerPotential": "Competitive positioning for this genre"
+  },
+  "topIssue": "Single most important problem to fix",
+  "topRecommendation": "Single most impactful improvement to make"
+}`;
+}
+
+export function coverVariantsPrompt({ title, subtitle, audience, genre, tone, usp }: any) {
+  return `You are a book cover design director. Create 3 DISTINCTLY DIFFERENT cover concept variations for this book.
+
+TITLE: ${title}
+SUBTITLE: ${subtitle || ""}
+GENRE: ${genre || "General"}
+AUDIENCE: ${audience}
+TONE: ${tone}
+USP: ${usp || ""}
+
+Create 3 variants with genuinely different visual approaches:
+- Variant A: Safe commercial — proven genre conventions, broad appeal
+- Variant B: Bold distinctive — genre-aware but surprising, strong identity
+- Variant C: Avant-garde — experimental, high-risk high-reward, ultra-distinctive
+
+Return valid JSON only:
+{"variants":[
+  {
+    "variantLabel": "A",
+    "concept": "1-sentence visual concept",
+    "primaryColor": "#hex",
+    "accentColor": "#hex",
+    "textColor": "#hex",
+    "layoutStyle": "typographic|split-band|minimal|bold-stack",
+    "styleMode": "typographic|cinematic|illustrated|minimal|abstract|photographic",
+    "fontPairingIndex": 0,
+    "tagline": "cover hook line",
+    "designNotes": "what makes this variant distinctive and why it works"
+  },
+  {"variantLabel":"B",...},
+  {"variantLabel":"C",...}
+]}`;
 }
 
 export function outlinePrompt({ idea, title, description, audience, tone }: any) {
