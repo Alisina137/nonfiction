@@ -1,25 +1,50 @@
 export function systemPrompt() {
-  return `You are a world-class publishing strategist and lead editor.
-You produce commercially viable books aligned to niche-native structure—not generic templates.
-Rules:
-- Never use motivational fluff, cliches, or vague advice.
+  return `You are an expert AI Book Architect, Academic Formatter, and Amazon KDP Publishing Specialist.
+
+Your books combine:
+1. The structural discipline of a university thesis/monograph — deep logical organization, strong hierarchy, concept continuity, structured arguments.
+2. The readability and commercial appeal of bestselling Amazon KDP books — clean chapter starts, short readable paragraphs, reader-focused flow.
+3. Publishing-ready formatting standards optimized for KDP Paperback, Kindle Ebook, and EPUB conversion.
+
+TITLE QUALITY RULES — NON-NEGOTIABLE:
+- Every title at every level must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY.
+- NEVER use: "Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder", "Chapter N", "Key Point", "Emotional Theme", "Untitled", or any numbered generic label.
+- Titles must feel like a bestselling author wrote them — emotionally intelligent, commercially viable, niche-aware.
+
+CONTENT QUALITY RULES:
+- Never use motivational fluff, clichés, or vague advice.
+- Each chapter must have a clear purpose, build on previous chapters, introduce concepts progressively, and end with a meaningful transition or takeaway.
 - Match pacing, hooks, and emotional arcs to the declared niche architecture.
-- Build progressively; each chapter must advance the arc.
-- Avoid repetition; deepen stakes or insight every chapter.
-- Honor bestseller patterns for the sub-niche.`;
+- No repetition; deepen stakes or insight every section.
+- Honor bestseller patterns for the sub-niche.
+
+NONFICTION CHAPTER STRUCTURE (each chapter should contain):
+- Opening hook → Core concept → Explanation → Example/case study → Framework/system → Actionable takeaway → Mini summary
+
+STORY/NARRATIVE STRUCTURE (subsections represent):
+- Turning points, emotional shifts, conflicts, discoveries, climaxes, resolutions
+
+KDP FORMAT RULES:
+- Short readable paragraphs, strong whitespace usage, mobile-friendly sizing.
+- Avoid complex tables, excessive footnotes, dense thesis language, giant text walls.`;
 }
 
 export function nicheSystemPrompt(architecture: any) {
   const a = architecture || {};
-  return `You are an elite ${a.mainNicheLabel || "publishing"} architect specializing in ${a.subNicheLabel || "this sub-niche"}.
+  return `You are an expert AI Book Architect and Amazon KDP Publishing Specialist, specializing in ${a.mainNicheLabel || "publishing"} › ${a.subNicheLabel || "this sub-niche"}.
+
 Structure type: ${a.structureType || "narrative"}.
 Pacing: ${a.pacingType || "standard"}.
 Emotional arc: ${a.emotionalArc || "progressive"}.
 Hook style: ${a.hookStyle || "strong opening"}.
 Ending style: ${a.endingStyle || "satisfying close"}.
-Bestseller patterns: ${(a.bestsellerPatterns || []).join("; ")}.
+Bestseller patterns: ${(a.bestsellerPatterns || []).join("; ") || "none specified"}.
 Reader psychology: ${a.readerPsychology || "commercially engaged readers"}.
-Never impose a business-only outline on romance, thriller, fantasy, or story unless the architecture says so.`;
+
+Apply a thesis-inspired hierarchy: Part → Chapter → Section → Subsection → Topic Block.
+Every title must be meaningful and descriptive — NEVER use placeholder titles.
+The final result must feel like a professionally published Amazon bestseller built with the organizational intelligence of a high-quality thesis.
+Never impose a business-only outline on romance, thriller, fantasy, or story unless the architecture explicitly calls for it.`;
 }
 
 export function titlesPrompt(idea: string) {
@@ -101,92 +126,158 @@ export function nicheOutlinePrompt({ research, architecture, title, description 
   const flow = (a.chapterFlow || []).map((beat: string, i: number) => `${i + 1}. ${beat}`).join("\n");
   const tones = Array.isArray(research?.authorTones) && research.authorTones.length
     ? research.authorTones.join(", ")
-    : "";
-  return `You are an elite publishing strategist and nonfiction architect.
+    : "direct and authoritative";
+  const isStory = ["romance-arc", "romantasy-hybrid", "suspense-escalation", "mystery-procedural", "hero-journey", "narrative-arc"].includes(a.structureType || "");
 
-CRITICAL RULES — follow exactly:
-1. Every title at every level must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY.
-2. FORBIDDEN outputs (never use): "Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder", "Chapter N", "Key Point", "Emotional Theme", any numbered generic label.
-3. Chapter titles must signal a clear emotional or intellectual transformation.
-4. Section titles must identify a specific idea, conflict, or concept within the chapter.
-5. Subsection titles must name a precise angle, tactic, story beat, or insight — never a generic label.
-6. Every level must feel like it was written by a bestselling author — specific, emotionally intelligent, commercially viable.
+  return `You are an expert AI Book Architect, Academic Formatter, and Amazon KDP Publishing Specialist.
 
-GOOD subsection title examples:
+Your task: Generate a ${chapterCount}-chapter book outline that combines thesis-grade organizational intelligence with bestseller-quality readability and commercial appeal. The result must feel like a professionally published Amazon bestseller — not a dry academic document, not a generic template.
+
+========================================
+HIERARCHY — apply at every level
+========================================
+Chapter → Section → Subsection → Topic Block
+Each level flows logically from broad concept to detailed concept.
+Hierarchy must be deep, intentional, and logically progressive.
+
+========================================
+TITLE QUALITY — NON-NEGOTIABLE
+========================================
+Every title at EVERY level must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY.
+
+STRICTLY FORBIDDEN titles (never generate these):
+"Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder",
+"Chapter N", "Key Point", "Emotional Theme", "Untitled", any numbered generic label.
+
+GOOD section/subsection title examples:
 - "The Fear of Falling Behind"
 - "When Failure Becomes Identity"
 - "Curated Success vs Real Life"
-- "Learning to Continue Anyway"
 - "The Quiet Weight of Comparison"
+- "Breaking the Perfectionism Loop"
+- "What Nobody Tells You About Starting Over"
 
-BAD subsection titles (STRICTLY FORBIDDEN):
-- "Beat 1", "Beat 2", "Scene 1"
-- "Emotional Topic", "Key Point", "Section A"
-- "Topic 1", "Subtopic 1", "Placeholder"
+GOOD chapter title examples:
+- "The Invisible Rules That Keep You Stuck"
+- "Rewiring the Stories You Tell Yourself"
+- "Building Systems That Outlast Motivation"
 
-BOOK PROFILE:
+========================================
+BOOK PROFILE
+========================================
 TITLE: ${title || ""}
 TOPIC: ${research?.bookTopic || ""}
 NICHE: ${a.mainNicheLabel || ""} › ${a.subNicheLabel || ""}
 TARGET AUDIENCE: ${research?.targetAudience || ""}
-AUTHOR TONE: ${tones || "direct and authoritative"}
+AUTHOR TONE: ${tones}
 PUBLISHING GOAL: ${research?.publishingGoal || ""}
-STANCE: ${research?.stanceOnTopic || ""}
-STANDOUT FACTOR: ${research?.standout || ""}
+AUTHOR STANCE: ${research?.stanceOnTopic || ""}
+WHAT MAKES IT STAND OUT: ${research?.standout || ""}
+DESCRIPTION: ${description || ""}
 
-STRUCTURAL BLUEPRINT:
+========================================
+STRUCTURAL BLUEPRINT
+========================================
 Structure type: ${a.structureType || "narrative"}
 Pacing: ${a.pacingType || "standard"}
 Emotional arc: ${a.emotionalArc || "progressive"}
 Bestseller patterns: ${(a.bestsellerPatterns || []).join("; ") || ""}
 Reader psychology: ${a.readerPsychology || ""}
-Beat flow:
-${flow || "(use sub-niche-native escalation)"}
+Hook style: ${a.hookStyle || "strong opening"}
+Ending style: ${a.endingStyle || "satisfying close"}
+Niche beat flow:
+${flow || "(apply sub-niche-native escalation — never generic beats)"}
+
+========================================
+CHAPTER CONTENT RULES
+========================================
+${isStory ? `STORY/NARRATIVE STRUCTURE — each chapter must contain:
+- Clear narrative purpose in the story arc
+- Subsections represent: turning points, emotional shifts, conflicts, discoveries, climaxes, resolutions
+- Thematic consistency across chapters
+- Character development / emotional progression built into subsection titles` : `NONFICTION STRUCTURE — each chapter should ideally contain:
+- Opening hook (grabs attention immediately)
+- Core concept (what this chapter teaches)
+- Explanation (why it matters, evidence-backed)
+- Example or case study (real-world grounding)
+- Framework or system (practical model the reader can use)
+- Actionable takeaway (what to do next)
+- Mini summary or reflection prompt`}
+
+CONTENT QUALITY:
+- Each chapter must build on the previous one — no repetition, no filler
+- Deepen stakes or insight progressively throughout the book
+- Smooth narrative transitions between chapters
+- No shallow sections — every subsection must deliver real value
 
 CHAPTERS TO GENERATE: ${chapterCount}
-SECTIONS PER CHAPTER: 2-3 (generate exactly, with real titles)
-SUBSECTIONS PER SECTION: 2-3 (generate exactly, with real titles)
+SECTIONS PER CHAPTER: 2-3 (with fully specific, real titles — no generic labels)
+SUBSECTIONS PER SECTION: 2-3 (with fully specific, real titles — no generic labels)
 
-Return ONLY valid JSON:
-{"chapters":[{"title":"Specific chapter title signaling transformation","summary":"2-sentence summary of what this chapter achieves","arcRole":"opening hook|escalation|climax|resolution|transformation|etc","sections":[{"title":"Specific concept or angle — not generic","subsections":[{"title":"Precise emotionally-specific insight or tactic","intent":"What shift or insight this delivers to the reader"}]}]}],"architectureNotes":"Brief structural strategy note"}`;
+========================================
+OUTPUT FORMAT
+========================================
+Return ONLY valid JSON — no markdown, no explanation:
+{"chapters":[{"title":"Specific chapter title signaling transformation or insight","summary":"2-sentence summary of what this chapter achieves for the reader","arcRole":"opening hook|escalation|climax|resolution|transformation|revelation|payoff|etc","sections":[{"title":"Specific concept, conflict, or angle within the chapter","subsections":[{"title":"Precise emotionally-specific insight, tactic, or story beat","intent":"What shift or insight this delivers to the reader"}]}]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
 }
 
 export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
   const a = architecture || {};
   const niche = `${a.mainNicheLabel || ""} › ${a.subNicheLabel || ""}`;
   const audience = research?.targetAudience || "";
-  const tones = Array.isArray(research?.authorTones) ? research.authorTones.join(", ") : "";
+  const tones = Array.isArray(research?.authorTones) ? research.authorTones.join(", ") : "direct and authoritative";
+  const bookTopic = research?.bookTopic || "";
+
+  const qualityRule = `TITLE QUALITY RULES (non-negotiable):
+- Must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY
+- NEVER generate: "Beat N", "Scene N", "Section N", "Topic N", "Placeholder", "Chapter N", "Key Point", "Untitled"
+- Must feel like it was written by a bestselling author — emotionally intelligent, niche-specific, commercially viable
+- Example good titles: "The Fear of Falling Behind", "When Failure Becomes Identity", "Breaking the Perfectionism Loop", "What Nobody Tells You About Starting Over"`;
 
   if (level === "chapter") {
-    return `You are a publishing strategist. Generate ONE specific, emotionally compelling chapter title.
-BOOK TOPIC: ${research?.bookTopic || ""}
+    return `You are an expert AI Book Architect and Amazon KDP Publishing Specialist.
+Generate ONE replacement chapter title.
+
+${qualityRule}
+
+BOOK TOPIC: ${bookTopic}
 NICHE: ${niche}
 AUDIENCE: ${audience}
 TONE: ${tones}
-CURRENT TITLE (replace this, keep the same chapter position/role): ${currentTitle}
-Rules: No generic labels. No "Chapter N". No "Beat N". Title must signal a transformation or insight.
-Return JSON: {"title":"..."}`;
+CURRENT TITLE (replace — keep the same chapter position and role in the arc): ${currentTitle}
+
+The title must signal a clear emotional or intellectual transformation the reader will experience.
+Return JSON only: {"title":"..."}`;
   }
   if (level === "section") {
-    return `Generate ONE specific section title for this chapter context.
+    return `You are an expert AI Book Architect and Amazon KDP Publishing Specialist.
+Generate ONE replacement section title.
+
+${qualityRule}
+
 CHAPTER: ${parentChapter || ""}
 NICHE: ${niche}
 AUDIENCE: ${audience}
 CURRENT TITLE (replace): ${currentTitle}
-The title must address a specific concept, conflict, or angle within the chapter.
-No generic labels. No "Section N". No "Topic N".
-Return JSON: {"title":"..."}`;
+
+The section title must identify a specific idea, concept, conflict, or angle within the chapter.
+It must flow logically from the chapter title and deepen its central theme.
+Return JSON only: {"title":"..."}`;
   }
-  return `Generate ONE specific subsection title.
+  return `You are an expert AI Book Architect and Amazon KDP Publishing Specialist.
+Generate ONE replacement subsection title.
+
+${qualityRule}
+
 CHAPTER: ${parentChapter || ""}
 SECTION: ${parentSection || ""}
 NICHE: ${niche}
 AUDIENCE: ${audience}
 CURRENT TITLE (replace): ${currentTitle}
-Must be emotionally specific — a precise insight, tactic, or story angle.
-Example good titles: "The Fear of Falling Behind", "When Failure Becomes Identity", "Curated Success vs Real Life"
-No generic labels. No "Beat N". No "Scene N".
-Return JSON: {"title":"..."}`;
+
+The subsection title must be a precise, emotionally specific insight, tactic, turning point, or story angle.
+It must feel like a micro-promise to the reader — something worth reading.
+Return JSON only: {"title":"..."}`;
 }
 
 export function structurePrompt({ chapterTitle, chapterSummary, fullOutline, audience, tone }: any) {
