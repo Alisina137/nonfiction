@@ -179,8 +179,9 @@ function buildFrontCoverSVG(cover, title) {
     ? `<text x="120" y="${titleY + titleLines.length * 160 + 80}" font-family="${fp?.sub || "sans-serif"}" font-size="72" fill="${titleColor}" opacity="0.88">${escSvg(cover.subtitle)}</text>`
     : "";
 
+  const taglinePx = Math.round((cover.taglineSize || 9) * (1600 / 400));
   const tagSvg = cover.tagline
-    ? `<text x="120" y="200" font-family="${fp?.sub || "sans-serif"}" font-size="60" font-weight="600" fill="${acc}" letter-spacing="4">${escSvg(cover.tagline.toUpperCase())}</text>`
+    ? `<text x="120" y="200" font-family="${fp?.sub || "sans-serif"}" font-size="${taglinePx}" font-weight="600" fill="${acc}" letter-spacing="4">${escSvg(cover.tagline.toUpperCase())}</text>`
     : "";
 
   const authorSvg = `<text x="120" y="${H - 160}" font-family="${fp?.author || "sans-serif"}" font-size="64" fill="${titleColor}" opacity="0.85" letter-spacing="3">${escSvg((cover.authorLine || "").toUpperCase())}</text>`;
@@ -240,6 +241,7 @@ function FrontCoverInner({ cover, title, scale = 1, thumb = false }) {
   const titleSz = thumb ? 10 : (cover.titleSize || 22);
   const subSz = thumb ? 5 : (cover.subtitleSize || 12);
   const authorSz = thumb ? 4 : (cover.authorSize || 9);
+  const taglineSz = thumb ? 3.5 : (cover.taglineSize || 9);
 
   const minimalBg = mode === "minimal" ? "#f8f8f4" : bg;
   const textCol = mode === "minimal" ? bg : tc;
@@ -284,7 +286,7 @@ function FrontCoverInner({ cover, title, scale = 1, thumb = false }) {
       <div style={{ position: "relative", display: "flex", flexDirection: "column", flex: 1, padding: thumb ? "5% 7%" : "6% 8%", textAlign: align }}>
         {cover.tagline && (
           <div style={{
-            fontSize: thumb ? 3.5 : 9, fontFamily: subFont, fontWeight: 700,
+            fontSize: taglineSz, fontFamily: subFont, fontWeight: 700,
             letterSpacing: thumb ? 1 : 3, textTransform: "uppercase",
             color: acc, marginBottom: thumb ? 3 : "5%", opacity: 0.95
           }}>
@@ -935,6 +937,13 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, de
                 <div>
                   <FL hint="Short punchy hook — appears at the very top of the cover, usually in the accent color.">Tagline</FL>
                   <input className={ip} value={cover.tagline || ""} onChange={(e) => patch({ tagline: e.target.value })} placeholder="Systems that compound" />
+                  <div className="mt-2 flex items-center gap-3">
+                    <span className="text-[10px] text-slate-500 w-20 shrink-0">Tagline size</span>
+                    <input type="range" min={6} max={18} step={0.5} className="flex-1"
+                      value={Number(cover.taglineSize) || 9}
+                      onChange={(e) => patch({ taglineSize: Number(e.target.value) })} />
+                    <span className="text-[10px] font-mono text-slate-600 w-8 text-right">{cover.taglineSize || 9}px</span>
+                  </div>
                 </div>
                 <div>
                   <FL hint="Exactly as it should appear on the cover.">Author Line</FL>

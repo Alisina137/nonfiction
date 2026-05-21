@@ -1,0 +1,167 @@
+I want to redesign the PDF and DOCX export system of my AI Book Generator application so exported books use a professional thesis-style structure and formatting instead of plain text formatting.
+
+Implement the following features:
+
+====================================
+THESIS-STYLE BOOK STRUCTURE
+====================================
+
+FRONT MATTER
+Add support for these pages before the main content:
+
+1. Cover Page
+   - Book title
+   - Subtitle/tagline
+   - Author name
+   - Professional centered layout
+
+2. Abstract
+   - Short summary page
+   - Automatically generated from the book summary/introduction
+
+3. Acknowledgment Page (optional)
+
+4. Dedication Page (optional)
+
+5. Table of Contents
+   - Auto-generated
+   - Include all chapters, sections, and subsections
+   - Include automatic page numbers
+   - Clickable links in PDF/DOCX if possible
+
+6. List of Figures
+   - Automatically generated from all figures/images
+
+7. List of Tables
+   - Automatically generated from all tables
+
+8. Preface / Introduction Page (optional)
+
+9. Use Roman numeral page numbering for front matter:
+   i, ii, iii, iv...
+
+====================================
+MAIN CONTENT STRUCTURE
+====================================
+
+Implement thesis-style heading hierarchy with automatic numbering:
+
+Chapter 1
+1.1 Section
+1.1.1 Subsection
+1.1.1.1 Sub-subsection
+
+Example:
+
+Chapter 1: Introduction
+1.1 Background
+1.1.1 Problem Statement
+1.1.2 Objectives
+1.2 Methodology
+
+The numbering system must be generated automatically.
+
+====================================
+DOCUMENT FORMATTING
+====================================
+
+Apply professional academic/book formatting:
+
+- Each chapter starts on a new page
+- Large chapter title styling
+- Consistent heading font sizes
+- Consistent spacing before/after headings
+- Justified paragraphs
+- First-line paragraph indentation
+- Proper page margins for print books
+- Running headers and footers
+- Automatic page numbers
+- Professional typography
+- Clean reading layout
+- Print-friendly formatting
+
+====================================
+FIGURE & TABLE SYSTEM
+====================================
+
+Implement automatic numbering:
+
+Figures:
+- Figure 1.1
+- Figure 1.2
+
+Tables:
+- Table 2.1
+- Table 2.2
+
+Also:
+- Support captions
+- Automatically include them in:
+  - List of Figures
+  - List of Tables
+
+====================================
+REFERENCES / BIBLIOGRAPHY
+====================================
+
+Add optional references section supporting:
+- APA
+- MLA
+- Chicago
+
+====================================
+EXPORT QUALITY
+====================================
+
+Improve both PDF and DOCX export quality:
+
+- Preserve formatting consistency
+- Preserve heading hierarchy
+- Preserve page breaks
+- Preserve page numbering
+- Generate professional layouts
+- Support KDP-ready formatting
+- Support trim-size aware margins
+- Support print-safe spacing
+
+The exported files should look like:
+- Professional thesis documents
+- Academic books
+- Professionally formatted nonfiction books
+
+====================================
+FORMATTING PRESETS
+====================================
+
+Add export presets:
+
+- Thesis Style
+- Academic Research
+- Modern Nonfiction
+- Novel Style
+- KDP Print Layout
+
+Users should be able to choose a preset before export.
+
+====================================
+BOOK COVER IMPROVEMENT
+====================================
+
+In the Book Cover editor:
+
+Add a range slider for tagline font size.
+
+Requirements:
+- Live preview updates
+- Adjustable min/max font size
+- Save selected size
+- Preserve size during export
+- Smooth UI interaction
+
+====================================
+TECHNICAL GOAL
+====================================
+
+Refactor the export pipeline so formatting is modular, reusable, scalable, and professionally structured instead of simple raw text rendering.
+
+The final exported PDF and DOCX should resemble professionally formatted theses/books rather than AI-generated plain documents.
