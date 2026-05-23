@@ -41,10 +41,11 @@ export default function ResearchStep({ research, setResearch, errors }) {
   const main = findMainNiche(registry, mainNicheId);
   const subOptions = main?.subNiches || [];
   const subSelected = subOptions.find((s) => s.id === subNicheId);
-  const deepOptions = useMemo(
-    () => getDeepNiches(main?.label || "", subSelected?.label || ""),
-    [main?.label, subSelected?.label]
-  );
+  const deepOptions = useMemo(() => {
+    const fromRegistry = Array.isArray(subSelected?.deepNiches) ? subSelected.deepNiches : [];
+    if (fromRegistry.length) return fromRegistry;
+    return getDeepNiches(main?.label || "", subSelected?.label || "");
+  }, [main?.label, subSelected?.label, subSelected?.deepNiches]);
   const deepNicheLabel = research?.deepNicheLabel || "";
   const marketIntel = useMemo(
     () =>
@@ -55,8 +56,8 @@ export default function ResearchStep({ research, setResearch, errors }) {
   );
 
   const profile = useMemo(
-    () => buildResearchFormProfile(registry, mainNicheId, subNicheId),
-    [registry, mainNicheId, subNicheId]
+    () => buildResearchFormProfile(registry, mainNicheId, subNicheId, deepNicheLabel),
+    [registry, mainNicheId, subNicheId, deepNicheLabel]
   );
 
   const arch = profile.architecture;
@@ -191,7 +192,21 @@ export default function ResearchStep({ research, setResearch, errors }) {
           <p className="text-xs font-bold uppercase tracking-wider text-sky-800">Architecture preview</p>
           <p className="mt-1 text-sm font-semibold text-slate-900">
             {arch.mainNicheLabel} › {arch.subNicheLabel}
+            {arch.deepNicheLabel ? (
+              <>
+                {" "}
+                ›{" "}
+                <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-sky-800">
+                  {arch.deepNicheLabel}
+                </span>
+              </>
+            ) : null}
           </p>
+          {arch.deepNicheLabel && (
+            <p className="mt-0.5 text-[11px] uppercase tracking-wider text-sky-700/80">
+              Deep niche focus active — architecture sharpened for this audience
+            </p>
+          )}
           <dl className="mt-4 grid gap-3 text-xs text-slate-700 sm:grid-cols-2">
             <div>
               <dt className="font-semibold text-slate-500">Structure</dt>

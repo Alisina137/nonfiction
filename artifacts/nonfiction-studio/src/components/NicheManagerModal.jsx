@@ -25,6 +25,77 @@ function AutoTextarea({ value, onChange, placeholder, maxLength = CONTENT_DIRECT
   );
 }
 
+function DeepNicheEditor({ deepNiches, onChange }) {
+  const [input, setInput] = useState("");
+
+  function addOne() {
+    const v = input.trim();
+    if (!v) return;
+    if (deepNiches.some((d) => d.toLowerCase() === v.toLowerCase())) {
+      setInput("");
+      return;
+    }
+    onChange([...deepNiches, v]);
+    setInput("");
+  }
+
+  function removeAt(idx) {
+    onChange(deepNiches.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="mt-3">
+      <label className="text-xs font-semibold text-slate-700">Deep niches</label>
+      <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+        Third-level focuses shown in the Research step's Deep Niche dropdown. Add as many as you want.
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {deepNiches.length === 0 && (
+          <span className="text-[11px] italic text-slate-400">No deep niches yet — add one below.</span>
+        )}
+        {deepNiches.map((d, i) => (
+          <span
+            key={`${d}-${i}`}
+            className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-medium text-sky-800 shadow-sm"
+          >
+            {d}
+            <button
+              type="button"
+              onClick={() => removeAt(i)}
+              className="text-sky-500 transition hover:text-red-600"
+              aria-label={`Remove ${d}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <input
+          className="input-light flex-1 text-sm"
+          value={input}
+          placeholder="e.g. ADHD Time Management"
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addOne();
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={addOne}
+          disabled={!input.trim()}
+          className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-700 disabled:opacity-50"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function NicheManagerModal({ registry, onSave, onClose }) {
   const [draft, setDraft] = useState(() => JSON.parse(JSON.stringify(registry)));
 
@@ -157,6 +228,7 @@ export default function NicheManagerModal({ registry, onSave, onClose }) {
                     typeof sub.contentDirection === "string"
                       ? sub.contentDirection
                       : deriveContentDirection(sub);
+                  const deepNiches = Array.isArray(sub.deepNiches) ? sub.deepNiches : [];
                   return (
                     <li key={sub.id} className="rounded-lg bg-slate-50 p-3">
                       <div className="flex flex-wrap items-center gap-2">
@@ -193,6 +265,10 @@ export default function NicheManagerModal({ registry, onSave, onClose }) {
                           />
                         </div>
                       </div>
+                      <DeepNicheEditor
+                        deepNiches={deepNiches}
+                        onChange={(next) => updateSub(main.id, sub.id, { deepNiches: next })}
+                      />
                     </li>
                   );
                 })}

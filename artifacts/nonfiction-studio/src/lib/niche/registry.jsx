@@ -1,5 +1,6 @@
 import { DEFAULT_NICHE_REGISTRY } from "@/lib/niche/defaultRegistry";
 import { NICHE_BLUEPRINTS } from "@/lib/niche/blueprints";
+import { DEEP_NICHE_MAP } from "@/lib/niche/deepNiches";
 
 export const NICHE_REGISTRY_STORAGE_KEY = "nonfiction-ai-niche-registry";
 
@@ -67,13 +68,30 @@ export function normalizeRegistry(raw) {
       tones: Array.isArray(m.tones) ? m.tones : [],
       audiences: Array.isArray(m.audiences) ? m.audiences : [],
       publishingGoals: Array.isArray(m.publishingGoals) ? m.publishingGoals : [],
-      subNiches: (Array.isArray(m.subNiches) ? m.subNiches : []).map((s, si) => ({
-        id: s.id || slugifyId(s.label) || `sub-${mi}-${si}`,
-        label: s.label || "Untitled sub-niche",
-        blueprintKey: s.blueprintKey || "story-narrative",
-        contentDirection: deriveContentDirection(s),
-        overrides: s.overrides && typeof s.overrides === "object" ? s.overrides : {}
-      }))
+      subNiches: (Array.isArray(m.subNiches) ? m.subNiches : []).map((s, si) => {
+        const seededDeep =
+          (DEEP_NICHE_MAP[m.label] && DEEP_NICHE_MAP[m.label][s.label]) || [];
+        const existingDeep = Array.isArray(s.deepNiches) ? s.deepNiches : [];
+        const deepNiches = (existingDeep.length ? existingDeep : seededDeep)
+          .map((d) => String(d || "").trim())
+          .filter(Boolean);
+        // de-dup preserving order
+        const seen = new Set();
+        const dedupDeep = deepNiches.filter((d) => {
+          const k = d.toLowerCase();
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        return {
+          id: s.id || slugifyId(s.label) || `sub-${mi}-${si}`,
+          label: s.label || "Untitled sub-niche",
+          blueprintKey: s.blueprintKey || "story-narrative",
+          contentDirection: deriveContentDirection(s),
+          deepNiches: dedupDeep,
+          overrides: s.overrides && typeof s.overrides === "object" ? s.overrides : {}
+        };
+      })
     }))
   };
 }
@@ -111,20 +129,23 @@ export function findSubNiche(registry, mainNicheId, subNicheId) {
   return main.subNiches?.find((s) => s.id === subNicheId) || null;
 }
 
-export function resolveArchitecture(registry, mainNicheId, subNicheId) {
+export function resolveArchitecture(registry, mainNicheId, subNicheId, deepNicheLabel = "") {
   const main = findMainNiche(registry, mainNicheId);
   const sub = findSubNiche(registry, mainNicheId, subNicheId);
   if (!main || !sub) return null;
 
   const blueprint = NICHE_BLUEPRINTS[sub.blueprintKey] || NICHE_BLUEPRINTS["story-narrative"];
   const overrides = sub.overrides || {};
+  const deepLabel = (deepNicheLabel || "").trim();
 
   return {
     mainNicheId: main.id,
     mainNicheLabel: main.label,
     subNicheId: sub.id,
     subNicheLabel: sub.label,
+    deepNicheLabel: deepLabel,
     blueprintKey: sub.blueprintKey,
+    contentDirection: sub.contentDirection || "",
     ...blueprint,
     ...overrides,
     tones: sub.tones?.length ? sub.tones : main.tones,
@@ -133,8 +154,8 @@ export function resolveArchitecture(registry, mainNicheId, subNicheId) {
   };
 }
 
-export function buildResearchFormProfile(registry, mainNicheId, subNicheId) {
-  const arch = resolveArchitecture(registry, mainNicheId, subNicheId);
+export function buildResearchFormProfile(registry, mainNicheId, subNicheId, deepNicheLabel = "") {
+  const arch = resolveArchitecture(registry, mainNicheId, subNicheId, deepNicheLabel);
   const main = findMainNiche(registry, mainNicheId);
   if (!arch || !main) {
     return {
