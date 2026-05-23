@@ -214,6 +214,44 @@ export default function ResearchStep({ research, setResearch, errors }) {
               Deep niche focus active — architecture sharpened for this audience
             </p>
           )}
+          {profile.recommendations.contentDirection && (
+            <p className="mt-3 rounded-lg border border-slate-200 bg-white/70 p-3 text-xs italic leading-relaxed text-slate-600">
+              <span className="not-italic font-semibold uppercase tracking-wider text-slate-500">Content direction · </span>
+              {profile.recommendations.contentDirection}
+            </p>
+          )}
+          {(() => {
+            if (!arch.deepNicheLabel) return null;
+            const focus = inferAudienceProfile(arch.deepNicheLabel, arch.subNicheLabel);
+            return (
+              <div className="mt-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-700">Focus audiences</span>
+                  {focus.audiences.slice(0, 5).map((a) => (
+                    <span key={a} className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">
+                      {a}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">Transformations</span>
+                  {focus.transformations.slice(0, 4).map((t) => (
+                    <span key={t} className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-700">Pain points</span>
+                  {focus.painPoints.slice(0, 4).map((p) => (
+                    <span key={p} className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-800">
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           <dl className="mt-4 grid gap-3 text-xs text-slate-700 sm:grid-cols-2">
             <div>
               <dt className="font-semibold text-slate-500">Structure</dt>

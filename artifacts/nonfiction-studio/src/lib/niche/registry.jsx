@@ -154,6 +154,49 @@ export function resolveArchitecture(registry, mainNicheId, subNicheId, deepNiche
   };
 }
 
+/**
+ * Derive dynamic structure/pacing/arc traits from the sub-niche's
+ * Content Direction description so the Architecture Preview reflects
+ * whatever the user typed in "Manage niches".
+ */
+function deriveDirectionTraits(text = "") {
+  const t = String(text).toLowerCase();
+  const has = (re) => re.test(t);
+
+  let structureLabel = null;
+  if (has(/framework|system|modular|step-?by-?step|playbook|case stud/))
+    structureLabel = "Framework-driven";
+  else if (has(/transformation|reframe|mindset|identity shift|inner/))
+    structureLabel = "Transformation arc";
+  else if (has(/escalat|tension|attraction|reunion|intimacy/))
+    structureLabel = "Escalation arc";
+  else if (has(/tick-?tock|investigation|clue|evidence|crime|red herring|paranoid/))
+    structureLabel = "Procedural / suspense arc";
+  else if (has(/hero'?s journey|worldbuilding|faction|epic|world-rich/))
+    structureLabel = "Epic arc";
+  else if (has(/tier|progression|breakthrough|power growth|underdog/))
+    structureLabel = "Progression arc";
+  else if (has(/story|narrative|character|relatable|reflective/))
+    structureLabel = "Story-narrative arc";
+
+  let pacingType = null;
+  if (has(/modular|numbered|checklist|step-?by-?step/)) pacingType = "Modular & operational";
+  else if (has(/progressive|build|lasting/)) pacingType = "Progressive build";
+  else if (has(/escalat|tighten|cliffhanger|mini-cliff/)) pacingType = "Escalating tension";
+  else if (has(/tick-?tock|investigation/)) pacingType = "Tick-tock investigation";
+  else if (has(/reflective|emotional arc/)) pacingType = "Reflective emotional";
+
+  let emotionalArc = null;
+  if (has(/pain.*reframe.*framework.*action.*identity/))
+    emotionalArc = "Pain → Reframe → Framework → Action → Identity shift";
+  else if (has(/attraction.*friction.*intimacy.*separation.*reunion/))
+    emotionalArc = "Attraction → Friction → Intimacy → Separation → Reunion";
+  else if (has(/crime.*evidence.*red herring.*breakthrough.*confrontation/))
+    emotionalArc = "Crime → Evidence → Red herrings → Breakthrough → Confrontation";
+
+  return { structureLabel, pacingType, emotionalArc };
+}
+
 export function buildResearchFormProfile(registry, mainNicheId, subNicheId, deepNicheLabel = "") {
   const arch = resolveArchitecture(registry, mainNicheId, subNicheId, deepNicheLabel);
   const main = findMainNiche(registry, mainNicheId);
@@ -193,16 +236,20 @@ export function buildResearchFormProfile(registry, mainNicheId, subNicheId, deep
       targetAudience: arch.readerPsychology || "Describe your ideal reader psychology and buying triggers.",
       publishingGoal: "This steers outline pacing, hook density, and ending style."
     },
-    recommendations: {
-      structureLabel: arch.structureType,
-      pacingType: arch.pacingType,
-      emotionalArc: arch.emotionalArc,
-      chapterCount: arch.recommendedChapters?.default,
-      chapterRange: `${arch.recommendedChapters?.min}–${arch.recommendedChapters?.max}`,
-      wordCountBand: arch.recommendedWordCount?.band,
-      hookStyle: arch.hookStyle,
-      endingStyle: arch.endingStyle,
-      chapterFlow: arch.chapterFlow || []
-    }
+    recommendations: (() => {
+      const traits = deriveDirectionTraits(arch.contentDirection);
+      return {
+        structureLabel: traits.structureLabel || arch.structureType,
+        pacingType: traits.pacingType || arch.pacingType,
+        emotionalArc: traits.emotionalArc || arch.emotionalArc,
+        chapterCount: arch.recommendedChapters?.default,
+        chapterRange: `${arch.recommendedChapters?.min}–${arch.recommendedChapters?.max}`,
+        wordCountBand: arch.recommendedWordCount?.band,
+        hookStyle: arch.hookStyle,
+        endingStyle: arch.endingStyle,
+        chapterFlow: arch.chapterFlow || [],
+        contentDirection: arch.contentDirection || ""
+      };
+    })()
   };
 }
