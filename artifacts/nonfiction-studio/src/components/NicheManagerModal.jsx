@@ -1,6 +1,29 @@
 import { useState } from "react";
-import { BLUEPRINT_OPTIONS } from "@/lib/niche/blueprints";
-import { slugifyId } from "@/lib/niche/registry";
+import { slugifyId, deriveContentDirection } from "@/lib/niche/registry";
+
+const CONTENT_DIRECTION_MAX = 1000;
+
+function AutoTextarea({ value, onChange, placeholder, maxLength = CONTENT_DIRECTION_MAX }) {
+  return (
+    <textarea
+      className="input-light w-full resize-none text-sm leading-relaxed transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200/60"
+      rows={4}
+      value={value}
+      placeholder={placeholder}
+      maxLength={maxLength}
+      onChange={(e) => {
+        const ta = e.target;
+        ta.style.height = "auto";
+        ta.style.height = `${Math.min(ta.scrollHeight, 320)}px`;
+        onChange(e.target.value);
+      }}
+      onFocus={(e) => {
+        e.target.style.height = "auto";
+        e.target.style.height = `${Math.min(e.target.scrollHeight, 320)}px`;
+      }}
+    />
+  );
+}
 
 export default function NicheManagerModal({ registry, onSave, onClose }) {
   const [draft, setDraft] = useState(() => JSON.parse(JSON.stringify(registry)));
@@ -52,7 +75,13 @@ export default function NicheManagerModal({ registry, onSave, onClose }) {
               ...m,
               subNiches: [
                 ...(m.subNiches || []),
-                { id, label, blueprintKey: "story-narrative", overrides: {} }
+                {
+                  id,
+                  label,
+                  blueprintKey: "story-narrative",
+                  contentDirection: deriveContentDirection({ blueprintKey: "story-narrative" }),
+                  overrides: {}
+                }
               ]
             }
       )
@@ -123,35 +152,50 @@ export default function NicheManagerModal({ registry, onSave, onClose }) {
               />
 
               <ul className="mt-4 space-y-3">
-                {(main.subNiches || []).map((sub) => (
-                  <li key={sub.id} className="rounded-lg bg-slate-50 p-3">
-                    <div className="flex flex-wrap gap-2">
-                      <input
-                        className="input-light min-w-[160px] flex-1 text-sm"
-                        value={sub.label}
-                        onChange={(e) => updateSub(main.id, sub.id, { label: e.target.value })}
-                      />
-                      <select
-                        className="input-light text-sm"
-                        value={sub.blueprintKey || "story-narrative"}
-                        onChange={(e) => updateSub(main.id, sub.id, { blueprintKey: e.target.value })}
-                      >
-                        {BLUEPRINT_OPTIONS.map((b) => (
-                          <option key={b.key} value={b.key}>
-                            {b.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => deleteSub(main.id, sub.id)}
-                        className="text-xs text-red-600 hover:underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </li>
-                ))}
+                {(main.subNiches || []).map((sub) => {
+                  const contentDirection =
+                    typeof sub.contentDirection === "string"
+                      ? sub.contentDirection
+                      : deriveContentDirection(sub);
+                  return (
+                    <li key={sub.id} className="rounded-lg bg-slate-50 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          className="input-light min-w-[160px] flex-1 text-sm font-medium"
+                          value={sub.label}
+                          onChange={(e) => updateSub(main.id, sub.id, { label: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => deleteSub(main.id, sub.id)}
+                          className="text-xs text-red-600 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="mt-3">
+                        <label className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-700">
+                          <span>Content Direction</span>
+                          <span className="text-[10px] font-normal text-slate-500">
+                            {contentDirection.length}/{CONTENT_DIRECTION_MAX}
+                          </span>
+                        </label>
+                        <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                          This controls the emotional tone, pacing, structure, and reader experience for books in this sub-niche.
+                        </p>
+                        <div className="mt-1.5">
+                          <AutoTextarea
+                            value={contentDirection}
+                            placeholder="Describe how books in this sub-niche should feel, flow, and emotionally connect with readers…"
+                            onChange={(val) =>
+                              updateSub(main.id, sub.id, { contentDirection: val })
+                            }
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
               <button
                 type="button"

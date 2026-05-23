@@ -1,0 +1,141 @@
+```txt id="t20m7g"
+Replace the current sub-niche "content type / story narrative select element" with a richer text input system called:
+
+"Content Direction"
+
+GOAL:
+Instead of selecting generic options like:
+- story narrative
+- analytical
+- framework-driven
+
+Allow each sub-niche to have a fully customizable content-direction description that defines:
+- writing vibe,
+- pacing,
+- emotional tone,
+- reader psychology,
+- chapter flow,
+- transformation style,
+- narrative depth,
+- and content experience.
+
+==================================================
+NEW FIELD
+==================================================
+
+Replace current select element with:
+
+Textarea/Input Label:
+"Content Direction"
+
+Placeholder Example:
+"Describe how books in this sub-niche should feel, flow, and emotionally connect with readers..."
+
+Use textarea instead of select.
+
+Requirements:
+- auto-resize textarea
+- modern clean UI
+- preserve existing styling system
+- save value in niche catalog state
+- persist in local storage/database like existing niche data
+
+==================================================
+EXAMPLE OUTPUT
+==================================================
+
+Example for:
+Self-Esteem
+
+Content Direction:
+"This category should feel emotionally supportive, confidence-building, and psychologically healing. The pacing should be calm, reflective, and encouraging while still providing actionable advice. Chapters should combine emotional insight, relatable struggles, mindset reframing, and practical exercises that gradually rebuild self-worth and emotional resilience."
+
+--------------------------------------------------
+
+Example for:
+Time Management
+
+Content Direction:
+"This category should feel practical, fast-moving, and execution-focused. The pacing should be efficient and structured with short actionable sections, productivity frameworks, focus systems, and anti-procrastination strategies. Readers should feel immediate momentum and clarity after each chapter."
+
+--------------------------------------------------
+
+Example for:
+Inner Child
+
+Content Direction:
+"This category should feel emotionally deep, reflective, and healing-oriented. The pacing should be gentle and introspective, allowing readers to process emotional experiences while exploring trauma recovery, self-awareness, reparenting, and emotional healing."
+
+==================================================
+WHY THIS CHANGE MATTERS
+==================================================
+
+The Content Direction field will later be used by:
+- AI outline generation
+- chapter pacing
+- tone adaptation
+- emotional arc generation
+- writing style control
+- reader experience shaping
+
+This gives much better publishing intelligence than generic dropdowns.
+
+==================================================
+UI REQUIREMENTS
+==================================================
+
+- Replace select dropdown entirely
+- Use textarea component
+- Character limit around 500–1000
+- Add helper text:
+
+"This controls the emotional tone, pacing, structure, and reader experience for books in this sub-niche."
+
+- Add subtle focus state
+- Responsive design
+- Match current dashboard UI
+
+==================================================
+DATA MODEL UPDATE
+==================================================
+
+Update sub-niche structure from:
+
+{
+  name: "",
+  narrativeType: ""
+}
+
+To:
+
+{
+  name: "",
+  contentDirection: ""
+}
+
+==================================================
+MIGRATION LOGIC
+==================================================
+
+If old narrativeType exists:
+- auto-convert it into starter descriptions.
+
+Example:
+- "story narrative" →
+  "Emotionally engaging and reader-focused with storytelling elements and reflective pacing."
+
+- "framework-driven" →
+  "Structured, practical, and system-oriented with step-by-step actionable guidance."
+
+==================================================
+IMPLEMENTATION
+==================================================
+
+Use:
+- React
+- TypeScript
+- existing form state architecture
+
+Keep implementation lightweight and optimized.
+Avoid unnecessary abstraction or over-engineering.
+```

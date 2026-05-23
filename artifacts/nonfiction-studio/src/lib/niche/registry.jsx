@@ -3,6 +3,44 @@ import { NICHE_BLUEPRINTS } from "@/lib/niche/blueprints";
 
 export const NICHE_REGISTRY_STORAGE_KEY = "nonfiction-ai-niche-registry";
 
+// Starter Content Direction descriptions derived from blueprintKey.
+// Used to auto-migrate older sub-niches that have no contentDirection yet.
+const BLUEPRINT_TO_CONTENT_DIRECTION = {
+  "self-help-transformation":
+    "This category should feel emotionally supportive and transformation-focused. Pacing is progressive — pain, reframe, framework, action, identity shift. Chapters combine relatable struggles, mindset insights, and practical exercises that build lasting change.",
+  "business-framework":
+    "This category should feel practical, system-oriented, and outcome-driven. Pacing is modular with numbered frameworks, case studies, checklists, and step-by-step implementation. Readers should finish each chapter with a concrete, copy-paste system.",
+  "romance-escalation":
+    "This category should feel emotionally charged, tension-driven, and reader-immersive. Pacing escalates from attraction through friction, midpoint intimacy, separation, and reunion. Chapters maximize banter, vulnerability, and emotional payoff.",
+  "romance-dark":
+    "This category should feel intense, taboo, and obsession-driven with careful craft and content warnings. Pacing escalates power dynamics, consequences, and morally grey resolutions with high emotional stakes.",
+  "romantasy-hybrid":
+    "This category should feel epic and emotionally charged in equal measure. Pacing balances fantasy world stakes with romance escalation, merging both arcs at the climax.",
+  "thriller-psychological":
+    "This category should feel unsettling, paranoid, and twist-driven. Pacing tightens with unreliable narration, mini-cliffhangers, and a fair-play reveal that recontextualizes earlier chapters.",
+  "thriller-procedural":
+    "This category should feel tight, clue-driven, and justice-oriented. Pacing follows tick-tock investigation beats — crime, evidence, red herrings, breakthrough, confrontation.",
+  "fantasy-epic":
+    "This category should feel immersive, world-rich, and stakes-escalating. Pacing follows the hero's journey with deep worldbuilding, power escalation, and faction politics culminating in earned victory.",
+  "fantasy-progression":
+    "This category should feel underdog-driven and progression-focused. Pacing follows clear tier breakthroughs, rivals, setbacks, and visible power growth that rewards readers chapter by chapter.",
+  "story-narrative":
+    "This category should feel emotionally engaging and reader-focused with storytelling elements and reflective pacing. Chapters carry a clear emotional arc with relatable characters, thematic depth, and meaningful resolution."
+};
+
+export function deriveContentDirection(sub) {
+  if (sub?.contentDirection?.trim()) return sub.contentDirection.trim();
+  // Legacy migration: old `narrativeType` string maps to a starter description.
+  if (sub?.narrativeType) {
+    const t = String(sub.narrativeType).toLowerCase();
+    if (t.includes("story") || t.includes("narrative"))
+      return BLUEPRINT_TO_CONTENT_DIRECTION["story-narrative"];
+    if (t.includes("framework") || t.includes("analytic"))
+      return BLUEPRINT_TO_CONTENT_DIRECTION["business-framework"];
+  }
+  return BLUEPRINT_TO_CONTENT_DIRECTION[sub?.blueprintKey] || BLUEPRINT_TO_CONTENT_DIRECTION["story-narrative"];
+}
+
 export function slugifyId(text) {
   return String(text || "")
     .trim()
@@ -33,6 +71,7 @@ export function normalizeRegistry(raw) {
         id: s.id || slugifyId(s.label) || `sub-${mi}-${si}`,
         label: s.label || "Untitled sub-niche",
         blueprintKey: s.blueprintKey || "story-narrative",
+        contentDirection: deriveContentDirection(s),
         overrides: s.overrides && typeof s.overrides === "object" ? s.overrides : {}
       }))
     }))
