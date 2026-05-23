@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import {
   contextualBookTitlesPrompt,
   coverBriefPrompt,
@@ -11,21 +10,50 @@ import {
   outlinePrompt,
   structurePrompt,
   systemPrompt,
-  titlesPrompt
+  titlesPrompt,
 } from "@/lib/prompts";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 async function chatJSON(userPrompt) {
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: systemPrompt() },
-      { role: "user", content: userPrompt }
-    ]
-  });
-  return JSON.parse(completion.choices?.[0]?.message?.content || "{}");
+  try {
+    console.log("🔥 chatJSON called");
+
+    const system =
+      typeof systemPrompt === "function"
+        ? systemPrompt()
+        : systemPrompt ?? "";
+
+    console.log("🔥 systemPrompt loaded");
+
+    const res = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userPrompt }
+      ]
+    });
+
+    console.log("🔥 OpenAI response received");
+
+    const content = res.choices?.[0]?.message?.content;
+
+    if (!content) {
+      console.error("❌ EMPTY RESPONSE:", res);
+      throw new Error("Empty AI response");
+    }
+
+    console.log("🔥 raw content:", content);
+
+    return JSON.parse(content);
+
+  } catch (err) {
+    console.error("🔥 CHATJSON ERROR FULL:", err);
+    throw err;
+  }
 }
 
 export const AI = {
@@ -45,8 +73,16 @@ export const AI = {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: nicheSystemPrompt(architecture) },
-        { role: "user", content: nicheOutlinePrompt({ research, architecture, title, description }) }
-      ]
+        {
+          role: "user",
+          content: nicheOutlinePrompt({
+            research,
+            architecture,
+            title,
+            description,
+          }),
+        },
+      ],
     });
     return JSON.parse(completion.choices?.[0]?.message?.content || "{}");
   },
@@ -57,9 +93,12 @@ export const AI = {
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt() },
-        { role: "user", content: improvementPrompt({ action, currentText, tone }) }
-      ]
+        {
+          role: "user",
+          content: improvementPrompt({ action, currentText, tone }),
+        },
+      ],
     });
     return completion.choices?.[0]?.message?.content || "";
-  }
+  },
 };

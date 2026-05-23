@@ -1,47 +1,39 @@
-/**
- * Multi-provider AI router
- *
- * Priority for long-form content (chapters, outlines, lessons):
- *   Gemini → Groq → HuggingFace
- *
- * Priority for fast / short generation (titles, improvement):
- *   Groq → Gemini → HuggingFace
- */
+// Multi-provider AI router: Gemini → Groq → HuggingFace
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
+
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+
 const HF_URL =
   "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
 
-// ─── Individual providers ────────────────────────────────────────────────────
+// ─── Providers ────────────────────────────────────────────────────────────────
 
 async function tryGemini(prompt: string, system?: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
-  const body: any = {
-    contents: [{ role: "user", parts: [{ text: prompt }] }]
-  };
+  const contents: any[] = [];
   if (system) {
-    body.systemInstruction = { parts: [{ text: system }] };
+    contents.push({ role: "user", parts: [{ text: `SYSTEM INSTRUCTIONS:\n${system}` }] });
+    contents.push({ role: "model", parts: [{ text: "Understood. I will follow these instructions." }] });
   }
+  contents.push({ role: "user", parts: [{ text: prompt }] });
 
   const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+    body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } })
   });
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(
-      data?.error?.message || `Gemini failed with status ${res.status}`
-    );
+    throw new Error(data?.error?.message || `Gemini failed with status ${res.status}`);
   }
 
-  const text: string | undefined =
-    data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Gemini returned empty response");
   return text;
 }
@@ -50,27 +42,22 @@ async function tryGroq(prompt: string, system?: string): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("GROQ_API_KEY not configured");
 
-  const messages: { role: string; content: string }[] = [];
+  const messages: any[] = [];
   if (system) messages.push({ role: "system", content: system });
   messages.push({ role: "user", content: prompt });
 
   const res = await fetch(GROQ_URL, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages })
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ model: GROQ_MODEL, messages, temperature: 0.7, max_tokens: 8192 })
   });
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(
-      data?.error?.message || `Groq failed with status ${res.status}`
-    );
+    throw new Error(data?.error?.message || `Groq failed with status ${res.status}`);
   }
 
-  const text: string | undefined = data?.choices?.[0]?.message?.content;
+  const text = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error("Groq returned empty response");
   return text;
 }
@@ -79,137 +66,84 @@ async function tryHuggingFace(prompt: string, system?: string): Promise<string> 
   const apiKey = process.env.HF_API_KEY;
   if (!apiKey) throw new Error("HF_API_KEY not configured");
 
-  const fullPrompt = system ? `${system}\n\n${prompt}` : prompt;
+  const fullPrompt = system ? `<s>[INST] ${system}\n\n${prompt} [/INST]` : `<s>[INST] ${prompt} [/INST]`;
 
   const res = await fetch(HF_URL, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      inputs: fullPrompt,
-      parameters: { max_new_tokens: 2048, return_full_text: false }
-    })
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ inputs: fullPrompt, parameters: { max_new_tokens: 4096, temperature: 0.7 } })
   });
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(
-      data?.error || `HuggingFace failed with status ${res.status}`
+      (Array.isArray(data) ? data[0]?.error : data?.error) || `HuggingFace failed with status ${res.status}`
     );
   }
 
-  const text: string | undefined = Array.isArray(data)
-    ? data[0]?.generated_text
-    : data?.generated_text;
+  const text = Array.isArray(data) ? data[0]?.generated_text : data?.generated_text;
   if (!text) throw new Error("HuggingFace returned empty response");
-  return text.trim();
+
+  // Strip the prompt echo that Mistral sometimes returns
+  const marker = "[/INST]";
+  const idx = text.lastIndexOf(marker);
+  return idx !== -1 ? text.slice(idx + marker.length).trim() : text.trim();
 }
 
-// ─── Routed entry points ─────────────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Long-form generation (chapters, outlines, lessons).
- * Tries Gemini first, then Groq, then HuggingFace.
+ * Long-form generation: Gemini first → Groq fallback → HuggingFace last resort
  */
-export async function generateContent(
-  prompt: string,
-  system?: string
-): Promise<string> {
+export async function generateContent(prompt: string, system?: string): Promise<string> {
   const errors: string[] = [];
-
-  try {
-    return await tryGemini(prompt, system);
-  } catch (e: any) {
-    errors.push(`Gemini: ${e.message}`);
+  for (const fn of [tryGemini, tryGroq, tryHuggingFace]) {
+    try {
+      return await fn(prompt, system);
+    } catch (e: any) {
+      errors.push(e.message || String(e));
+    }
   }
-
-  try {
-    return await tryGroq(prompt, system);
-  } catch (e: any) {
-    errors.push(`Groq: ${e.message}`);
-  }
-
-  try {
-    return await tryHuggingFace(prompt, system);
-  } catch (e: any) {
-    errors.push(`HuggingFace: ${e.message}`);
-  }
-
   throw new Error(`All AI providers failed:\n${errors.join("\n")}`);
 }
 
 /**
- * Fast / short generation (titles, improvement, brief copy).
- * Tries Groq first, then Gemini, then HuggingFace.
+ * Fast/short generation: Groq first → Gemini fallback → HuggingFace last resort
  */
-export async function generateContentFast(
-  prompt: string,
-  system?: string
-): Promise<string> {
+export async function generateContentFast(prompt: string, system?: string): Promise<string> {
   const errors: string[] = [];
-
-  try {
-    return await tryGroq(prompt, system);
-  } catch (e: any) {
-    errors.push(`Groq: ${e.message}`);
+  for (const fn of [tryGroq, tryGemini, tryHuggingFace]) {
+    try {
+      return await fn(prompt, system);
+    } catch (e: any) {
+      errors.push(e.message || String(e));
+    }
   }
-
-  try {
-    return await tryGemini(prompt, system);
-  } catch (e: any) {
-    errors.push(`Gemini: ${e.message}`);
-  }
-
-  try {
-    return await tryHuggingFace(prompt, system);
-  } catch (e: any) {
-    errors.push(`HuggingFace: ${e.message}`);
-  }
-
   throw new Error(`All AI providers failed:\n${errors.join("\n")}`);
 }
 
-// ─── Utility ─────────────────────────────────────────────────────────────────
-
 /**
- * Extract a JSON value from an AI text response.
- * Handles markdown code fences and raw JSON objects/arrays.
+ * Extract the first JSON object or array from an AI response string.
  */
 export function extractJSON(text: string): any {
-  const t = text.trim();
+  const t = String(text || "");
 
-  // Direct parse
-  try {
-    return JSON.parse(t);
-  } catch {}
-
-  // Markdown code fence: ```json ... ``` or ``` ... ```
-  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fence) {
-    try {
-      return JSON.parse(fence[1].trim());
-    } catch {}
+  // Try to find a JSON block (```json ... ``` or ``` ... ```)
+  const fenceMatch = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    try { return JSON.parse(fenceMatch[1].trim()); } catch { /* fall through */ }
   }
 
-  // First {...} block
-  const obj = t.match(/(\{[\s\S]*\})/);
-  if (obj) {
-    try {
-      return JSON.parse(obj[1]);
-    } catch {}
+  // Try the first { ... } or [ ... ] block
+  const objMatch = t.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try { return JSON.parse(objMatch[0]); } catch { /* fall through */ }
   }
 
-  // First [...] block
-  const arr = t.match(/(\[[\s\S]*\])/);
-  if (arr) {
-    try {
-      return JSON.parse(arr[1]);
-    } catch {}
+  const arrMatch = t.match(/\[[\s\S]*\]/);
+  if (arrMatch) {
+    try { return JSON.parse(arrMatch[0]); } catch { /* fall through */ }
   }
 
-  throw new Error(
-    `Could not parse JSON from AI response: ${t.slice(0, 300)}`
-  );
+  throw new Error(`Could not parse JSON from AI response: ${t.slice(0, 200)}`);
 }
