@@ -7,6 +7,7 @@ import {
   resetNicheRegistryToDefaults,
   saveNicheRegistry
 } from "@/lib/niche/registry";
+import { getDeepNiches, detectAudience } from "@/lib/niche/deepNiches";
 
 function FieldLabel({ children, hint }) {
   return (
@@ -27,6 +28,9 @@ function FieldLabel({ children, hint }) {
 export default function ResearchStep({ research, setResearch, errors }) {
   const [registry, setRegistry] = useState(() => loadNicheRegistry());
   const [managerOpen, setManagerOpen] = useState(false);
+  const [suggestedTitles, setSuggestedTitles] = useState([]);
+  const [titlesLoading, setTitlesLoading] = useState(false);
+  const [titlesError, setTitlesError] = useState("");
 
   useEffect(() => {
     setRegistry(loadNicheRegistry());
@@ -36,6 +40,19 @@ export default function ResearchStep({ research, setResearch, errors }) {
   const subNicheId = research?.subNicheId || "";
   const main = findMainNiche(registry, mainNicheId);
   const subOptions = main?.subNiches || [];
+  const subSelected = subOptions.find((s) => s.id === subNicheId);
+  const deepOptions = useMemo(
+    () => getDeepNiches(main?.label || "", subSelected?.label || ""),
+    [main?.label, subSelected?.label]
+  );
+  const deepNicheLabel = research?.deepNicheLabel || "";
+  const marketIntel = useMemo(
+    () =>
+      deepNicheLabel
+        ? detectAudience(deepNicheLabel, subSelected?.label || "")
+        : null,
+    [deepNicheLabel, subSelected?.label]
+  );
 
   const profile = useMemo(
     () => buildResearchFormProfile(registry, mainNicheId, subNicheId),
@@ -59,11 +76,14 @@ export default function ResearchStep({ research, setResearch, errors }) {
       subNicheId: firstSub,
       mainNicheLabel: nextMain?.label || "",
       subNicheLabel: nextMain?.subNiches?.find((s) => s.id === firstSub)?.label || "",
+      deepNicheLabel: "",
       genre: nextMain?.label || "",
       authorTones: [],
       audiencePreset: "",
       publishingGoal: ""
     });
+    setSuggestedTitles([]);
+    setTitlesError("");
   }
 
   function onSubNicheChange(id) {
@@ -71,8 +91,51 @@ export default function ResearchStep({ research, setResearch, errors }) {
     patch({
       subNicheId: id,
       subNicheLabel: sub?.label || "",
+      deepNicheLabel: "",
       authorTones: []
     });
+    setSuggestedTitles([]);
+    setTitlesError("");
+  }
+
+  function onDeepNicheChange(label) {
+    patch({ deepNicheLabel: label });
+    setSuggestedTitles([]);
+    setTitlesError("");
+  }
+
+  async function onSuggestTitles() {
+    if (!deepNicheLabel || titlesLoading) return;
+    setTitlesLoading(true);
+    setTitlesError("");
+    setSuggestedTitles([]);
+    try {
+      const intel = detectAudience(deepNicheLabel, subSelected?.label || "");
+      const enrichedResearch = {
+        ...research,
+        deepNicheLabel,
+        targetAudience: research.targetAudience?.trim() || intel.audience,
+        bookTopic: research.bookTopic?.trim() || deepNicheLabel
+      };
+      const resp = await fetch("/api/book/contextual-titles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ research: enrichedResearch, analysis: { books: [] } })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.error || `Title generation failed (${resp.status})`);
+      const titles = Array.isArray(data.titles) ? data.titles.slice(0, 3) : [];
+      if (!titles.length) throw new Error("No titles returned. Try again.");
+      setSuggestedTitles(titles);
+    } catch (err) {
+      setTitlesError(err?.message || "Failed to suggest titles.");
+    } finally {
+      setTitlesLoading(false);
+    }
+  }
+
+  function applyTitle(title) {
+    patch({ bookTitle: title });
   }
 
   function toggleTone(tone) {
@@ -202,6 +265,84 @@ export default function ResearchStep({ research, setResearch, errors }) {
             </select>
             {errors.subNicheId && <p className="mt-1 text-xs text-red-600">{errors.subNicheId}</p>}
           </section>
+        </section>
+
+        <section>
+          <FieldLabel hint="Third-level focus — drives audience targeting and title suggestions.">
+            Deep niche
+          </FieldLabel>
+          <section className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+            <select
+              className="input-light flex-1"
+              value={deepNicheLabel}
+              disabled={!subNicheId || deepOptions.length === 0}
+              onChange={(e) => onDeepNicheChange(e.target.value)}
+            >
+              <option value="">
+                {!subNicheId
+                  ? "Choose sub-niche first"
+                  : deepOptions.length === 0
+                  ? "No deep niches available for this sub-niche"
+                  : "Select deep niche"}
+              </option>
+              {deepOptions.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={onSuggestTitles}
+              disabled={!deepNicheLabel || titlesLoading}
+              className="whitespace-nowrap rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-sky-500 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {titlesLoading ? "Suggesting…" : "Suggest Titles"}
+            </button>
+          </section>
+
+          {marketIntel && (
+            <aside className="mt-3 rounded-xl border border-emerald-200/70 bg-emerald-50/60 px-4 py-3 text-xs text-emerald-900">
+              <p className="font-semibold">{marketIntel.insight}</p>
+              <p className="mt-1 text-emerald-800/90">
+                <span className="font-semibold">Audience:</span> {marketIntel.audience}
+              </p>
+              <p className="mt-0.5 text-emerald-800/90">
+                <span className="font-semibold">Opportunity:</span> {marketIntel.opportunity}
+              </p>
+            </aside>
+          )}
+
+          {titlesError && (
+            <p className="mt-2 text-xs text-red-600">{titlesError}</p>
+          )}
+
+          {suggestedTitles.length > 0 && (
+            <section className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Suggested titles — click to use
+              </p>
+              <section className="mt-2 grid gap-2 sm:grid-cols-3">
+                {suggestedTitles.map((title) => {
+                  const active = research.bookTitle === title;
+                  return (
+                    <button
+                      key={title}
+                      type="button"
+                      onClick={() => applyTitle(title)}
+                      className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold leading-snug shadow-sm transition ${
+                        active
+                          ? "border-sky-600 bg-sky-600 text-white shadow-md shadow-sky-600/25"
+                          : "border-slate-200 bg-white text-slate-800 hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md"
+                      }`}
+                    >
+                      {title}
+                    </button>
+                  );
+                })}
+              </section>
+            </section>
+          )}
         </section>
 
         <section>

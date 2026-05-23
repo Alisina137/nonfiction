@@ -122,6 +122,7 @@ const emptyResearch = {
   subNicheId: "",
   mainNicheLabel: "",
   subNicheLabel: "",
+  deepNicheLabel: "",
   genre: "",
   bookTopic: "",
   stanceOnTopic: "",

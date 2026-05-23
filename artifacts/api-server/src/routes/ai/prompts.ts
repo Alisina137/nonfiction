@@ -65,15 +65,24 @@ export function contextualBookTitlesPrompt({ research, competitorSummaries }: an
     research.mainNicheLabel && research.subNicheLabel
       ? `${research.mainNicheLabel} › ${research.subNicheLabel}`
       : research.genre?.trim() || "";
+  const deepNiche = research.deepNicheLabel?.trim() || "";
   return `You are naming a book for the following profile.
-PRIMARY SUBJECT: ${research.bookTopic?.trim() || ""}
-NICHE: ${nicheLine}
+PRIMARY SUBJECT: ${research.bookTopic?.trim() || deepNiche || ""}
+NICHE: ${nicheLine}${deepNiche ? ` › ${deepNiche}` : ""}
+DEEP NICHE FOCUS: ${deepNiche || "(none)"}
 TARGET READER: ${research.targetAudience?.trim() || ""}
 PUBLISHING GOAL: ${research.publishingGoal?.trim() || "not specified"}
 AUTHOR VOICE: ${Array.isArray(research.authorTones) && research.authorTones.length ? research.authorTones.join(", ") : "not specified"}
 STANCE: ${stance}
 STANDOUT: ${standout}
 COMPETITORS: ${summariesBlock}
+
+Rules:
+- Modern Amazon KDP style — audience-focused, high conversion, lower competition.
+- Prefer titles that name the reader (e.g. "for Distracted Professionals", "for Introverts").
+- Avoid generic, robotic, or keyword-stuffed titles.
+- Each title under 70 characters when possible.
+
 Generate exactly 6 strong titles. Return JSON: {"titles":["..."]}`;
 }
 

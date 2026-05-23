@@ -1,0 +1,168 @@
+Add an advanced Deep Niche + AI Title Suggestion system to the Research step.
+
+CURRENT FLOW:
+- Main niche select
+- Sub-niche select
+
+==================================================
+1. ADD DEEP NICHE SELECT
+==================================================
+
+Add a third dependent select element:
+
+Label:
+"Deep Niche"
+
+Behavior:
+- Dynamically update based on Main Niche + Sub-niche
+- Disabled until Main + Sub selected
+- Same UI style as existing selects
+
+Use a simple scalable structure:
+
+const nicheMap = {
+  "Self-Help": {
+
+    "Success": [
+      "Millionaire Mindset",
+      "Stoic Success Principles",
+      "Goal Achievement Systems",
+      "Success Through Discipline"
+    ],
+
+    "Spiritual + Happiness": [
+      "Spiritual Healing for Anxiety",
+      "Letting Go & Emotional Freedom",
+      "Meditation for Emotional Healing"
+    ],
+
+    "Time Management": [
+      "ADHD Time Management",
+      "Deep Work Focus",
+      "Digital Distraction Detox",
+      "Anti-Procrastination Systems"
+    ],
+
+    "Communication & Social Skills": [
+      "Small Talk for Introverts",
+      "Assertiveness Training",
+      "Workplace Communication",
+      "Charisma Building"
+    ],
+
+    "Inner Child": [
+      "Shadow Work Journal",
+      "Reparenting Yourself",
+      "Healing Abandonment Wounds",
+      "Emotional Neglect Recovery"
+    ],
+
+    "Motivational": [
+      "Discipline Over Motivation",
+      "Success Mindset for Men",
+      "Consistency & Habit Building"
+    ],
+
+    "Self-Esteem": [
+      "Self-Love for Women",
+      "Confidence for Introverts",
+      "Healing Insecurity",
+      "Overcoming People-Pleasing"
+    ],
+
+    "Personal Transformation": [
+      "Dopamine Detox",
+      "Masculine Discipline",
+      "90-Day Life Reset",
+      "Digital Minimalism"
+    ]
+  }
+};
+
+==================================================
+2. ADD TITLE SUGGESTION BUTTON
+==================================================
+
+Beside Deep Niche select add button:
+
+"Suggest Titles"
+
+When clicked:
+- Analyze:
+  Main Niche
+  Sub-niche
+  Deep Niche
+
+- Detect best audience automatically based on niche combination.
+
+Examples:
+- ADHD Productivity → distracted professionals, students
+- Shadow Work → emotionally exhausted women, trauma healing readers
+- Small Talk for Introverts → shy professionals, introverts
+- Dopamine Detox → overthinkers, distracted people
+
+==================================================
+3. GENERATE 3 AMAZON-STYLE TITLES
+==================================================
+
+Generate 3 titles that are:
+- audience-focused
+- lower competition
+- high conversion
+- modern Amazon KDP style
+
+Examples:
+- Dopamine Detox for Distracted Professionals
+- Deep Work Habits for Overthinkers
+- The Introvert Communication Blueprint
+- Shadow Work for Emotional Healing
+- ADHD Productivity Systems for Students
+
+Avoid:
+- generic titles
+- robotic wording
+- keyword stuffing
+
+==================================================
+4. ADD CLICKABLE TITLE CARDS
+==================================================
+
+Show generated titles in cards.
+
+Requirements:
+- clickable
+- auto-fill Book Title field on click
+- simple hover effect
+- responsive layout
+
+==================================================
+5. ADD SIMPLE MARKET INSIGHT
+==================================================
+
+Below titles show short insight like:
+
+"High-conversion audience detected:
+Distracted professionals aged 20–40."
+
+OR
+
+"Low-competition opportunity:
+ADHD productivity for students."
+
+==================================================
+6. KEEP IMPLEMENTATION LIGHTWEIGHT
+==================================================
+
+IMPORTANT:
+- Use rule-based audience detection first
+- Avoid unnecessary AI calls
+- Keep logic modular and simple
+- Reuse existing styling/components where possible
+- Do not over-engineer architecture
+
+Use:
+- React
+- TypeScript
+- existing form state system
+
+Keep implementation clean and optimized for lower Replit credit usage.
