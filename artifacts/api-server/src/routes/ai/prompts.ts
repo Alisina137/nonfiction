@@ -54,7 +54,13 @@ Each title must signal practical transformation and expert authority.
 Return JSON: {"titles":["..."]}`;
 }
 
-export function contextualBookTitlesPrompt({ research, competitorSummaries }: any) {
+export function contextualBookTitlesPrompt({
+  research,
+  competitorSummaries,
+  audienceCandidates,
+  painPoints,
+  transformations
+}: any) {
   const stance = research.stanceOnTopic?.trim() || "(not specified)";
   const standout = research.standout?.trim() || "(not specified)";
   const summariesBlock =
@@ -66,24 +72,55 @@ export function contextualBookTitlesPrompt({ research, competitorSummaries }: an
       ? `${research.mainNicheLabel} › ${research.subNicheLabel}`
       : research.genre?.trim() || "";
   const deepNiche = research.deepNicheLabel?.trim() || "";
-  return `You are naming a book for the following profile.
-PRIMARY SUBJECT: ${research.bookTopic?.trim() || deepNiche || ""}
-NICHE: ${nicheLine}${deepNiche ? ` › ${deepNiche}` : ""}
-DEEP NICHE FOCUS: ${deepNiche || "(none)"}
-TARGET READER: ${research.targetAudience?.trim() || ""}
-PUBLISHING GOAL: ${research.publishingGoal?.trim() || "not specified"}
-AUTHOR VOICE: ${Array.isArray(research.authorTones) && research.authorTones.length ? research.authorTones.join(", ") : "not specified"}
-STANCE: ${stance}
-STANDOUT: ${standout}
-COMPETITORS: ${summariesBlock}
+  const audList = Array.isArray(audienceCandidates) && audienceCandidates.length
+    ? audienceCandidates.join(", ")
+    : "Students, Entrepreneurs, Women, Young Men, Busy Professionals";
+  const painList = Array.isArray(painPoints) && painPoints.length
+    ? painPoints.join(", ")
+    : "(infer from niche)";
+  const transformList = Array.isArray(transformations) && transformations.length
+    ? transformations.join(", ")
+    : "(infer from niche)";
 
-Rules:
-- Modern Amazon KDP style — audience-focused, high conversion, lower competition.
-- Prefer titles that name the reader (e.g. "for Distracted Professionals", "for Introverts").
-- Avoid generic, robotic, or keyword-stuffed titles.
-- Each title under 70 characters when possible.
+  return `You are an Amazon KDP bestseller-title strategist.
+Generate 6 modern, high-conversion nonfiction titles for the profile below.
 
-Generate exactly 6 strong titles. Return JSON: {"titles":["..."]}`;
+PROFILE
+- PRIMARY SUBJECT: ${research.bookTopic?.trim() || deepNiche || ""}
+- NICHE: ${nicheLine}${deepNiche ? ` › ${deepNiche}` : ""}
+- DEEP NICHE FOCUS: ${deepNiche || "(none)"}
+- TARGET READER (user-provided): ${research.targetAudience?.trim() || "(not specified)"}
+- PUBLISHING GOAL: ${research.publishingGoal?.trim() || "not specified"}
+- AUTHOR VOICE: ${Array.isArray(research.authorTones) && research.authorTones.length ? research.authorTones.join(", ") : "not specified"}
+- STANCE: ${stance}
+- STANDOUT: ${standout}
+- COMPETITORS:
+${summariesBlock}
+
+AUDIENCE CANDIDATES (pick from these, or pick equally specific ones):
+${audList}
+
+PAIN POINTS TO HOOK:
+${painList}
+
+DESIRED TRANSFORMATIONS:
+${transformList}
+
+HARD RULES (must follow):
+1. At LEAST 5 of the 6 titles MUST explicitly name a target audience using phrasing like "for Students", "for Introverts", "for Busy Moms", "for ADHD Adults", "for Distracted Professionals", "for Teen Girls", "for Young Men", "for Entrepreneurs", "for Women", "for Overthinkers", "for Remote Workers". The 6th title may use a vivid identity hook instead (e.g. "The Quiet Achiever's Playbook").
+2. Titles must follow ONE of these formulas:
+   - [Transformation] for [Audience]  → e.g. "Discipline Habits for Young Men"
+   - [System / Blueprint] for [Audience]  → e.g. "The Focus Blueprint for Entrepreneurs"
+   - [Problem Solution] for [Audience]  → e.g. "Burnout Recovery for Busy Moms"
+3. Tone: modern Amazon bestseller vibe — like "Atomic Habits", "Deep Work", "Essentialism", "The Mountain Is You". Emotionally clear, commercially polished, easy to understand.
+4. BANNED — do NOT output any of these generic patterns:
+   - "Better Habits", "Success Systems", "Productivity Blueprint", "Confidence Reset", "Motivation Mastery", "Focus Habits", "Better Productivity"
+   - Any title without a clearly named audience or specific transformation.
+   - Robotic or keyword-stuffed phrasing.
+5. Each title under 70 characters when possible.
+6. No duplicates. No subtitles. No quotes around the titles in the JSON.
+
+Return STRICT JSON: {"titles":["...","...","...","...","...","..."]}`;
 }
 
 export function descriptionPrompt({ idea, title, audience, tone }: any) {

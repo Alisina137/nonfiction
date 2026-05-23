@@ -1,0 +1,203 @@
+```txt id="pb3x9h"
+Improve the AI Book Title Generator to prioritize explicit target audiences in most generated titles.
+
+CURRENT PROBLEM:
+The generator creates generic titles like:
+- Success Through Discipline
+- Better Productivity
+- Focus Habits
+
+These titles are too broad and weak for Amazon KDP.
+
+GOAL:
+Generate highly marketable Amazon-style book titles that explicitly target a specific audience and emotional pain point.
+
+==================================================
+NEW TITLE GENERATION RULES
+==================================================
+
+The generator should follow this logic:
+
+Deep Niche
+→ Detect best audience
+→ Detect emotional pain/problem
+→ Detect desired transformation
+→ Generate audience-focused title
+
+==================================================
+IMPORTANT REQUIREMENT
+==================================================
+
+At least 70% of generated titles MUST explicitly contain a target audience.
+
+Examples:
+- for Students
+- for Introverts
+- for Entrepreneurs
+- for Women
+- for Teen Girls
+- for Overthinkers
+- for Distracted Professionals
+- for Busy Moms
+- for Remote Workers
+- for Young Men
+- for ADHD Adults
+
+==================================================
+GOOD TITLE EXAMPLES
+==================================================
+
+INPUT:
+Self-Help
+→ Success
+→ Success Through Discipline
+
+GOOD OUTPUT:
+- Discipline Habits for Ambitious Men
+- Consistency Systems for Entrepreneurs
+- Focus Discipline for Distracted Professionals
+- The Discipline Blueprint for Students
+- Success Habits for Young Men
+
+--------------------------------------------------
+
+INPUT:
+Self-Help
+→ Time Management
+→ ADHD Productivity
+
+GOOD OUTPUT:
+- ADHD Productivity for Students
+- Focus Systems for Distracted Professionals
+- Time Management for ADHD Entrepreneurs
+- Deep Focus Habits for Overthinkers
+- Productivity Systems for Remote Workers
+
+--------------------------------------------------
+
+INPUT:
+Self-Help
+→ Self-Esteem
+→ Healing Insecurity
+
+GOOD OUTPUT:
+- Self-Worth for Women Who Overthink
+- Confidence Building for Teen Girls
+- Healing Insecurity After Toxic Relationships
+- Self-Love for Introverts
+- Emotional Confidence for Socially Anxious Adults
+
+==================================================
+BAD TITLE EXAMPLES
+==================================================
+
+Avoid generic titles like:
+- Better Habits
+- Success Systems
+- Productivity Blueprint
+- Confidence Reset
+- Motivation Mastery
+
+These are too broad and do not target a clear audience.
+
+==================================================
+AUDIENCE DETECTION ENGINE
+==================================================
+
+The generator should intelligently infer the BEST audience based on deep niche.
+
+Examples:
+
+ADHD Productivity →
+- students
+- distracted professionals
+- entrepreneurs
+- remote workers
+- ADHD adults
+
+Shadow Work →
+- emotionally exhausted women
+- trauma-healing readers
+- people recovering from toxic relationships
+
+Small Talk for Introverts →
+- shy professionals
+- introverted men
+- socially anxious students
+
+Discipline / Success →
+- ambitious men
+- entrepreneurs
+- high performers
+- distracted young adults
+
+==================================================
+TITLE FORMULAS
+==================================================
+
+Prioritize formulas like:
+
+1.
+[Transformation] for [Audience]
+
+Examples:
+- Discipline Habits for Young Men
+- Confidence for Introverts
+- ADHD Productivity for Students
+
+--------------------------------------------------
+
+2.
+[System/Blueprint] for [Audience]
+
+Examples:
+- The Focus Blueprint for Entrepreneurs
+- The Confidence System for Teen Girls
+- Productivity Systems for Overthinkers
+
+--------------------------------------------------
+
+3.
+[Problem Solution] for [Audience]
+
+Examples:
+- Overthinking Recovery for Students
+- Burnout Recovery for Busy Moms
+- Emotional Healing for Women
+
+==================================================
+TITLE STYLE
+==================================================
+
+Titles should feel similar to modern Amazon bestsellers:
+- Atomic Habits
+- Deep Work
+- Essentialism
+- The Mountain Is You
+
+Meaning:
+- emotionally clear
+- commercially polished
+- audience-specific
+- easy to understand
+- high-conversion
+- modern wording
+
+==================================================
+IMPLEMENTATION REQUIREMENTS
+==================================================
+
+- Update title generation utility
+- Add audience inference logic
+- Prioritize audience-based title templates
+- Keep implementation lightweight
+- Use rule-based audience mapping first
+- Avoid unnecessary AI calls
+
+Use:
+- React
+- TypeScript
+- existing architecture
+
+Keep the logic modular and optimized.
+```

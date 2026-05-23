@@ -149,3 +149,108 @@ export function detectAudience(deepLabel, fallbackSub = "") {
     opportunity: "Focus on a specific reader pain to stand out in this niche."
   };
 }
+
+/**
+ * Rich audience inference — returns an array of "for X" candidates so the
+ * title generator can plug them into the audience-first formulas.
+ * Keyed by keyword pattern on the deep niche (and sub-niche fallback).
+ */
+const AUDIENCE_CANDIDATE_RULES = [
+  {
+    match: /adhd/i,
+    audiences: ["Students", "Distracted Professionals", "Entrepreneurs", "Remote Workers", "ADHD Adults"],
+    painPoints: ["scattered focus", "missed deadlines", "task paralysis"],
+    transformations: ["consistent deep focus", "finished projects", "calm productivity"]
+  },
+  {
+    match: /shadow work|inner child|reparent|abandonment|emotional neglect/i,
+    audiences: ["Women", "Trauma Survivors", "People Recovering From Toxic Relationships", "Emotionally Exhausted Adults"],
+    painPoints: ["unresolved childhood wounds", "self-sabotage", "emotional flashbacks"],
+    transformations: ["inner safety", "self-reparenting", "emotional freedom"]
+  },
+  {
+    match: /dopamine|digital (minimalism|detox|distraction)/i,
+    audiences: ["Overthinkers", "Distracted Professionals", "Burnt-Out Knowledge Workers", "Young Men"],
+    painPoints: ["constant phone urge", "shallow attention", "low motivation"],
+    transformations: ["restored focus", "natural motivation", "calm attention"]
+  },
+  {
+    match: /introvert|small talk|shy/i,
+    audiences: ["Introverts", "Shy Professionals", "Introverted Men", "Socially Anxious Adults"],
+    painPoints: ["awkward conversations", "social drain", "fear of speaking up"],
+    transformations: ["effortless conversation", "quiet confidence", "energized social skill"]
+  },
+  {
+    match: /people[- ]pleas|assertiv/i,
+    audiences: ["Women", "People-Pleasers", "Codependent Adults", "Recovering Yes-Sayers"],
+    painPoints: ["over-giving", "resentment", "loss of self"],
+    transformations: ["clear boundaries", "self-trust", "guilt-free no"]
+  },
+  {
+    match: /insecurity|self[- ]love|confidence|self[- ]esteem/i,
+    audiences: ["Women", "Teen Girls", "Introverts", "Socially Anxious Adults", "Women Who Overthink"],
+    painPoints: ["self-doubt", "comparison spirals", "fear of judgment"],
+    transformations: ["unshakable confidence", "self-worth", "inner steadiness"]
+  },
+  {
+    match: /stoic|discipline|masculine|mindset for men/i,
+    audiences: ["Young Men", "Ambitious Men", "Entrepreneurs", "High Performers", "Distracted Young Adults"],
+    painPoints: ["weak follow-through", "comfort addiction", "lack of direction"],
+    transformations: ["unbreakable discipline", "stoic calm", "decisive action"]
+  },
+  {
+    match: /millionaire|wealth|money mindset|goal achievement|success/i,
+    audiences: ["Entrepreneurs", "Ambitious Men", "High Performers", "Young Professionals", "Side Hustlers"],
+    painPoints: ["scattered goals", "imposter mindset", "stalled income"],
+    transformations: ["systemized growth", "wealth-building habits", "decisive execution"]
+  },
+  {
+    match: /meditation|spiritual healing|letting go|emotional freedom/i,
+    audiences: ["Anxious Adults", "Overthinkers", "Burnt-Out Professionals", "Women in Transition"],
+    painPoints: ["chronic anxiety", "stuck emotions", "racing mind"],
+    transformations: ["inner calm", "emotional release", "grounded presence"]
+  },
+  {
+    match: /deep work|focus|procrastination/i,
+    audiences: ["Students", "Knowledge Workers", "Entrepreneurs", "Overthinkers", "Remote Workers"],
+    painPoints: ["constant distraction", "shallow output", "deadline panic"],
+    transformations: ["deep focus sessions", "high-quality output", "calm momentum"]
+  },
+  {
+    match: /habit|consistency|90[- ]day|life reset/i,
+    audiences: ["Young Men", "Busy Moms", "Self-Improvers", "Burnt-Out Professionals"],
+    painPoints: ["broken streaks", "motivation crashes", "stuck routine"],
+    transformations: ["lasting habits", "daily momentum", "identity-level change"]
+  },
+  {
+    match: /charisma|workplace communication/i,
+    audiences: ["Early-Career Professionals", "Introverts at Work", "Aspiring Leaders", "Remote Workers"],
+    painPoints: ["being overlooked", "weak presence", "meeting anxiety"],
+    transformations: ["magnetic presence", "respected voice", "natural leadership"]
+  },
+  {
+    match: /burnout|exhaust|overwhelm/i,
+    audiences: ["Busy Moms", "Burnt-Out Professionals", "Caregivers", "High Achievers"],
+    painPoints: ["chronic exhaustion", "emotional numbness", "guilt of rest"],
+    transformations: ["sustainable energy", "recovered focus", "guilt-free rest"]
+  }
+];
+
+export function inferAudienceProfile(deepLabel, fallbackSub = "") {
+  const target = `${deepLabel || ""} ${fallbackSub || ""}`.trim();
+  for (const rule of AUDIENCE_CANDIDATE_RULES) {
+    if (rule.match.test(target)) {
+      return {
+        audiences: rule.audiences,
+        painPoints: rule.painPoints,
+        transformations: rule.transformations
+      };
+    }
+  }
+  // Generic fallback — always return something useful
+  return {
+    audiences: ["Students", "Entrepreneurs", "Busy Professionals", "Women", "Young Men"],
+    painPoints: ["confusion", "stuck patterns", "lack of clarity"],
+    transformations: ["clarity", "momentum", "lasting change"]
+  };
+}

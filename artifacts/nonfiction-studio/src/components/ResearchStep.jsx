@@ -7,7 +7,7 @@ import {
   resetNicheRegistryToDefaults,
   saveNicheRegistry
 } from "@/lib/niche/registry";
-import { getDeepNiches, detectAudience } from "@/lib/niche/deepNiches";
+import { getDeepNiches, detectAudience, inferAudienceProfile } from "@/lib/niche/deepNiches";
 
 function FieldLabel({ children, hint }) {
   return (
@@ -112,6 +112,7 @@ export default function ResearchStep({ research, setResearch, errors }) {
     setSuggestedTitles([]);
     try {
       const intel = detectAudience(deepNicheLabel, subSelected?.label || "");
+      const profileInfer = inferAudienceProfile(deepNicheLabel, subSelected?.label || "");
       const enrichedResearch = {
         ...research,
         deepNicheLabel,
@@ -121,7 +122,13 @@ export default function ResearchStep({ research, setResearch, errors }) {
       const resp = await fetch("/api/book/contextual-titles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ research: enrichedResearch, analysis: { books: [] } })
+        body: JSON.stringify({
+          research: enrichedResearch,
+          analysis: { books: [] },
+          audienceCandidates: profileInfer.audiences,
+          painPoints: profileInfer.painPoints,
+          transformations: profileInfer.transformations
+        })
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(data?.error || `Title generation failed (${resp.status})`);
