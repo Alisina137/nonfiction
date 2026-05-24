@@ -3,6 +3,7 @@ import {
   subscribeAiBus,
   providerLabel,
   isGrokApproved,
+  grantGrokApproval,
   revokeGrokApproval
 } from "@/lib/ai/aiFetch";
 
@@ -16,16 +17,18 @@ const COLOR = {
 export default function ProviderStatusBadge() {
   const [provider, setProvider] = useState(null);
   const [toast, setToast] = useState(null);
-  const [grokApproved, setGrokApproved] = useState(false);
+  const [grokOn, setGrokOn] = useState(() => isGrokApproved());
 
   useEffect(() => {
-    setGrokApproved(isGrokApproved());
     const unsubP = subscribeAiBus("provider", ({ provider }) => setProvider(provider));
-    const unsubF = subscribeAiBus("fallback", ({ message, to }) => {
-      setToast({ message, to, id: Date.now() });
-      setGrokApproved(isGrokApproved());
+    const unsubF = subscribeAiBus("fallback", ({ message }) => {
+      setToast({ message, id: Date.now() });
+      setGrokOn(isGrokApproved());
     });
-    return () => { unsubP(); unsubF(); };
+    const unsubA = subscribeAiBus("approval", ({ open }) => {
+      if (!open) setGrokOn(isGrokApproved());
+    });
+    return () => { unsubP(); unsubF(); unsubA(); };
   }, []);
 
   useEffect(() => {
@@ -34,13 +37,25 @@ export default function ProviderStatusBadge() {
     return () => clearTimeout(id);
   }, [toast]);
 
+  function toggleGrok() {
+    if (grokOn) {
+      revokeGrokApproval();
+      setGrokOn(false);
+    } else {
+      grantGrokApproval();
+      setGrokOn(true);
+    }
+  }
+
   const label = provider ? providerLabel(provider) : "Idle";
-  const colorClass = provider ? (COLOR[provider] || "bg-slate-100 text-slate-700 border-slate-200")
+  const colorClass = provider
+    ? (COLOR[provider] || "bg-slate-100 text-slate-700 border-slate-200")
     : "bg-slate-50 text-slate-500 border-slate-200";
 
   return (
     <>
       <div className="flex items-center gap-2">
+        {/* Provider in use */}
         <div
           title={provider ? `Last AI provider used: ${label}` : "No AI calls yet this session"}
           className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${colorClass}`}
@@ -48,19 +63,36 @@ export default function ProviderStatusBadge() {
           <span className={`h-1.5 w-1.5 rounded-full ${provider ? "bg-current" : "bg-slate-400"}`} />
           {provider ? `Using ${label}` : "AI idle"}
         </div>
-        {grokApproved && (
-          <button
-            type="button"
-            onClick={() => {
-              revokeGrokApproval();
-              setGrokApproved(false);
-            }}
-            title="Grok approval is active. Click to revoke."
-            className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-700 hover:bg-violet-100"
+
+        {/* Persistent Grok toggle — always visible */}
+        <button
+          type="button"
+          onClick={toggleGrok}
+          title={
+            grokOn
+              ? "Grok is enabled as fallback. Click to disable."
+              : "Enable Grok so it's used automatically if OpenAI / Claude are unavailable."
+          }
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+            grokOn
+              ? "border-violet-300 bg-violet-100 text-violet-800 hover:bg-violet-200"
+              : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
+          }`}
+        >
+          {/* Toggle pill */}
+          <span
+            className={`relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors ${
+              grokOn ? "bg-violet-500" : "bg-slate-300"
+            }`}
           >
-            Grok ✓ — revoke
-          </button>
-        )}
+            <span
+              className={`absolute h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${
+                grokOn ? "translate-x-2.5" : "translate-x-0.5"
+              }`}
+            />
+          </span>
+          Grok fallback
+        </button>
       </div>
 
       {toast && (
