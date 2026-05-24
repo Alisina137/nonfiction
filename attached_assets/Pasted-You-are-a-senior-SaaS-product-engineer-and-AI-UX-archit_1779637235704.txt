@@ -1,0 +1,286 @@
+You are a senior SaaS product engineer and AI UX architect.
+
+Upgrade my nonfiction AI book-generation platform research step WITHOUT removing any existing functionality.
+
+GOAL:
+Transform the Research step into an intelligent AI publishing strategist that dynamically adapts the entire form based on the selected or generated book title.
+
+IMPORTANT:
+Keep ALL existing fields and functionality.
+Only ADD improvements and intelligent automation.
+
+========================
+MAIN FEATURE TO BUILD
+=====================
+
+When the user:
+
+* clicks a suggested title
+  OR
+* manually edits the book title
+
+the AI should automatically analyze the title and intelligently auto-fill all related research inputs.
+
+Example:
+Book title:
+"Stoic Calm for Ambitious Men"
+
+The system should auto-fill:
+
+* target audience
+* pain points
+* transformations
+* emotional tone
+* writing style
+* pacing
+* stance
+* standout factor
+* reader psychology
+* content direction
+* promise
+* emotional hooks
+* ideal reader avatar
+* bestseller positioning
+
+The AI should infer these automatically from:
+
+* niche
+* sub-niche
+* deep niche
+* title wording
+* emotional language
+* audience signals
+
+========================
+NEW FUNCTIONALITY TO ADD
+========================
+
+1. AI AUTO-FILL ENGINE
+   Create a centralized intelligent analysis system:
+
+analyzeBookConcept()
+
+Input:
+
+* niche
+* sub niche
+* deep niche
+* book title
+
+Output:
+
+* complete publishing profile JSON
+
+The AI should return:
+{
+targetAudience,
+painPoints,
+transformations,
+emotionalTriggers,
+writingStyle,
+pacingStyle,
+uniqueAngle,
+standoutFactor,
+readerEnergy,
+marketPositioning,
+promise,
+contentDirection,
+tone,
+hooks,
+idealReader,
+chapterStyle,
+emotionalArc,
+CTAStyle
+}
+
+========================
+2. LIVE TITLE INTELLIGENCE
+==========================
+
+When title changes:
+
+* debounce input
+* trigger AI analysis automatically
+* update related fields live
+* animate updated fields
+* show “AI optimizing positioning...”
+
+DO NOT require manual regeneration buttons.
+
+========================
+3. ADD NEW OPTIONAL FIELDS
+==========================
+
+Add these new fields below current research fields.
+
+A. Core Promise
+Examples:
+
+* Build discipline in 90 days
+* Master emotional control
+* Escape modern distraction
+
+B. Reader Pain Level
+Options:
+
+* Mild frustration
+* Burnout
+* Identity crisis
+* Chronic procrastination
+* No direction
+* High ambition / low consistency
+
+C. Energy Style
+Options:
+
+* Calm mentor
+* Hard-hitting coach
+* Stoic philosopher
+* Masculine discipline
+* Inspirational motivator
+* Scientific thinker
+
+D. Content Depth
+Options:
+
+* Beginner
+* Intermediate
+* Advanced
+* Expert
+
+E. Competitor Inspiration
+Examples:
+
+* Atomic Habits
+* Deep Work
+* Can’t Hurt Me
+* The Mountain Is You
+
+F. Reader Transformation
+Examples:
+
+* Become disciplined
+* Stop overthinking
+* Gain confidence
+* Build consistency
+* Improve focus
+
+========================
+4. MARKET VALIDATION PANEL
+==========================
+
+Add a premium publishing intelligence card.
+
+Generate:
+
+* demand score
+* competition score
+* emotional buying score
+* virality potential
+* TikTok compatibility
+* YouTube Shorts compatibility
+* Amazon KDP opportunity score
+
+Display visually with progress bars.
+
+Example:
+Demand: 9.1/10
+Competition: Medium
+Virality: High
+Buyer Psychology Strength: Strong
+
+========================
+5. SMART TITLE GENERATION
+=========================
+
+Improve title generation quality dramatically.
+
+Titles should:
+
+* target specific audiences
+* contain emotional triggers
+* sound commercially viable
+* resemble bestselling nonfiction books
+* include transformation language
+* avoid generic wording
+
+Generate:
+
+* title
+* subtitle
+* emotional hook
+* target audience
+* positioning angle
+
+Example:
+"The Discipline Reset for Overthinkers"
+Subtitle:
+"A Stoic System for Building Focus, Consistency, and Emotional Control"
+
+========================
+6. UX IMPROVEMENTS
+==================
+
+* Keep the existing clean design
+* Reduce typing whenever possible
+* Convert repetitive fields into smart chips/tags
+* Add smooth transitions
+* Add loading skeletons while AI analyzes
+* Add “AI Recommended” badges
+* Add hover explanations for publishing terms
+
+========================
+7. AUTO-SAVE + MEMORY
+=====================
+
+Persist research data automatically.
+
+When the user revisits:
+
+* restore all AI-generated positioning
+* restore selected audience strategy
+* restore title intelligence
+
+========================
+8. AI STRATEGIST MODE
+=====================
+
+At the top of Research step add:
+“Publishing Intelligence Active”
+
+Show live insights like:
+
+* “This niche performs well among men 20–40”
+* “Stoicism + discipline currently trending on TikTok”
+* “High emotional conversion potential detected”
+
+Make the app feel like a premium AI publishing consultant.
+
+========================
+9. TECHNICAL REQUIREMENTS
+=========================
+
+* Use OpenRouter as AI provider
+* Use modular architecture
+* Add caching to avoid unnecessary API calls
+* Debounce title analysis requests
+* Prevent duplicate generations
+* Use async/await cleanly
+* Add retry logic
+* Add loading states
+* Add graceful fallback handling
+
+========================
+10. IMPORTANT UX RULE
+=====================
+
+The app should NOT feel like a static form.
+
+It should feel like:
+
+* an AI publishing strategist,
+* a KDP consultant,
+* a market analyst,
+* and a ghostwriting coach combined.
+
+The AI should proactively guide the user through creating a commercially successful nonfiction book.

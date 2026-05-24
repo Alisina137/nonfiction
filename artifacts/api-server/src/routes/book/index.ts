@@ -22,7 +22,7 @@ function countAudienceTitles(titles: string[]): number {
 async function runTitleGeneration(
   params: any,
   allowGrok: boolean
-): Promise<{ titles: string[]; usedProvider: ProviderId }> {
+): Promise<{ titles: string[]; enhanced: any[]; usedProvider: ProviderId }> {
   const { text, usedProvider } = await generateContentFast(
     contextualBookTitlesPrompt(params),
     systemPrompt(),
@@ -33,7 +33,10 @@ async function runTitleGeneration(
   if (!Array.isArray(titles))
     titles = typeof data.title === "string" ? [data.title] : [];
   titles = titles.map((t: any) => String(t || "").trim()).filter(Boolean).slice(0, 12);
-  return { titles, usedProvider };
+  const enhanced: any[] = Array.isArray(data.enhanced)
+    ? data.enhanced.filter((e: any) => e?.title).slice(0, 12)
+    : [];
+  return { titles, enhanced, usedProvider };
 }
 
 router.post("/contextual-titles", async (req, res) => {
@@ -51,7 +54,7 @@ router.post("/contextual-titles", async (req, res) => {
       transformations: Array.isArray(transformations) ? transformations : []
     };
 
-    let { titles, usedProvider } = await runTitleGeneration(params, allowGrok === true);
+    let { titles, enhanced, usedProvider } = await runTitleGeneration(params, allowGrok === true);
 
     // Compliance audit: require >=70% audience-explicit (5/6 for 6-title batch).
     const required = Math.ceil(titles.length * 0.7);
@@ -74,13 +77,14 @@ router.post("/contextual-titles", async (req, res) => {
           return true;
         }).slice(0, 6);
         usedProvider = retry.usedProvider;
+        if (retry.enhanced.length) enhanced = retry.enhanced;
       } catch {
         // keep first batch if retry fails
       }
     }
 
     res.setHeader("X-AI-Provider", usedProvider);
-    return res.json({ titles, _provider: usedProvider });
+    return res.json({ titles, enhanced, _provider: usedProvider });
   } catch (error: any) {
     if (error instanceof GrokApprovalRequiredError) {
       return res.status(409).json({

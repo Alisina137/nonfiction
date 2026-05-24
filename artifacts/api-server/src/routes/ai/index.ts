@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  analyzeBookConceptPrompt,
   architecturePreviewPrompt,
   contextualBookTitlesPrompt,
   coverBriefPrompt,
@@ -203,6 +204,48 @@ router.post("/improve", async (req, res) => {
       res
     );
     return res.json({ text, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/analyze-book-concept", async (req, res) => {
+  try {
+    const { niche, subNiche, title } = req.body || {};
+    if (!niche || !subNiche || !title)
+      return res.status(400).json({ error: "niche, subNiche, and title are required." });
+    const { text, usedProvider } = await runShort(
+      analyzeBookConceptPrompt(req.body),
+      systemPrompt(),
+      req,
+      res
+    );
+    const raw = extractJSON(text);
+    const str = (v: any) => (typeof v === "string" ? v.trim() : "");
+    const arr = (v: any) => (Array.isArray(v) ? v.map((x: any) => String(x).trim()).filter(Boolean) : []);
+    const num = (v: any, def = 7.0) => (typeof v === "number" && isFinite(v) ? Math.min(10, Math.max(0, v)) : def);
+    const lvl = (v: any) => (["Low", "Medium", "High"].includes(v) ? v : "Medium");
+    const out = {
+      targetAudience: str(raw.targetAudience),
+      painPoints: arr(raw.painPoints),
+      transformations: arr(raw.transformations),
+      writingStyle: str(raw.writingStyle),
+      uniqueAngle: str(raw.uniqueAngle),
+      standoutFactor: str(raw.standoutFactor),
+      readerEnergy: str(raw.readerEnergy),
+      promise: str(raw.promise),
+      tone: str(raw.tone),
+      idealReader: str(raw.idealReader),
+      strategyInsights: arr(raw.strategyInsights),
+      demandScore: num(raw.demandScore, 7.5),
+      competitionLevel: lvl(raw.competitionLevel),
+      emotionalBuyingScore: num(raw.emotionalBuyingScore, 7.0),
+      viralityPotential: lvl(raw.viralityPotential),
+      tiktokCompatibility: lvl(raw.tiktokCompatibility),
+      youtubeCompatibility: lvl(raw.youtubeCompatibility),
+      kdpOpportunityScore: num(raw.kdpOpportunityScore, 7.5)
+    };
+    return res.json({ ...out, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

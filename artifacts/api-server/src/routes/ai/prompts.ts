@@ -54,6 +54,47 @@ Each title must signal practical transformation and expert authority.
 Return JSON: {"titles":["..."]}`;
 }
 
+export function analyzeBookConceptPrompt({ niche, subNiche, deepNiche, title }: any) {
+  return `You are an Amazon KDP publishing strategist and consumer psychology expert.
+
+Analyze this specific book concept and return a precise publishing intelligence profile.
+Be concrete and niche-specific — every field must reflect THIS title and audience, not generic advice.
+
+NICHE: ${niche || "unspecified"}
+SUB-NICHE: ${subNiche || "unspecified"}
+DEEP NICHE: ${deepNiche || "not specified"}
+BOOK TITLE: ${title || "untitled"}
+
+Infer the ideal commercial profile from the title's language, emotional signals, audience cues,
+and the niche/sub-niche context. All fields must match Amazon bestseller patterns for this category.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "targetAudience": "specific reader description in 1-2 sentences",
+  "painPoints": ["pain 1", "pain 2", "pain 3"],
+  "transformations": ["transformation 1", "transformation 2", "transformation 3"],
+  "writingStyle": "e.g. direct and practical / narrative-driven / philosophical inquiry",
+  "uniqueAngle": "what makes this book's approach distinctive in 1 sentence",
+  "standoutFactor": "core commercial differentiation vs top Amazon competitors",
+  "readerEnergy": "e.g. Calm mentor / Hard-hitting coach / Stoic philosopher / Scientific thinker",
+  "promise": "the single core book promise in one punchy sentence",
+  "tone": "primary tone label that fits the title",
+  "idealReader": "ideal reader avatar: age, situation, goal, pain (2-3 sentences)",
+  "strategyInsights": [
+    "short insight 1 (e.g. trending topic note, TikTok potential, etc.)",
+    "short insight 2",
+    "short insight 3"
+  ],
+  "demandScore": 8.5,
+  "competitionLevel": "Low|Medium|High",
+  "emotionalBuyingScore": 8.0,
+  "viralityPotential": "Low|Medium|High",
+  "tiktokCompatibility": "Low|Medium|High",
+  "youtubeCompatibility": "Low|Medium|High",
+  "kdpOpportunityScore": 9.0
+}`;
+}
+
 export function contextualBookTitlesPrompt({
   research,
   competitorSummaries,
@@ -120,7 +161,18 @@ HARD RULES (must follow):
 5. Each title under 70 characters when possible.
 6. No duplicates. No subtitles. No quotes around the titles in the JSON.
 
-Return STRICT JSON: {"titles":["...","...","...","...","...","..."]}`;
+Return STRICT JSON:
+{
+  "titles": ["title 1","title 2","title 3","title 4","title 5","title 6"],
+  "enhanced": [
+    {"title":"title 1","subtitle":"A [Adjective] System for [Outcome] and [Outcome]","hook":"emotional hook sentence","audience":"specific audience phrase","angle":"positioning angle"},
+    {"title":"title 2","subtitle":"...","hook":"...","audience":"...","angle":"..."},
+    {"title":"title 3","subtitle":"...","hook":"...","audience":"...","angle":"..."},
+    {"title":"title 4","subtitle":"...","hook":"...","audience":"...","angle":"..."},
+    {"title":"title 5","subtitle":"...","hook":"...","audience":"...","angle":"..."},
+    {"title":"title 6","subtitle":"...","hook":"...","audience":"...","angle":"..."}
+  ]
+}`;
 }
 
 export function descriptionPrompt({ idea, title, audience, tone }: any) {
