@@ -1,0 +1,147 @@
+Update the AI fallback system in my existing KDP book generation app.
+
+DO NOT rebuild the app.
+ONLY update provider fallback logic and user confirmation flow.
+
+==================================================
+AI PROVIDER PRIORITY SYSTEM
+==================================================
+
+PRIMARY PROVIDER:
+- OpenAI
+
+FIRST FALLBACK:
+- Claude
+
+SECOND FALLBACK:
+- Grok (ONLY with user permission)
+
+==================================================
+REQUIRED BEHAVIOR
+==================================================
+
+1. DEFAULT FLOW
+- All writing/content generation uses OpenAI by default.
+
+2. IF OPENAI DAILY LIMIT IS HIT
+Automatically switch to Claude.
+
+Show notification:
+"OpenAI daily limit reached. Switched to Claude automatically."
+
+DO NOT interrupt generation flow.
+
+3. IF CLAUDE DAILY LIMIT IS HIT
+DO NOT automatically use Grok.
+
+Instead:
+- pause generation
+- show confirmation modal/dialog
+
+Message:
+"Claude daily limit reached.
+Would you like to continue generation using Grok?"
+
+Buttons:
+- Continue with Grok
+- Cancel
+
+ONLY use Grok if user explicitly approves.
+
+4. IF USER DECLINES GROK
+- stop generation safely
+- preserve generated content
+- allow retry later
+
+==================================================
+PROVIDER ROLE RULES
+==================================================
+
+GEMINI:
+ONLY for:
+- titles
+- subtitles
+- hooks
+- chapter outlines
+- sections
+- subsections
+
+OPENAI:
+DEFAULT for everything else.
+
+CLAUDE:
+Automatic fallback when OpenAI limit is reached.
+
+GROK:
+Manual approval required before usage.
+
+==================================================
+IMPLEMENTATION REQUIREMENTS
+==================================================
+
+Create provider manager service.
+
+Example logic:
+
+OpenAI available?
+→ YES → use OpenAI
+
+→ NO:
+   Claude available?
+   → YES → switch automatically
+
+   → NO:
+      Ask user permission for Grok
+
+      If approved:
+      → use Grok
+
+      If denied:
+      → stop safely
+
+==================================================
+ERROR HANDLING
+==================================================
+
+Detect:
+- rate limits
+- quota exceeded
+- daily limit reached
+- provider unavailable
+
+Handle gracefully.
+
+==================================================
+UI REQUIREMENTS
+==================================================
+
+Add:
+- current provider indicator
+- fallback notifications
+- Grok permission modal
+
+Examples:
+"Using OpenAI"
+"Fallback: Claude"
+"Awaiting approval for Grok"
+
+==================================================
+IMPORTANT RULES
+==================================================
+
+- Preserve current writing progress
+- Never lose generated text
+- Save partial generations automatically
+- Retry failed requests intelligently
+- Avoid duplicate content after retry
+- Keep provider switching seamless
+
+==================================================
+FINAL GOAL
+==================================================
+
+The app should:
+- prioritize OpenAI quality
+- automatically continue with Claude
+- require user approval before Grok
+- maintain uninterrupted book generation workflow
