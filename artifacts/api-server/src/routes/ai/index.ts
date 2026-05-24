@@ -161,7 +161,7 @@ router.post("/niche-outline", async (req, res) => {
     const { research, architecture, title, description } = req.body || {};
     if (!architecture?.subNicheLabel)
       return res.status(400).json({ error: "Missing niche architecture" });
-    const { text, usedProvider } = await runShort(
+    const { text, usedProvider } = await runLong(
       nicheOutlinePrompt({ research, architecture, title, description }),
       nicheSystemPrompt(architecture),
       req,

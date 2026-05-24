@@ -106,7 +106,7 @@ async function callOpenRouter(
   prompt: string,
   system: string | undefined,
   temperature = 0.7,
-  maxTokens = 4096
+  maxTokens = 8192
 ): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
@@ -309,28 +309,94 @@ export async function generateContentFast(
 }
 
 /**
+ * Attempt to repair a truncated JSON string by closing any unclosed
+ * brackets/braces.  Returns the parsed value or null if unfixable.
+ *
+ * Strategy: walk character by character tracking string/escape state and
+ * a bracket depth stack.  Record the last position where the stack depth
+ * returned to 1 (= the end of the last complete child of the root container).
+ * On truncation, slice to that position then close the remaining stack.
+ */
+function repairTruncatedJSON(raw: string): any {
+  const s = raw.trim();
+  if (!s.startsWith("{") && !s.startsWith("[")) return null;
+
+  const stack: string[] = [];
+  let inString = false;
+  let escape = false;
+  let lastChildEndPos = -1; // last pos where stack.length dropped back to 1
+
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (escape) { escape = false; continue; }
+    if (c === "\\" && inString) { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+
+    if (c === "{" || c === "[") {
+      stack.push(c === "{" ? "}" : "]");
+    } else if (c === "}" || c === "]") {
+      stack.pop();
+      // Completed a direct child of the root container.
+      if (stack.length === 1) lastChildEndPos = i;
+    }
+  }
+
+  // Already valid JSON.
+  if (stack.length === 0) {
+    try { return JSON.parse(s); } catch { return null; }
+  }
+
+  const closers = stack.slice().reverse().join("");
+
+  // Prefer slicing off the incomplete last item and closing cleanly.
+  if (lastChildEndPos > 0) {
+    try { return JSON.parse(s.slice(0, lastChildEndPos + 1) + closers); } catch { /* fall through */ }
+  }
+
+  // Last resort: just append closers to whatever we have.
+  try { return JSON.parse(s + closers); } catch { return null; }
+}
+
+/**
  * Extract the first JSON object or array from an AI response string.
- * Handles markdown code fences, bare objects, and bare arrays.
+ * Handles markdown code fences (open or closed), bare objects, and arrays.
+ * Falls back to truncation repair when the response was cut off mid-token.
  */
 export function extractJSON(text: string): any {
   const t = String(text || "");
 
-  // Strip markdown code fence first.
+  // Closed markdown code fence.
   const fenceMatch = t.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
-    try { return JSON.parse(fenceMatch[1].trim()); } catch { /* fall through */ }
+    const inner = fenceMatch[1].trim();
+    try { return JSON.parse(inner); } catch { /* fall through to repair */ }
+    const r = repairTruncatedJSON(inner);
+    if (r !== null) return r;
   }
 
-  // Bare JSON object.
-  const objMatch = t.match(/\{[\s\S]*\}/);
-  if (objMatch) {
-    try { return JSON.parse(objMatch[0]); } catch { /* fall through */ }
+  // Unclosed code fence (response truncated before the closing ```).
+  const openFence = t.match(/```(?:json)?\s+([\s\S]+)$/);
+  if (openFence) {
+    const inner = openFence[1].trim();
+    try { return JSON.parse(inner); } catch { /* fall through */ }
+    const r = repairTruncatedJSON(inner);
+    if (r !== null) return r;
   }
 
-  // Bare JSON array.
-  const arrMatch = t.match(/\[[\s\S]*\]/);
-  if (arrMatch) {
-    try { return JSON.parse(arrMatch[0]); } catch { /* fall through */ }
+  // Locate the first { or [ in the raw text.
+  const objStart = t.indexOf("{");
+  const arrStart = t.indexOf("[");
+  const start =
+    objStart === -1 ? arrStart :
+    arrStart === -1 ? objStart :
+    Math.min(objStart, arrStart);
+
+  if (start !== -1) {
+    const raw = t.slice(start);
+    try { return JSON.parse(raw); } catch { /* fall through to repair */ }
+    const r = repairTruncatedJSON(raw);
+    if (r !== null) return r;
   }
 
   throw new Error(`Could not parse JSON from AI response: ${t.slice(0, 200)}`);
