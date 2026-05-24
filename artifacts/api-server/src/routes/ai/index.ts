@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  architecturePreviewPrompt,
   contextualBookTitlesPrompt,
   coverBriefPrompt,
   coverCriticPrompt,
@@ -202,6 +203,32 @@ router.post("/improve", async (req, res) => {
       res
     );
     return res.json({ text, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/architecture-preview", async (req, res) => {
+  try {
+    const { niche, subNiche } = req.body || {};
+    if (!niche || !subNiche)
+      return res.status(400).json({ error: "niche and subNiche are required." });
+    const { text, usedProvider } = await runLong(
+      architecturePreviewPrompt(req.body),
+      systemPrompt(),
+      req,
+      res
+    );
+    const data = extractJSON(text);
+    const out = {
+      structure: String(data.structure || "").trim(),
+      chapters: String(data.chapters || "").trim(),
+      emotionalArc: String(data.emotionalArc || "").trim(),
+      pacing: String(data.pacing || "").trim(),
+      wordBand: String(data.wordBand || "").trim(),
+      contentDirection: String(data.contentDirection || "").trim()
+    };
+    return res.json({ ...out, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

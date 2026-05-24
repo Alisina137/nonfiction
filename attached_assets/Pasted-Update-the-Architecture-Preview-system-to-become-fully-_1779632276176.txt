@@ -1,0 +1,201 @@
+Update the "Architecture Preview" system to become fully dynamic based on:
+- niche
+- sub niche
+- target audience
+- book goal
+- tone
+
+Currently:
+- structure
+- chapters
+- emotional arc
+- pacing
+- word band
+
+are static and identical for all categories.
+
+This must become AI-driven and niche-aware.
+
+==================================================
+NEW SYSTEM REQUIREMENT
+==================================================
+
+Generate dynamic architecture previews using OpenAI.
+
+The architecture preview should adapt to:
+- nonfiction category
+- reader psychology
+- transformation type
+- audience pain points
+- content depth expectations
+
+==================================================
+FIELDS THAT MUST BECOME DYNAMIC
+==================================================
+
+1. STRUCTURE
+Examples:
+- framework-based
+- step-by-step
+- narrative arc
+- psychological transformation
+- tactical playbook
+- workbook style
+- habit-building system
+- mindset rewiring
+- challenge-based
+- case-study driven
+
+--------------------------------------------------
+
+2. CHAPTER COUNT
+Generate realistic recommended ranges:
+Examples:
+- 8–12
+- 10–14
+- 15–20
+
+Based on:
+- complexity
+- reader attention span
+- niche expectations
+
+--------------------------------------------------
+
+3. EMOTIONAL ARC
+Generate niche-specific emotional progression.
+
+Examples:
+
+SELF-ESTEEM:
+insecurity → awareness → healing → confidence → empowerment
+
+DISCIPLINE:
+frustration → self-awareness → resistance → consistency → control
+
+ANXIETY:
+overwhelm → understanding → calming → resilience → stability
+
+PRODUCTIVITY:
+chaos → clarity → systems → momentum → mastery
+
+--------------------------------------------------
+
+4. PACING
+Examples:
+- fast actionable
+- progressive build
+- emotionally immersive
+- tactical acceleration
+- slow reflective
+- workbook pacing
+
+--------------------------------------------------
+
+5. WORD BAND
+Generate realistic ranges:
+Examples:
+- 15k–25k
+- 20k–35k
+- 35k–50k
+
+Based on:
+- niche depth
+- audience expectation
+- content complexity
+
+==================================================
+IMPLEMENTATION
+==================================================
+
+Use OpenAI to generate architecture preview dynamically.
+
+Prompt example:
+
+"You are an Amazon KDP nonfiction publishing strategist.
+
+Analyze this book concept and generate an ideal book architecture.
+
+NICHE:
+{{niche}}
+
+SUB NICHE:
+{{subNiche}}
+
+TARGET AUDIENCE:
+{{audience}}
+
+BOOK GOAL:
+{{goal}}
+
+Generate:
+- ideal structure type
+- recommended chapter range
+- emotional arc
+- pacing style
+- ideal word count range
+
+Requirements:
+- adapt to reader psychology
+- match bestselling books in this niche
+- avoid generic outputs
+- be commercially realistic
+
+Output ONLY valid JSON."
+
+==================================================
+JSON FORMAT
+==================================================
+
+{
+  "structure": "",
+  "chapters": "",
+  "emotionalArc": "",
+  "pacing": "",
+  "wordBand": "",
+  "contentDirection": ""
+}
+
+==================================================
+IMPORTANT RULES
+==================================================
+
+- Every niche/sub niche should feel unique
+- Avoid repeating outputs across categories
+- Store architecture cache per niche
+- Regenerate when niche changes
+- Regenerate when audience changes
+- Regenerate when tone changes
+
+==================================================
+EXAMPLES
+==================================================
+
+SELF-ESTEEM:
+- emotionally immersive
+- healing-focused
+- reflective pacing
+
+DISCIPLINE:
+- tactical framework
+- progressive build
+- shorter sharper chapters
+
+STOICISM:
+- philosophical structure
+- reflective pacing
+- wisdom-based progression
+
+BUSINESS:
+- tactical playbook
+- fast actionable pacing
+- case-study driven
+
+==================================================
+FINAL GOAL
+==================================================
+
+The architecture preview should feel like:
+- a real publishing strategist analyzed the niche
+- each category has its own psychology
+- each book has a unique blueprint

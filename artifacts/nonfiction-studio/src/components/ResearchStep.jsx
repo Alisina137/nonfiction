@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import NicheManagerModal from "@/components/NicheManagerModal";
 import {
   buildResearchFormProfile,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/niche/registry";
 import { getDeepNiches, detectAudience, inferAudienceProfile } from "@/lib/niche/deepNiches";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
+import { archCacheKey, getArchCache, setArchCache } from "@/lib/ai/architecturePreviewCache";
 
 function FieldLabel({ children, hint }) {
   return (
@@ -32,6 +33,14 @@ export default function ResearchStep({ research, setResearch, errors }) {
   const [suggestedTitles, setSuggestedTitles] = useState([]);
   const [titlesLoading, setTitlesLoading] = useState(false);
   const [titlesError, setTitlesError] = useState("");
+
+  // Dynamic Architecture Preview state (AI-generated, niche-aware).
+  const [archDynamic, setArchDynamic] = useState(null);
+  const [archLoading, setArchLoading] = useState(false);
+  const [archError, setArchError] = useState("");
+  // Guards against stale in-flight responses overwriting current state when
+  // the niche/audience/goal signature changes mid-request.
+  const archRequestKeyRef = useRef("");
 
   useEffect(() => {
     setRegistry(loadNicheRegistry());
@@ -65,6 +74,103 @@ export default function ResearchStep({ research, setResearch, errors }) {
   const toneOptions = profile.tones?.length ? profile.tones : [];
   const audienceOptions = profile.audiences?.length ? profile.audiences : [];
   const publishingGoals = profile.publishingGoals?.length ? profile.publishingGoals : [];
+
+  // ─── Dynamic architecture preview (AI, niche-aware) ─────────────────────────
+  const archAudience = (research?.targetAudience || research?.audiencePreset || "").trim();
+  const archGoal = (research?.publishingGoal || "").trim();
+  const archTones = Array.isArray(research?.authorTones) ? research.authorTones : [];
+
+  const archKey = arch
+    ? archCacheKey({
+        mainNicheId,
+        subNicheId,
+        deepNicheLabel,
+        audience: archAudience,
+        goal: archGoal,
+        tones: archTones
+      })
+    : "";
+
+  // Hydrate from cache instantly whenever the signature changes.
+  useEffect(() => {
+    if (!archKey) {
+      setArchDynamic(null);
+      setArchError("");
+      return;
+    }
+    const cached = getArchCache(archKey);
+    setArchDynamic(cached || null);
+    setArchError("");
+  }, [archKey]);
+
+  async function generateArchitecturePreview({ force = false } = {}) {
+    if (!arch || !archKey) return;
+    if (!force) {
+      const cached = getArchCache(archKey);
+      if (cached) {
+        setArchDynamic(cached);
+        return;
+      }
+    }
+    // Mark this request as the latest. Any earlier in-flight request whose
+    // requestKey no longer matches `archRequestKeyRef.current` must NOT apply
+    // its response — otherwise stale architecture overwrites fresh state.
+    const requestKey = archKey;
+    archRequestKeyRef.current = requestKey;
+    setArchLoading(true);
+    setArchError("");
+    try {
+      const data = await aiFetch("/api/ai/architecture-preview", {
+        niche: arch.mainNicheLabel,
+        subNiche: arch.subNicheLabel,
+        deepNiche: deepNicheLabel,
+        audience: archAudience,
+        goal: archGoal,
+        tones: archTones,
+        contentDirection: arch.contentDirection || ""
+      });
+      const clean = {
+        structure: data.structure || "",
+        chapters: data.chapters || "",
+        emotionalArc: data.emotionalArc || "",
+        pacing: data.pacing || "",
+        wordBand: data.wordBand || "",
+        contentDirection: data.contentDirection || ""
+      };
+      // Always populate the cache for this specific request's signature,
+      // even if it's no longer the active one — future selections of the
+      // same combination get an instant cache hit.
+      setArchCache(requestKey, clean);
+      if (archRequestKeyRef.current === requestKey) {
+        setArchDynamic(clean);
+      }
+    } catch (err) {
+      if (archRequestKeyRef.current !== requestKey) return; // stale failure
+      if (err instanceof GenerationCanceledError) {
+        setArchError("Preview canceled — Grok approval declined.");
+      } else {
+        setArchError(err?.message || "Could not generate architecture preview.");
+      }
+    } finally {
+      if (archRequestKeyRef.current === requestKey) {
+        setArchLoading(false);
+      }
+    }
+  }
+
+  // Auto-generate (debounced) when the signature changes and is fully ready
+  // and no cached entry exists yet. Required fields: main+sub niche selected
+  // and either audience or goal provided so the result is meaningful.
+  useEffect(() => {
+    if (!arch || !archKey) return;
+    if (!archAudience && !archGoal) return;
+    if (getArchCache(archKey)) return;
+    const id = setTimeout(() => {
+      generateArchitecturePreview({ force: false });
+    }, 700);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [archKey, arch?.mainNicheLabel, arch?.subNicheLabel]);
 
   function patch(partial) {
     setResearch(typeof partial === "function" ? partial : { ...research, ...partial });
@@ -197,28 +303,60 @@ export default function ResearchStep({ research, setResearch, errors }) {
 
       {arch && (
         <aside className="mt-6 rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/90 via-white to-indigo-50/40 p-5 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wider text-sky-800">Architecture preview</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">
-            {arch.mainNicheLabel} › {arch.subNicheLabel}
-            {arch.deepNicheLabel ? (
-              <>
-                {" "}
-                ›{" "}
-                <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-sky-800">
-                  {arch.deepNicheLabel}
-                </span>
-              </>
-            ) : null}
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wider text-sky-800">
+                Architecture preview
+                {archDynamic && (
+                  <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-emerald-800">
+                    AI-tuned
+                  </span>
+                )}
+                {archLoading && (
+                  <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-sky-800">
+                    Generating…
+                  </span>
+                )}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {arch.mainNicheLabel} › {arch.subNicheLabel}
+                {arch.deepNicheLabel ? (
+                  <>
+                    {" "}
+                    ›{" "}
+                    <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-sky-800">
+                      {arch.deepNicheLabel}
+                    </span>
+                  </>
+                ) : null}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => generateArchitecturePreview({ force: true })}
+              disabled={archLoading || (!archAudience && !archGoal)}
+              title={
+                !archAudience && !archGoal
+                  ? "Pick a publishing goal or describe the target audience to enable AI tuning."
+                  : "Regenerate with OpenAI"
+              }
+              className="shrink-0 whitespace-nowrap rounded-full border border-sky-200 bg-white px-3 py-1 text-[11px] font-semibold text-sky-800 shadow-sm hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {archLoading ? "…" : archDynamic ? "Regenerate" : "Generate"}
+            </button>
+          </div>
           {arch.deepNicheLabel && (
             <p className="mt-0.5 text-[11px] uppercase tracking-wider text-sky-700/80">
               Deep niche focus active — architecture sharpened for this audience
             </p>
           )}
-          {profile.recommendations.contentDirection && (
+          {archError && (
+            <p className="mt-2 text-[11px] font-medium text-rose-700">{archError}</p>
+          )}
+          {(archDynamic?.contentDirection || profile.recommendations.contentDirection) && (
             <p className="mt-3 rounded-lg border border-slate-200 bg-white/70 p-3 text-xs italic leading-relaxed text-slate-600">
               <span className="not-italic font-semibold uppercase tracking-wider text-slate-500">Content direction · </span>
-              {profile.recommendations.contentDirection}
+              {archDynamic?.contentDirection || profile.recommendations.contentDirection}
             </p>
           )}
           {(() => {
@@ -256,27 +394,34 @@ export default function ResearchStep({ research, setResearch, errors }) {
           <dl className="mt-4 grid gap-3 text-xs text-slate-700 sm:grid-cols-2">
             <div>
               <dt className="font-semibold text-slate-500">Structure</dt>
-              <dd>{profile.recommendations.structureLabel}</dd>
+              <dd>{archDynamic?.structure || profile.recommendations.structureLabel}</dd>
             </div>
             <div>
               <dt className="font-semibold text-slate-500">Pacing</dt>
-              <dd>{profile.recommendations.pacingType}</dd>
+              <dd>{archDynamic?.pacing || profile.recommendations.pacingType}</dd>
             </div>
             <div>
               <dt className="font-semibold text-slate-500">Chapters</dt>
               <dd>
-                {profile.recommendations.chapterCount} recommended ({profile.recommendations.chapterRange})
+                {archDynamic?.chapters
+                  ? `${archDynamic.chapters} recommended`
+                  : `${profile.recommendations.chapterCount} recommended (${profile.recommendations.chapterRange})`}
               </dd>
             </div>
             <div>
               <dt className="font-semibold text-slate-500">Word band</dt>
-              <dd>{profile.recommendations.wordCountBand}</dd>
+              <dd>{archDynamic?.wordBand || profile.recommendations.wordCountBand}</dd>
             </div>
             <div className="sm:col-span-2">
               <dt className="font-semibold text-slate-500">Emotional arc</dt>
-              <dd>{profile.recommendations.emotionalArc}</dd>
+              <dd>{archDynamic?.emotionalArc || profile.recommendations.emotionalArc}</dd>
             </div>
           </dl>
+          {!archDynamic && !archLoading && (!archAudience && !archGoal) && (
+            <p className="mt-3 rounded-lg border border-dashed border-slate-300 bg-white/60 px-3 py-2 text-[11px] text-slate-500">
+              Select a publishing goal or describe your target audience to unlock an AI-tuned preview for this niche.
+            </p>
+          )}
           {profile.recommendations.chapterFlow?.length > 0 && (
             <ol className="mt-4 list-decimal space-y-1 pl-5 text-xs text-slate-600">
               {profile.recommendations.chapterFlow.slice(0, 6).map((beat) => (

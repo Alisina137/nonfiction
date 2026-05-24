@@ -437,3 +437,60 @@ Return JSON: {"title":"...","explanation":"...","example":"...","framework":"...
 export function improvementPrompt({ action, currentText, tone }: any) {
   return `Improve the writing with action "${action}" (tone: "${tone}"). Return only the refined text.\n${currentText}`;
 }
+
+export function architecturePreviewPrompt({
+  niche,
+  subNiche,
+  deepNiche,
+  audience,
+  goal,
+  tones,
+  contentDirection
+}: any) {
+  const toneLine = Array.isArray(tones) && tones.length ? tones.join(", ") : "unspecified";
+  return `You are an Amazon KDP nonfiction publishing strategist.
+
+Analyze this book concept and generate an ideal book architecture.
+
+NICHE: ${niche || "unspecified"}
+SUB NICHE: ${subNiche || "unspecified"}
+DEEP NICHE FOCUS: ${deepNiche || "unspecified"}
+TARGET AUDIENCE: ${audience || "unspecified"}
+BOOK GOAL: ${goal || "unspecified"}
+TONE: ${toneLine}
+CONTENT DIRECTION (existing): ${contentDirection || "unspecified"}
+
+Generate the ideal blueprint for THIS specific combination.
+
+Requirements:
+- adapt to the reader's psychology and emotional state in this niche
+- match patterns of bestselling books in this exact sub-niche
+- avoid generic, one-size-fits-all outputs — every field must feel niche-specific
+- be commercially realistic (real Amazon KDP ranges, not academic)
+- the emotional arc must be 4–5 stages joined with " → " using the reader's
+  actual psychological journey for this niche (e.g. for self-esteem:
+  "insecurity → awareness → healing → confidence → empowerment")
+- structure must name a real publishing approach (framework-based,
+  step-by-step, narrative arc, psychological transformation, tactical
+  playbook, workbook system, habit-building, mindset rewiring,
+  challenge-based, case-study driven, philosophical, devotional, etc.)
+- chapters must be a realistic range like "8–12", "10–14", "15–20"
+- pacing must be a real pacing label (fast actionable, progressive build,
+  emotionally immersive, tactical acceleration, slow reflective,
+  workbook pacing, philosophical reflection, etc.)
+- wordBand must be a realistic Amazon KDP range like "15k–25k",
+  "20k–35k", "35k–50k", "45k–65k"
+- contentDirection is one tight sentence describing what this book's
+  reading experience should feel like
+
+Output ONLY valid JSON with this exact shape:
+
+{
+  "structure": "",
+  "chapters": "",
+  "emotionalArc": "",
+  "pacing": "",
+  "wordBand": "",
+  "contentDirection": ""
+}`;
+}
