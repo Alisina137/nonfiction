@@ -9,6 +9,7 @@ import {
   resolveUsp
 } from "@/lib/projectMeta";
 import { enumerateWriteBlocks } from "@/lib/writeBlocks";
+import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 
 function FieldLabel({ children, hint }) {
   return (
@@ -72,24 +73,18 @@ export default function DescriptionStep({
     setBusy(true);
     setStatus("");
     try {
-      const res = await fetch("/api/ai/description", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          enriched: true,
-          idea: resolveIdea(fullProject),
-          title: resolveBookTitle(fullProject),
-          audience: resolveAudience(fullProject),
-          tone: resolveTone(fullProject),
-          genre: resolveGenre(fullProject),
-          usp: resolveUsp(fullProject),
-          authorName: resolveAuthorName(fullProject),
-          focusTags: fullProject?.proposedBook?.focusTags || [],
-          shortSample: manuscriptSample(fullProject)
-        })
+      const data = await aiFetch("/api/ai/description", {
+        enriched: true,
+        idea: resolveIdea(fullProject),
+        title: resolveBookTitle(fullProject),
+        audience: resolveAudience(fullProject),
+        tone: resolveTone(fullProject),
+        genre: resolveGenre(fullProject),
+        usp: resolveUsp(fullProject),
+        authorName: resolveAuthorName(fullProject),
+        focusTags: fullProject?.proposedBook?.focusTags || [],
+        shortSample: manuscriptSample(fullProject)
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
       if (data.description) setDescription(data.description);
       patchMarketing({
         shortHook: data.shortHook || marketing.shortHook || "",

@@ -8,6 +8,7 @@ import {
   saveNicheRegistry
 } from "@/lib/niche/registry";
 import { getDeepNiches, detectAudience, inferAudienceProfile } from "@/lib/niche/deepNiches";
+import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 
 function FieldLabel({ children, hint }) {
   return (
@@ -109,7 +110,7 @@ export default function ResearchStep({ research, setResearch, errors }) {
     if (!deepNicheLabel || titlesLoading) return;
     setTitlesLoading(true);
     setTitlesError("");
-    setSuggestedTitles([]);
+    const previousTitles = suggestedTitles;
     try {
       const intel = detectAudience(deepNicheLabel, subSelected?.label || "");
       const profileInfer = inferAudienceProfile(deepNicheLabel, subSelected?.label || "");
@@ -119,24 +120,24 @@ export default function ResearchStep({ research, setResearch, errors }) {
         targetAudience: research.targetAudience?.trim() || intel.audience,
         bookTopic: research.bookTopic?.trim() || deepNicheLabel
       };
-      const resp = await fetch("/api/book/contextual-titles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          research: enrichedResearch,
-          analysis: { books: [] },
-          audienceCandidates: profileInfer.audiences,
-          painPoints: profileInfer.painPoints,
-          transformations: profileInfer.transformations
-        })
+      const data = await aiFetch("/api/book/contextual-titles", {
+        research: enrichedResearch,
+        analysis: { books: [] },
+        audienceCandidates: profileInfer.audiences,
+        painPoints: profileInfer.painPoints,
+        transformations: profileInfer.transformations
       });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data?.error || `Title generation failed (${resp.status})`);
       const titles = Array.isArray(data.titles) ? data.titles.slice(0, 3) : [];
       if (!titles.length) throw new Error("No titles returned. Try again.");
       setSuggestedTitles(titles);
     } catch (err) {
-      setTitlesError(err?.message || "Failed to suggest titles.");
+      // Preserve any previously generated titles when the user cancels Grok approval.
+      setSuggestedTitles(previousTitles);
+      if (err instanceof GenerationCanceledError) {
+        setTitlesError("Generation canceled — Grok approval declined.");
+      } else {
+        setTitlesError(err?.message || "Failed to suggest titles.");
+      }
     } finally {
       setTitlesLoading(false);
     }

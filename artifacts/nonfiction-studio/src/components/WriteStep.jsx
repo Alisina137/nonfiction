@@ -6,6 +6,7 @@ import {
   enumerateWriteBlocks,
   lessonToProse
 } from "@/lib/writeBlocks";
+import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 
 const IMPROVE_ACTIONS = [
   { id: "sharpen", label: "Sharpen clarity" },
@@ -95,19 +96,13 @@ export default function WriteStep({
     setBusyId(block.id);
     setStatus("");
     try {
-      const res = await fetch("/api/ai/lesson", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subsection: block.subsection,
-          chapterContext: block.chapterContext,
-          previousConcepts: collectPreviousConcepts(blocks, lessonsSnapshot, index),
-          audience: writingAudience(fullProject),
-          tone: writingTone(fullProject)
-        })
+      const data = await aiFetch("/api/ai/lesson", {
+        subsection: block.subsection,
+        chapterContext: block.chapterContext,
+        previousConcepts: collectPreviousConcepts(blocks, lessonsSnapshot, index),
+        audience: writingAudience(fullProject),
+        tone: writingTone(fullProject)
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
       const lesson = data.lesson || data;
       const prose = lessonToProse(lesson);
       const entry = {
@@ -119,7 +114,8 @@ export default function WriteStep({
       setStatus(`Drafted “${block.label}”.`);
       return { ...lessonsSnapshot, [block.id]: { ...entry, updatedAt: new Date().toISOString() } };
     } catch (e) {
-      setStatus(e.message || "Could not generate this section.");
+      if (e instanceof GenerationCanceledError) setStatus("Generation canceled — Grok approval declined.");
+      else setStatus(e.message || "Could not generate this section.");
       return lessonsSnapshot;
     } finally {
       setBusyId(null);
@@ -131,21 +127,16 @@ export default function WriteStep({
     setBusyId(activeBlock.id);
     setStatus("");
     try {
-      const res = await fetch("/api/ai/improve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          currentText: activeProse,
-          tone: writingTone(fullProject)
-        })
+      const data = await aiFetch("/api/ai/improve", {
+        action,
+        currentText: activeProse,
+        tone: writingTone(fullProject)
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Improvement failed");
       setProse(activeBlock.id, data.text || "");
       setStatus("Applied AI refinement.");
     } catch (e) {
-      setStatus(e.message || "Could not refine text.");
+      if (e instanceof GenerationCanceledError) setStatus("Refinement canceled — Grok approval declined.");
+      else setStatus(e.message || "Could not refine text.");
     } finally {
       setBusyId(null);
     }

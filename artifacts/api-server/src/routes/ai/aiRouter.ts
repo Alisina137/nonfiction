@@ -1,13 +1,51 @@
-// Multi-provider AI router: Gemini → Groq → HuggingFace
+// Multi-provider AI router with permission-gated fallback chain.
+//
+//   Long-form (generateContent):   OpenAI → Claude (auto) → Grok (user-approved)
+//   Short-form (generateContentFast): Gemini → OpenAI → Claude (auto) → Grok (user-approved)
+//
+// "Short-form" is reserved for titles, subtitles, hooks, outlines, sections,
+// and subsections per product spec.
 
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_MODEL = "gpt-4o-mini";
 
-const HF_URL =
-  "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_MODEL = "claude-3-5-sonnet-latest";
+const ANTHROPIC_VERSION = "2023-06-01";
+
+const XAI_URL = "https://api.x.ai/v1/chat/completions";
+const XAI_MODEL = "grok-2-latest";
+
+export type ProviderId = "openai" | "anthropic" | "xai" | "gemini";
+
+export interface GenOptions {
+  /** User explicitly approved using Grok as a final fallback. */
+  allowGrok?: boolean;
+  /** Notified each time the chain advances past a provider. */
+  onFallback?: (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
+  /** Notified with the provider that actually produced the result. */
+  onSuccess?: (provider: ProviderId) => void;
+}
+
+export class GrokApprovalRequiredError extends Error {
+  needsApproval = "grok" as const;
+  attempted: Array<{ provider: ProviderId; error: string }>;
+  constructor(attempted: Array<{ provider: ProviderId; error: string }>) {
+    super("Grok approval required: OpenAI and Claude both unavailable.");
+    this.name = "GrokApprovalRequiredError";
+    this.attempted = attempted;
+  }
+}
+
+/** Heuristic: detect rate-limit / daily-quota / unavailability errors. */
+export function isLimitOrUnavailable(msg: string): boolean {
+  return /rate.?limit|quota|daily.?limit|exceeded|insufficient|429|503|overload|unavailable|temporarily/i.test(
+    msg || ""
+  );
+}
 
 // ─── Providers ────────────────────────────────────────────────────────────────
 
@@ -27,99 +65,142 @@ async function tryGemini(prompt: string, system?: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } })
   });
-
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data?.error?.message || `Gemini failed with status ${res.status}`);
-  }
-
+  if (!res.ok) throw new Error(data?.error?.message || `Gemini failed with status ${res.status}`);
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Gemini returned empty response");
   return text;
 }
 
-async function tryGroq(prompt: string, system?: string): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("GROQ_API_KEY not configured");
-
+async function tryOpenAI(prompt: string, system?: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
   const messages: any[] = [];
   if (system) messages.push({ role: "system", content: system });
   messages.push({ role: "user", content: prompt });
 
-  const res = await fetch(GROQ_URL, {
+  const res = await fetch(OPENAI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: GROQ_MODEL, messages, temperature: 0.7, max_tokens: 8192 })
+    body: JSON.stringify({ model: OPENAI_MODEL, messages, temperature: 0.7, max_tokens: 4096 })
   });
-
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data?.error?.message || `Groq failed with status ${res.status}`);
-  }
-
+  if (!res.ok) throw new Error(data?.error?.message || `OpenAI failed with status ${res.status}`);
   const text = data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Groq returned empty response");
+  if (!text) throw new Error("OpenAI returned empty response");
   return text;
 }
 
-async function tryHuggingFace(prompt: string, system?: string): Promise<string> {
-  const apiKey = process.env.HF_API_KEY;
-  if (!apiKey) throw new Error("HF_API_KEY not configured");
+async function tryClaude(prompt: string, system?: string): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
+  const res = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": ANTHROPIC_VERSION
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 4096,
+      temperature: 0.7,
+      system: system || undefined,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error?.message || `Claude failed with status ${res.status}`);
+  const text = Array.isArray(data?.content)
+    ? data.content.map((b: any) => b?.text || "").join("")
+    : "";
+  if (!text) throw new Error("Claude returned empty response");
+  return text;
+}
 
-  const fullPrompt = system ? `<s>[INST] ${system}\n\n${prompt} [/INST]` : `<s>[INST] ${prompt} [/INST]`;
+async function tryGrok(prompt: string, system?: string): Promise<string> {
+  const apiKey = process.env.XAI_API_KEY;
+  if (!apiKey) throw new Error("XAI_API_KEY not configured");
+  const messages: any[] = [];
+  if (system) messages.push({ role: "system", content: system });
+  messages.push({ role: "user", content: prompt });
 
-  const res = await fetch(HF_URL, {
+  const res = await fetch(XAI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ inputs: fullPrompt, parameters: { max_new_tokens: 4096, temperature: 0.7 } })
+    body: JSON.stringify({ model: XAI_MODEL, messages, temperature: 0.7, max_tokens: 4096 })
   });
-
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(
-      (Array.isArray(data) ? data[0]?.error : data?.error) || `HuggingFace failed with status ${res.status}`
-    );
+  if (!res.ok) throw new Error(data?.error?.message || `Grok failed with status ${res.status}`);
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("Grok returned empty response");
+  return text;
+}
+
+// ─── Chain runner ─────────────────────────────────────────────────────────────
+
+const FN_BY_PROVIDER: Record<ProviderId, (p: string, s?: string) => Promise<string>> = {
+  gemini: tryGemini,
+  openai: tryOpenAI,
+  anthropic: tryClaude,
+  xai: tryGrok
+};
+
+async function runChain(
+  prompt: string,
+  system: string | undefined,
+  chain: ProviderId[],
+  opts: GenOptions
+): Promise<{ text: string; usedProvider: ProviderId }> {
+  const attempts: Array<{ provider: ProviderId; error: string }> = [];
+  let lastFromProvider: ProviderId | null = null;
+
+  for (const provider of chain) {
+    // Gate Grok behind user approval — if not approved, surface the gate to the caller.
+    if (provider === "xai" && !opts.allowGrok) {
+      throw new GrokApprovalRequiredError(attempts);
+    }
+    try {
+      const text = await FN_BY_PROVIDER[provider](prompt, system);
+      opts.onSuccess?.(provider);
+      return { text, usedProvider: provider };
+    } catch (e: any) {
+      const msg = e?.message || String(e);
+      attempts.push({ provider, error: msg });
+      if (lastFromProvider) {
+        opts.onFallback?.({ from: lastFromProvider, to: provider, reason: msg });
+      }
+      lastFromProvider = provider;
+      // Continue to next provider regardless of error type — we always try the chain.
+    }
   }
-
-  const text = Array.isArray(data) ? data[0]?.generated_text : data?.generated_text;
-  if (!text) throw new Error("HuggingFace returned empty response");
-
-  // Strip the prompt echo that Mistral sometimes returns
-  const marker = "[/INST]";
-  const idx = text.lastIndexOf(marker);
-  return idx !== -1 ? text.slice(idx + marker.length).trim() : text.trim();
+  throw new Error(`All AI providers failed:\n${attempts.map((a) => `${a.provider}: ${a.error}`).join("\n")}`);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Long-form generation: Gemini first → Groq fallback → HuggingFace last resort
+ * Long-form generation: OpenAI → Claude → Grok (with approval).
+ * Used for lessons, descriptions, improvements, cover briefs, etc.
  */
-export async function generateContent(prompt: string, system?: string): Promise<string> {
-  const errors: string[] = [];
-  for (const fn of [tryGemini, tryGroq, tryHuggingFace]) {
-    try {
-      return await fn(prompt, system);
-    } catch (e: any) {
-      errors.push(e.message || String(e));
-    }
-  }
-  throw new Error(`All AI providers failed:\n${errors.join("\n")}`);
+export async function generateContent(
+  prompt: string,
+  system?: string,
+  opts: GenOptions = {}
+): Promise<{ text: string; usedProvider: ProviderId }> {
+  return runChain(prompt, system, ["openai", "anthropic", "xai"], opts);
 }
 
 /**
- * Fast/short generation: Groq first → Gemini fallback → HuggingFace last resort
+ * Short-form generation: Gemini → OpenAI → Claude → Grok (with approval).
+ * Used for titles, subtitles, hooks, outlines, sections, subsections.
  */
-export async function generateContentFast(prompt: string, system?: string): Promise<string> {
-  const errors: string[] = [];
-  for (const fn of [tryGroq, tryGemini, tryHuggingFace]) {
-    try {
-      return await fn(prompt, system);
-    } catch (e: any) {
-      errors.push(e.message || String(e));
-    }
-  }
-  throw new Error(`All AI providers failed:\n${errors.join("\n")}`);
+export async function generateContentFast(
+  prompt: string,
+  system?: string,
+  opts: GenOptions = {}
+): Promise<{ text: string; usedProvider: ProviderId }> {
+  return runChain(prompt, system, ["gemini", "openai", "anthropic", "xai"], opts);
 }
 
 /**
@@ -127,23 +208,17 @@ export async function generateContentFast(prompt: string, system?: string): Prom
  */
 export function extractJSON(text: string): any {
   const t = String(text || "");
-
-  // Try to find a JSON block (```json ... ``` or ``` ... ```)
   const fenceMatch = t.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     try { return JSON.parse(fenceMatch[1].trim()); } catch { /* fall through */ }
   }
-
-  // Try the first { ... } or [ ... ] block
   const objMatch = t.match(/\{[\s\S]*\}/);
   if (objMatch) {
     try { return JSON.parse(objMatch[0]); } catch { /* fall through */ }
   }
-
   const arrMatch = t.match(/\[[\s\S]*\]/);
   if (arrMatch) {
     try { return JSON.parse(arrMatch[0]); } catch { /* fall through */ }
   }
-
   throw new Error(`Could not parse JSON from AI response: ${t.slice(0, 200)}`);
 }

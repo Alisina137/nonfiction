@@ -3,6 +3,7 @@ import { BOOK_WORD_COUNT_RANGES } from "@/lib/constants";
 import { applyNicheOutlineToBookOutline } from "@/lib/niche/outlineApply";
 import { loadNicheRegistry, resolveArchitecture } from "@/lib/niche/registry";
 import { resolveBookTitle } from "@/lib/projectMeta";
+import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 
 function safeId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID)
@@ -372,18 +373,12 @@ export default function OutlineStep({
     setGenBusy(true);
     setGenStatus("");
     try {
-      const res = await fetch("/api/ai/niche-outline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          research: fullProject.research,
-          architecture: arch,
-          title: resolveBookTitle(fullProject),
-          description: fullProject.description || ""
-        })
+      const data = await aiFetch("/api/ai/niche-outline", {
+        research: fullProject.research,
+        architecture: arch,
+        title: resolveBookTitle(fullProject),
+        description: fullProject.description || ""
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Outline generation failed");
       const applied = applyNicheOutlineToBookOutline(data, arch);
       setBookOutline((prev) => {
         const base = normalizedBookOutline(prev);
@@ -391,7 +386,8 @@ export default function OutlineStep({
       });
       setGenStatus(data.architectureNotes || "Niche-native outline generated.");
     } catch (e) {
-      setGenStatus(e.message || "Could not generate outline.");
+      if (e instanceof GenerationCanceledError) setGenStatus("Outline canceled — Grok approval declined.");
+      else setGenStatus(e.message || "Could not generate outline.");
     } finally {
       setGenBusy(false);
     }
@@ -411,20 +407,20 @@ export default function OutlineStep({
             ?.sections?.find((s) => s.id === parentSectionId)?.title
         : undefined;
 
-      const res = await fetch("/api/ai/regenerate-title", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      let data;
+      try {
+        data = await aiFetch("/api/ai/regenerate-title", {
           level,
           currentTitle,
           parentChapter,
           parentSection,
           architecture: arch,
           research: fullProject?.research,
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Regeneration failed");
+        });
+      } catch (err) {
+        if (err instanceof GenerationCanceledError) return;
+        throw err;
+      }
       const newTitle = data.title || currentTitle;
 
       if (level === "chapter") {

@@ -7,6 +7,7 @@ import {
   resolveTone,
   resolveUsp
 } from "@/lib/projectMeta";
+import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -618,24 +619,18 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, de
     setBriefBusy(true);
     setStatus("");
     try {
-      const res = await fetch("/api/ai/cover", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          subtitle: cover.subtitle || "",
-          audience: resolveAudience(fullProject),
-          tone: resolveTone(fullProject),
-          genre: resolveGenre(fullProject),
-          usp: resolveUsp(fullProject),
-          authorName: resolveAuthorName(fullProject),
-          description: description || "",
-          genrePreset: cover.genrePreset || "",
-          styleMode: cover.styleMode || "typographic"
-        })
+      const data = await aiFetch("/api/ai/cover", {
+        title,
+        subtitle: cover.subtitle || "",
+        audience: resolveAudience(fullProject),
+        tone: resolveTone(fullProject),
+        genre: resolveGenre(fullProject),
+        usp: resolveUsp(fullProject),
+        authorName: resolveAuthorName(fullProject),
+        description: description || "",
+        genrePreset: cover.genrePreset || "",
+        styleMode: cover.styleMode || "typographic"
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
       patch({
         subtitle: data.subtitle || cover.subtitle,
         tagline: data.tagline || cover.tagline,
@@ -667,22 +662,17 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, de
     setCriticBusy(true);
     setStatus("");
     try {
-      const res = await fetch("/api/ai/cover-critic", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          ...cover,
-          fontPairingLabel: fp?.label || "default",
-          genre: resolveGenre(fullProject)
-        })
+      const data = await aiFetch("/api/ai/cover-critic", {
+        title,
+        ...cover,
+        fontPairingLabel: fp?.label || "default",
+        genre: resolveGenre(fullProject)
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Critic failed");
       patch({ critic: data });
       setStatus("AI cover critique complete.");
     } catch (e) {
-      setStatus(e.message || "Critique failed.");
+      if (e instanceof GenerationCanceledError) setStatus("Critique canceled — Grok approval declined.");
+      else setStatus(e.message || "Critique failed.");
     } finally {
       setCriticBusy(false);
     }
@@ -692,26 +682,21 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, de
     setVariantsBusy(true);
     setStatus("");
     try {
-      const res = await fetch("/api/ai/cover-variants", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          subtitle: cover.subtitle,
-          audience: resolveAudience(fullProject),
-          genre: resolveGenre(fullProject),
-          tone: resolveTone(fullProject),
-          usp: resolveUsp(fullProject)
-        })
+      const data = await aiFetch("/api/ai/cover-variants", {
+        title,
+        subtitle: cover.subtitle,
+        audience: resolveAudience(fullProject),
+        genre: resolveGenre(fullProject),
+        tone: resolveTone(fullProject),
+        usp: resolveUsp(fullProject)
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
       const newVariants = Array.isArray(data.variants) ? data.variants : [];
       patch({ variants: newVariants, activeVariant: 0 });
       if (newVariants[0]) applyVariant(0);
       setStatus(`${newVariants.length} cover concepts generated — select A, B, or C below.`);
     } catch (e) {
-      setStatus(e.message || "Variants failed.");
+      if (e instanceof GenerationCanceledError) setStatus("Variants canceled — Grok approval declined.");
+      else setStatus(e.message || "Variants failed.");
     } finally {
       setVariantsBusy(false);
     }

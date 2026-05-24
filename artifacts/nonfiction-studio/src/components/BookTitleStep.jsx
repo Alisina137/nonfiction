@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 
 export default function BookTitleStep({ research, analysis, bookTitle, errors, setBookTitleBlock }) {
   const [loading, setLoading] = useState(false);
@@ -14,13 +15,7 @@ export default function BookTitleStep({ research, analysis, bookTitle, errors, s
     setLoading(true);
     setApiError("");
     try {
-      const res = await fetch("/api/book/contextual-titles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ research, analysis })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not generate titles.");
+      const data = await aiFetch("/api/book/contextual-titles", { research, analysis });
       const titles = Array.isArray(data.titles) ? data.titles.filter(Boolean) : [];
       setBookTitleBlock({
         suggestions: titles,
@@ -29,7 +24,11 @@ export default function BookTitleStep({ research, analysis, bookTitle, errors, s
       });
       if (!titles.length) setApiError("No titles returned. Try again or type your own below.");
     } catch (e) {
-      setApiError(e.message || "Generation failed.");
+      if (e instanceof GenerationCanceledError) {
+        setApiError("Generation canceled — Grok approval declined.");
+      } else {
+        setApiError(e.message || "Generation failed.");
+      }
     } finally {
       setLoading(false);
     }

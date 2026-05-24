@@ -18,6 +18,8 @@ import { effectiveBookTitle } from "@/lib/proposedBook";
 import ResearchStep from "@/components/ResearchStep";
 import { loadNicheRegistry, resolveArchitecture } from "@/lib/niche/registry";
 import { architectureDefaultsForDetails } from "@/lib/niche/outlineApply";
+import GrokApprovalModal from "@/components/GrokApprovalModal";
+import ProviderStatusBadge from "@/components/ProviderStatusBadge";
 
 const STEP_COUNT = BOOK_BUILDER_STEPS.length;
 const PROPOSED_BOOK_STEP = BOOK_BUILDER_STEPS.findIndex((s) => s.id === "proposedBook");
@@ -911,15 +913,19 @@ export default function Dashboard() {
 
   return (
     <div className="book-builder flex h-screen min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-900 [background-image:radial-gradient(ellipse_125%_80%_at_50%_-28%,rgba(14,165,233,0.11),transparent_55%),radial-gradient(ellipse_80%_50%_at_100%_0%,rgba(99,102,241,0.05),transparent_45%)]">
+      <GrokApprovalModal />
       <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-md md:gap-8 md:px-8 md:py-3.5 supports-[backdrop-filter]:bg-white/70">
-        <button
-          type="button"
-          onClick={handleBack}
-          disabled={currentStep === 0}
-          className="shrink-0 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50/80 disabled:text-slate-400 disabled:opacity-55 disabled:shadow-none"
-        >
-          Back
-        </button>
+        <div className="flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={handleBack}
+            disabled={currentStep === 0}
+            className="shrink-0 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50/80 disabled:text-slate-400 disabled:opacity-55 disabled:shadow-none"
+          >
+            Back
+          </button>
+          <ProviderStatusBadge />
+        </div>
         <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-2 text-center">
           <h1 className="font-serif text-[1.05rem] font-bold leading-snug tracking-tight text-slate-900 md:text-xl">
             {stepMeta.label}
