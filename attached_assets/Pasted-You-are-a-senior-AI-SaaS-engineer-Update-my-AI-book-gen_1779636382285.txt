@@ -1,0 +1,117 @@
+You are a senior AI SaaS engineer.
+
+Update my AI book-generation app to use OpenRouter as the MAIN AI provider for all generation tasks.
+
+Requirements:
+
+1. Replace current broken provider flow with OpenRouter integration.
+
+2. Use environment variable:
+   OPENROUTER_API_KEY
+
+3. Base URL:
+   https://openrouter.ai/api/v1/chat/completions
+
+4. Create a centralized AI service file.
+
+5. Add support for these models:
+
+* openai/gpt-4.1-mini
+* anthropic/claude-3.7-sonnet
+* google/gemini-2.5-flash
+* x-ai/grok-3-mini-beta
+
+6. Add automatic fallback system:
+
+* Try preferred model first
+* If failed:
+
+  * timeout
+  * rate limit
+  * quota exceeded
+  * invalid response
+    Then automatically switch to next provider.
+
+Fallback order:
+
+1. GPT-4.1-mini
+
+2. Claude Sonnet
+
+3. Gemini Flash
+
+4. Grok Mini
+
+5. Add GROK CHECKPOINT logic:
+   Before using Grok:
+
+* verify model availability
+* verify API key exists
+* verify response status is 200
+* if Grok fails:
+
+  * disable Grok temporarily
+  * log error
+  * continue with next provider
+* never crash app because of Grok
+
+8. Add detailed error logging:
+
+* provider name
+* status code
+* error message
+* generation time
+* retry count
+
+9. Add retry system:
+
+* max retries: 2
+* exponential backoff
+
+10. Add clean async function:
+
+generateAIContent(prompt, options)
+
+Options:
+
+* model
+* temperature
+* maxTokens
+* fallbackEnabled
+
+11. Optimize for long-form KDP generation:
+
+* chunk large generations
+* preserve context memory
+* avoid token overflow
+* stable formatting
+
+12. Add title-generation mode optimized for:
+
+* emotional hooks
+* audience targeting
+* bestseller-style subtitles
+* Amazon KDP formatting
+
+13. IMPORTANT:
+    Never stop the whole application if one provider fails.
+    Always continue with fallback providers.
+
+14. Add console logs like:
+    [AI] Trying GPT-4.1-mini...
+    [AI] GPT failed, switching to Claude...
+    [AI] Grok checkpoint failed, skipping...
+    [AI] Generation successful.
+
+15. Refactor code cleanly and professionally.
+    Use modular architecture.
+    Avoid duplicated API logic.
+
+16. Add comments explaining:
+
+* fallback flow
+* Grok checkpoint system
+* OpenRouter request structure
+* error handling
+
+17. Make the system production-ready for Replit deployment.
