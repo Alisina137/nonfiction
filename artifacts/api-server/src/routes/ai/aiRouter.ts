@@ -17,7 +17,7 @@ const ANTHROPIC_MODEL = "claude-3-5-sonnet-latest";
 const ANTHROPIC_VERSION = "2023-06-01";
 
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
-const XAI_MODEL = "grok-2-latest";
+const XAI_MODEL = process.env.XAI_MODEL || "grok-3-mini";
 
 export type ProviderId = "openai" | "anthropic" | "xai" | "gemini";
 
@@ -125,15 +125,65 @@ async function tryGrok(prompt: string, system?: string): Promise<string> {
   if (system) messages.push({ role: "system", content: system });
   messages.push({ role: "user", content: prompt });
 
+  const body = {
+    model: XAI_MODEL,
+    messages,
+    temperature: 0.7,
+    max_tokens: 4096,
+    stream: false
+  };
+
   const res = await fetch(XAI_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: XAI_MODEL, messages, temperature: 0.7, max_tokens: 4096 })
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error?.message || `Grok failed with status ${res.status}`);
+
+  // Read body as text first so we can log the raw error response even when
+  // it's not valid JSON (xAI sometimes returns plain text on 4xx/5xx).
+  const rawText = await res.text();
+  let data: any = {};
+  try {
+    data = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    data = { _raw: rawText };
+  }
+
+  if (!res.ok) {
+    const detail =
+      data?.error?.message ||
+      data?.error ||
+      data?._raw ||
+      `status ${res.status}`;
+    // Detailed diagnostic logging — surfaces in api-server logs so the exact
+    // status, model, endpoint, and response body are visible.
+    console.error("[xai] request failed", {
+      endpoint: XAI_URL,
+      model: XAI_MODEL,
+      status: res.status,
+      statusText: res.statusText,
+      responseBody: typeof detail === "string" ? detail.slice(0, 1000) : detail
+    });
+    throw new Error(
+      `Grok (${XAI_MODEL}) failed with status ${res.status}: ${
+        typeof detail === "string" ? detail : JSON.stringify(detail)
+      }`
+    );
+  }
+
   const text = data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Grok returned empty response");
+  if (!text) {
+    console.error("[xai] empty response", {
+      endpoint: XAI_URL,
+      model: XAI_MODEL,
+      data
+    });
+    throw new Error(`Grok (${XAI_MODEL}) returned empty response`);
+  }
   return text;
 }
 
