@@ -80,6 +80,7 @@ Return ONLY valid JSON with this exact shape:
   "promise": "the single core book promise in one punchy sentence",
   "tone": "primary tone label that fits the title",
   "idealReader": "ideal reader avatar: age, situation, goal, pain (2-3 sentences)",
+  "bookTopic": "1–3 sentence publisher-style positioning statement that names WHO the book is for, WHAT transformation it delivers, and WHY it matters emotionally — written to sound like an Amazon bestseller concept, NOT a generic summary",
   "strategyInsights": [
     "short insight 1 (e.g. trending topic note, TikTok potential, etc.)",
     "short insight 2",

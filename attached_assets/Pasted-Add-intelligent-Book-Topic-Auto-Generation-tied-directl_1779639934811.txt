@@ -1,0 +1,128 @@
+Add intelligent "Book Topic Auto-Generation" tied directly to the book title.
+
+GOAL:
+When the user selects, generates, or edits a book title, automatically generate a highly relevant and commercially optimized Book Topic field.
+
+IMPORTANT:
+Do NOT use generic summaries.
+The generated topic should sound like a real bestselling nonfiction book concept.
+
+========================
+FEATURE REQUIREMENTS
+====================
+
+When:
+
+* a suggested title is clicked
+  OR
+* the book title input changes
+
+Automatically run:
+generateBookTopic(title, niche, subNiche, deepNiche)
+
+The AI should analyze:
+
+* emotional wording
+* target audience
+* transformation promise
+* niche psychology
+* commercial intent
+* self-help market positioning
+
+Then auto-fill the "Book Topic" field instantly.
+
+========================
+BOOK TOPIC RULES
+================
+
+The generated topic should:
+
+* explain what the book delivers
+* mention transformation
+* identify the audience
+* sound commercially attractive
+* feel like Amazon bestseller positioning
+* avoid generic descriptions
+* stay concise but powerful
+
+Length:
+1–3 sentences max.
+
+========================
+GOOD EXAMPLES
+=============
+
+Title:
+"Stoic Calm for Ambitious Men"
+
+Generated Book Topic:
+"A practical self-mastery guide helping ambitious men eliminate emotional chaos, build discipline, and develop calm, focused confidence using modern Stoic principles."
+
+---
+
+Title:
+"The Discipline Reset for Overthinkers"
+
+Generated Book Topic:
+"A tactical mindset system for overthinkers who struggle with inconsistency, distraction, and procrastination, designed to build focus, execution, and emotional control."
+
+---
+
+Title:
+"Deep Focus in a Distracted World"
+
+Generated Book Topic:
+"A modern productivity framework teaching creators, entrepreneurs, and professionals how to reclaim concentration, eliminate dopamine-driven distractions, and produce meaningful work consistently."
+
+========================
+UX REQUIREMENTS
+===============
+
+* Auto-update the Book Topic field live
+* Add smooth loading animation
+* Show:
+  “AI generating book positioning...”
+* Debounce title input changes
+* Prevent excessive API calls
+* Allow user manual edits afterward
+* Preserve manual edits unless title changes significantly
+
+========================
+TECHNICAL REQUIREMENTS
+======================
+
+Create:
+generateBookTopic()
+
+Use:
+
+* OpenRouter API
+* async/await
+* retry handling
+* fallback providers
+* cached responses
+
+AI prompt should include:
+
+* niche
+* sub niche
+* deep niche
+* audience
+* emotional positioning
+* commercial KDP optimization
+
+========================
+IMPORTANT
+=========
+
+The generated Book Topic should feel like:
+
+* a publisher-written positioning statement,
+  NOT
+* a boring AI summary.
+
+The result should immediately communicate:
+
+* WHO the book is for
+* WHAT transformation it delivers
+* WHY it matters emotionally

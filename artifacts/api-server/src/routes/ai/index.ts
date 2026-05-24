@@ -236,6 +236,7 @@ router.post("/analyze-book-concept", async (req, res) => {
       promise: str(raw.promise),
       tone: str(raw.tone),
       idealReader: str(raw.idealReader),
+      bookTopic: str(raw.bookTopic),
       strategyInsights: arr(raw.strategyInsights),
       demandScore: num(raw.demandScore, 7.5),
       competitionLevel: lvl(raw.competitionLevel),

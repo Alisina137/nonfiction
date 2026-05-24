@@ -320,6 +320,10 @@ export default function ResearchStep({ research, setResearch, errors }) {
     const filled = new Set();
     const updates = {};
 
+    if (data.bookTopic && !research?.bookTopic?.trim()) {
+      updates.bookTopic = data.bookTopic;
+      filled.add("bookTopic");
+    }
     if (data.targetAudience && !research?.targetAudience?.trim()) {
       updates.targetAudience = data.targetAudience;
       filled.add("targetAudience");
@@ -862,12 +866,31 @@ export default function ResearchStep({ research, setResearch, errors }) {
 
         {/* Book topic */}
         <section>
-          <FieldLabel hint={profile.helperText.bookTopic || "Core promise of the book."}>Book topic</FieldLabel>
-          <input
-            className="input-light mt-1.5"
-            placeholder={profile.placeholders.bookTopic || "Enter book topic"}
+          <FieldLabel
+            hint="Publisher-style positioning statement — WHO it's for, WHAT transformation it delivers, WHY it matters."
+            aiRecommended={aiFilledFields.has("bookTopic")}
+          >
+            Book topic
+            {conceptLoading && !research?.bookTopic?.trim() && (
+              <span className="ml-1.5 rounded-full bg-sky-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-700 animate-pulse">
+                AI generating…
+              </span>
+            )}
+          </FieldLabel>
+          <textarea
+            className="input-light mt-1.5 min-h-[88px] resize-y transition-all"
+            placeholder={
+              conceptLoading && !research?.bookTopic?.trim()
+                ? "AI generating book positioning…"
+                : conceptAnalysis?.bookTopic
+                ? `AI: "${conceptAnalysis.bookTopic}"`
+                : (profile.placeholders.bookTopic || "e.g. A practical system helping ambitious men build discipline and emotional control using Stoic principles.")
+            }
             value={research.bookTopic || ""}
-            onChange={(e) => patch({ bookTopic: e.target.value })}
+            onChange={(e) => {
+              patch({ bookTopic: e.target.value });
+              setAiFilledFields((prev) => { const n = new Set(prev); n.delete("bookTopic"); return n; });
+            }}
           />
           {errors.bookTopic && <p className="mt-1 text-xs text-red-600">{errors.bookTopic}</p>}
         </section>
