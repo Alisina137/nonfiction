@@ -105,6 +105,59 @@ function toRoman(n: number): string {
   return r;
 }
 
+// ─── Intro generators ─────────────────────────────────────────────────────────
+// Template-based — fast, no AI credits needed, never repetitive across chapters.
+
+const CH_INTRO_OPENERS = [
+  (t: string) => `This chapter examines ${t}.`,
+  (t: string) => `In the pages that follow, we explore ${t}.`,
+  (t: string) => `Throughout this chapter, we investigate ${t}.`,
+  (t: string) => `The focus of this chapter is ${t}.`,
+  (t: string) => `Here we turn our attention to ${t}.`,
+];
+
+const CH_INTRO_CONNECTORS = [
+  (secs: string[]) => ` You will discover how ${secs[0]}, ${secs[1]}, and ${secs[2]} connect to form a complete and practical framework.`,
+  (secs: string[]) => ` Drawing from ${secs[0]}, ${secs[1]}, and ${secs[2]}, this chapter builds a layered understanding of the subject.`,
+  (secs: string[]) => ` We move through ${secs[0]}, ${secs[1]}, and ${secs[2]}, each concept strengthening the next.`,
+  (secs: string[]) => ` The journey covers ${secs[0]}, ${secs[1]}, and ${secs[2]} — a progression designed to build both knowledge and confidence.`,
+  (secs: string[]) => ` Together, ${secs[0]}, ${secs[1]}, and ${secs[2]} reveal the full picture of what this chapter has to offer.`,
+];
+
+function buildChapterIntro(chTitle: string, sectionTitles: string[]): string {
+  const clean = (s: string) =>
+    s.toLowerCase().replace(/^\d+\.\d+(\.\d+)?\s+/, "").trim();
+  const secNames = sectionTitles.map(clean).filter(Boolean);
+  const idx = (chTitle.charCodeAt(0) + chTitle.length) % CH_INTRO_OPENERS.length;
+  let intro = CH_INTRO_OPENERS[idx](chTitle.toLowerCase());
+  if (secNames.length >= 3) {
+    const connIdx = (chTitle.length + chTitle.charCodeAt(1 % chTitle.length)) % CH_INTRO_CONNECTORS.length;
+    intro += CH_INTRO_CONNECTORS[connIdx](secNames);
+  } else if (secNames.length === 2) {
+    intro += ` We examine ${secNames[0]} and ${secNames[1]}, building the foundation for everything that follows.`;
+  } else if (secNames.length === 1) {
+    intro += ` The core focus is ${secNames[0]}, explored through both theory and real-world application.`;
+  } else {
+    intro += ` Each concept is examined in depth, with a focus on practical understanding and real-world application.`;
+  }
+  return intro;
+}
+
+const SEC_INTRO_TEMPLATES: Array<(sec: string, ch: string) => string> = [
+  (sec, ch) => `This section focuses on ${sec}, a key dimension of ${ch}. The content that follows draws on both foundational principles and actionable insights.`,
+  (sec, ch) => `Understanding ${sec} is central to the ideas developed throughout this chapter. Here we examine the core concepts and what they mean in practice.`,
+  (sec, ch) => `${sec.charAt(0).toUpperCase() + sec.slice(1)} shapes how we approach the broader themes of ${ch}. The following pages explore both the theory and the practical application.`,
+  (sec, ch) => `Here we examine ${sec}, tracing how it connects to the larger framework of ${ch} and the chapters that surround it.`,
+  (sec, ch) => `The ideas in this section — centered on ${sec} — build directly on what came before and lay the groundwork for what follows.`,
+];
+
+function buildSectionIntro(secTitle: string, chTitle: string): string {
+  const cleanSec = secTitle.toLowerCase().replace(/^\d+\.\d+(\.\d+)?\s+/, "").trim();
+  const cleanCh  = chTitle.toLowerCase().trim();
+  const idx = (secTitle.charCodeAt(0) + secTitle.length) % SEC_INTRO_TEMPLATES.length;
+  return SEC_INTRO_TEMPLATES[idx](cleanSec, cleanCh);
+}
+
 // ─── Prose block parser ───────────────────────────────────────────────────────
 
 type ProseBlock =
@@ -410,11 +463,30 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   const lessons = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
   const hier    = buildHierarchy(project?.bookOutline);
 
-  function contentStartY(): number {
-    return H - MT - P.chapterSz - 50;
+  // Draw an italic intro block (chapter or section intro); returns updated { page, y }
+  function drawIntroBlock(
+    page: PDFPage, text: string, startY: number, chNum: number, extraGapBelow = 16
+  ): { page: PDFPage; y: number } {
+    let y = startY;
+    let currentPage = page;
+    const lines = wrapTextPdf(sanitize(text), italic, BODY, textW);
+    if (y - LH * lines.length < MB + 20) {
+      arabicPageNum++;
+      currentPage = newPage();
+      const label = chNum > 0 ? `${P.chapterPrefix} ${chNum}` : "";
+      drawHeader(currentPage, label, arabicPageNum, false);
+      y = H - MT - 10;
+    }
+    for (const ln of lines) {
+      currentPage.drawText(ln, { x: ML, y, size: BODY, font: italic, color: midGray });
+      y -= LH;
+    }
+    y -= extraGapBelow;
+    return { page: currentPage, y };
   }
 
-  function drawChapterPage(chTitle: string, chNum: number): PDFPage {
+  // Returns the page and the Y position ready for the first section heading/content.
+  function drawChapterPage(chTitle: string, chNum: number, chapterIntro = ""): { page: PDFPage; y: number } {
     arabicPageNum++;
     const page = newPage();
     const label = chNum > 0 ? `${P.chapterPrefix} ${chNum}` : "";
@@ -422,8 +494,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 
     let y = H - MT - 46;
     if (chNum > 0) {
-      const prefixTxt = `${P.chapterPrefix} ${chNum}`;
-      page.drawText(prefixTxt, { x: ML, y, size: 10, font: regular, color: accent });
+      page.drawText(`${P.chapterPrefix} ${chNum}`, { x: ML, y, size: 10, font: regular, color: accent });
       y -= 16;
     }
     const tLines = wrapTextPdf(chTitle, bold, P.chapterSz, textW);
@@ -433,7 +504,14 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
     }
     y -= 6;
     page.drawRectangle({ x: ML, y, width: 48, height: 2, color: accent });
-    return page;
+    y -= 22;
+
+    // Chapter introduction — italic, separated from the first section by extra whitespace
+    if (chapterIntro) {
+      const result = drawIntroBlock(page, chapterIntro, y, chNum, 24);
+      return result;
+    }
+    return { page, y };
   }
 
   function drawProseBlocks(
@@ -497,9 +575,9 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   if (hier.introduction) {
     const prose = String(lessons[hier.introduction.id]?.prose || "").trim();
     if (prose) {
-      const page = drawChapterPage(sanitize(hier.introduction.title), 0);
+      const { page, y } = drawChapterPage(sanitize(hier.introduction.title), 0);
       tocEntries.push({ label: sanitize(hier.introduction.title), displayNum: String(arabicPageNum), level: 0, pdfPageRef: page });
-      drawProseBlocks(page, parseProseBlocks(prose), contentStartY(), 0);
+      drawProseBlocks(page, parseProseBlocks(prose), y, 0);
     }
   }
 
@@ -508,6 +586,9 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
     let chPageStarted = false;
     let currentChPage: PDFPage | null = null;
     let chBodyY = 0;
+
+    // Pre-build chapter intro (uses chapter title + all section titles)
+    const chapterIntroText = buildChapterIntro(ch.title, ch.sections.map(s => s.title));
 
     for (const sec of ch.sections) {
       const secLabel = `${ch.chNum}.${sec.secNum}`;
@@ -518,13 +599,13 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 
         if (!chPageStarted) {
           chPageStarted = true;
-          currentChPage = drawChapterPage(sanitize(ch.title), ch.chNum);
-          // TOC chapter entry: "Chapter N: Title"
+          const chResult = drawChapterPage(sanitize(ch.title), ch.chNum, chapterIntroText);
+          currentChPage = chResult.page;
+          chBodyY = chResult.y;
           tocEntries.push({
             label: `${P.chapterPrefix} ${ch.chNum}: ${sanitize(ch.title)}`,
             displayNum: String(arabicPageNum), level: 0, pdfPageRef: currentChPage
           });
-          chBodyY = contentStartY();
         }
 
         if (chBodyY < MB + 80) {
@@ -533,7 +614,8 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
           drawHeader(currentChPage, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
           chBodyY = H - MT - 10;
         }
-        // TOC section entry
+
+        // Section heading
         tocEntries.push({
           label: `${secLabel}  ${sanitize(sec.title)}`,
           displayNum: String(arabicPageNum), level: 1, pdfPageRef: currentChPage!
@@ -541,7 +623,13 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         currentChPage!.drawText(`${secLabel}  ${sanitize(sec.title)}`, {
           x: ML, y: chBodyY, size: P.sectionSz, font: bold, color: black
         });
-        chBodyY -= P.sectionSz + 16;
+        chBodyY -= P.sectionSz + 14;
+
+        // Section introduction (italic, before main content)
+        const secIntro = buildSectionIntro(sec.title, ch.title);
+        const introResult = drawIntroBlock(currentChPage!, secIntro, chBodyY, ch.chNum, 10);
+        currentChPage = introResult.page;
+        chBodyY = introResult.y;
 
         const result = drawProseBlocks(currentChPage!, parseProseBlocks(prose), chBodyY, ch.chNum, true);
         currentChPage = result.page;
@@ -557,12 +645,13 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 
           if (!chPageStarted) {
             chPageStarted = true;
-            currentChPage = drawChapterPage(sanitize(ch.title), ch.chNum);
+            const chResult = drawChapterPage(sanitize(ch.title), ch.chNum, chapterIntroText);
+            currentChPage = chResult.page;
+            chBodyY = chResult.y;
             tocEntries.push({
               label: `${P.chapterPrefix} ${ch.chNum}: ${sanitize(ch.title)}`,
               displayNum: String(arabicPageNum), level: 0, pdfPageRef: currentChPage
             });
-            chBodyY = contentStartY();
           }
 
           if (!secStarted) {
@@ -580,7 +669,13 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
             currentChPage!.drawText(`${secLabel}  ${sanitize(sec.title)}`, {
               x: ML, y: chBodyY, size: P.sectionSz, font: bold, color: black
             });
-            chBodyY -= P.sectionSz + 16;
+            chBodyY -= P.sectionSz + 14;
+
+            // Section introduction (shown once per section, before its subsections)
+            const secIntro = buildSectionIntro(sec.title, ch.title);
+            const introResult = drawIntroBlock(currentChPage!, secIntro, chBodyY, ch.chNum, 10);
+            currentChPage = introResult.page;
+            chBodyY = introResult.y;
           }
 
           if (chBodyY < MB + 80) {
@@ -610,9 +705,9 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   if (hier.conclusion) {
     const prose = String(lessons[hier.conclusion.id]?.prose || "").trim();
     if (prose) {
-      const page = drawChapterPage(sanitize(hier.conclusion.title), 0);
+      const { page, y } = drawChapterPage(sanitize(hier.conclusion.title), 0);
       tocEntries.push({ label: sanitize(hier.conclusion.title), displayNum: String(arabicPageNum), level: 0, pdfPageRef: page });
-      drawProseBlocks(page, parseProseBlocks(prose), contentStartY(), 0);
+      drawProseBlocks(page, parseProseBlocks(prose), y, 0);
     }
   }
 
@@ -808,6 +903,23 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     });
   }
 
+  // Italic intro paragraphs — visually distinct from body, separated by extra spacing
+  function chapterIntroPara(text: string): Paragraph {
+    return new Paragraph({
+      children: [new TextRun({ text, font: bodyFont, size: HP(P.bodySz), italics: true, color: "4A4A4A" })],
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 100, after: 340, line: LINE, lineRule: "auto" as any }
+    });
+  }
+
+  function sectionIntroPara(text: string): Paragraph {
+    return new Paragraph({
+      children: [new TextRun({ text, font: bodyFont, size: HP(P.bodySz), italics: true, color: "4A4A4A" })],
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 60, after: 220, line: LINE, lineRule: "auto" as any }
+    });
+  }
+
   function addProseBlocks(children: Paragraph[], prose: string) {
     const blocks = parseProseBlocks(prose);
     let isFirst = true;
@@ -908,6 +1020,11 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     const chH1Label = `${P.chapterPrefix} ${ch.chNum}: ${ch.title}`;
     chChildren.push(h1Para(chH1Label, { pageBreakBefore: !firstChapter }));
 
+    // Chapter introduction — italic overview paragraph after the chapter title
+    chChildren.push(chapterIntroPara(
+      buildChapterIntro(ch.title, ch.sections.map(s => s.title))
+    ));
+
     for (const sec of ch.sections) {
       const secLabel = `${ch.chNum}.${sec.secNum}\u2003${sec.title}`;
 
@@ -916,6 +1033,8 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
         if (!prose) continue;
         hasContent = true;
         chChildren.push(h2Para(secLabel));
+        // Section introduction — italic bridging paragraph before the main content
+        chChildren.push(sectionIntroPara(buildSectionIntro(sec.title, ch.title)));
         addProseBlocks(chChildren, prose);
 
       } else {
@@ -927,6 +1046,8 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
           hasContent = true;
           if (!secAdded) {
             chChildren.push(h2Para(secLabel));
+            // Section introduction shown once, before the first subsection
+            chChildren.push(sectionIntroPara(buildSectionIntro(sec.title, ch.title)));
             secAdded = true;
           }
           chChildren.push(h3Para(subLabel));
