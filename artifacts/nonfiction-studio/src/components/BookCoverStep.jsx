@@ -128,90 +128,185 @@ function runComplianceChecks(cover, spineInches) {
 
 // ─── SVG Export ───────────────────────────────────────────────────────────────
 
-function buildFrontCoverSVG(cover, title) {
-  const fp = FONT_PAIRINGS[cover.fontPairingIndex ?? 0];
-  const bg = cover.primaryColor || "#0c4a6e";
-  const acc = cover.accentColor || "#38bdf8";
-  const tc = cover.textColor || "#ffffff";
-  const W = 1600, H = 2560;
-  const mode = cover.styleMode || "typographic";
+/**
+ * Wrap text to fit within maxWidth SVG units for a given fontSize.
+ * Uses avg char width ≈ fontSize × 0.55 as an estimate.
+ */
+function wrapSvgText(text, fontSize, maxWidth) {
+  const maxChars = Math.max(8, Math.floor(maxWidth / (fontSize * 0.55)));
+  const words = (text || "").split(" ");
+  const lines = [];
+  let current = "";
+  for (const w of words) {
+    const test = current ? current + " " + w : w;
+    if (test.length > maxChars && current) { lines.push(current); current = w; }
+    else current = test;
+  }
+  if (current) lines.push(current);
+  return lines.slice(0, 5);
+}
 
-  let bgEl = `<rect width="${W}" height="${H}" fill="${bg}"/>`;
-  let decoration = "";
+/**
+ * Build a high-resolution SVG that faithfully matches FrontCoverInner.
+ *
+ * Key design decisions that match the React preview:
+ *  - Font sizes are the user's slider values scaled from 220 px preview → 2560 px SVG
+ *  - Text alignment (left / center / right) uses SVG text-anchor
+ *  - Layout is bottom-up (marginTop: "auto" equivalent) so title floats near
+ *    the bottom with author pinned to the very bottom — same as the flex preview
+ *  - Every style mode uses the same decorations as FrontCoverInner
+ */
+function buildFrontCoverSVG(cover, title) {
+  const W = 1600, H = 2560;
+  const fp    = FONT_PAIRINGS[cover.fontPairingIndex ?? 0];
+  const bg    = cover.primaryColor || "#0c4a6e";
+  const acc   = cover.accentColor  || "#38bdf8";
+  const tc    = cover.textColor    || "#ffffff";
+  const mode  = cover.styleMode    || "typographic";
+  const align = cover.textAlign    || "left";
+
+  // Scale factor: FullWrapPreview renders the front cover at ~220 px tall.
+  // The SVG canvas is 2560 px tall. All CSS-px sizes scale by this ratio.
+  const SCALE = H / 220; // ≈ 11.636
+
+  const tSize  = Math.round((Number(cover.titleSize)    || 22) * SCALE);
+  const sSize  = Math.round((Number(cover.subtitleSize) || 12) * SCALE);
+  const aSize  = Math.round((Number(cover.authorSize)   ||  9) * SCALE);
+  const tagSz  = Math.round((Number(cover.taglineSize)  ||  9) * SCALE);
+
+  // Padding: 8 % horizontal, 6 % vertical — matches React component
+  const PX = Math.round(W * 0.08);
+  const PY = Math.round(H * 0.06);
+
+  // SVG text anchor + x position for the chosen alignment
+  const textX  = align === "center" ? W / 2 : align === "right" ? W - PX : PX;
+  const anchor = align === "center" ? "middle" : align === "right" ? "end" : "start";
+
+  const textCol = mode === "minimal" ? bg : tc;
+  const bgFill  = mode === "minimal" ? "#f8f8f4" : bg;
+
+  // ── Background ────────────────────────────────────────────────────────────
+  let bgEl = `<rect width="${W}" height="${H}" fill="${bgFill}"/>`;
+  let decorations = "";
 
   if (mode === "cinematic") {
     bgEl = `<defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${bg}" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="1"/>
-    </linearGradient></defs><rect width="${W}" height="${H}" fill="url(#cg)"/>`;
-    decoration = `<rect x="0" y="${H * 0.6}" width="${W}" height="4" fill="${acc}" opacity="0.8"/>`;
+      <stop offset="0%" stop-color="${bg}"/>
+      <stop offset="100%" stop-color="#000"/>
+    </linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#cg)"/>`;
+    decorations = `<rect x="0" y="${Math.round(H * 0.6)}" width="${W}" height="4" fill="${acc}" opacity="0.8"/>`;
+
   } else if (mode === "illustrated") {
-    decoration = `
+    decorations = `
       <rect x="60" y="60" width="${W - 120}" height="${H - 120}" fill="none" stroke="${acc}" stroke-width="12"/>
       <rect x="100" y="100" width="${W - 200}" height="${H - 200}" fill="none" stroke="${acc}" stroke-width="4" opacity="0.5"/>
-      <circle cx="${W / 2}" cy="${H * 0.38}" r="460" fill="${acc}" opacity="0.08"/>`;
+      <circle cx="${W / 2}" cy="${Math.round(H * 0.38)}" r="460" fill="${acc}" opacity="0.08"/>`;
+
   } else if (mode === "abstract") {
     bgEl = `<defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="${bg}"/>
       <stop offset="50%" stop-color="${acc}" stop-opacity="0.4"/>
       <stop offset="100%" stop-color="${bg}"/>
-    </linearGradient></defs><rect width="${W}" height="${H}" fill="url(#ag)"/>`;
-    decoration = `<ellipse cx="${W * 0.8}" cy="${H * 0.2}" rx="700" ry="400" fill="${acc}" opacity="0.15"/>
-      <ellipse cx="${W * 0.2}" cy="${H * 0.8}" rx="500" ry="300" fill="${acc}" opacity="0.12"/>`;
-  } else if (mode === "minimal") {
-    bgEl = `<rect width="${W}" height="${H}" fill="#f8f8f6"/>`;
-    decoration = `<line x1="160" y1="${H * 0.52}" x2="${W - 160}" y2="${H * 0.52}" stroke="${bg}" stroke-width="3"/>`;
+    </linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#ag)"/>`;
+    decorations = `
+      <ellipse cx="${Math.round(W * 0.8)}" cy="${Math.round(H * 0.2)}" rx="700" ry="400" fill="${acc}" opacity="0.15"/>
+      <ellipse cx="${Math.round(W * 0.2)}" cy="${Math.round(H * 0.8)}" rx="500" ry="300" fill="${acc}" opacity="0.12"/>`;
+
   } else if (mode === "photographic") {
-    decoration = `<rect x="0" y="0" width="${W}" height="${H * 0.62}" fill="#888" opacity="0.35"/>
-      <rect x="0" y="${H * 0.62}" width="${W}" height="${H * 0.38}" fill="${bg}"/>`;
+    const imgH = Math.round(H * 0.58);
+    decorations = `
+      <rect x="0" y="0" width="${W}" height="${imgH}" fill="#666"/>
+      <text x="${W / 2}" y="${Math.round(imgH * 0.5 + SCALE * 5)}" text-anchor="middle" font-family="sans-serif" font-size="${Math.round(SCALE * 11)}" fill="#cccccc" letter-spacing="${Math.round(SCALE)}">IMAGE AREA</text>`;
+  }
+  // minimal: plain bgFill rect already set above
+
+  // ── Compute vertical layout bottom-up ────────────────────────────────────
+  // This mirrors the flex-column layout with marginTop:"auto" in FrontCoverInner.
+  // Stack (bottom → top): author → [5% gap] → subtitle → [3% gap] → title → [4% gap] → accent line
+  // Tagline is always pinned to the top (PY from top).
+
+  const titleLines = wrapSvgText(title, tSize, W - 2 * PX);
+  const subLines   = cover.subtitle ? wrapSvgText(cover.subtitle, sSize, W - 2 * PX) : [];
+  const titleLineH = Math.round(tSize * 1.08);
+  const subLineH   = Math.round(sSize * 1.35);
+
+  // Author: bottom-pinned
+  const authorY = H - PY;
+
+  let titleTopY, accentY;
+
+  if (mode === "minimal") {
+    // Vertically centered (justifyContent: "center")
+    const blockH = titleLines.length * titleLineH
+                 + (subLines.length > 0 ? subLines.length * subLineH + Math.round(H * 0.03) : 0);
+    titleTopY = Math.round((H - blockH) / 2 - blockH * 0.05);
+    accentY   = titleTopY - Math.round(H * 0.06) - Math.round(SCALE * 2);
+
+  } else if (mode === "photographic") {
+    // Title starts just below the image area (paddingTop: 60% pushes it down)
+    titleTopY = Math.round(H * 0.64);
+    accentY   = titleTopY; // no accent line for photographic
+
   } else {
-    decoration = `<rect x="120" y="${H * 0.72}" width="220" height="8" fill="${acc}" rx="4"/>`;
+    // Work backwards from author position
+    const gapAuthor = aSize + Math.round(H * 0.05);
+    const subBlock  = subLines.length > 0 ? subLines.length * subLineH + Math.round(H * 0.03) : 0;
+    titleTopY = authorY - gapAuthor - subBlock - titleLines.length * titleLineH;
+    accentY   = titleTopY - Math.round(H * 0.04) - Math.round(SCALE * 4);
   }
 
-  const titleColor = mode === "minimal" ? bg : tc;
-  const titleY = mode === "photographic" ? H * 0.68 : mode === "cinematic" ? H * 0.64 : H * 0.7;
-  const titleLines = wrapText(title, 22);
+  // ── Accent decoration (above title, matching mode) ────────────────────────
+  let accentSvg = "";
+  const accentH4 = Math.round(SCALE * 4);
+  const accentH3 = Math.round(SCALE * 3);
+  const accentH2 = Math.round(SCALE * 2);
 
-  const titleSvg = titleLines.map((line, i) => (
-    `<text x="120" y="${titleY + i * 160}" font-family="${fp?.title || "serif"}" font-size="130" font-weight="800" fill="${titleColor}">${escSvg(line)}</text>`
-  )).join("\n");
+  if (mode === "typographic" || mode === "abstract" || mode === "default") {
+    const lw = Math.round(W * 0.175); // ~28px at preview scale (280/1600)
+    const lx = align === "center" ? W / 2 - lw / 2 : align === "right" ? W - PX - lw : PX;
+    accentSvg = `<rect x="${lx}" y="${accentY}" width="${lw}" height="${accentH4}" fill="${acc}" rx="4"/>`;
+  } else if (mode === "cinematic") {
+    const lw = Math.round(W * 0.4);
+    const lx = align === "center" ? W / 2 - lw / 2 : align === "right" ? W - PX - lw : PX;
+    accentSvg = `<rect x="${lx}" y="${accentY}" width="${lw}" height="${accentH3}" fill="${acc}"/>`;
+  } else if (mode === "minimal") {
+    const lw = Math.round(W * 0.3);
+    const lx = align === "center" ? W / 2 - lw / 2 : PX;
+    accentSvg = `<rect x="${lx}" y="${accentY}" width="${lw}" height="${accentH2}" fill="${textCol}" opacity="0.5"/>`;
+  }
+  // illustrated: no accent line (matches React: mode !== "illustrated" guard)
 
-  const subtitleSvg = cover.subtitle
-    ? `<text x="120" y="${titleY + titleLines.length * 160 + 80}" font-family="${fp?.sub || "sans-serif"}" font-size="72" fill="${titleColor}" opacity="0.88">${escSvg(cover.subtitle)}</text>`
-    : "";
-
-  const taglinePx = Math.round((cover.taglineSize || 9) * (1600 / 400));
+  // ── Tagline ───────────────────────────────────────────────────────────────
   const tagSvg = cover.tagline
-    ? `<text x="120" y="200" font-family="${fp?.sub || "sans-serif"}" font-size="${taglinePx}" font-weight="600" fill="${acc}" letter-spacing="4">${escSvg(cover.tagline.toUpperCase())}</text>`
+    ? `<text x="${textX}" y="${PY + tagSz}" text-anchor="${anchor}" font-family="${escSvg(fp?.sub || "sans-serif")}" font-size="${tagSz}" font-weight="700" fill="${acc}" letter-spacing="${Math.round(SCALE * 3)}">${escSvg(cover.tagline.toUpperCase())}</text>`
     : "";
 
-  const authorSvg = `<text x="120" y="${H - 160}" font-family="${fp?.author || "sans-serif"}" font-size="64" fill="${titleColor}" opacity="0.85" letter-spacing="3">${escSvg((cover.authorLine || "").toUpperCase())}</text>`;
+  // ── Title ─────────────────────────────────────────────────────────────────
+  const titleSvg = titleLines.map((line, i) =>
+    `<text x="${textX}" y="${titleTopY + i * titleLineH + tSize}" text-anchor="${anchor}" font-family="${escSvg(fp?.title || "serif")}" font-size="${tSize}" font-weight="800" fill="${textCol}" letter-spacing="-2">${escSvg(line)}</text>`
+  ).join("\n  ");
+
+  // ── Subtitle ──────────────────────────────────────────────────────────────
+  const subStartY = titleTopY + titleLines.length * titleLineH + Math.round(H * 0.03);
+  const subtitleSvg = subLines.map((line, i) =>
+    `<text x="${textX}" y="${subStartY + i * subLineH + sSize}" text-anchor="${anchor}" font-family="${escSvg(fp?.sub || "sans-serif")}" font-size="${sSize}" font-weight="500" fill="${textCol}" opacity="0.9">${escSvg(line)}</text>`
+  ).join("\n  ");
+
+  // ── Author ────────────────────────────────────────────────────────────────
+  const authorSvg = `<text x="${textX}" y="${authorY}" text-anchor="${anchor}" font-family="${escSvg(fp?.author || "sans-serif")}" font-size="${aSize}" font-weight="600" fill="${textCol}" opacity="0.85" letter-spacing="${Math.round(SCALE * 2)}">${escSvg((cover.authorLine || "Author Name").toUpperCase())}</text>`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   ${bgEl}
-  ${decoration}
+  ${decorations}
+  ${accentSvg}
   ${tagSvg}
   ${titleSvg}
   ${subtitleSvg}
   ${authorSvg}
 </svg>`;
-}
-
-function wrapText(text, maxChars) {
-  const words = (text || "").split(" ");
-  const lines = [];
-  let current = "";
-  for (const w of words) {
-    if ((current + " " + w).trim().length > maxChars) {
-      if (current) lines.push(current);
-      current = w;
-    } else {
-      current = (current + " " + w).trim();
-    }
-  }
-  if (current) lines.push(current);
-  return lines.slice(0, 4);
 }
 
 function escSvg(s) {
