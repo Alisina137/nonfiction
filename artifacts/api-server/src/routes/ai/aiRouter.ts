@@ -1,80 +1,82 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// OpenRouter AI Router
+// OpenRouter AI Router — optimised for free / low-credit usage
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// All generation goes through a single OpenRouter endpoint using an
-// OpenAI-compatible request format.  Individual models are treated as
-// "providers" so the rest of the codebase (routes, frontend) requires
-// zero changes.
-//
-// FALLBACK ORDER
-// ─────────────────────────────────────────────────────────────────────────
-//   Long-form  (lessons, descriptions, cover briefs, …):
-//     GPT-4.1-mini → Claude 3.7 Sonnet → Gemini 2.5 Flash → Grok Mini*
-//
-//   Short-form (titles, outlines, architecture preview, …):
-//     Gemini 2.5 Flash → GPT-4.1-mini → Claude 3.7 Sonnet → Grok Mini*
+// PROVIDER PRIORITY  (same for both long-form and short-form)
+//   gemini → openai → llama → deepseek → anthropic → grok*
 //
 //   * Grok requires explicit user approval (allowGrok: true).
-//     If the chain reaches Grok without approval it throws
-//     GrokApprovalRequiredError so the client can show the consent modal.
 //
-// GROK CHECKPOINT
-// ─────────────────────────────────────────────────────────────────────────
-//   Before attempting Grok we verify: API key exists, model is not
-//   temporarily disabled, and that the previous attempt was not a
-//   non-retriable error.  On failure Grok is disabled for
-//   GROK_DISABLE_MS (5 min) and the chain continues.
+// TOKEN BUDGETS
+//   Hard cap: 2 500 tokens per request (never exceeded).
+//   Each content type carries its own budget — see TOKEN_LIMITS below.
+//
+// PROVIDER OFFLINE TRACKING
+//   Any provider that returns "No endpoints found", "temporarily disabled",
+//   a timeout, or a rate-limit error is automatically skipped for
+//   PROVIDER_DISABLE_MS (10 min).  Grok uses the same mechanism.
+//
+// LLAMA RATE GATE
+//   Free Llama allows ≈8 req/min.  A minimum 8-second gap is enforced
+//   between consecutive Llama calls via a simple in-process lock.
 //
 // RETRY + BACKOFF
-// ─────────────────────────────────────────────────────────────────────────
-//   Each model attempt retries up to MAX_RETRIES (2) times with
-//   exponential back-off (300 ms × 2^attempt) on retriable errors:
-//   rate limits, 429, 503, overload, quota, timeout.
+//   Each provider attempt retries up to MAX_RETRIES (3) times with
+//   exponential back-off (1 s → 2 s → 4 s) on retriable errors.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Stable friendly IDs used throughout the rest of the codebase and the
-// frontend provider-status badge.  Each maps to an OpenRouter model slug.
 const MODEL_BY_PROVIDER = {
-  openai:    "openai/gpt-4.1-mini",
-  anthropic: "anthropic/claude-3.7-sonnet",
   gemini:    "google/gemini-2.5-flash",
-  xai:       "x-ai/grok-3-mini-beta",
-  llama:     "meta-llama/llama-3.3-70b-instruct:free"
+  openai:    "openai/gpt-4.1-mini",
+  llama:     "meta-llama/llama-3.3-70b-instruct:free",
+  deepseek:  "deepseek/deepseek-chat-v3-0324:free",
+  anthropic: "anthropic/claude-3.7-sonnet",
+  xai:       "x-ai/grok-3-mini-beta"
 } as const;
 
 export type ProviderId = keyof typeof MODEL_BY_PROVIDER;
 
-/**
- * Per-content-type token budgets.
- * Keeps costs low for short tasks while giving long-form content enough room.
- */
+// ─── Token budgets ────────────────────────────────────────────────────────
+// All values are capped at MAX_TOKENS_CAP — never exceed it.
+
+const MAX_TOKENS_CAP = 2500;
+
 export const TOKEN_LIMITS: Record<string, number> = {
-  title:              800,   // 6 enhanced titles with subtitles + hooks
-  regenTitle:         200,   // single title replacement
-  outline:           4000,   // 10 chapters × sections × subsections JSON
-  lesson:            4000,   // full chapter section text (fits low-credit budgets)
-  improve:           3000,   // rewrite / improve existing text
-  description:       1000,   // book description + hook + keywords
-  cover:             1500,   // cover brief JSON
-  analysis:          1500,   // concept analysis JSON
-  architecturePreview: 1500, // architecture JSON
-  structure:         1500,   // section structure JSON
-  default:           2000
+  title:               150,   // 6 title suggestions
+  regenTitle:          150,   // single title replacement
+  outline:            1000,   // full chapter/section JSON outline
+  lesson:             2200,   // chapter section prose (largest content type)
+  improve:            1200,   // rewrite / improve existing text
+  description:         300,   // book description / hook
+  cover:               600,   // cover brief JSON
+  analysis:            600,   // concept analysis JSON
+  architecturePreview: 600,   // architecture preview JSON
+  structure:           500,   // section structure JSON
+  default:            1200
 };
 
-export interface GenOptions {
-  /** User explicitly approved using Grok as a final fallback. */
-  allowGrok?: boolean;
-  /** Override the default token budget for this specific call. */
-  maxTokens?: number;
-  /** Notified each time the chain advances past a provider. */
-  onFallback?: (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
-  /** Notified with the provider that actually produced the result. */
-  onSuccess?: (provider: ProviderId) => void;
+function capTokens(n: number): number {
+  return Math.min(n, MAX_TOKENS_CAP);
+}
+
+// ─── Provider offline tracking ────────────────────────────────────────────
+// Any provider can be disabled for 10 minutes on hard failures.
+
+const PROVIDER_DISABLE_MS = 10 * 60 * 1000;
+const providerDisabledUntil = new Map<ProviderId, number>();
+
+function isProviderDisabled(p: ProviderId): boolean {
+  const until = providerDisabledUntil.get(p) ?? 0;
+  return Date.now() < until;
+}
+
+function disableProvider(p: ProviderId, reason: string) {
+  const until = Date.now() + PROVIDER_DISABLE_MS;
+  providerDisabledUntil.set(p, until);
+  console.warn(`[AI] ${p} marked offline for 10 min — ${reason.slice(0, 120)}`);
 }
 
 // ─── Grok approval gate ───────────────────────────────────────────────────
@@ -83,51 +85,54 @@ export class GrokApprovalRequiredError extends Error {
   needsApproval = "grok" as const;
   attempted: Array<{ provider: ProviderId; error: string }>;
   constructor(attempted: Array<{ provider: ProviderId; error: string }>) {
-    super("Grok approval required: primary providers are unavailable.");
+    super("Grok approval required: all other providers are unavailable.");
     this.name = "GrokApprovalRequiredError";
     this.attempted = attempted;
   }
 }
 
-// ─── Temporary Grok disable flag ─────────────────────────────────────────
-// If Grok fails with a non-retriable error we disable it for 5 minutes so
-// the chain doesn't waste time on it for subsequent requests.
+// ─── Llama rate gate ──────────────────────────────────────────────────────
+// Free Llama tier: ~8 req/min → enforce ≥8 s between calls.
 
-const GROK_DISABLE_MS = 5 * 60 * 1000;
-let grokDisabledUntil = 0;
+const LLAMA_MIN_GAP_MS = 8000;
+let llamaLastCallTime = 0;
 
-function isGrokDisabled(): boolean {
-  return Date.now() < grokDisabledUntil;
-}
-
-function disableGrokTemporarily(reason: string) {
-  grokDisabledUntil = Date.now() + GROK_DISABLE_MS;
-  console.warn(`[AI] Grok checkpoint failed — disabled for 5 min. Reason: ${reason}`);
+async function waitForLlamaSlot(): Promise<void> {
+  const now = Date.now();
+  const elapsed = now - llamaLastCallTime;
+  if (elapsed < LLAMA_MIN_GAP_MS && llamaLastCallTime > 0) {
+    const wait = LLAMA_MIN_GAP_MS - elapsed;
+    console.log(`[AI] Llama rate gate — waiting ${wait}ms before next call`);
+    await new Promise((r) => setTimeout(r, wait));
+  }
+  llamaLastCallTime = Date.now();
 }
 
 // ─── Error classification ─────────────────────────────────────────────────
 
-/** Returns true for errors that are worth retrying (transient / rate limits). */
 export function isLimitOrUnavailable(msg: string): boolean {
   return /rate.?limit|quota|daily.?limit|exceeded|insufficient|429|503|overload|unavailable|temporarily|timeout|timed.?out/i.test(
     msg || ""
   );
 }
 
+function isHardUnavailable(msg: string): boolean {
+  return /no.?endpoint|endpoint.?not.?found|temporarily.?disabled|model.*unavailable|not.*available|doesn.*exist/i.test(
+    msg || ""
+  );
+}
+
 // ─── Core OpenRouter request ──────────────────────────────────────────────
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
+const RETRY_DELAYS_MS = [1000, 2000, 4000];
 
-/**
- * POST one completion request to OpenRouter for a specific model.
- * Retries up to MAX_RETRIES times (exponential backoff) on retriable errors.
- */
 async function callOpenRouter(
   provider: ProviderId,
   prompt: string,
   system: string | undefined,
   temperature = 0.7,
-  maxTokens = 8192
+  maxTokens = MAX_TOKENS_CAP
 ): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
@@ -141,43 +146,36 @@ async function callOpenRouter(
     model,
     messages,
     temperature,
-    max_tokens: maxTokens,
+    max_tokens: capTokens(maxTokens),
     stream: false
   };
 
   let lastError = "";
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    // Exponential back-off on retries (skip delay on first attempt).
     if (attempt > 0) {
-      const delay = 300 * Math.pow(2, attempt - 1);
+      const delay = RETRY_DELAYS_MS[attempt - 1] ?? 4000;
       console.log(`[AI] Retry ${attempt}/${MAX_RETRIES} for ${model} in ${delay}ms…`);
       await new Promise((r) => setTimeout(r, delay));
     }
 
     const startMs = Date.now();
-
     const res = await fetch(OPENROUTER_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        // OpenRouter best-practice headers.
-        "HTTP-Referer": "https://nonfiction-studio.replit.app",
-        "X-Title": "Nonfiction AI Studio"
+        "Content-Type":  "application/json",
+        Accept:          "application/json",
+        Authorization:   `Bearer ${apiKey}`,
+        "HTTP-Referer":  "https://nonfiction-studio.replit.app",
+        "X-Title":       "Nonfiction AI Studio"
       },
       body: JSON.stringify(body)
     });
 
-    // Read as text first — some error bodies are not valid JSON.
     const rawText = await res.text();
     let data: any = {};
-    try {
-      data = rawText ? JSON.parse(rawText) : {};
-    } catch {
-      data = { _raw: rawText };
-    }
+    try { data = rawText ? JSON.parse(rawText) : {}; }
+    catch { data = { _raw: rawText }; }
 
     const elapsed = Date.now() - startMs;
 
@@ -185,40 +183,38 @@ async function callOpenRouter(
       const detail: string =
         data?.error?.message ||
         (typeof data?.error === "string" ? data.error : "") ||
-        data?._raw ||
-        `HTTP ${res.status}`;
+        data?._raw || `HTTP ${res.status}`;
 
       lastError = detail;
 
-      // Detailed diagnostic log.
       console.error("[AI] Request failed", {
-        provider,
-        model,
-        endpoint: OPENROUTER_URL,
+        provider, model,
         status: res.status,
-        statusText: res.statusText,
         retryCount: attempt,
         generationTimeMs: elapsed,
-        errorMessage: detail.slice(0, 500)
+        errorMessage: detail.slice(0, 300)
       });
 
-      // Retry only on transient / rate-limit errors.
+      // Hard unavailable — no point retrying this provider
+      if (isHardUnavailable(detail)) {
+        throw new Error(`[${provider}] ${detail}`);
+      }
+
       if (attempt < MAX_RETRIES && isLimitOrUnavailable(detail + ` ${res.status}`)) {
         continue;
       }
-      throw new Error(`[${provider}] ${model} → ${detail}`);
+      throw new Error(`[${provider}] ${detail}`);
     }
 
     const text: string = data?.choices?.[0]?.message?.content || "";
 
     if (!text) {
-      lastError = "Empty response from model";
-      console.error("[AI] Empty response", { provider, model, retryCount: attempt, data });
+      lastError = "Empty response";
       if (attempt < MAX_RETRIES) continue;
       throw new Error(`[${provider}] ${model} returned empty response`);
     }
 
-    console.log(`[AI] Generation successful — ${provider} (${model}) in ${elapsed}ms`);
+    console.log(`[AI] ${provider} (${model}) succeeded in ${elapsed}ms`);
     return text;
   }
 
@@ -233,114 +229,121 @@ async function runChain(
   chain: ProviderId[],
   opts: GenOptions
 ): Promise<{ text: string; usedProvider: ProviderId }> {
-  const attempts: Array<{ provider: ProviderId; error: string }> = [];
-  let prevProvider: ProviderId | null = null;
+  const attempts: Array<{ provider: ProviderId; status: string; error: string }> = [];
 
   for (const provider of chain) {
-    // ── Grok checkpoint ───────────────────────────────────────────────────
+
+    // ── Grok checkpoint ──────────────────────────────────────────────────
     if (provider === "xai") {
-      // 1. User must have given explicit approval.
       if (!opts.allowGrok) {
-        throw new GrokApprovalRequiredError(attempts);
+        throw new GrokApprovalRequiredError(
+          attempts.map((a) => ({ provider: a.provider, error: a.error }))
+        );
       }
-      // 2. OPENROUTER_API_KEY must be present (already checked inside
-      //    callOpenRouter, but we want the checkpoint log here).
       if (!process.env.OPENROUTER_API_KEY) {
-        console.warn("[AI] Grok checkpoint failed — OPENROUTER_API_KEY missing, skipping.");
-        attempts.push({ provider, error: "OPENROUTER_API_KEY missing" });
+        attempts.push({ provider, status: "skip", error: "OPENROUTER_API_KEY missing" });
         continue;
       }
-      // 3. Grok must not be temporarily disabled.
-      if (isGrokDisabled()) {
-        const mins = Math.ceil((grokDisabledUntil - Date.now()) / 60000);
-        console.warn(`[AI] Grok checkpoint failed — disabled for ~${mins} more min, skipping.`);
-        attempts.push({ provider, error: "Grok temporarily disabled" });
-        continue;
-      }
+    }
+
+    // ── Per-provider offline check ────────────────────────────────────────
+    if (isProviderDisabled(provider)) {
+      const until = providerDisabledUntil.get(provider) ?? 0;
+      const minsLeft = Math.ceil((until - Date.now()) / 60000);
+      const reason = `offline for ~${minsLeft} more min`;
+      console.log(`[AI] Skipping ${provider} — ${reason}`);
+      attempts.push({ provider, status: "offline", error: reason });
+      continue;
+    }
+
+    // ── Llama rate gate ───────────────────────────────────────────────────
+    if (provider === "llama" || provider === "deepseek") {
+      await waitForLlamaSlot();
     }
 
     const modelLabel = MODEL_BY_PROVIDER[provider];
     console.log(`[AI] Trying ${modelLabel}…`);
 
     try {
-      const text = await callOpenRouter(provider, prompt, system, 0.7, opts.maxTokens ?? 8192);
+      const text = await callOpenRouter(provider, prompt, system, 0.7, opts.maxTokens ?? TOKEN_LIMITS.default);
       opts.onSuccess?.(provider);
 
-      if (prevProvider) {
-        opts.onFallback?.({
-          from: prevProvider,
-          to: provider,
-          reason: `Fell back from ${prevProvider} after all retries exhausted`
-        });
+      const prevFailed = attempts.filter((a) => a.status === "failed");
+      if (prevFailed.length > 0) {
+        opts.onFallback?.({ from: prevFailed[prevFailed.length - 1].provider, to: provider, reason: "fallback" });
       }
 
       return { text, usedProvider: provider };
+
     } catch (e: any) {
       const msg: string = e?.message || String(e);
-      attempts.push({ provider, error: msg });
 
-      // Apply Grok-specific checkpoint: disable temporarily on failure.
-      if (provider === "xai") {
-        disableGrokTemporarily(msg);
-      } else {
-        const friendlyLabel =
-          provider === "openai"    ? "GPT-4.1-mini"   :
-          provider === "anthropic" ? "Claude Sonnet"  :
-          provider === "gemini"    ? "Gemini Flash"   : provider;
-        if (prevProvider) {
-          console.log(`[AI] ${friendlyLabel} failed, switching to next provider… (${msg.slice(0, 120)})`);
-        } else {
-          console.log(`[AI] ${friendlyLabel} failed — ${msg.slice(0, 120)}`);
-        }
+      // Disable provider if it's hard-unavailable or repeated rate-limiting
+      if (isHardUnavailable(msg) || isLimitOrUnavailable(msg)) {
+        disableProvider(provider, msg);
       }
 
-      prevProvider = provider;
-      // Always continue — never crash the chain on a single provider failure.
+      // Friendly label for log
+      const labels: Record<string, string> = {
+        gemini: "Gemini Flash", openai: "GPT-4.1-mini", anthropic: "Claude Sonnet",
+        xai: "Grok Mini", llama: "Llama 3.3", deepseek: "DeepSeek"
+      };
+      const label = labels[provider] ?? provider;
+      const shortMsg = msg.replace(`[${provider}] `, "").slice(0, 100);
+      console.log(`[AI] ${label} failed — ${shortMsg}`);
+
+      attempts.push({ provider, status: "failed", error: shortMsg });
+      if (provider === "xai") disableProvider("xai", msg);
     }
   }
 
-  const summary = attempts.map((a) => `  ${a.provider}: ${a.error}`).join("\n");
-  throw new Error(`All AI providers exhausted:\n${summary}`);
+  // All providers exhausted — build a detailed error message
+  const lines = attempts.map((a) => {
+    const label = a.status === "offline" ? "⏸ offline" : "✗ failed";
+    return `  ${a.provider} (${label}): ${a.error}`;
+  });
+  throw new Error(
+    `All AI providers exhausted:\n${lines.join("\n")}\n\nCheck your OpenRouter credits or wait for providers to come back online.`
+  );
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
+export interface GenOptions {
+  allowGrok?: boolean;
+  maxTokens?: number;
+  onFallback?: (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
+  onSuccess?: (provider: ProviderId) => void;
+}
+
+const FULL_CHAIN: ProviderId[] = ["gemini", "openai", "llama", "deepseek", "anthropic", "xai"];
+
 /**
- * Long-form generation: GPT-4.1-mini → Claude → Gemini → Grok* → Llama.
- * Used for lessons, book descriptions, cover briefs, improvements, etc.
- * Llama is always included as a free emergency fallback (no approval gate).
+ * Long-form generation (lesson prose, descriptions, cover briefs, improvements).
+ * Chain: gemini → openai → llama → deepseek → anthropic → grok*
  */
 export async function generateContent(
   prompt: string,
   system?: string,
   opts: GenOptions = {}
 ): Promise<{ text: string; usedProvider: ProviderId }> {
-  return runChain(prompt, system, ["openai", "anthropic", "gemini", "xai", "llama"], opts);
+  return runChain(prompt, system, FULL_CHAIN, opts);
 }
 
 /**
- * Short-form generation: Gemini → GPT-4.1-mini → Claude → Grok* → Llama.
- * Used for titles, outlines, architecture previews, quick suggestions.
- * Also used for all endpoints when the client sends lowCostMode=true.
- * Llama is always included as a free emergency fallback (no approval gate).
+ * Short-form generation (titles, outlines, structure, quick tasks).
+ * Same chain — Gemini leads and is ideal for short, cheap tasks.
  */
 export async function generateContentFast(
   prompt: string,
   system?: string,
   opts: GenOptions = {}
 ): Promise<{ text: string; usedProvider: ProviderId }> {
-  return runChain(prompt, system, ["gemini", "openai", "anthropic", "xai", "llama"], opts);
+  return runChain(prompt, system, FULL_CHAIN, opts);
 }
 
-/**
- * Attempt to repair a truncated JSON string by closing any unclosed
- * brackets/braces.  Returns the parsed value or null if unfixable.
- *
- * Strategy: walk character by character tracking string/escape state and
- * a bracket depth stack.  Record the last position where the stack depth
- * returned to 1 (= the end of the last complete child of the root container).
- * On truncation, slice to that position then close the remaining stack.
- */
+// ─── JSON extraction + repair ─────────────────────────────────────────────
+
 function repairTruncatedJSON(raw: string): any {
   const s = raw.trim();
   if (!s.startsWith("{") && !s.startsWith("[")) return null;
@@ -348,7 +351,7 @@ function repairTruncatedJSON(raw: string): any {
   const stack: string[] = [];
   let inString = false;
   let escape = false;
-  let lastChildEndPos = -1; // last pos where stack.length dropped back to 1
+  let lastChildEndPos = -1;
 
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
@@ -361,45 +364,34 @@ function repairTruncatedJSON(raw: string): any {
       stack.push(c === "{" ? "}" : "]");
     } else if (c === "}" || c === "]") {
       stack.pop();
-      // Completed a direct child of the root container.
       if (stack.length === 1) lastChildEndPos = i;
     }
   }
 
-  // Already valid JSON.
   if (stack.length === 0) {
     try { return JSON.parse(s); } catch { return null; }
   }
 
   const closers = stack.slice().reverse().join("");
 
-  // Prefer slicing off the incomplete last item and closing cleanly.
   if (lastChildEndPos > 0) {
     try { return JSON.parse(s.slice(0, lastChildEndPos + 1) + closers); } catch { /* fall through */ }
   }
 
-  // Last resort: just append closers to whatever we have.
   try { return JSON.parse(s + closers); } catch { return null; }
 }
 
-/**
- * Extract the first JSON object or array from an AI response string.
- * Handles markdown code fences (open or closed), bare objects, and arrays.
- * Falls back to truncation repair when the response was cut off mid-token.
- */
 export function extractJSON(text: string): any {
   const t = String(text || "");
 
-  // Closed markdown code fence.
   const fenceMatch = t.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     const inner = fenceMatch[1].trim();
-    try { return JSON.parse(inner); } catch { /* fall through to repair */ }
+    try { return JSON.parse(inner); } catch { /* fall through */ }
     const r = repairTruncatedJSON(inner);
     if (r !== null) return r;
   }
 
-  // Unclosed code fence (response truncated before the closing ```).
   const openFence = t.match(/```(?:json)?\s+([\s\S]+)$/);
   if (openFence) {
     const inner = openFence[1].trim();
@@ -408,7 +400,6 @@ export function extractJSON(text: string): any {
     if (r !== null) return r;
   }
 
-  // Locate the first { or [ in the raw text.
   const objStart = t.indexOf("{");
   const arrStart = t.indexOf("[");
   const start =
@@ -418,7 +409,7 @@ export function extractJSON(text: string): any {
 
   if (start !== -1) {
     const raw = t.slice(start);
-    try { return JSON.parse(raw); } catch { /* fall through to repair */ }
+    try { return JSON.parse(raw); } catch { /* fall through */ }
     const r = repairTruncatedJSON(raw);
     if (r !== null) return r;
   }
