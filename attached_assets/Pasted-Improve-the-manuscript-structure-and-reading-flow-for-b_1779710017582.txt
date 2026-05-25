@@ -1,0 +1,188 @@
+Improve the manuscript structure and reading flow for both DOCX and PDF exports to make the generated books feel professionally written and properly formatted like premium nonfiction books.
+
+Main Goals:
+
+1. Every chapter must begin on a new page
+2. Every chapter should include a short chapter introduction
+3. Every section should include a short section introduction
+4. Improve readability and content flow
+5. Make the book feel naturally structured instead of AI-generated
+
+Requirements:
+
+1. Start Every Chapter on a New Page
+
+Current issue:
+Chapters continue directly after the previous one.
+
+Fix:
+
+* Every new chapter must automatically start on a fresh page
+* Apply this to both:
+
+  * DOCX
+  * PDF
+
+Implementation:
+
+```js id="eymu4r"
+insertPageBreakBeforeChapter()
+```
+
+Rules:
+
+* Never place two chapters on the same page flow
+* Chapter title should appear near top of new page
+* Maintain consistent top spacing
+
+2. Add Chapter Introduction Blocks
+
+Before the first section of every chapter, automatically generate a short introductory paragraph.
+
+Purpose:
+
+* Explain what the chapter will cover
+* Create smoother reading flow
+* Improve professionalism
+
+Example:
+
+```text id="bngzrm"
+In this chapter, you will learn how discipline shapes long-term success, why motivation often fails, and how to build systems that create lasting habits.
+```
+
+Requirements:
+
+* 1–2 short paragraphs
+* concise and engaging
+* nonfiction tone
+* no repetition
+* connected to chapter topic
+
+Placement:
+
+```text id="k5nzhh"
+Chapter Title
+↓
+Chapter Introduction
+↓
+Section 1
+```
+
+3. Add Section Introduction Blocks
+
+Before each section’s main content, generate a brief section overview.
+
+Purpose:
+
+* Introduce the section topic
+* Improve transitions
+* Make content feel intentionally structured
+
+Example:
+
+```text id="2fh6ea"
+This section explores the psychological reasons people struggle with consistency and how identity-based thinking can change behavior.
+```
+
+Requirements:
+
+* short and natural
+* 2–4 sentences
+* should preview the section content
+* avoid generic filler text
+
+4. Improve Content Hierarchy
+
+Final structure should look like:
+
+```text id="2rj8x7"
+Chapter 1: The Psychology of Discipline
+
+[Chapter Introduction]
+
+1.1 Why Motivation Fails
+
+[Section Introduction]
+
+[Main Content]
+
+1.2 Identity-Based Habits
+
+[Section Introduction]
+
+[Main Content]
+```
+
+5. Typography and Spacing
+
+For introductions:
+
+* slightly italicized OR slightly different spacing
+* visually separated from main content
+* maintain Times New Roman formatting
+
+Spacing:
+
+* chapter intro should have larger spacing below
+* section intro should have medium spacing below
+
+6. Prevent AI Repetition
+
+Current AI issue:
+Introductions may repeat chapter titles or generic phrases.
+
+Add validation:
+
+* avoid repeated wording
+* avoid “In this section/chapter we will discuss...” every time
+* vary sentence structure naturally
+
+7. Smart Context Awareness
+
+The introduction generator should use:
+
+* chapter title
+* section title
+* outline metadata
+* previous section context
+
+to generate relevant intros.
+
+8. Export Formatting Rules
+
+DOCX:
+
+* preserve intro styling
+* preserve spacing
+* keep intros attached to their sections
+
+PDF:
+
+* avoid intro paragraphs splitting awkwardly across pages
+* maintain clean spacing
+
+9. Reading Experience Optimization
+
+Goal:
+The exported book should read like:
+
+* a professionally edited nonfiction book
+* smooth educational content
+* natural transitions between topics
+
+NOT:
+
+* isolated AI-generated blocks
+* abrupt section jumps
+* disconnected chapters
+
+10. Final Quality Goal
+
+The finished exported book should feel:
+
+* intentional
+* professionally structured
+* smooth to read
+* premium-quality
+* ready for Amazon KDP publishing

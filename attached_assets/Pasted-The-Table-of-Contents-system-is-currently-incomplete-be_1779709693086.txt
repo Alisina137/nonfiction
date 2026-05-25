@@ -1,0 +1,220 @@
+The Table of Contents system is currently incomplete because the exporter is not generating a REAL structured TOC from document headings.
+
+Right now your app is probably:
+
+* exporting plain text
+* manually inserting titles
+* not using heading hierarchy
+* not calculating page numbers
+* not building an actual TOC engine
+
+I want you to completely redesign the TOC generation system for both DOCX and PDF exports.
+
+Goal:
+Generate a professional Table of Contents exactly like academic books, thesis papers, and premium nonfiction books.
+
+Reference behavior:
+
+* Dotted leader lines
+* Right-aligned page numbers
+* Nested chapter/section hierarchy
+* Automatic page calculation
+* Clean spacing
+* Professional formatting
+
+The TOC should appear immediately after:
+
+* cover page
+* copyright page
+
+and before:
+
+* outline
+* manuscript content
+
+Required Features:
+
+1. Real Heading Detection
+
+Use actual structured heading levels:
+
+```text id="y0x6va"
+Heading 1 → Chapters
+Heading 2 → Sections
+Heading 3 → Subsections
+```
+
+DO NOT use plain bold text as headings.
+
+All chapters/sections/subsections must register in the document structure tree.
+
+2. Automatic TOC Builder
+
+Create a dedicated TOC generator:
+
+```js id="t0ng5q"
+class TableOfContentsBuilder {
+  collectHeadings()
+  calculatePages()
+  generateTOC()
+}
+```
+
+The TOC must auto-build from the heading hierarchy.
+
+3. Proper TOC Layout
+
+Generate TOC entries like this:
+
+```text id="c3vbg5"
+Chapter 1: Foundations......................1
+  1.1 Discipline vs Motivation..............7
+  1.2 Identity-Based Habits................14
+
+Chapter 2: Deep Focus......................25
+  2.1 Dopamine and Distraction.............31
+```
+
+Requirements:
+
+* dotted leader lines
+* page numbers aligned right
+* section indentation
+* clean spacing
+
+4. Dynamic Page Number Calculation
+
+Current issue:
+Page numbers are probably fake or missing.
+
+Fix:
+
+* calculate actual rendered pages
+* update TOC after final pagination
+* rebuild TOC before export completes
+
+5. DOCX TOC Requirements
+
+For DOCX:
+
+* use real Microsoft Word TOC fields
+* use Word heading styles
+* allow automatic TOC updates inside Word
+* preserve clickable navigation
+
+Required styles:
+
+```text id="5txqgt"
+Heading 1
+Heading 2
+Heading 3
+TOC 1
+TOC 2
+TOC 3
+```
+
+6. PDF TOC Requirements
+
+For PDF:
+
+* clickable TOC links
+* internal page navigation
+* proper bookmarks/sidebar navigation
+* dotted leader formatting
+* accurate page references
+
+7. Include Front Matter in TOC
+
+Support optional front matter entries:
+
+* Abstract
+* Preface
+* Acknowledgments
+* List of Figures
+* References
+
+Use Roman numerals for front matter pages:
+
+```text id="r7lb2m"
+i, ii, iii, iv...
+```
+
+Then switch to:
+
+```text id="h5kg0q"
+1, 2, 3...
+```
+
+for main chapters.
+
+8. Correct Chapter Formatting
+
+Do NOT generate:
+
+```text id="nlnjlwm"
+Chapter Title 1
+```
+
+Generate:
+
+```text id="mgt2mr"
+Chapter 1: The Psychology of Discipline
+```
+
+9. Prevent TOC Overflow Issues
+
+Fix:
+
+* broken dotted lines
+* wrapped page numbers
+* overlapping text
+* inconsistent spacing
+
+Ensure long chapter titles wrap cleanly.
+
+10. Export Pipeline Order
+
+Correct export order:
+
+```text id="7u4w2m"
+Cover Page
+Copyright
+Table of Contents
+Outline
+Main Manuscript
+References
+About Author
+```
+
+11. Consistent Typography
+
+TOC formatting:
+
+* Times New Roman
+* TOC title centered and bold
+* chapter entries bold
+* section entries regular
+* proper indentation levels
+
+12. PDF/DOCX Consistency
+
+The TOC should visually match in:
+
+* DOCX
+* PDF
+
+No missing sections between formats.
+
+13. Final Quality Goal
+
+The generated TOC should look like:
+
+* professionally typeset nonfiction books
+* university thesis documents
+* premium KDP books
+
+NOT like:
+
+* plain text lists
+* AI-generated markdown
+* manually typed contents
