@@ -278,7 +278,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   const pdf = await PDFDocument.create();
 
   const regular = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRoman      : StandardFonts.Helvetica);
-  const bold    = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesBold        : StandardFonts.HelveticaBold);
+  const bold    = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRomanBold   : StandardFonts.HelveticaBold);
   const italic  = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRomanItalic : StandardFonts.HelveticaOblique);
 
   const bookTitle   = sanitize(resolveBookTitle(project));
