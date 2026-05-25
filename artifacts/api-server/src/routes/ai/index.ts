@@ -23,7 +23,8 @@ import {
   generateContent,
   generateContentFast,
   extractJSON,
-  GrokApprovalRequiredError
+  GrokApprovalRequiredError,
+  TOKEN_LIMITS
 } from "./aiRouter.js";
 
 const router = Router();
@@ -45,24 +46,33 @@ function aiErrorResponse(res: any, error: any) {
   return res.status(500).json({ error: error?.message || "AI request failed" });
 }
 
-function aiOptsFromReq(req: any) {
-  return { allowGrok: req?.body?.allowGrok === true };
+function aiOptsFromReq(req: any, maxTokens?: number) {
+  return {
+    allowGrok: req?.body?.allowGrok === true,
+    maxTokens: maxTokens ?? TOKEN_LIMITS.default
+  };
 }
 
 function setProviderHeader(res: any, provider: string) {
   res.setHeader("X-AI-Provider", provider);
 }
 
-// Long-form (OpenAI primary)
-async function runLong(prompt: string, system: string, req: any, res: any) {
-  const { text, usedProvider } = await generateContent(prompt, system, aiOptsFromReq(req));
+// Long-form (OpenAI primary) — uses short chain when client sets lowCostMode=true
+async function runLong(prompt: string, system: string, req: any, res: any, contentType = "default") {
+  const maxTokens = TOKEN_LIMITS[contentType] ?? TOKEN_LIMITS.default;
+  const opts = aiOptsFromReq(req, maxTokens);
+  const useFast = req?.body?.lowCostMode === true;
+  const { text, usedProvider } = useFast
+    ? await generateContentFast(prompt, system, opts)
+    : await generateContent(prompt, system, opts);
   setProviderHeader(res, usedProvider);
   return { text, usedProvider };
 }
 
 // Short-form (Gemini primary)
-async function runShort(prompt: string, system: string, req: any, res: any) {
-  const { text, usedProvider } = await generateContentFast(prompt, system, aiOptsFromReq(req));
+async function runShort(prompt: string, system: string, req: any, res: any, contentType = "default") {
+  const maxTokens = TOKEN_LIMITS[contentType] ?? TOKEN_LIMITS.default;
+  const { text, usedProvider } = await generateContentFast(prompt, system, aiOptsFromReq(req, maxTokens));
   setProviderHeader(res, usedProvider);
   return { text, usedProvider };
 }
@@ -72,7 +82,7 @@ async function runShort(prompt: string, system: string, req: any, res: any) {
 router.post("/titles", async (req, res) => {
   try {
     const { idea } = req.body;
-    const { text, usedProvider } = await runShort(titlesPrompt(idea), systemPrompt(), req, res);
+    const { text, usedProvider } = await runShort(titlesPrompt(idea), systemPrompt(), req, res, "title");
     const data = extractJSON(text);
     return res.json({ titles: data.titles || [], _provider: usedProvider });
   } catch (error: any) {
@@ -90,7 +100,8 @@ router.post("/contextual-titles", async (req, res) => {
       contextualBookTitlesPrompt({ research, competitorSummaries }),
       systemPrompt(),
       req,
-      res
+      res,
+      "title"
     );
     const data = extractJSON(text);
     let titles = data.titles;
@@ -108,7 +119,7 @@ router.post("/description", async (req, res) => {
     const prompt = req.body?.enriched
       ? marketingDescriptionPrompt(req.body)
       : descriptionPrompt(req.body);
-    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res);
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "description");
     const data = extractJSON(text);
     return res.json({ ...data, _provider: usedProvider });
   } catch (error: any) {
@@ -118,7 +129,7 @@ router.post("/description", async (req, res) => {
 
 router.post("/cover", async (req, res) => {
   try {
-    const { text, usedProvider } = await runLong(coverBriefPrompt(req.body), systemPrompt(), req, res);
+    const { text, usedProvider } = await runLong(coverBriefPrompt(req.body), systemPrompt(), req, res, "cover");
     const data = extractJSON(text);
     return res.json({ ...data, _provider: usedProvider });
   } catch (error: any) {
@@ -128,7 +139,7 @@ router.post("/cover", async (req, res) => {
 
 router.post("/cover-critic", async (req, res) => {
   try {
-    const { text, usedProvider } = await runLong(coverCriticPrompt(req.body), systemPrompt(), req, res);
+    const { text, usedProvider } = await runLong(coverCriticPrompt(req.body), systemPrompt(), req, res, "cover");
     const data = extractJSON(text);
     return res.json({ ...data, _provider: usedProvider });
   } catch (error: any) {
@@ -138,7 +149,7 @@ router.post("/cover-critic", async (req, res) => {
 
 router.post("/cover-variants", async (req, res) => {
   try {
-    const { text, usedProvider } = await runLong(coverVariantsPrompt(req.body), systemPrompt(), req, res);
+    const { text, usedProvider } = await runLong(coverVariantsPrompt(req.body), systemPrompt(), req, res, "cover");
     const data = extractJSON(text);
     return res.json({ variants: data.variants || [], _provider: usedProvider });
   } catch (error: any) {
@@ -148,7 +159,7 @@ router.post("/cover-variants", async (req, res) => {
 
 router.post("/outline", async (req, res) => {
   try {
-    const { text, usedProvider } = await runShort(outlinePrompt(req.body), systemPrompt(), req, res);
+    const { text, usedProvider } = await runShort(outlinePrompt(req.body), systemPrompt(), req, res, "outline");
     const data = extractJSON(text);
     return res.json({ chapters: data.chapters || [], _provider: usedProvider });
   } catch (error: any) {
@@ -165,7 +176,8 @@ router.post("/niche-outline", async (req, res) => {
       nicheOutlinePrompt({ research, architecture, title, description }),
       nicheSystemPrompt(architecture),
       req,
-      res
+      res,
+      "outline"
     );
     const data = extractJSON(text);
     return res.json({ ...data, _provider: usedProvider });
@@ -176,7 +188,7 @@ router.post("/niche-outline", async (req, res) => {
 
 router.post("/structure", async (req, res) => {
   try {
-    const { text, usedProvider } = await runShort(structurePrompt(req.body), systemPrompt(), req, res);
+    const { text, usedProvider } = await runShort(structurePrompt(req.body), systemPrompt(), req, res, "structure");
     const data = extractJSON(text);
     return res.json({ sections: data.sections || [], _provider: usedProvider });
   } catch (error: any) {
@@ -186,7 +198,7 @@ router.post("/structure", async (req, res) => {
 
 router.post("/lesson", async (req, res) => {
   try {
-    const { text, usedProvider } = await runLong(lessonPrompt(req.body), systemPrompt(), req, res);
+    const { text, usedProvider } = await runLong(lessonPrompt(req.body), systemPrompt(), req, res, "lesson");
     const data = extractJSON(text);
     return res.json({ lesson: data, _provider: usedProvider });
   } catch (error: any) {
@@ -201,7 +213,8 @@ router.post("/improve", async (req, res) => {
       improvementPrompt({ action, currentText, tone }),
       systemPrompt(),
       req,
-      res
+      res,
+      "improve"
     );
     return res.json({ text, _provider: usedProvider });
   } catch (error: any) {

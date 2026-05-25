@@ -42,14 +42,35 @@ const MODEL_BY_PROVIDER = {
   openai:    "openai/gpt-4.1-mini",
   anthropic: "anthropic/claude-3.7-sonnet",
   gemini:    "google/gemini-2.5-flash",
-  xai:       "x-ai/grok-3-mini-beta"
+  xai:       "x-ai/grok-3-mini-beta",
+  llama:     "meta-llama/llama-3.3-70b-instruct:free"
 } as const;
 
 export type ProviderId = keyof typeof MODEL_BY_PROVIDER;
 
+/**
+ * Per-content-type token budgets.
+ * Keeps costs low for short tasks while giving long-form content enough room.
+ */
+export const TOKEN_LIMITS: Record<string, number> = {
+  title:              800,   // 6 enhanced titles with subtitles + hooks
+  regenTitle:         200,   // single title replacement
+  outline:           4000,   // 10 chapters × sections × subsections JSON
+  lesson:            4000,   // full chapter section text (fits low-credit budgets)
+  improve:           3000,   // rewrite / improve existing text
+  description:       1000,   // book description + hook + keywords
+  cover:             1500,   // cover brief JSON
+  analysis:          1500,   // concept analysis JSON
+  architecturePreview: 1500, // architecture JSON
+  structure:         1500,   // section structure JSON
+  default:           2000
+};
+
 export interface GenOptions {
   /** User explicitly approved using Grok as a final fallback. */
   allowGrok?: boolean;
+  /** Override the default token budget for this specific call. */
+  maxTokens?: number;
   /** Notified each time the chain advances past a provider. */
   onFallback?: (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
   /** Notified with the provider that actually produced the result. */
@@ -242,7 +263,7 @@ async function runChain(
     console.log(`[AI] Trying ${modelLabel}…`);
 
     try {
-      const text = await callOpenRouter(provider, prompt, system);
+      const text = await callOpenRouter(provider, prompt, system, 0.7, opts.maxTokens ?? 8192);
       opts.onSuccess?.(provider);
 
       if (prevProvider) {
@@ -285,27 +306,30 @@ async function runChain(
 // ─── Public API ───────────────────────────────────────────────────────────
 
 /**
- * Long-form generation: GPT-4.1-mini → Claude → Gemini → Grok*.
+ * Long-form generation: GPT-4.1-mini → Claude → Gemini → Grok* → Llama.
  * Used for lessons, book descriptions, cover briefs, improvements, etc.
+ * Llama is always included as a free emergency fallback (no approval gate).
  */
 export async function generateContent(
   prompt: string,
   system?: string,
   opts: GenOptions = {}
 ): Promise<{ text: string; usedProvider: ProviderId }> {
-  return runChain(prompt, system, ["openai", "anthropic", "gemini", "xai"], opts);
+  return runChain(prompt, system, ["openai", "anthropic", "gemini", "xai", "llama"], opts);
 }
 
 /**
- * Short-form generation: Gemini → GPT-4.1-mini → Claude → Grok*.
+ * Short-form generation: Gemini → GPT-4.1-mini → Claude → Grok* → Llama.
  * Used for titles, outlines, architecture previews, quick suggestions.
+ * Also used for all endpoints when the client sends lowCostMode=true.
+ * Llama is always included as a free emergency fallback (no approval gate).
  */
 export async function generateContentFast(
   prompt: string,
   system?: string,
   opts: GenOptions = {}
 ): Promise<{ text: string; usedProvider: ProviderId }> {
-  return runChain(prompt, system, ["gemini", "openai", "anthropic", "xai"], opts);
+  return runChain(prompt, system, ["gemini", "openai", "anthropic", "xai", "llama"], opts);
 }
 
 /**

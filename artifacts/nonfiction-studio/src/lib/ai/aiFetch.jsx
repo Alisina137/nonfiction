@@ -6,25 +6,29 @@
 //   2. Handle 409 { needsApproval: "grok" } responses by showing the global
 //      GrokApprovalModal; on approve, automatically retry with
 //      body.allowGrok = true; on cancel, throw a cancellation error.
+//   3. Inject lowCostMode: true when the user has enabled the low-cost toggle
+//      (stored in localStorage), so the backend routes to the Gemini-first chain.
 //
 // Approval is also cached in localStorage so the user is only prompted once
 // per browser unless they explicitly revoke it.
 
-const APPROVAL_KEY = "nonfiction-ai-grok-approval";
+const APPROVAL_KEY  = "nonfiction-ai-grok-approval";
+const LOW_COST_KEY  = "nonfiction-ai-low-cost-mode";
 
 const PROVIDER_LABELS = {
-  openai: "OpenAI",
+  openai:    "GPT-4.1",
   anthropic: "Claude",
-  xai: "Grok",
-  gemini: "Gemini"
+  xai:       "Grok",
+  gemini:    "Gemini",
+  llama:     "Llama 3.3"
 };
 
 // ─── Tiny event bus ──────────────────────────────────────────────────────────
 
 const listeners = {
   provider: new Set(),
-  fallback: new Set(),
-  approval: new Set()
+  fallback:  new Set(),
+  approval:  new Set()
 };
 
 function emit(channel, payload) {
@@ -42,32 +46,34 @@ export function providerLabel(id) {
   return PROVIDER_LABELS[id] || id || "Unknown";
 }
 
-// ─── Approval state ──────────────────────────────────────────────────────────
+// ─── Grok approval state ─────────────────────────────────────────────────────
 
 export function isGrokApproved() {
-  try {
-    return window.localStorage.getItem(APPROVAL_KEY) === "granted";
-  } catch {
-    return false;
-  }
+  try { return window.localStorage.getItem(APPROVAL_KEY) === "granted"; } catch { return false; }
 }
-
 export function grantGrokApproval() {
   try { window.localStorage.setItem(APPROVAL_KEY, "granted"); } catch {}
 }
-
 export function revokeGrokApproval() {
   try { window.localStorage.removeItem(APPROVAL_KEY); } catch {}
+}
+
+// ─── Low-cost mode state ─────────────────────────────────────────────────────
+
+export function isLowCostMode() {
+  try { return window.localStorage.getItem(LOW_COST_KEY) === "on"; } catch { return false; }
+}
+export function enableLowCostMode() {
+  try { window.localStorage.setItem(LOW_COST_KEY, "on"); } catch {}
+}
+export function disableLowCostMode() {
+  try { window.localStorage.removeItem(LOW_COST_KEY); } catch {}
 }
 
 // ─── Modal request gate ──────────────────────────────────────────────────────
 
 let pendingApprovalResolver = null;
 
-/**
- * Open the global Grok approval modal and resolve with the user's decision.
- * If a request is already pending, share the same promise.
- */
 export function requestGrokApproval(meta = {}) {
   if (pendingApprovalResolver) return pendingApprovalResolver.promise;
   let resolveFn;
@@ -93,31 +99,17 @@ let lastProvider = null;
 function emitProviderUsed(provider) {
   if (!provider) return;
   if (lastProvider && lastProvider !== provider) {
-    if (lastProvider === "openai" && provider === "anthropic") {
-      emit("fallback", {
-        message: "OpenAI daily limit reached. Switched to Claude automatically.",
-        from: lastProvider,
-        to: provider
-      });
-    } else if (lastProvider === "anthropic" && provider === "openai") {
-      emit("fallback", {
-        message: "OpenAI is back online — resumed primary provider.",
-        from: lastProvider,
-        to: provider
-      });
-    } else if (provider === "xai") {
-      emit("fallback", {
-        message: "Generating with Grok (approved fallback).",
-        from: lastProvider,
-        to: provider
-      });
+    let message;
+    if (provider === "xai") {
+      message = "Switched to Grok (approved fallback).";
+    } else if (provider === "llama") {
+      message = "All primary providers busy — switched to Llama 3.3 (free fallback).";
+    } else if (lastProvider === "llama") {
+      message = `${providerLabel(provider)} is back — resumed primary chain.`;
     } else {
-      emit("fallback", {
-        message: `Switched provider: ${providerLabel(lastProvider)} → ${providerLabel(provider)}.`,
-        from: lastProvider,
-        to: provider
-      });
+      message = `Switched: ${providerLabel(lastProvider)} → ${providerLabel(provider)}.`;
     }
+    emit("fallback", { message, from: lastProvider, to: provider });
   }
   lastProvider = provider;
   emit("provider", { provider });
@@ -128,14 +120,16 @@ function emitProviderUsed(provider) {
 export class GenerationCanceledError extends Error {
   constructor() {
     super("Generation canceled — Grok approval declined.");
-    this.name = "GenerationCanceledError";
+    this.name  = "GenerationCanceledError";
     this.canceled = true;
   }
 }
 
 /**
- * POST JSON body to an AI endpoint, transparently handling the Grok approval
- * gate (HTTP 409). Returns the parsed JSON payload on success.
+ * POST JSON body to an AI endpoint, transparently handling:
+ *   - Grok approval gate (HTTP 409)
+ *   - Low-cost mode flag (injected from localStorage)
+ *   - Provider tracking / fallback toasts
  *
  *   const data = await aiFetch("/api/ai/lesson", { ...body });
  *
@@ -145,10 +139,16 @@ export class GenerationCanceledError extends Error {
  */
 export async function aiFetch(url, body = {}, { signal } = {}) {
   const doPost = async (extra) => {
-    const res = await fetch(url, {
+    const merged = {
+      ...body,
+      ...(isLowCostMode()   ? { lowCostMode: true }  : {}),
+      ...(isGrokApproved()  ? { allowGrok:   true }  : {}),
+      ...extra
+    };
+    const res  = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, ...extra }),
+      body:    JSON.stringify(merged),
       signal
     });
     const provider = res.headers.get("X-AI-Provider");
@@ -157,10 +157,9 @@ export async function aiFetch(url, body = {}, { signal } = {}) {
     return { res, data };
   };
 
-  // First attempt — pre-attach allowGrok if the user already approved earlier.
-  let { res, data } = await doPost(isGrokApproved() ? { allowGrok: true } : {});
+  let { res, data } = await doPost({});
 
-  // 409 = server is asking for Grok permission.
+  // 409 = server wants Grok approval before using it as fallback.
   if (res.status === 409 && data?.needsApproval === "grok") {
     const approved = await requestGrokApproval({ attempted: data.attempted });
     if (!approved) throw new GenerationCanceledError();
@@ -170,7 +169,7 @@ export async function aiFetch(url, body = {}, { signal } = {}) {
   if (!res.ok) {
     const err = new Error(data?.error || `Request failed (${res.status})`);
     err.status = res.status;
-    err.data = data;
+    err.data   = data;
     throw err;
   }
   return data;

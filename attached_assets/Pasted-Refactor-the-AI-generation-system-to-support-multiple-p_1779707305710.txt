@@ -1,0 +1,219 @@
+Refactor the AI generation system to support multiple providers with intelligent fallback routing.
+
+Providers to support:
+
+* OpenRouter
+* OpenAI
+* Google Gemini
+* Anthropic Claude
+* xAI Grok
+
+Goals:
+
+* Never let the app fail completely
+* Automatically switch providers when one fails
+* Reduce token overuse
+* Handle endpoint outages gracefully
+* Optimize cost and reliability
+
+Architecture Requirements:
+
+1. Unified AI Service Layer
+   Create a centralized AI service manager:
+
+```js id="4n7q5v"
+class AIServiceManager {
+  async generate(params) {}
+}
+```
+
+All providers must use the same interface.
+
+2. Provider Priority System
+
+Use this fallback order:
+
+```js id="cwyksk"
+const PROVIDERS = [
+  "openrouter",
+  "openai",
+  "gemini",
+  "claude",
+  "grok"
+];
+```
+
+If one provider fails:
+
+* automatically retry with the next provider
+* continue until success
+* never stop after one failure
+
+3. OpenRouter Integration
+
+Use OpenRouter as the primary routing provider.
+
+Supported models:
+
+```js id="yjlwm1"
+[
+  "google/gemini-2.5-flash",
+  "openai/gpt-4.1-mini",
+  "anthropic/claude-3.7-sonnet",
+  "x-ai/grok-3-mini-beta",
+  "meta-llama/llama-3.3-70b-instruct"
+]
+```
+
+Add automatic model fallback inside OpenRouter.
+
+4. Direct Provider Fallbacks
+
+If OpenRouter fails:
+
+* fallback to direct OpenAI API
+* fallback to Gemini API
+* fallback to Anthropic API
+* fallback to Grok API
+
+Each provider should have its own API key configuration.
+
+5. Smart Token Management
+
+Remove all hardcoded:
+
+```js id="6cskha"
+max_tokens: 8192
+```
+
+Replace with dynamic limits:
+
+```js id="sps8b0"
+const TOKEN_LIMITS = {
+  title: 300,
+  outline: 1200,
+  chapter: 3000,
+  rewrite: 1500,
+  summary: 800
+};
+```
+
+Never exceed 4000 tokens automatically.
+
+6. Automatic Credit Protection
+
+Before every request:
+
+* estimate input tokens
+* estimate output tokens
+* reduce max_tokens if balance is low
+* prevent provider rejection errors
+
+If provider returns:
+
+* insufficient credits
+* quota exceeded
+* billing required
+
+Then automatically switch provider.
+
+7. Endpoint Failure Detection
+
+Detect errors like:
+
+* "No endpoints found"
+* "Model unavailable"
+* "Provider unavailable"
+* timeout
+* rate limit
+
+Mark provider as temporarily offline for 10 minutes.
+
+8. Retry Logic
+
+Implement:
+
+```js id="n3djv1"
+maxRetries = 3
+```
+
+Retry flow:
+
+* retry #1 → same provider
+* retry #2 → switch provider
+* retry #3 → switch to cheapest available model
+
+Use exponential delays:
+
+* 1s
+* 2s
+* 4s
+
+9. Cost Optimization
+
+Default model strategy:
+
+* cheap models for outlines/titles
+* premium models only for high-quality chapter writing
+
+Suggested defaults:
+
+* Gemini Flash → fast + cheap
+* GPT-4.1 Mini → balanced
+* Claude → premium long-form writing
+* Grok → backup
+* Llama/DeepSeek → emergency fallback
+
+10. Book Generation Workflow
+
+Do NOT generate entire books in one request.
+
+Instead:
+
+* generate title
+* generate subtitle
+* generate outline
+* generate chapters one-by-one
+* auto-save after every step
+
+11. Better Error Messages
+
+Replace:
+
+```js id="4x9f4m"
+All AI providers exhausted
+```
+
+With detailed logs:
+
+Example:
+
+* OpenRouter failed → insufficient credits
+* Claude failed → endpoint unavailable
+* Grok failed → no active endpoint
+* Switched to Gemini Flash successfully
+
+12. Settings Panel
+
+Add user controls for:
+
+* preferred provider
+* preferred model
+* max tokens
+* temperature
+* enable/disable fallback routing
+* low-cost mode
+* premium-quality mode
+
+13. Reliability Mode
+
+The app must ALWAYS attempt to produce output.
+
+If all premium providers fail:
+Automatically fallback to:
+
+* Gemini Flash
+* Llama
+* DeepSeek
+
+Never leave the user with a complete failure screen.
