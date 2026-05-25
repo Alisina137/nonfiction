@@ -40,8 +40,11 @@ const emptyAnalysis = {
 
 const emptyBookTitle = {
   suggestions: [],
+  cards: [],
   pickedFromAi: "",
-  customTitle: ""
+  customTitle: "",
+  selectedCard: null,
+  mode: "bestseller"
 };
 
 const emptyResources = {

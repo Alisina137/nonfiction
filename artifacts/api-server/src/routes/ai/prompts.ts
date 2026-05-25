@@ -548,6 +548,137 @@ Output ONLY valid JSON with this exact shape:
 }`;
 }
 
+export function titleCardsPrompt({
+  research, competitorSummaries, intelligence, mode
+}: any) {
+  const nicheLine = research.mainNicheLabel && research.subNicheLabel
+    ? `${research.mainNicheLabel} › ${research.subNicheLabel}`
+    : research.genre?.trim() || "Nonfiction";
+  const deepNiche = research.deepNicheLabel?.trim() || "";
+
+  const summariesBlock = Array.isArray(competitorSummaries) && competitorSummaries.length
+    ? competitorSummaries.slice(0, 6).map((l: string, i: number) => `${i + 1}. ${l}`).join("\n")
+    : "(none)";
+
+  const intelBlock = intelligence ? `
+TARGET AUDIENCE: ${intelligence.targetAudience || ""}
+READER PAIN: ${intelligence.readerPainProfile || ""}
+EMOTIONAL TRIGGERS: ${(intelligence.emotionalTriggers || []).join(", ")}
+TRANSFORMATION PROMISE: ${intelligence.transformationPromise || ""}
+BESTSELLER DNA: ${intelligence.bestsellerDNA || ""}
+WRITING STYLE: ${intelligence.writingStyleFingerprint || ""}
+POSITIONING STRATEGY: ${intelligence.positioningStrategy || ""}
+MARKET GAP: ${intelligence.marketGapAnalysis || ""}`.trim()
+    : "(not available — infer all signals from niche and competitor data)";
+
+  const modeMap: Record<string, string> = {
+    "bestseller":          "Commercial bestseller style — audience-named, transformation-forward, commercially polished. Like Atomic Habits, Deep Work, Can't Hurt Me.",
+    "masculine-authority": "Masculine authority — strong, disciplined, direct, no-nonsense. For ambitious men, leaders, high-performers. Commands respect.",
+    "emotional-transform": "Emotional transformation — vulnerability + hope + clear outcome. Feeling-forward, personal journey, empathy-driven.",
+    "scientific":          "Scientific/evidence-based — credibility signals, 'research-backed', 'the psychology of', 'the science of'. Analytical reader.",
+    "minimalist-premium":  "Minimalist premium — very short titles (2-4 words), elegant, timeless feel. Like 'Stillness Is the Key', 'Essentialism', 'Deep Work'.",
+    "bold-controversial":  "Bold/controversial — challenges assumptions, disrupts conventions, provocative framing. Grabs attention and sparks debate.",
+    "philosophical":       "Philosophical/wisdom — stoic or reflective, timeless principles, ancient meets modern. Contemplative, thoughtful readers.",
+    "viral-modern":        "Viral modern self-help — Gen Z / millennial resonance, TikTok-friendly, conversational, identity-based. Feels current."
+  };
+  const modeInstruction = modeMap[mode] || modeMap["bestseller"];
+
+  return `You are an Amazon KDP bestseller-title strategist and consumer psychology expert.
+
+Generate 6 premium nonfiction title packages. Produce differentiated titles — vary patterns, categories, and emotional angles. Make each one genuinely distinct.
+
+STYLE MODE: ${mode || "bestseller"}
+MODE INSTRUCTION: ${modeInstruction}
+
+BOOK PROFILE:
+- NICHE: ${nicheLine}${deepNiche ? ` › ${deepNiche}` : ""}
+- CONCEPT: ${research.bookTopic?.trim() || deepNiche || nicheLine}
+- TRANSFORMATION: ${research.stanceOnTopic?.trim() || "(infer from niche)"}
+- CUSTOM NOTES: ${research.standout?.trim() || "(none)"}
+- COMPETITORS:
+${summariesBlock}
+
+MARKET INTELLIGENCE:
+${intelBlock}
+
+SCORING RULES (must follow):
+- Scores should realistically vary — not all titles score equally. Range: 55-97.
+- A title can be strong on SEO but weaker on emotion, or vice versa. Reflect real tradeoffs.
+- isRecommended: true on the SINGLE best overall title only.
+- Use at least 3 different categories across the 6 cards.
+
+TITLE RULES:
+- Every title must name or strongly imply a specific audience
+- No generic patterns: "Better Habits", "Success Blueprint", "Confidence Reset", "Motivation Mastery"
+- Commercially polished — feels like a $9.99 Amazon bestseller
+- Mix these patterns across the 6 titles: "Transformation for Audience" | "System for Audience" | "Identity Label" | "The [Noun] of [Topic]" | "Art/Science of [Topic]"
+
+Return STRICT JSON only — no markdown, no text outside the JSON:
+{
+  "cards": [
+    {
+      "title": "...",
+      "subtitle": "A [Adjective] System for [Transformation] Without [Pain]",
+      "subtitleOptions": [
+        {"style": "SEO", "text": "keyword-rich subtitle with search terms"},
+        {"style": "Emotional", "text": "feeling-forward subtitle"},
+        {"style": "Minimalist", "text": "short elegant subtitle (max 8 words)"}
+      ],
+      "seoScore": 84,
+      "emotionalScore": 91,
+      "clickabilityScore": 88,
+      "audienceMatch": 93,
+      "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+      "toneProfile": ["calm authority", "masculine mentor"],
+      "pattern": "Transformation for Audience",
+      "category": "Masculine Authority",
+      "hook": "One punchy sentence on why someone would impulse-buy this.",
+      "audienceResonance": ["ambitious men 25-45", "entrepreneurs", "stoicism readers"],
+      "isRecommended": false
+    }
+  ]
+}
+
+Valid categories: "Masculine Authority" | "Emotional Transformation" | "Premium Minimalist" | "Scientific Authority" | "Viral Modern" | "Philosophical Wisdom" | "Bold Challenger"
+Valid patterns: "Transformation for Audience" | "System for Audience" | "Identity Label" | "How to [Outcome]" | "The [Noun] of [Topic]" | "Art/Science of [Topic]"`;
+}
+
+export function titleVariationsPrompt({ title, subtitle, research, intelligence }: any) {
+  const nicheLine = research?.mainNicheLabel && research?.subNicheLabel
+    ? `${research.mainNicheLabel} › ${research.subNicheLabel}`
+    : research?.genre || "Nonfiction";
+
+  return `You are an Amazon KDP title strategist.
+Create 6 powerful variations of this title, each with a meaningfully distinct style.
+
+ORIGINAL TITLE: "${title}"
+ORIGINAL SUBTITLE: "${subtitle || "(none)"}"
+NICHE: ${nicheLine}
+AUDIENCE: ${intelligence?.targetAudience || research?.targetAudience || "(infer from niche)"}
+PAIN: ${intelligence?.readerPainProfile || "(infer from niche)"}
+TRANSFORMATION: ${intelligence?.transformationPromise || research?.stanceOnTopic || "(infer)"}
+
+Generate exactly these 6 styles — each must feel noticeably different from the original and from each other:
+1. Bolder — more aggressive, challenging, confrontational wording
+2. Premium — shorter, elevated, timeless (2-4 words ideal)
+3. SEO — keyword-rich but still emotionally compelling
+4. Emotional — vulnerability + hope + clear transformation promise
+5. Modern Viral — Gen Z / TikTok-friendly energy, conversational
+6. Philosophical — timeless wisdom angle, stoic or reflective
+
+Return STRICT JSON only:
+{
+  "variations": [
+    {"style": "Bolder", "title": "...", "subtitle": "...", "note": "one sentence on why this works"},
+    {"style": "Premium", "title": "...", "subtitle": "...", "note": "..."},
+    {"style": "SEO", "title": "...", "subtitle": "...", "note": "..."},
+    {"style": "Emotional", "title": "...", "subtitle": "...", "note": "..."},
+    {"style": "Modern Viral", "title": "...", "subtitle": "...", "note": "..."},
+    {"style": "Philosophical", "title": "...", "subtitle": "...", "note": "..."}
+  ]
+}`;
+}
+
 export function competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, books }: any) {
   const bookLines = Array.isArray(books) && books.length
     ? books.slice(0, 10).map((b: any, i: number) => {

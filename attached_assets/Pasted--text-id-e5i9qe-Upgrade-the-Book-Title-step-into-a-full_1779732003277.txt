@@ -1,0 +1,400 @@
+```text id="e5i9qe"
+Upgrade the “Book Title” step into a full AI-powered Title Positioning & Conversion Engine.
+
+The goal is NOT just to generate random book titles.
+
+The goal is to generate:
+- high-converting
+- emotionally powerful
+- SEO-optimized
+- market-aligned
+- audience-targeted
+- visually strong
+- bestseller-style nonfiction titles
+
+that improve Amazon KDP click-through rate and conversion.
+
+====================================================
+MAIN OBJECTIVE
+====================================================
+
+Transform the current title selection step into a professional publishing intelligence system.
+
+The AI should:
+- understand market psychology
+- understand bestseller naming patterns
+- understand audience targeting
+- understand Amazon SEO
+- understand emotional hooks
+- understand branding and positioning
+
+====================================================
+CURRENT PROBLEM
+====================================================
+
+The current system only:
+- generates basic title suggestions
+- allows selection
+- allows custom title input
+
+This is too shallow.
+
+The new system must evaluate and explain WHY a title works.
+
+====================================================
+FEATURES TO ADD
+====================================================
+
+====================================================
+1. SUBTITLE GENERATOR (CRITICAL)
+====================================================
+
+Every generated title should automatically include:
+- subtitle suggestions
+- transformation promises
+- SEO keywords
+- emotional hooks
+
+Example:
+
+Stoic Confidence for Ambitious Men
+Master Emotional Control, Mental Resilience,
+and Unshakable Discipline in a Distracted World
+
+Generate multiple subtitle styles:
+- SEO-focused
+- emotional
+- premium
+- bold
+- minimalist
+- practical guide
+
+====================================================
+2. AMAZON SEO ANALYSIS
+====================================================
+
+Analyze:
+- Amazon bestseller keywords
+- niche search intent
+- high-performing phrases
+- keyword competitiveness
+
+Generate:
+- SEO score
+- keyword match score
+- discoverability score
+
+Example:
+
+SEO Strength: 87/100
+Search Intent Match: High
+Competition Level: Medium
+
+Detected keywords:
+- stoicism
+- confidence
+- discipline
+- mental toughness
+- emotional control
+
+====================================================
+3. EMOTIONAL IMPACT SCORING
+====================================================
+
+For every title calculate:
+
+- emotional power
+- curiosity
+- authority
+- transformation promise
+- urgency
+- audience clarity
+- masculinity/femininity tone
+- premium feel
+
+Example:
+
+Emotional Impact: 91/100
+Authority: 84/100
+Transformation Promise: 89/100
+Curiosity: 73/100
+
+====================================================
+4. BESTSELLER PATTERN MATCHING
+====================================================
+
+Analyze successful nonfiction title structures.
+
+Detect patterns like:
+- “The X of Y”
+- “How to”
+- “For Men”
+- “Master Your”
+- “The Art of”
+- “The Psychology of”
+
+Then classify generated titles by pattern category.
+
+====================================================
+5. AUDIENCE RESONANCE ANALYSIS
+====================================================
+
+For each title show:
+
+“This title most strongly resonates with:”
+
+- ambitious men
+- entrepreneurs
+- self-help readers
+- stoicism audience
+- high performers
+- anxious professionals
+
+Display audience targeting confidence score.
+
+====================================================
+6. TITLE STYLE MODES
+====================================================
+
+Add selectable title-generation modes:
+
+- Bestseller-style
+- Masculine authority
+- Emotional transformation
+- Scientific/self-help
+- Minimalist premium
+- Bold/controversial
+- Philosophical
+- Viral modern self-help
+
+Each mode changes:
+- wording
+- structure
+- emotional tone
+- subtitle style
+
+====================================================
+7. CLICKABILITY SCORE
+====================================================
+
+Estimate Amazon CTR potential.
+
+Generate:
+
+Amazon Clickability Score: 84/100
+
+Strengths:
+- strong audience targeting
+- emotional authority
+- clear transformation
+
+Weaknesses:
+- low curiosity
+- slightly generic wording
+
+====================================================
+8. COMPETITOR SIMILARITY DETECTION
+====================================================
+
+Prevent titles from sounding copied.
+
+Analyze similarity against competitor titles.
+
+Generate warnings like:
+
+Too similar to:
+- The Daily Stoic
+- Stoic Mindset for Men
+
+Then generate safer variations automatically.
+
+====================================================
+9. TITLE CATEGORY GROUPING
+====================================================
+
+Group generated titles by positioning style.
+
+Example:
+
+MASCULINE AUTHORITY
+- Stoic Confidence for Ambitious Men
+- The Disciplined Man
+- Calm Under Pressure
+
+PREMIUM MINIMALIST
+- Inner Steel
+- Stillness & Strength
+
+EMOTIONAL TRANSFORMATION
+- From Chaos to Control
+- Unshakable Under Fire
+
+====================================================
+10. SUBTITLE FORMULA ENGINE
+====================================================
+
+Use proven nonfiction subtitle formulas.
+
+Examples:
+
+How to [Transformation]
+Without [Pain]
+
+Master [Skill]
+and Achieve [Outcome]
+
+A Practical Guide to [Result]
+
+Generate subtitle structures dynamically.
+
+====================================================
+11. AI BESTSELLER RECOMMENDATION
+====================================================
+
+The AI should recommend ONE best title.
+
+Display:
+
+AI Recommended Bestseller Potential
+
+Explain WHY:
+- strongest emotional hook
+- strongest SEO
+- clearest audience targeting
+- highest clickability
+
+====================================================
+12. TONE PREVIEW
+====================================================
+
+Show perceived tone of the title.
+
+Example:
+
+Perceived Tone:
+- calm authority
+- masculine mentor
+- disciplined philosophy
+
+====================================================
+13. COVER COMPATIBILITY ANALYSIS
+====================================================
+
+Evaluate visual branding strength.
+
+Generate:
+
+Cover Compatibility: Excellent
+
+Reasons:
+- short
+- memorable
+- strong typography potential
+- visually clean
+
+====================================================
+14. TITLE EVOLUTION GENERATOR
+====================================================
+
+Generate variations of the selected title.
+
+Example:
+
+Original:
+Stoic Confidence for Ambitious Men
+
+Bolder:
+Master Your Emotions or Stay Weak
+
+Premium:
+The Stoic Edge
+
+SEO:
+Stoic Confidence for Men
+
+Emotional:
+Calm in the Midst of Chaos
+
+====================================================
+15. AUTO-GENERATED METADATA
+====================================================
+
+After selecting a title automatically generate:
+
+- subtitle
+- SEO keywords
+- Amazon categories
+- branding direction
+- tone profile
+- audience profile
+- cover mood
+- positioning strategy
+
+These outputs should automatically feed downstream steps.
+
+====================================================
+16. UI / UX IMPROVEMENTS
+====================================================
+
+Replace the basic title list with intelligent title cards.
+
+Each title card should display:
+
+- title
+- subtitle
+- SEO score
+- emotional score
+- clickability score
+- audience resonance
+- tone
+- bestseller recommendation badge
+
+Add expandable detail view.
+
+====================================================
+17. SMART TITLE GENERATION RULES
+====================================================
+
+Generated titles should:
+- avoid generic wording
+- avoid robotic AI phrasing
+- avoid overused clichés
+- target specific audiences
+- contain emotional leverage
+- contain transformation language
+- feel commercially viable
+- remain original
+
+====================================================
+18. IMPORTANT ARCHITECTURE RULE
+====================================================
+
+The title system should consume intelligence from the Analysis engine.
+
+Use:
+- emotional trigger analysis
+- audience extraction
+- bestseller DNA
+- review mining
+- market gap detection
+- keyword intelligence
+
+to generate smarter titles.
+
+DO NOT generate titles independently from market intelligence.
+
+====================================================
+19. FINAL GOAL
+====================================================
+
+The Book Title step should feel like a professional publishing consultant that combines:
+
+- branding
+- psychology
+- Amazon SEO
+- audience targeting
+- emotional marketing
+- conversion optimization
+
+to generate titles that actually sell.
+```

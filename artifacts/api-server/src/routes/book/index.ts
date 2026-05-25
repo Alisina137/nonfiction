@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
   contextualBookTitlesPrompt,
+  titleCardsPrompt,
+  titleVariationsPrompt,
   systemPrompt
 } from "../ai/prompts.js";
 import { buildCompetitorSummariesForPrompt } from "../ai/analysisSummary.js";
@@ -41,11 +43,35 @@ async function runTitleGeneration(
 
 router.post("/contextual-titles", async (req, res) => {
   try {
-    const { research, analysis, audienceCandidates, painPoints, transformations, allowGrok } =
-      req.body || {};
+    const {
+      research, analysis, audienceCandidates, painPoints, transformations,
+      mode, intelligence, allowGrok
+    } = req.body || {};
+
     if (!research || typeof research !== "object")
       return res.status(400).json({ error: "Research payload required." });
+
     const competitorSummaries = buildCompetitorSummariesForPrompt(analysis?.books || []);
+
+    if (mode) {
+      const prompt = titleCardsPrompt({ research, competitorSummaries, intelligence, mode });
+      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { allowGrok: allowGrok === true });
+      const data = extractJSON(text);
+      const cards: any[] = Array.isArray(data.cards)
+        ? data.cards.filter((c: any) => c?.title).slice(0, 6)
+        : [];
+      const titles = cards.map((c: any) => c.title).filter(Boolean);
+      const enhanced = cards.map((c: any) => ({
+        title: c.title,
+        subtitle: c.subtitle,
+        hook: c.hook,
+        audience: Array.isArray(c.audienceResonance) ? c.audienceResonance[0] : "",
+        angle: c.pattern
+      }));
+      res.setHeader("X-AI-Provider", usedProvider);
+      return res.json({ titles, enhanced, cards, _provider: usedProvider });
+    }
+
     const params = {
       research,
       competitorSummaries,
@@ -56,7 +82,6 @@ router.post("/contextual-titles", async (req, res) => {
 
     let { titles, enhanced, usedProvider } = await runTitleGeneration(params, allowGrok === true);
 
-    // Compliance audit: require >=70% audience-explicit (5/6 for 6-title batch).
     const required = Math.ceil(titles.length * 0.7);
     if (titles.length >= 3 && countAudienceTitles(titles) < required) {
       try {
@@ -87,13 +112,29 @@ router.post("/contextual-titles", async (req, res) => {
     return res.json({ titles, enhanced, _provider: usedProvider });
   } catch (error: any) {
     if (error instanceof GrokApprovalRequiredError) {
-      return res.status(409).json({
-        needsApproval: "grok",
-        attempted: error.attempted,
-        message: error.message
-      });
+      return res.status(409).json({ needsApproval: "grok", attempted: error.attempted, message: error.message });
     }
     return res.status(500).json({ error: error.message || "Failed to generate titles" });
+  }
+});
+
+router.post("/title-variations", async (req, res) => {
+  try {
+    const { title, subtitle, research, intelligence, allowGrok } = req.body || {};
+    if (!title) return res.status(400).json({ error: "title is required." });
+    const prompt = titleVariationsPrompt({ title, subtitle, research, intelligence });
+    const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { allowGrok: allowGrok === true });
+    const data = extractJSON(text);
+    const variations = Array.isArray(data.variations)
+      ? data.variations.filter((v: any) => v?.style && v?.title).slice(0, 6)
+      : [];
+    res.setHeader("X-AI-Provider", usedProvider);
+    return res.json({ variations, _provider: usedProvider });
+  } catch (error: any) {
+    if (error instanceof GrokApprovalRequiredError) {
+      return res.status(409).json({ needsApproval: "grok", attempted: error.attempted, message: error.message });
+    }
+    return res.status(500).json({ error: error.message || "Failed to generate variations" });
   }
 });
 
