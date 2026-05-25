@@ -11,18 +11,34 @@ import {
   Footer,
   PageNumber,
   TableOfContents,
-  SectionProperties,
   SectionType,
   NumberFormat,
-  convertInchesToTwip,
-  LevelFormat
+  convertInchesToTwip
 } from "docx";
 
 const router = Router();
 
 // ─── Presets ──────────────────────────────────────────────────────────────────
+//
+// kdp_pro is the default "KDP Professional Nonfiction" style.
+// thesis and academic are kept for academic authors.
+// kdp is kept as a gutter-margin print variant.
+// nonfiction and novel have been removed per spec.
 
 const PRESETS: Record<string, any> = {
+  kdp_pro: {
+    name: "KDP Professional Nonfiction",
+    pageW: 432, pageH: 648,                          // 6×9 inches
+    mTop: 63,  mBot: 54, mLeft: 63, mRight: 54,      // KDP-compliant margins
+    titleSz: 28, chapterSz: 20, sectionSz: 16, subsectionSz: 14, bodySz: 12,
+    lineH: 14,   // 12pt × 1.15 ≈ 13.8 → 14
+    paraGap: 8, indent: 18,                           // small first-para indent
+    chapterPrefix: "Chapter",
+    docxBody: "Times New Roman", docxHead: "Times New Roman",
+    docxMLeft: 1260, docxMRight: 1080, docxMTop: 1260, docxMBot: 1080,
+    docxLineSpacing: 276,                             // 240 × 1.15
+    useTimesRoman: true
+  },
   thesis: {
     name: "Thesis Style",
     pageW: 612, pageH: 792,
@@ -32,6 +48,7 @@ const PRESETS: Record<string, any> = {
     chapterPrefix: "Chapter",
     docxBody: "Times New Roman", docxHead: "Times New Roman",
     docxMLeft: 1440, docxMRight: 1152, docxMTop: 1152, docxMBot: 1152,
+    docxLineSpacing: 300,
     useTimesRoman: true
   },
   academic: {
@@ -43,28 +60,7 @@ const PRESETS: Record<string, any> = {
     chapterPrefix: "Chapter",
     docxBody: "Times New Roman", docxHead: "Times New Roman",
     docxMLeft: 1600, docxMRight: 1360, docxMTop: 1360, docxMBot: 1360,
-    useTimesRoman: true
-  },
-  nonfiction: {
-    name: "Modern Nonfiction",
-    pageW: 432, pageH: 648,
-    mTop: 54, mBot: 54, mLeft: 60, mRight: 54,
-    titleSz: 24, chapterSz: 20, sectionSz: 14, subsectionSz: 12, bodySz: 10.5,
-    lineH: 17, paraGap: 10, indent: 0,
-    chapterPrefix: "Chapter",
-    docxBody: "Calibri", docxHead: "Calibri",
-    docxMLeft: 960, docxMRight: 864, docxMTop: 864, docxMBot: 864,
-    useTimesRoman: false
-  },
-  novel: {
-    name: "Novel Style",
-    pageW: 396, pageH: 612,
-    mTop: 54, mBot: 54, mLeft: 54, mRight: 54,
-    titleSz: 22, chapterSz: 18, sectionSz: 13, subsectionSz: 11, bodySz: 11,
-    lineH: 18, paraGap: 0, indent: 36,
-    chapterPrefix: "Chapter",
-    docxBody: "Georgia", docxHead: "Georgia",
-    docxMLeft: 864, docxMRight: 864, docxMTop: 864, docxMBot: 864,
+    docxLineSpacing: 300,
     useTimesRoman: true
   },
   kdp: {
@@ -74,8 +70,9 @@ const PRESETS: Record<string, any> = {
     titleSz: 24, chapterSz: 20, sectionSz: 14, subsectionSz: 12, bodySz: 11,
     lineH: 18, paraGap: 8, indent: 18,
     chapterPrefix: "Chapter",
-    docxBody: "Garamond", docxHead: "Garamond",
+    docxBody: "Times New Roman", docxHead: "Times New Roman",
     docxMLeft: 1152, docxMRight: 864, docxMTop: 1152, docxMBot: 1152,
+    docxLineSpacing: 276,
     useTimesRoman: true
   }
 };
@@ -103,29 +100,44 @@ function sanitize(text: string): string {
     .replace(/\u2014/g, "--")
     .replace(/\u2026/g, "...")
     .replace(/\u00A0/g, " ")
-    .replace(/[^\x00-\x7E]/g, (c) => {
-      try { return c; } catch { return "?"; }
-    });
+    .replace(/[^\x00-\x7E]/g, (c) => { try { return c; } catch { return "?"; } });
 }
 
-interface HChapter {
-  chNum: number;
-  title: string;
-  sections: HSection[];
+// ─── Prose block parser ───────────────────────────────────────────────────────
+
+type ProseBlock =
+  | { kind: "para";     text: string }
+  | { kind: "bullet";   text: string }
+  | { kind: "numbered"; text: string; num: number };
+
+function parseProseBlocks(prose: string): ProseBlock[] {
+  const blocks: ProseBlock[] = [];
+  const rawParas = String(prose || "").split(/\n{2,}/);
+  for (const rawPara of rawParas) {
+    if (!rawPara.trim()) continue;
+    const lines = rawPara.split("\n");
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t) continue;
+      const bulletM = t.match(/^[•\-\*]\s+(.+)/);
+      const numM    = t.match(/^(\d+)[.)]\s+(.+)/);
+      if (bulletM) {
+        blocks.push({ kind: "bullet",   text: bulletM[1] });
+      } else if (numM) {
+        blocks.push({ kind: "numbered", text: numM[2], num: parseInt(numM[1], 10) });
+      } else {
+        blocks.push({ kind: "para",     text: t });
+      }
+    }
+  }
+  return blocks;
 }
 
-interface HSection {
-  secNum: number;
-  title: string;
-  id: string;
-  subsections: HSubsection[];
-}
+// ─── Outline hierarchy ────────────────────────────────────────────────────────
 
-interface HSubsection {
-  subNum: number;
-  title: string;
-  id: string;
-}
+interface HChapter { chNum: number; title: string; sections: HSection[] }
+interface HSection  { secNum: number; title: string; id: string; subsections: HSubsection[] }
+interface HSubsection { subNum: number; title: string; id: string }
 
 function buildHierarchy(outline: any): {
   introduction: { id: string; title: string } | null;
@@ -165,263 +177,315 @@ function wrapTextPdf(text: string, font: any, size: number, maxWidth: number): s
       const test = current ? current + " " + word : word;
       try {
         if (font.widthOfTextAtSize(test, size) > maxWidth && current) {
-          lines.push(current);
-          current = word;
-        } else {
-          current = test;
-        }
-      } catch {
-        current = test;
-      }
+          lines.push(current); current = word;
+        } else { current = test; }
+      } catch { current = test; }
     }
     if (current) lines.push(current);
   }
   return lines;
 }
 
+function toRoman(n: number): string {
+  const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1];
+  const syms = ["m","cm","d","cd","c","xc","l","xl","x","ix","v","iv","i"];
+  let r = "";
+  for (let i = 0; i < vals.length; i++) { while (n >= vals[i]) { r += syms[i]; n -= vals[i]; } }
+  return r;
+}
+
 async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array> {
-  const preset = PRESETS[options.preset] || PRESETS.nonfiction;
-  const P = preset;
+  const P = PRESETS[options.preset] || PRESETS.kdp_pro;
   const pdf = await PDFDocument.create();
 
-  const regularFont = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRoman : StandardFonts.Helvetica);
-  const boldFont = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesBold : StandardFonts.HelveticaBold);
-  const italicFont = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRomanItalic : StandardFonts.HelveticaOblique);
+  const regularFont = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRoman     : StandardFonts.Helvetica);
+  const boldFont    = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesBold       : StandardFonts.HelveticaBold);
+  const italicFont  = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRomanItalic: StandardFonts.HelveticaOblique);
 
-  const bookTitle = sanitize(resolveBookTitle(project));
-  const subtitle = sanitize(project?.bookCover?.subtitle || project?.bookDetails?.subtitle || "");
-  const author = sanitize(resolveAuthorName(project));
-  const description = sanitize(project?.description || "");
-  const dedication = sanitize(options.dedication || "");
+  const bookTitle   = sanitize(resolveBookTitle(project));
+  const subtitle    = sanitize(project?.bookCover?.subtitle || project?.bookDetails?.subtitle || "");
+  const bookTopic   = sanitize(
+    project?.research?.bookTopic || project?.bookDetails?.bookTopic ||
+    project?.research?.subNiche  || project?.research?.niche || ""
+  );
+  const tagline     = sanitize(project?.bookCover?.tagline || "");
+  const author      = sanitize(resolveAuthorName(project));
+  const description = sanitize(project?.description?.description || project?.description || "");
+  const authorBio   = sanitize(
+    project?.authorBio?.bio || project?.authorBio?.background || ""
+  );
+  const dedication      = sanitize(options.dedication || "");
   const acknowledgments = sanitize(options.acknowledgments || "");
-  const preface = sanitize(options.preface || "");
+  const preface         = sanitize(options.preface || "");
 
   const W = P.pageW, H = P.pageH;
   const ML = P.mLeft, MR = P.mRight, MT = P.mTop, MB = P.mBot;
   const textW = W - ML - MR;
-  const BODY = P.bodySz;
-  const LH = P.lineH;
-  const PG = P.paraGap;
+  const BODY = P.bodySz, LH = P.lineH, PG = P.paraGap;
 
-  const darkColor = rgb(0.05, 0.08, 0.15);
-  const midColor = rgb(0.25, 0.28, 0.35);
-  const accentColor = rgb(0.15, 0.3, 0.6);
-  const lightGray = rgb(0.6, 0.6, 0.6);
+  const black      = rgb(0,    0,    0);
+  const darkGray   = rgb(0.15, 0.15, 0.15);
+  const midGray    = rgb(0.35, 0.35, 0.35);
+  const lightGray  = rgb(0.6,  0.6,  0.6);
+  const accentColor = rgb(0.12, 0.25, 0.55);
 
-  // Track pages for TOC
-  const tocEntries: { label: string; pageNum: number }[] = [];
+  const tocEntries: { label: string; pageNum: number; level: number }[] = [];
   let arabicPageNum = 0;
 
-  function newPage(): PDFPage {
-    return pdf.addPage([W, H]);
-  }
+  function newPage(): PDFPage { return pdf.addPage([W, H]); }
 
-  function drawRunningHeader(page: PDFPage, chapterLabel: string, pageN: number, isRoman = false) {
+  function drawHeader(page: PDFPage, chLabel: string, pageN: number, isRoman = false) {
     const num = isRoman ? toRoman(pageN) : String(pageN);
-    const headerY = H - MT + 20;
-    const footerY = MB - 20;
+    const headerY = H - MT + 22;
+    const footerY = MB - 18;
 
-    // Header line
-    page.drawLine({ start: { x: ML, y: headerY - 2 }, end: { x: W - MR, y: headerY - 2 }, thickness: 0.5, color: lightGray });
-    page.drawText(bookTitle.slice(0, 50), { x: ML, y: headerY + 4, size: 7.5, font: italicFont, color: lightGray });
-    if (chapterLabel) {
-      const cw = Math.min(italicFont.widthOfTextAtSize(chapterLabel, 7.5), textW * 0.5);
-      page.drawText(chapterLabel.slice(0, 45), { x: W - MR - cw, y: headerY + 4, size: 7.5, font: italicFont, color: lightGray });
+    page.drawLine({ start: { x: ML, y: headerY - 3 }, end: { x: W - MR, y: headerY - 3 }, thickness: 0.4, color: lightGray });
+    page.drawText(bookTitle.slice(0, 48), { x: ML, y: headerY + 3, size: 7, font: italicFont, color: lightGray });
+    if (chLabel) {
+      const cw = italicFont.widthOfTextAtSize(chLabel.slice(0, 40), 7);
+      page.drawText(chLabel.slice(0, 40), { x: W - MR - cw, y: headerY + 3, size: 7, font: italicFont, color: lightGray });
     }
 
-    // Footer
-    page.drawLine({ start: { x: ML, y: footerY + 2 }, end: { x: W - MR, y: footerY + 2 }, thickness: 0.5, color: lightGray });
+    page.drawLine({ start: { x: ML, y: footerY + 3 }, end: { x: W - MR, y: footerY + 3 }, thickness: 0.4, color: lightGray });
     const pw = regularFont.widthOfTextAtSize(num, 8);
-    page.drawText(num, { x: ML + textW / 2 - pw / 2, y: footerY - 10, size: 8, font: regularFont, color: lightGray });
+    page.drawText(num, { x: ML + textW / 2 - pw / 2, y: footerY - 10, size: 8, font: regularFont, color: midGray });
   }
 
-  function toRoman(n: number): string {
-    const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1];
-    const syms = ["m","cm","d","cd","c","xc","l","xl","x","ix","v","iv","i"];
-    let r = "";
-    for (let i = 0; i < vals.length; i++) { while (n >= vals[i]) { r += syms[i]; n -= vals[i]; } }
-    return r;
-  }
-
-  // ── COVER PAGE ──
+  // ── COVER PAGE ──────────────────────────────────────────────────────────────
   {
     const page = newPage();
-    let y = H * 0.42;
+    // Top accent bar
+    page.drawRectangle({ x: ML, y: H - 42, width: textW, height: 5, color: accentColor });
 
-    // Decorative top bar
-    page.drawRectangle({ x: ML, y: H - 40, width: textW, height: 4, color: accentColor });
+    // Calculate title block height
+    const titleLines = wrapTextPdf(bookTitle, boldFont, P.titleSz, textW);
+    const titleBlockH = titleLines.length * (P.titleSz + 7);
+    let y = H * 0.52 + titleBlockH / 2;
 
     // Title
-    const titleLines = wrapTextPdf(bookTitle, boldFont, P.titleSz, textW);
-    const titleBlock = titleLines.length * (P.titleSz + 8);
-    y = H * 0.5 + titleBlock / 2;
     for (const line of titleLines) {
       const tw = boldFont.widthOfTextAtSize(line, P.titleSz);
-      page.drawText(line, { x: ML + (textW - tw) / 2, y, size: P.titleSz, font: boldFont, color: darkColor });
-      y -= P.titleSz + 8;
+      page.drawText(line, { x: ML + (textW - tw) / 2, y, size: P.titleSz, font: boldFont, color: black });
+      y -= P.titleSz + 7;
     }
 
     // Rule
-    y -= 16;
+    y -= 14;
     page.drawRectangle({ x: ML + textW * 0.2, y, width: textW * 0.6, height: 1.5, color: accentColor });
-    y -= 20;
+    y -= 18;
 
     // Subtitle
     if (subtitle) {
-      const stw = italicFont.widthOfTextAtSize(subtitle.slice(0, 80), P.sectionSz);
-      page.drawText(subtitle.slice(0, 80), { x: ML + (textW - Math.min(stw, textW)) / 2, y, size: P.sectionSz, font: italicFont, color: midColor });
-      y -= P.sectionSz + 16;
+      const subLines = wrapTextPdf(subtitle, italicFont, P.sectionSz, textW * 0.85);
+      for (const sl of subLines) {
+        const sw = italicFont.widthOfTextAtSize(sl, P.sectionSz);
+        page.drawText(sl, { x: ML + (textW - sw) / 2, y, size: P.sectionSz, font: italicFont, color: darkGray });
+        y -= P.sectionSz + 6;
+      }
+      y -= 8;
     }
 
-    // Author
-    const byLine = `by ${author}`;
-    const aw = regularFont.widthOfTextAtSize(byLine, 14);
-    page.drawText(byLine, { x: ML + (textW - aw) / 2, y: H * 0.22, size: 14, font: regularFont, color: midColor });
+    // Book topic / category
+    if (bookTopic) {
+      const topicLabel = bookTopic.slice(0, 60);
+      const tw = regularFont.widthOfTextAtSize(topicLabel, BODY - 1);
+      page.drawText(topicLabel, { x: ML + (textW - tw) / 2, y, size: BODY - 1, font: regularFont, color: midGray });
+      y -= BODY + 8;
+    }
 
-    // Bottom bar
-    page.drawRectangle({ x: ML, y: 32, width: textW, height: 4, color: accentColor });
+    // Tagline
+    if (tagline) {
+      const tl = tagline.slice(0, 80);
+      const tw = italicFont.widthOfTextAtSize(tl, BODY);
+      page.drawText(tl, { x: ML + (textW - tw) / 2, y, size: BODY, font: italicFont, color: midGray });
+    }
+
+    // Author (fixed position near bottom)
+    const byLine = `by ${author}`;
+    const aw = regularFont.widthOfTextAtSize(byLine, 13);
+    page.drawText(byLine, { x: ML + (textW - aw) / 2, y: H * 0.19, size: 13, font: regularFont, color: darkGray });
+
+    // Bottom accent bar
+    page.drawRectangle({ x: ML, y: 34, width: textW, height: 5, color: accentColor });
   }
 
   let romanPage = 1;
 
-  // ── ABSTRACT (description) ──
-  if (description) {
+  // ── COPYRIGHT PAGE ──────────────────────────────────────────────────────────
+  {
     romanPage++;
     const page = newPage();
-    drawRunningHeader(page, "Abstract", romanPage, true);
-    let y = H - MT - 10;
-
-    page.drawText("Abstract", { x: ML, y, size: P.chapterSz, font: boldFont, color: darkColor });
-    y -= P.chapterSz + 16;
-    page.drawRectangle({ x: ML, y, width: 40, height: 2, color: accentColor });
-    y -= 20;
-
-    const lines = wrapTextPdf(description, regularFont, BODY, textW);
-    for (const line of lines) {
-      if (!line) { y -= PG; continue; }
-      if (y < MB + 20) { y = H - MT - 10; }
-      page.drawText(line, { x: ML + P.indent, y, size: BODY, font: regularFont, color: darkColor });
+    const year = new Date().getFullYear();
+    let y = H * 0.35;
+    const copyrightText = [
+      `Copyright © ${year} ${author}`,
+      "",
+      "All rights reserved.",
+      "",
+      "No part of this publication may be reproduced, distributed, or transmitted",
+      "in any form or by any means, including photocopying, recording, or other",
+      "electronic or mechanical methods, without the prior written permission of",
+      "the author, except in the case of brief quotations embodied in critical",
+      "reviews and certain other noncommercial uses permitted by copyright law.",
+      "",
+      "First Edition"
+    ];
+    for (const line of copyrightText) {
+      if (!line) { y -= BODY; continue; }
+      const w = regularFont.widthOfTextAtSize(line, BODY - 1);
+      page.drawText(line, { x: ML + (textW - w) / 2, y, size: BODY - 1, font: regularFont, color: midGray });
       y -= LH;
     }
   }
 
-  // ── DEDICATION ──
+  // ── DEDICATION ──────────────────────────────────────────────────────────────
   if (dedication) {
     romanPage++;
     const page = newPage();
-    drawRunningHeader(page, "Dedication", romanPage, true);
+    drawHeader(page, "Dedication", romanPage, true);
     const dlines = wrapTextPdf(dedication, italicFont, 13, textW * 0.7);
     let y = H * 0.5 + (dlines.length * 20) / 2;
     for (const dl of dlines) {
       const dw = italicFont.widthOfTextAtSize(dl, 13);
-      page.drawText(dl, { x: ML + (textW - dw) / 2, y, size: 13, font: italicFont, color: midColor });
+      page.drawText(dl, { x: ML + (textW - dw) / 2, y, size: 13, font: italicFont, color: midGray });
       y -= 22;
     }
   }
 
-  // ── ACKNOWLEDGMENTS ──
+  // ── ACKNOWLEDGMENTS ──────────────────────────────────────────────────────────
   if (acknowledgments) {
     romanPage++;
     const page = newPage();
-    drawRunningHeader(page, "Acknowledgments", romanPage, true);
+    drawHeader(page, "Acknowledgments", romanPage, true);
     let y = H - MT - 10;
-    page.drawText("Acknowledgments", { x: ML, y, size: P.chapterSz, font: boldFont, color: darkColor });
+    page.drawText("Acknowledgments", { x: ML, y, size: P.chapterSz, font: boldFont, color: black });
     y -= P.chapterSz + 24;
-    const lines = wrapTextPdf(acknowledgments, regularFont, BODY, textW);
-    for (const line of lines) {
+    for (const line of wrapTextPdf(acknowledgments, regularFont, BODY, textW)) {
       if (!line) { y -= PG; continue; }
       if (y < MB + 20) { y = H - MT - 10; }
-      page.drawText(line, { x: ML + P.indent, y, size: BODY, font: regularFont, color: darkColor });
+      page.drawText(line, { x: ML, y, size: BODY, font: regularFont, color: black });
       y -= LH;
     }
   }
 
-  // ── TABLE OF CONTENTS (placeholder — filled in pass 2) ──
+  // ── TABLE OF CONTENTS (placeholder) ─────────────────────────────────────────
   romanPage++;
-  const tocPage = newPage();
-  drawRunningHeader(tocPage, "Contents", romanPage, true);
-  const tocPageIndex = pdf.getPageCount() - 1;
-  tocPage.drawText("Contents", { x: ML, y: H - MT - 10, size: P.chapterSz, font: boldFont, color: darkColor });
-  tocPage.drawRectangle({ x: ML, y: H - MT - 10 - P.chapterSz - 12, width: 40, height: 2, color: accentColor });
+  const tocPage1 = newPage();
+  drawHeader(tocPage1, "Contents", romanPage, true);
+  tocPage1.drawText("Contents", { x: ML, y: H - MT - 10, size: P.chapterSz, font: boldFont, color: black });
+  tocPage1.drawRectangle({ x: ML, y: H - MT - 10 - P.chapterSz - 12, width: 40, height: 2, color: accentColor });
 
-  // ── PREFACE ──
+  // ── PREFACE ──────────────────────────────────────────────────────────────────
   if (preface) {
     romanPage++;
     const page = newPage();
-    drawRunningHeader(page, "Preface", romanPage, true);
+    drawHeader(page, "Preface", romanPage, true);
     let y = H - MT - 10;
-    page.drawText("Preface", { x: ML, y, size: P.chapterSz, font: boldFont, color: darkColor });
+    page.drawText("Preface", { x: ML, y, size: P.chapterSz, font: boldFont, color: black });
     y -= P.chapterSz + 24;
-    const lines = wrapTextPdf(preface, regularFont, BODY, textW);
-    for (const line of lines) {
+    for (const line of wrapTextPdf(preface, regularFont, BODY, textW)) {
       if (!line) { y -= PG; continue; }
       if (y < MB + 20) { y = H - MT - 10; }
-      page.drawText(line, { x: ML + P.indent, y, size: BODY, font: regularFont, color: darkColor });
+      page.drawText(line, { x: ML, y, size: BODY, font: regularFont, color: black });
       y -= LH;
     }
   }
 
-  // ── MAIN CONTENT ──
+  // ── MAIN CONTENT ─────────────────────────────────────────────────────────────
   const lessons = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
-  const hier = buildHierarchy(project?.bookOutline);
+  const hier    = buildHierarchy(project?.bookOutline);
 
-  function drawChapterPage(chLabel: string, chTitle: string, chNum: number): PDFPage {
+  function drawChapterPage(chTitle: string, chNum: number): PDFPage {
     arabicPageNum++;
     const page = newPage();
-    drawRunningHeader(page, chNum === 0 ? "" : `${P.chapterPrefix} ${chNum}`, arabicPageNum, false);
+    drawHeader(page, chNum > 0 ? `${P.chapterPrefix} ${chNum}` : "", arabicPageNum, false);
 
-    let y = H - MT - 40;
-
+    let y = H - MT - 50;
     if (chNum > 0) {
       const prefixTxt = `${P.chapterPrefix} ${chNum}`;
-      page.drawText(prefixTxt, { x: ML, y, size: 11, font: regularFont, color: accentColor });
-      y -= 18;
+      page.drawText(prefixTxt, { x: ML, y, size: 10, font: regularFont, color: accentColor });
+      y -= 16;
     }
-
     const titleLines = wrapTextPdf(chTitle, boldFont, P.chapterSz, textW);
     for (const tl of titleLines) {
-      page.drawText(sanitize(tl), { x: ML, y, size: P.chapterSz, font: boldFont, color: darkColor });
+      page.drawText(sanitize(tl), { x: ML, y, size: P.chapterSz, font: boldFont, color: black });
       y -= P.chapterSz + 6;
     }
-    y -= 4;
-    page.drawRectangle({ x: ML, y, width: 50, height: 2.5, color: accentColor });
-    y -= 24;
-
+    y -= 6;
+    page.drawRectangle({ x: ML, y, width: 48, height: 2, color: accentColor });
     return page;
   }
 
-  function drawBodyText(page: PDFPage, prose: string, startY: number, currentChNum: number): PDFPage {
+  // Draws body content, returns { page, y }
+  // indentFirst=true → first regular paragraph gets P.indent; lists never get indent
+  function drawProseBlocks(
+    page: PDFPage,
+    blocks: ProseBlock[],
+    startY: number,
+    chNum: number,
+    indentFirst = true
+  ): { page: PDFPage; y: number } {
     let y = startY;
     let currentPage = page;
+    let firstPara = indentFirst;
 
-    const paragraphs = prose.split(/\n{2,}/);
-    for (const para of paragraphs) {
-      const clean = sanitize(para.replace(/\n/g, " ").trim());
-      if (!clean) { y -= PG; continue; }
-      const lines = wrapTextPdf(clean, regularFont, BODY, textW - P.indent);
-      for (const line of lines) {
-        if (y < MB + 20) {
-          arabicPageNum++;
-          currentPage = newPage();
-          drawRunningHeader(currentPage, currentChNum > 0 ? `${P.chapterPrefix} ${currentChNum}` : "", arabicPageNum, false);
-          y = H - MT;
-        }
-        currentPage.drawText(line, { x: ML + P.indent, y, size: BODY, font: regularFont, color: darkColor });
-        y -= LH;
+    function ensureRoom(needed: number) {
+      if (y - needed < MB + 20) {
+        arabicPageNum++;
+        currentPage = newPage();
+        drawHeader(currentPage, chNum > 0 ? `${P.chapterPrefix} ${chNum}` : "", arabicPageNum, false);
+        y = H - MT - 10;
       }
-      y -= PG;
     }
-    return currentPage;
+
+    for (const block of blocks) {
+      if (block.kind === "bullet") {
+        firstPara = false;
+        const bulletText = `\u2022  ${sanitize(block.text)}`;
+        const lines = wrapTextPdf(bulletText, regularFont, BODY, textW - 18);
+        ensureRoom(LH * lines.length + PG);
+        for (const ln of lines) {
+          currentPage.drawText(ln, { x: ML + 14, y, size: BODY, font: regularFont, color: black });
+          y -= LH;
+        }
+        y -= 3;
+      } else if (block.kind === "numbered") {
+        firstPara = false;
+        const numText = `${block.num}.  ${sanitize(block.text)}`;
+        const lines = wrapTextPdf(numText, regularFont, BODY, textW - 18);
+        ensureRoom(LH * lines.length + PG);
+        for (const ln of lines) {
+          currentPage.drawText(ln, { x: ML + 14, y, size: BODY, font: regularFont, color: black });
+          y -= LH;
+        }
+        y -= 3;
+      } else {
+        // Regular paragraph
+        const indent = firstPara ? P.indent : 0;
+        firstPara = false;
+        const lines = wrapTextPdf(sanitize(block.text), regularFont, BODY, textW - indent);
+        ensureRoom(LH * lines.length + PG);
+        for (const ln of lines) {
+          currentPage.drawText(ln, { x: ML + indent, y, size: BODY, font: regularFont, color: black });
+          y -= LH;
+        }
+        y -= PG;
+      }
+    }
+    return { page: currentPage, y };
+  }
+
+  function contentStartY(): number {
+    return H - MT - (P.chapterSz + 10) * 2 - 60;
   }
 
   // Introduction
   if (hier.introduction) {
-    const intro = hier.introduction;
-    const prose = String(lessons[intro.id]?.prose || "").trim();
+    const prose = String(lessons[hier.introduction.id]?.prose || "").trim();
     if (prose) {
-      tocEntries.push({ label: sanitize(intro.title), pageNum: arabicPageNum + 1 });
-      const page = drawChapterPage("", sanitize(intro.title), 0);
-      drawBodyText(page, prose, H - MT - 40 - P.chapterSz * 2 - 50, 0);
+      tocEntries.push({ label: sanitize(hier.introduction.title), pageNum: arabicPageNum + 1, level: 0 });
+      const page = drawChapterPage(sanitize(hier.introduction.title), 0);
+      drawProseBlocks(page, parseProseBlocks(prose), contentStartY(), 0);
     }
   }
 
@@ -435,32 +499,34 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
       const secLabel = `${ch.chNum}.${sec.secNum}`;
 
       if (sec.subsections.length === 0) {
-        // Leaf section
         const prose = String(lessons[sec.id]?.prose || "").trim();
         if (!prose) continue;
 
         if (!chPageStarted) {
-          tocEntries.push({ label: `${sanitize(ch.title)}`, pageNum: arabicPageNum + 1 });
+          tocEntries.push({ label: sanitize(ch.title), pageNum: arabicPageNum + 1, level: 0 });
           chPageStarted = true;
-          currentChPage = drawChapterPage(`${P.chapterPrefix} ${ch.chNum}`, sanitize(ch.title), ch.chNum);
-          chBodyY = H - MT - 40 - P.chapterSz * 2 - 50;
+          currentChPage = drawChapterPage(sanitize(ch.title), ch.chNum);
+          chBodyY = contentStartY();
         }
 
         // Section heading
-        if (chBodyY < MB + 60) {
+        if (chBodyY < MB + 80) {
           arabicPageNum++;
           currentChPage = newPage();
-          drawRunningHeader(currentChPage!, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
-          chBodyY = H - MT;
+          drawHeader(currentChPage, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
+          chBodyY = H - MT - 10;
         }
-        tocEntries.push({ label: `  ${secLabel} ${sanitize(sec.title)}`, pageNum: arabicPageNum });
-        currentChPage!.drawText(`${secLabel}  ${sanitize(sec.title)}`, { x: ML, y: chBodyY, size: P.sectionSz, font: boldFont, color: darkColor });
-        chBodyY -= P.sectionSz + 14;
-        currentChPage = drawBodyText(currentChPage!, prose, chBodyY, ch.chNum);
-        chBodyY = MB; // force section heading on fresh check next iter
+        tocEntries.push({ label: `${secLabel}  ${sanitize(sec.title)}`, pageNum: arabicPageNum, level: 1 });
+        currentChPage!.drawText(`${secLabel}  ${sanitize(sec.title)}`, {
+          x: ML, y: chBodyY, size: P.sectionSz, font: boldFont, color: black
+        });
+        chBodyY -= P.sectionSz + 16;
+
+        const result = drawProseBlocks(currentChPage!, parseProseBlocks(prose), chBodyY, ch.chNum, true);
+        currentChPage = result.page;
+        chBodyY = result.y;
 
       } else {
-        // Has subsections
         let secStarted = false;
 
         for (const sub of sec.subsections) {
@@ -469,36 +535,43 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
           if (!prose) continue;
 
           if (!chPageStarted) {
-            tocEntries.push({ label: sanitize(ch.title), pageNum: arabicPageNum + 1 });
+            tocEntries.push({ label: sanitize(ch.title), pageNum: arabicPageNum + 1, level: 0 });
             chPageStarted = true;
-            currentChPage = drawChapterPage(`${P.chapterPrefix} ${ch.chNum}`, sanitize(ch.title), ch.chNum);
-            chBodyY = H - MT - 40 - P.chapterSz * 2 - 50;
+            currentChPage = drawChapterPage(sanitize(ch.title), ch.chNum);
+            chBodyY = contentStartY();
           }
 
           if (!secStarted) {
             secStarted = true;
-            if (chBodyY < MB + 60) {
+            if (chBodyY < MB + 80) {
               arabicPageNum++;
               currentChPage = newPage();
-              drawRunningHeader(currentChPage!, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
-              chBodyY = H - MT;
+              drawHeader(currentChPage!, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
+              chBodyY = H - MT - 10;
             }
-            tocEntries.push({ label: `  ${secLabel} ${sanitize(sec.title)}`, pageNum: arabicPageNum });
-            currentChPage!.drawText(`${secLabel}  ${sanitize(sec.title)}`, { x: ML, y: chBodyY, size: P.sectionSz, font: boldFont, color: darkColor });
-            chBodyY -= P.sectionSz + 14;
+            tocEntries.push({ label: `${secLabel}  ${sanitize(sec.title)}`, pageNum: arabicPageNum, level: 1 });
+            currentChPage!.drawText(`${secLabel}  ${sanitize(sec.title)}`, {
+              x: ML, y: chBodyY, size: P.sectionSz, font: boldFont, color: black
+            });
+            chBodyY -= P.sectionSz + 16;
           }
 
           // Subsection heading
-          if (chBodyY < MB + 60) {
+          if (chBodyY < MB + 80) {
             arabicPageNum++;
             currentChPage = newPage();
-            drawRunningHeader(currentChPage!, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
-            chBodyY = H - MT;
+            drawHeader(currentChPage!, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
+            chBodyY = H - MT - 10;
           }
-          currentChPage!.drawText(`${subLabel}  ${sanitize(sub.title)}`, { x: ML, y: chBodyY, size: P.subsectionSz, font: boldFont, color: midColor });
-          chBodyY -= P.subsectionSz + 10;
-          currentChPage = drawBodyText(currentChPage!, prose, chBodyY, ch.chNum);
-          chBodyY = MB;
+          tocEntries.push({ label: `${subLabel}  ${sanitize(sub.title)}`, pageNum: arabicPageNum, level: 2 });
+          currentChPage!.drawText(`${subLabel}  ${sanitize(sub.title)}`, {
+            x: ML, y: chBodyY, size: P.subsectionSz, font: boldFont, color: midGray
+          });
+          chBodyY -= P.subsectionSz + 12;
+
+          const result = drawProseBlocks(currentChPage!, parseProseBlocks(prose), chBodyY, ch.chNum, true);
+          currentChPage = result.page;
+          chBodyY = result.y;
         }
       }
     }
@@ -506,45 +579,63 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 
   // Conclusion
   if (hier.conclusion) {
-    const concl = hier.conclusion;
-    const prose = String(lessons[concl.id]?.prose || "").trim();
+    const prose = String(lessons[hier.conclusion.id]?.prose || "").trim();
     if (prose) {
-      tocEntries.push({ label: sanitize(concl.title), pageNum: arabicPageNum + 1 });
-      const page = drawChapterPage("", sanitize(concl.title), 0);
-      drawBodyText(page, prose, H - MT - 40 - P.chapterSz * 2 - 50, 0);
+      tocEntries.push({ label: sanitize(hier.conclusion.title), pageNum: arabicPageNum + 1, level: 0 });
+      const page = drawChapterPage(sanitize(hier.conclusion.title), 0);
+      drawProseBlocks(page, parseProseBlocks(prose), contentStartY(), 0);
     }
   }
 
-  // ── PASS 2: Fill TOC ──
+  // ── BACK MATTER: About the Author ────────────────────────────────────────────
+  if (authorBio) {
+    arabicPageNum++;
+    const page = newPage();
+    drawHeader(page, "About the Author", arabicPageNum, false);
+    let y = H - MT - 10;
+    page.drawText("About the Author", { x: ML, y, size: P.chapterSz, font: boldFont, color: black });
+    y -= P.chapterSz + 6;
+    page.drawRectangle({ x: ML, y, width: 48, height: 2, color: accentColor });
+    y -= 24;
+    drawProseBlocks(page, parseProseBlocks(authorBio), y, 0, false);
+  }
+
+  // ── PASS 2: Fill TOC ─────────────────────────────────────────────────────────
   {
-    let ty = H - MT - 10 - P.chapterSz - 40;
-    const lineStep = 18;
+    const lineSteps   = [20, 17, 14];
+    const fontSizes   = [11, 9.5, 8.5];
+    const fontWeights = [boldFont, regularFont, regularFont];
+    const indents     = [0, 14, 28];
+
+    // We may need multiple TOC pages; only one was pre-allocated.
+    // Render into the pre-allocated page; overflow is clipped (rare for most books).
+    let ty = H - MT - 10 - P.chapterSz - 36;
+
     for (const entry of tocEntries) {
       if (ty < MB + 20) break;
-      const isTop = !entry.label.startsWith("  ");
-      const font = isTop ? boldFont : regularFont;
-      const sz = isTop ? 11 : 9.5;
-      const x = ML + (entry.label.startsWith("    ") ? 28 : entry.label.startsWith("  ") ? 14 : 0);
-      const label = entry.label.trim().slice(0, 60);
-      const pg = String(entry.pageNum);
+      const level = Math.min(entry.level, 2);
+      const font  = fontWeights[level];
+      const sz    = fontSizes[level];
+      const x     = ML + indents[level];
+      const label = entry.label.trim().slice(0, 65);
+      const pg    = String(entry.pageNum);
+      const pgW   = regularFont.widthOfTextAtSize(pg, sz);
 
-      tocPage.drawText(label, { x, y: ty, size: sz, font, color: isTop ? darkColor : midColor });
-      const pgW = regularFont.widthOfTextAtSize(pg, sz);
-      tocPage.drawText(pg, { x: W - MR - pgW, y: ty, size: sz, font: regularFont, color: midColor });
+      tocPage1.drawText(label, { x, y: ty, size: sz, font, color: level === 0 ? black : midGray });
+      tocPage1.drawText(pg, { x: W - MR - pgW, y: ty, size: sz, font: regularFont, color: midGray });
 
       // Dot leader
       const labelEnd = x + font.widthOfTextAtSize(label, sz) + 4;
-      const pgStart = W - MR - pgW - 4;
+      const pgStart  = W - MR - pgW - 4;
       if (pgStart > labelEnd + 8) {
-        const dots = Math.floor((pgStart - labelEnd) / 4);
+        const dotCount = Math.floor((pgStart - labelEnd) / 4.5);
         let dx = labelEnd;
-        for (let d = 0; d < dots; d++) {
-          tocPage.drawText(".", { x: dx, y: ty, size: sz, font: regularFont, color: rgb(0.7, 0.7, 0.7) });
-          dx += 4;
+        for (let d = 0; d < dotCount; d++) {
+          tocPage1.drawText(".", { x: dx, y: ty, size: sz, font: regularFont, color: rgb(0.75, 0.75, 0.75) });
+          dx += 4.5;
         }
       }
-
-      ty -= isTop ? lineStep + 3 : lineStep;
+      ty -= lineSteps[level] + (level === 0 ? 3 : 0);
     }
   }
 
@@ -554,121 +645,193 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 // ─── DOCX BUILDER ─────────────────────────────────────────────────────────────
 
 async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
-  const preset = PRESETS[options.preset] || PRESETS.nonfiction;
-  const P = preset;
-  const bookTitle = resolveBookTitle(project);
-  const subtitle = project?.bookCover?.subtitle || project?.bookDetails?.subtitle || "";
-  const author = resolveAuthorName(project);
-  const description = project?.description || "";
-  const dedication = options.dedication || "";
-  const acknowledgments = options.acknowledgments || "";
-  const preface = options.preface || "";
-  const lessons = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
-  const hier = buildHierarchy(project?.bookOutline);
+  const P = PRESETS[options.preset] || PRESETS.kdp_pro;
 
-  const spacing = { before: 120, after: 120, line: 276, lineRule: "auto" as any };
+  const bookTitle   = resolveBookTitle(project);
+  const subtitle    = project?.bookCover?.subtitle || project?.bookDetails?.subtitle || "";
+  const bookTopic   = project?.research?.bookTopic || project?.bookDetails?.bookTopic ||
+                      project?.research?.subNiche  || project?.research?.niche || "";
+  const author      = resolveAuthorName(project);
+  const description = project?.description?.description || project?.description || "";
+  const authorBio   = project?.authorBio?.bio || project?.authorBio?.background || "";
+  const dedication      = options.dedication      || "";
+  const acknowledgments = options.acknowledgments || "";
+  const preface         = options.preface         || "";
+  const lessons = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
+  const hier    = buildHierarchy(project?.bookOutline);
+
   const bodyFont = P.docxBody;
   const headFont = P.docxHead;
+  const LINE     = P.docxLineSpacing ?? 276;
+  const HALF_PT  = (pt: number) => pt * 2;   // half-points
 
-  function bodyPara(text: string, extra?: any): Paragraph {
+  // ── Paragraph factories ────────────────────────────────────────────────────
+
+  function coverTitlePara(text: string): Paragraph {
     return new Paragraph({
-      children: [new TextRun({ text, font: bodyFont, size: P.bodySz * 2 })],
+      children: [new TextRun({ text, font: headFont, size: HALF_PT(P.titleSz), bold: true, color: "000000" })],
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 3600, after: 200 }
+    });
+  }
+
+  function coverSubtitlePara(text: string): Paragraph {
+    return new Paragraph({
+      children: [new TextRun({ text, font: headFont, size: HALF_PT(P.sectionSz), italics: true, color: "333333" })],
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 120, after: 160 }
+    });
+  }
+
+  function coverTopicPara(text: string): Paragraph {
+    return new Paragraph({
+      children: [new TextRun({ text, font: bodyFont, size: HALF_PT(P.bodySz), color: "555555" })],
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 80, after: 80 }
+    });
+  }
+
+  function coverAuthorPara(text: string): Paragraph {
+    return new Paragraph({
+      children: [new TextRun({ text, font: bodyFont, size: HALF_PT(14), color: "333333" })],
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 1200, after: 3000 }
+    });
+  }
+
+  function bodyPara(text: string, firstPara = false): Paragraph {
+    return new Paragraph({
+      children: [new TextRun({ text, font: bodyFont, size: HALF_PT(P.bodySz), color: "000000" })],
       alignment: AlignmentType.BOTH,
-      indent: { firstLine: P.indent > 0 ? convertInchesToTwip(P.indent / 72) : 0 },
-      spacing: { after: P.paraGap * 20, line: P.lineH * 15, lineRule: "auto" as any },
-      ...extra
+      indent: { firstLine: firstPara && P.indent > 0 ? convertInchesToTwip(P.indent / 72) : 0 },
+      spacing: { before: firstPara ? 0 : 80, after: 80, line: LINE, lineRule: "auto" as any }
+    });
+  }
+
+  function bulletPara(text: string): Paragraph {
+    return new Paragraph({
+      children: [new TextRun({ text: `\u2022\u2002${text}`, font: bodyFont, size: HALF_PT(P.bodySz), color: "000000" })],
+      alignment: AlignmentType.LEFT,
+      indent: { left: convertInchesToTwip(0.25), firstLine: 0 },
+      spacing: { before: 60, after: 60, line: LINE, lineRule: "auto" as any }
+    });
+  }
+
+  function numberedPara(num: number, text: string): Paragraph {
+    return new Paragraph({
+      children: [new TextRun({ text: `${num}.\u2002${text}`, font: bodyFont, size: HALF_PT(P.bodySz), color: "000000" })],
+      alignment: AlignmentType.LEFT,
+      indent: { left: convertInchesToTwip(0.25), firstLine: 0 },
+      spacing: { before: 60, after: 60, line: LINE, lineRule: "auto" as any }
     });
   }
 
   function headingPara(text: string, level: HeadingLevel, extra?: any): Paragraph {
-    return new Paragraph({
-      text,
-      heading: level,
-      children: undefined,
-      spacing: { before: 240, after: 120 },
-      ...extra
-    });
+    return new Paragraph({ text, heading: level, spacing: { before: 320, after: 160 }, ...extra });
   }
 
-  function sectionBreak(): Paragraph {
+  function pageBreak(): Paragraph {
     return new Paragraph({ children: [new TextRun({ break: 1 } as any)], spacing: { before: 0, after: 0 } });
   }
 
-  const frontMatterChildren: Paragraph[] = [];
-
-  // Cover
-  frontMatterChildren.push(
-    new Paragraph({ children: [new TextRun({ text: bookTitle, font: headFont, size: P.titleSz * 2.2, bold: true })], alignment: AlignmentType.CENTER, spacing: { before: 2400, after: 200 } }),
-  );
-  if (subtitle) {
-    frontMatterChildren.push(new Paragraph({ children: [new TextRun({ text: subtitle, font: headFont, size: P.sectionSz * 2, italics: true })], alignment: AlignmentType.CENTER, spacing: { before: 120, after: 200 } }));
+  function smallRule(): Paragraph {
+    return new Paragraph({ children: [], spacing: { before: 0, after: 120 },
+      border: { bottom: { color: "AAAAAA", space: 1, style: "single", size: 4 } }
+    });
   }
-  frontMatterChildren.push(
-    new Paragraph({ children: [new TextRun({ text: `by ${author}`, font: bodyFont, size: 28 })], alignment: AlignmentType.CENTER, spacing: { before: 600, after: 3000 } }),
-    new Paragraph({ children: [], pageBreakBefore: true })
-  );
 
-  // Abstract
-  if (description) {
-    frontMatterChildren.push(
-      headingPara("Abstract", HeadingLevel.HEADING_1),
-      ...description.split(/\n{2,}/).filter(Boolean).map((t: string) => bodyPara(t.replace(/\n/g, " "))),
-      new Paragraph({ children: [], pageBreakBefore: true })
-    );
+  // Adds parsed prose blocks to a children array
+  function addProseBlocks(children: Paragraph[], prose: string) {
+    const blocks = parseProseBlocks(prose);
+    let isFirst = true;
+    for (const block of blocks) {
+      if (block.kind === "bullet") {
+        isFirst = false;
+        children.push(bulletPara(block.text));
+      } else if (block.kind === "numbered") {
+        isFirst = false;
+        children.push(numberedPara(block.num, block.text));
+      } else {
+        children.push(bodyPara(block.text, isFirst));
+        isFirst = false;
+      }
+    }
   }
+
+  // ── Front matter ──────────────────────────────────────────────────────────
+
+  const frontChildren: Paragraph[] = [];
+
+  // Cover page
+  frontChildren.push(coverTitlePara(bookTitle));
+  frontChildren.push(smallRule());
+  if (subtitle)    frontChildren.push(coverSubtitlePara(subtitle));
+  if (bookTopic)   frontChildren.push(coverTopicPara(bookTopic));
+  frontChildren.push(coverAuthorPara(`by ${author}`));
+  frontChildren.push(pageBreak());
+
+  // Copyright page
+  const year = new Date().getFullYear();
+  frontChildren.push(
+    new Paragraph({
+      children: [new TextRun({ text: `Copyright © ${year} ${author}`, font: bodyFont, size: HALF_PT(P.bodySz), color: "333333" })],
+      alignment: AlignmentType.CENTER, spacing: { before: 3600, after: 200 }
+    }),
+    new Paragraph({
+      children: [new TextRun({ text: "All rights reserved.", font: bodyFont, size: HALF_PT(P.bodySz), color: "555555" })],
+      alignment: AlignmentType.CENTER, spacing: { before: 120, after: 120 }
+    }),
+    new Paragraph({
+      children: [new TextRun({
+        text: "No part of this publication may be reproduced, distributed, or transmitted in any form or by any means without the prior written permission of the author.",
+        font: bodyFont, size: HALF_PT(P.bodySz - 1), color: "777777"
+      })],
+      alignment: AlignmentType.CENTER, spacing: { before: 240, after: 3000 }
+    }),
+    pageBreak()
+  );
 
   // Dedication
   if (dedication) {
-    frontMatterChildren.push(
-      new Paragraph({ children: [new TextRun({ text: dedication, font: bodyFont, size: 26, italics: true })], alignment: AlignmentType.CENTER, spacing: { before: 2400, after: 2400 } }),
-      new Paragraph({ children: [], pageBreakBefore: true })
+    frontChildren.push(
+      new Paragraph({
+        children: [new TextRun({ text: dedication, font: bodyFont, size: HALF_PT(13), italics: true, color: "333333" })],
+        alignment: AlignmentType.CENTER, spacing: { before: 3000, after: 3000 }
+      }),
+      pageBreak()
     );
   }
 
   // Acknowledgments
   if (acknowledgments) {
-    frontMatterChildren.push(
-      headingPara("Acknowledgments", HeadingLevel.HEADING_1),
-      ...acknowledgments.split(/\n{2,}/).filter(Boolean).map((t: string) => bodyPara(t.replace(/\n/g, " "))),
-      new Paragraph({ children: [], pageBreakBefore: true })
-    );
+    frontChildren.push(headingPara("Acknowledgments", HeadingLevel.HEADING_1));
+    addProseBlocks(frontChildren, acknowledgments);
+    frontChildren.push(pageBreak());
   }
 
-  // TOC
-  frontMatterChildren.push(
-    new TableOfContents("Table of Contents", {
-      hyperlink: true,
-      headingStyleRange: "1-3"
-    } as any),
-    new Paragraph({ children: [], pageBreakBefore: true })
+  // Table of Contents (Word auto-generates page numbers on open)
+  frontChildren.push(
+    new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-3" } as any),
+    pageBreak()
   );
 
   // Preface
   if (preface) {
-    frontMatterChildren.push(
-      headingPara("Preface", HeadingLevel.HEADING_1),
-      ...preface.split(/\n{2,}/).filter(Boolean).map((t: string) => bodyPara(t.replace(/\n/g, " "))),
-      new Paragraph({ children: [], pageBreakBefore: true })
-    );
+    frontChildren.push(headingPara("Preface", HeadingLevel.HEADING_1));
+    addProseBlocks(frontChildren, preface);
+    frontChildren.push(pageBreak());
   }
 
-  // Main content
+  // ── Main content ──────────────────────────────────────────────────────────
+
   const mainChildren: Paragraph[] = [];
-
-  function addProse(prose: string) {
-    const paras = prose.split(/\n{2,}/);
-    for (const para of paras) {
-      const clean = para.replace(/\n/g, " ").trim();
-      if (clean) mainChildren.push(bodyPara(clean));
-    }
-  }
 
   // Introduction
   if (hier.introduction) {
     const prose = String(lessons[hier.introduction.id]?.prose || "").trim();
     if (prose) {
       mainChildren.push(headingPara(hier.introduction.title, HeadingLevel.HEADING_1, { pageBreakBefore: false }));
-      addProse(prose);
+      addProseBlocks(mainChildren, prose);
     }
   }
 
@@ -678,25 +841,22 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     let hasContent = false;
     const chChildren: Paragraph[] = [];
 
+    // Chapter heading — "Chapter N\nTitle"
     chChildren.push(headingPara(`${P.chapterPrefix} ${ch.chNum}`, HeadingLevel.HEADING_1, { pageBreakBefore: !firstChapter }));
     chChildren.push(headingPara(ch.title, HeadingLevel.HEADING_2));
 
     for (const sec of ch.sections) {
-      const secLabel = `${ch.chNum}.${sec.secNum}  ${sec.title}`;
+      const secLabel = `${ch.chNum}.${sec.secNum}\u2003${sec.title}`;
       if (sec.subsections.length === 0) {
         const prose = String(lessons[sec.id]?.prose || "").trim();
         if (!prose) continue;
         hasContent = true;
         chChildren.push(headingPara(secLabel, HeadingLevel.HEADING_3));
-        const paras = prose.split(/\n{2,}/);
-        for (const para of paras) {
-          const clean = para.replace(/\n/g, " ").trim();
-          if (clean) chChildren.push(bodyPara(clean));
-        }
+        addProseBlocks(chChildren, prose);
       } else {
         let secAdded = false;
         for (const sub of sec.subsections) {
-          const subLabel = `${ch.chNum}.${sec.secNum}.${sub.subNum}  ${sub.title}`;
+          const subLabel = `${ch.chNum}.${sec.secNum}.${sub.subNum}\u2003${sub.title}`;
           const prose = String(lessons[sub.id]?.prose || "").trim();
           if (!prose) continue;
           hasContent = true;
@@ -705,11 +865,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
             secAdded = true;
           }
           chChildren.push(headingPara(subLabel, HeadingLevel.HEADING_4 as any));
-          const paras = prose.split(/\n{2,}/);
-          for (const para of paras) {
-            const clean = para.replace(/\n/g, " ").trim();
-            if (clean) chChildren.push(bodyPara(clean));
-          }
+          addProseBlocks(chChildren, prose);
         }
       }
     }
@@ -725,76 +881,76 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     const prose = String(lessons[hier.conclusion.id]?.prose || "").trim();
     if (prose) {
       mainChildren.push(headingPara(hier.conclusion.title, HeadingLevel.HEADING_1, { pageBreakBefore: true }));
-      addProse(prose);
+      addProseBlocks(mainChildren, prose);
     }
   }
 
+  // About the Author (back matter)
+  if (authorBio) {
+    mainChildren.push(headingPara("About the Author", HeadingLevel.HEADING_1, { pageBreakBefore: true }));
+    addProseBlocks(mainChildren, authorBio);
+  }
+
+  // ── DOCX document ──────────────────────────────────────────────────────────
+
   const runningHeader = new Header({
-    children: [
-      new Paragraph({
-        children: [
-          new TextRun({ text: bookTitle.slice(0, 60), font: bodyFont, size: 16, italics: true, color: "888888" })
-        ],
-        alignment: AlignmentType.RIGHT,
-        border: { bottom: { color: "CCCCCC", space: 1, style: "single", size: 6 } }
-      })
-    ]
+    children: [new Paragraph({
+      children: [new TextRun({ text: bookTitle.slice(0, 60), font: bodyFont, size: HALF_PT(8), italics: true, color: "888888" })],
+      alignment: AlignmentType.RIGHT,
+      border: { bottom: { color: "CCCCCC", space: 1, style: "single", size: 4 } }
+    })]
   });
 
   const runningFooter = new Footer({
-    children: [
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [
-          new TextRun({ children: [PageNumber.CURRENT], font: bodyFont, size: 16, color: "888888" }),
-          new TextRun({ text: "  of  ", font: bodyFont, size: 16, color: "888888" }),
-          new TextRun({ children: [PageNumber.TOTAL_PAGES], font: bodyFont, size: 16, color: "888888" })
-        ],
-        border: { top: { color: "CCCCCC", space: 1, style: "single", size: 6 } }
-      })
-    ]
+    children: [new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ children: [PageNumber.CURRENT], font: bodyFont, size: HALF_PT(8), color: "888888" })
+      ],
+      border: { top: { color: "CCCCCC", space: 1, style: "single", size: 4 } }
+    })]
   });
 
   const doc = new Document({
     creator: author,
     title: bookTitle,
-    description: description.slice(0, 500),
+    description: String(description).slice(0, 500),
     styles: {
       default: {
         document: {
-          run: { font: bodyFont, size: P.bodySz * 2, color: "1A1A2E" },
-          paragraph: { spacing: { line: P.lineH * 15, lineRule: "auto" as any } }
+          run: { font: bodyFont, size: HALF_PT(P.bodySz), color: "000000" },
+          paragraph: { spacing: { line: LINE, lineRule: "auto" as any } }
         }
       },
       paragraphStyles: [
         {
-          id: "Heading1",
-          name: "Heading 1",
-          run: { font: headFont, size: P.chapterSz * 2, bold: true, color: "0D1B2A" },
+          id: "Heading1", name: "Heading 1",
+          run: { font: headFont, size: HALF_PT(P.chapterSz), bold: true, color: "000000" },
           paragraph: { spacing: { before: 480, after: 240 } }
         },
         {
-          id: "Heading2",
-          name: "Heading 2",
-          run: { font: headFont, size: P.sectionSz * 2, bold: true, color: "1A3A5C" },
+          id: "Heading2", name: "Heading 2",
+          run: { font: headFont, size: HALF_PT(P.sectionSz), bold: true, color: "111111" },
           paragraph: { spacing: { before: 360, after: 180 } }
         },
         {
-          id: "Heading3",
-          name: "Heading 3",
-          run: { font: headFont, size: P.subsectionSz * 2, bold: true, color: "2C5F8A" },
-          paragraph: { spacing: { before: 240, after: 120 } }
+          id: "Heading3", name: "Heading 3",
+          run: { font: headFont, size: HALF_PT(P.subsectionSz), bold: true, color: "222222" },
+          paragraph: { spacing: { before: 280, after: 120 } }
+        },
+        {
+          id: "Heading4", name: "Heading 4",
+          run: { font: headFont, size: HALF_PT(P.subsectionSz - 1), bold: true, italics: true, color: "333333" },
+          paragraph: { spacing: { before: 200, after: 80 } }
         }
       ]
     },
     sections: [
       {
         properties: {
-          page: {
-            margin: { top: P.docxMTop, bottom: P.docxMBot, left: P.docxMLeft, right: P.docxMRight },
-          }
+          page: { margin: { top: P.docxMTop, bottom: P.docxMBot, left: P.docxMLeft, right: P.docxMRight } }
         },
-        children: frontMatterChildren
+        children: frontChildren
       },
       {
         properties: {

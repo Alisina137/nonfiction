@@ -4,18 +4,17 @@ import { countManuscriptWords, buildPublishingBundle } from "@/lib/manuscript";
 import { resolveAuthorName, resolveBookTitle } from "@/lib/projectMeta";
 
 const PRESETS = [
-  { id: "thesis",     label: "Thesis Style",       desc: "Letter, Times Roman, 1.25\" margins, indented paragraphs, chapter numbering" },
-  { id: "academic",   label: "Academic Research",   desc: "A4, Times Roman, generous margins, formal structure" },
-  { id: "nonfiction", label: "Modern Nonfiction",   desc: "6×9\", Calibri, clean layout — most popular for KDP nonfiction" },
-  { id: "novel",      label: "Novel Style",          desc: "5.5×8.5\", Georgia, first-line indent, novel conventions" },
-  { id: "kdp",        label: "KDP Print Layout",    desc: "6×9\" with KDP gutter margins, Garamond, print-ready" }
+  { id: "kdp_pro",  label: "KDP Professional Nonfiction", desc: "6×9\", Times New Roman 12pt, 1.15 spacing, KDP margins — recommended for Amazon publishing" },
+  { id: "thesis",   label: "Thesis Style",                desc: "Letter, Times Roman, 1.25\" margins, chapter numbering, academic structure" },
+  { id: "academic", label: "Academic Research",           desc: "A4, Times Roman, generous margins, formal paragraph structure" },
+  { id: "kdp",      label: "KDP Print Layout (Compact)",  desc: "6×9\" with gutter margins, print-ready, slightly smaller type" }
 ];
 
 export default function FinishStep({ project, onMarkComplete }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [docxBusy, setDocxBusy] = useState(false);
   const [status, setStatus] = useState("");
-  const [preset, setPreset] = useState("nonfiction");
+  const [preset, setPreset] = useState("kdp_pro");
   const [dedication, setDedication] = useState("");
   const [acknowledgments, setAcknowledgments] = useState("");
   const [preface, setPreface] = useState("");

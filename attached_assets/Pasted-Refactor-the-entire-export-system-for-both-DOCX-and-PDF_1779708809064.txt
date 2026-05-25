@@ -1,0 +1,223 @@
+Refactor the entire export system for both DOCX and PDF generation to create professional Amazon KDP-ready nonfiction books with consistent formatting and clean structure.
+
+Main Goal:
+The exported DOCX and PDF files must look like professionally published nonfiction books, not raw AI-generated documents.
+
+Remove these export styles completely:
+
+* Modern Nonfiction
+* Novel Style
+
+Keep only:
+
+* Thesis Style
+* Academic Research
+* KDP Print Layout
+
+Then create ONE new default export style called:
+
+"KDP Professional Nonfiction"
+
+Requirements for the new export style:
+
+1. Typography
+
+* Use Times New Roman everywhere
+* Body font size: 12pt
+* Chapter titles: 20pt bold
+* Section headings: 16pt bold
+* Subsections: 14pt bold
+* Line spacing: 1.15
+* Text color: pure black
+* Consistent typography in both DOCX and PDF
+
+2. Cover Page
+   The cover page MUST include:
+
+* Book title
+* Subtitle
+* Book topic/category
+* Author name
+* Optional tagline
+
+Proper layout:
+
+* Center aligned
+* Large clean title
+* Subtitle under title
+* Book topic under subtitle
+* Author name at bottom
+
+Current issue:
+
+* Subtitle missing
+* Book topic missing
+  Fix this completely.
+
+3. Table of Contents
+   Generate a real automatic TOC in BOTH:
+
+* DOCX
+* PDF
+
+Requirements:
+
+* Include chapters
+* Include sections
+* Include subsection numbering
+* Correct page numbers
+* Clickable navigation in PDF
+* Proper heading hierarchy
+
+Current issue:
+
+* TOC often missing
+  Fix this permanently.
+
+4. Proper Paragraph Formatting
+   Fix indentation behavior.
+
+Current problem:
+
+* Every paragraph has large indentation
+
+Correct behavior:
+
+* ONLY the first paragraph after a heading should have indentation
+* Remaining paragraphs should have NO indentation
+* Indentation size should be small and professional
+
+Rules:
+
+```text
+First paragraph after heading:
+    small indent
+
+All following paragraphs:
+no indent
+```
+
+5. Lists and Bullet Points
+   Current issue:
+
+* Lists appear in one line
+* Formatting breaks
+
+Fix:
+
+* Every bullet point must appear on a new line
+* Numbered lists properly aligned
+* Nested lists supported
+* Proper spacing between list items
+
+Example:
+
+```text
+• First point
+• Second point
+• Third point
+```
+
+NOT:
+
+```text
+• First point • Second point • Third point
+```
+
+6. Heading Structure
+   Implement clean nonfiction hierarchy:
+
+```text
+Chapter 1
+1.1 Section
+1.1.1 Subsection
+```
+
+Requirements:
+
+* Consistent numbering
+* Automatic numbering generation
+* Proper spacing before and after headings
+
+7. Export Consistency
+   DOCX and PDF outputs must match visually:
+
+* same margins
+* same font
+* same spacing
+* same heading sizes
+* same page structure
+
+8. KDP Print Optimization
+   Optimize exports for Amazon KDP print publishing.
+
+Requirements:
+
+* Proper page margins
+* Mirrored margins for print
+* Clean page breaks
+* Chapters always start on new pages
+* No broken headings at page bottom
+* Page numbers centered at footer
+
+9. Front Matter
+   Automatically include:
+
+* Title page
+* Copyright page
+* Table of contents
+* Optional dedication
+* Optional disclaimer
+
+10. Back Matter
+    Automatically include:
+
+* About the author
+* References/resources if available
+* Call to action page
+
+11. PDF Improvements
+    Current PDF output quality is inconsistent.
+
+Fix:
+
+* Embedded fonts
+* Proper text wrapping
+* Stable page breaks
+* Clean margins
+* No clipped text
+* TOC links clickable
+
+12. DOCX Improvements
+    Fix DOCX structure:
+
+* Use real Word heading styles
+* Use Word-generated TOC
+* Proper paragraph styles
+* Maintain compatibility with Microsoft Word and Google Docs
+
+13. Export Engine Refactor
+    Create a reusable export formatter service:
+
+```js
+class BookExportFormatter {
+  generateDOCX(bookData)
+  generatePDF(bookData)
+  buildTOC()
+  formatParagraphs()
+  formatLists()
+  generateCoverPage()
+}
+```
+
+14. Default Export Settings
+    Make "KDP Professional Nonfiction" the default export style automatically.
+
+15. Final Quality Goal
+    The exported book should resemble:
+
+* professionally formatted nonfiction books
+* premium KDP publications
+* clean academic/business/self-help books
+
+The result should NOT look AI-generated or poorly formatted.
