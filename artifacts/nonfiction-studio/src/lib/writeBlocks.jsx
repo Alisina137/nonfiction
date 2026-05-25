@@ -88,21 +88,29 @@ export function enumerateWriteBlocks(bookOutline) {
   return blocks;
 }
 
+/** Safely coerce any AI-returned field to a trimmed string. */
+function str(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v.trim();
+  if (Array.isArray(v)) return v.map((x) => String(x ?? "").trim()).filter(Boolean).join(", ");
+  if (typeof v === "object") return Object.values(v).map((x) => String(x ?? "").trim()).filter(Boolean).join(", ");
+  return String(v).trim();
+}
+
 /** Render API lesson JSON into editable manuscript prose. */
 export function lessonToProse(lesson) {
   if (!lesson || typeof lesson !== "object") return "";
   const parts = [];
-  if (lesson.explanation?.trim()) parts.push(lesson.explanation.trim());
-  if (lesson.example?.trim()) {
-    parts.push("", "Example", lesson.example.trim());
-  }
-  if (lesson.framework?.trim()) {
-    parts.push("", `Framework: ${lesson.framework.trim()}`);
-  }
+  const explanation = str(lesson.explanation);
+  if (explanation) parts.push(explanation);
+  const example = str(lesson.example);
+  if (example) parts.push("", "Example", example);
+  const framework = str(lesson.framework);
+  if (framework) parts.push("", `Framework: ${framework}`);
   const steps = Array.isArray(lesson.executionSteps) ? lesson.executionSteps.filter(Boolean) : [];
   if (steps.length) {
     parts.push("", "Execution steps:");
-    steps.forEach((step, i) => parts.push(`${i + 1}. ${String(step).trim()}`));
+    steps.forEach((step, i) => parts.push(`${i + 1}. ${str(step)}`));
   }
   return parts.join("\n").trim();
 }
@@ -113,10 +121,10 @@ export function collectPreviousConcepts(blocks, lessons, beforeIndex) {
   for (let i = 0; i < beforeIndex; i += 1) {
     const id = blocks[i]?.id;
     const entry = id ? lessons?.[id] : null;
-    const fw = entry?.lesson?.framework;
-    const title = entry?.lesson?.title || blocks[i]?.label;
-    if (fw?.trim()) concepts.push(fw.trim());
-    else if (title?.trim()) concepts.push(title.trim());
+    const fw = str(entry?.lesson?.framework);
+    const title = str(entry?.lesson?.title) || str(blocks[i]?.label);
+    if (fw) concepts.push(fw);
+    else if (title) concepts.push(title);
   }
   return concepts.slice(-24);
 }

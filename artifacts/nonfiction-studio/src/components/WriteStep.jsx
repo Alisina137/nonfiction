@@ -269,7 +269,11 @@ export default function WriteStep({
                 {activeLesson?.lesson?.framework && (
                   <p className="mt-2 text-xs text-slate-500">
                     Framework captured:{" "}
-                    <span className="font-medium text-slate-700">{activeLesson.lesson.framework}</span>
+                    <span className="font-medium text-slate-700">
+                      {typeof activeLesson.lesson.framework === "string"
+                        ? activeLesson.lesson.framework
+                        : JSON.stringify(activeLesson.lesson.framework)}
+                    </span>
                   </p>
                 )}
               </div>
