@@ -10,7 +10,6 @@ import {
   Header,
   Footer,
   PageNumber,
-  TableOfContents,
   SectionType,
   NumberFormat,
   convertInchesToTwip
@@ -329,6 +328,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 
   // ── TOC entry collection ───────────────────────────────────────────────────
   const tocEntries: TocEntry[] = [];
+  console.log("[Export] PDF render started");
 
   // ── COVER PAGE ──────────────────────────────────────────────────────────────
   {
@@ -724,6 +724,13 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
     drawProseBlocks(page, parseProseBlocks(authorBio), y, 0, false);
   }
 
+  // Validate chapter coverage
+  const chapterTocCount = tocEntries.filter(e => e.level === 0).length;
+  console.log("[Export] Chapter anchors created —", tocEntries.length, "TOC entries (" + chapterTocCount + " top-level)");
+  if (chapterTocCount === 0) {
+    console.warn("[Export] WARNING: No chapters found in TOC — check that lesson prose is saved.");
+  }
+
   // ── PASS 2: Render TOC ────────────────────────────────────────────────────
   // Font sizes and indentation per level
   const TOC_FONTS  = [bold, regular, regular];
@@ -736,7 +743,10 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   const tocAvailH = H - MT - MB - 80; // usable height per TOC page
   const estimatedH = tocEntries.reduce((acc, e) => acc + TOC_STEP[Math.min(e.level, 2)] + (e.level === 0 ? 4 : 0), 0);
   if (estimatedH > tocAvailH) {
-    tocPage2 = pdf.insertPage(pdf.getPageIndices().indexOf(tocPage1) + 1, [W, H]);
+    // Use getPages() (returns PDFPage[]) not getPageIndices() (returns number[])
+    // so indexOf can find the actual page object reference correctly.
+    const tocPage1Index = pdf.getPages().indexOf(tocPage1);
+    tocPage2 = pdf.insertPage(tocPage1Index + 1, [W, H]);
   }
 
   // Fill TOC header on page 1
@@ -820,6 +830,8 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
     ty -= step;
   }
 
+  console.log("[Export] TOC generated —", tocEntries.length, "entries on", tocPage2 ? "2" : "1", "TOC page(s)");
+  console.log("[Export] PDF render completed —", pdf.getPageCount(), "total pages");
   return pdf.save();
 }
 
@@ -840,6 +852,57 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   const preface         = options.preface         || "";
   const lessons = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
   const hier    = buildHierarchy(project?.bookOutline);
+
+  // ── Build TOC entry list BEFORE content paragraphs ──────────────────────
+  // Must happen here so the static TOC accurately reflects what will be rendered.
+  interface DocxTocEntry { label: string; level: number }
+  const tocDocxEntries: DocxTocEntry[] = [];
+
+  if (options.acknowledgments) tocDocxEntries.push({ label: "Acknowledgments", level: 0 });
+  if (options.preface)         tocDocxEntries.push({ label: "Preface",          level: 0 });
+
+  if (hier.introduction) {
+    const introProse = String(lessons[hier.introduction.id]?.prose || "").trim();
+    if (introProse) tocDocxEntries.push({ label: hier.introduction.title, level: 0 });
+  }
+
+  for (const ch of hier.chapters) {
+    let chHasContent = false;
+    for (const sec of ch.sections) {
+      if (sec.subsections.length === 0) {
+        if (String(lessons[sec.id]?.prose || "").trim()) { chHasContent = true; break; }
+      } else {
+        if (sec.subsections.some(sub => String(lessons[sub.id]?.prose || "").trim())) {
+          chHasContent = true; break;
+        }
+      }
+    }
+    if (!chHasContent) continue;
+
+    tocDocxEntries.push({ label: `${P.chapterPrefix} ${ch.chNum}: ${ch.title}`, level: 0 });
+    for (const sec of ch.sections) {
+      const secHas = sec.subsections.length === 0
+        ? !!String(lessons[sec.id]?.prose || "").trim()
+        : sec.subsections.some(sub => !!String(lessons[sub.id]?.prose || "").trim());
+      if (!secHas) continue;
+      tocDocxEntries.push({ label: `${ch.chNum}.${sec.secNum}\u2003${sec.title}`, level: 1 });
+      for (const sub of sec.subsections) {
+        if (!String(lessons[sub.id]?.prose || "").trim()) continue;
+        tocDocxEntries.push({ label: `${ch.chNum}.${sec.secNum}.${sub.subNum}\u2003${sub.title}`, level: 2 });
+      }
+    }
+  }
+
+  if (hier.conclusion) {
+    const concProse = String(lessons[hier.conclusion.id]?.prose || "").trim();
+    if (concProse) tocDocxEntries.push({ label: hier.conclusion.title, level: 0 });
+  }
+  if (options.authorBio || project?.authorBio?.bio || project?.authorBio?.background) {
+    tocDocxEntries.push({ label: "About the Author", level: 0 });
+  }
+
+  console.log("[Export] DOCX render started");
+  console.log("[Export] DOCX TOC generated —", tocDocxEntries.length, "entries");
 
   const bodyFont = P.docxBody;
   const headFont = P.docxHead;
@@ -976,19 +1039,24 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     frontChildren.push(pageBreak());
   }
 
-  // Table of Contents (Word auto-populates from Heading 1/2/3 styles)
-  frontChildren.push(
-    new TableOfContents("Table of Contents", {
-      hyperlink: true,
-      headingStyleRange: "1-3",
-      stylesWithLevels: [
-        { styleName: "TOC 1" },
-        { styleName: "TOC 2" },
-        { styleName: "TOC 3" }
-      ]
-    } as any),
-    pageBreak()
-  );
+  // Table of Contents — static, built from the outline hierarchy above.
+  // This renders correctly in Word, LibreOffice, and Google Docs without
+  // requiring the user to manually update fields.
+  frontChildren.push(h1Para("Table of Contents", { pageBreakBefore: false }));
+  tocDocxEntries.forEach((entry) => {
+    const level  = Math.min(entry.level, 2);
+    const sz     = [P.bodySz, P.bodySz - 1, P.bodySz - 2][level];
+    const indent = [0, convertInchesToTwip(0.3), convertInchesToTwip(0.6)][level];
+    const isBold = level === 0;
+    const color  = ["000000", "333333", "555555"][level];
+    const spBefore = level === 0 ? 160 : 80;
+    frontChildren.push(new Paragraph({
+      children: [new TextRun({ text: entry.label, font: bodyFont, size: HP(sz), bold: isBold, color })],
+      indent:   { left: indent, firstLine: 0 },
+      spacing:  { before: spBefore, after: level === 0 ? 60 : 30 }
+    }));
+  });
+  frontChildren.push(pageBreak());
 
   // Preface
   if (preface) {
@@ -1172,6 +1240,8 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     ]
   });
 
+  console.log("[Export] DOCX render completed —", tocDocxEntries.length, "TOC entries,", mainChildren.length, "main paragraphs");
+  console.log("[Export] Export completed");
   return Packer.toBuffer(doc);
 }
 
