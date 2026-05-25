@@ -547,3 +547,45 @@ Output ONLY valid JSON with this exact shape:
   "contentDirection": ""
 }`;
 }
+
+export function competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, books }: any) {
+  const bookLines = Array.isArray(books) && books.length
+    ? books.slice(0, 10).map((b: any, i: number) => {
+        const parts = [`${i + 1}. "${b.title || "Untitled"}"`];
+        if (b.authors)       parts.push(`by ${b.authors}`);
+        if (b.subtitle)      parts.push(`(${b.subtitle})`);
+        if (b.rating)        parts.push(`${b.rating}★`);
+        if (b.ratingsTotal)  parts.push(`${b.ratingsTotal.toLocaleString()} reviews`);
+        return parts.join(" ");
+      }).join("\n")
+    : "(no competitor books provided — infer from niche/sub-niche)";
+
+  return `You are an Amazon KDP publishing strategist and consumer psychology expert.
+
+Analyze the following competitor books and extract a full publishing intelligence profile for a new book entering this market.
+
+NICHE: ${niche || "unspecified"}
+SUB-NICHE: ${subNiche || "unspecified"}
+DEEP NICHE: ${deepNiche || "not specified"}
+AUTHOR'S CONCEPT: ${bookTopic?.trim() || "(not specified)"}
+
+COMPETITOR BOOKS:
+${bookLines}
+
+Based on these competitors, extract a complete publishing intelligence profile. Be specific and data-driven — every field must reflect THIS niche and these actual competitors.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "targetAudience": "specific 1-2 sentence description of the ideal reader for this market",
+  "authorTones": ["tone1", "tone2"],
+  "energyStyle": "one of: Calm mentor | Hard-hitting coach | Stoic philosopher | Masculine discipline | Inspirational motivator | Scientific thinker",
+  "emotionalTriggers": ["trigger1", "trigger2", "trigger3"],
+  "toneRecommendation": "specific tone strategy recommendation in 1-2 sentences",
+  "readerPainProfile": "core pain/frustration the reader has BEFORE picking up a book in this niche",
+  "transformationPromise": "the transformation the reader expects from a book in this market",
+  "writingStyleFingerprint": "description of the ideal writing style for bestsellers in this niche",
+  "positioningStrategy": "how a new book should position itself to stand out vs these specific competitors",
+  "marketGapAnalysis": "what is missing or underserved based on these competitors — concrete gaps",
+  "bestsellerDNA": "what structural or emotional elements make bestsellers in this niche work"
+}`;
+}

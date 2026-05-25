@@ -1,0 +1,227 @@
+```text id="v58kz4"
+Refactor the entire “Research” and “Analysis” workflow to eliminate duplication and create a cleaner publishing pipeline.
+
+====================================================
+MAIN GOAL
+====================================================
+
+The current Research step contains advanced publishing intelligence fields that should actually belong to the Analysis step.
+
+The Analysis step is now becoming the Competitive Intelligence Engine, so anything related to:
+- audience psychology
+- emotional targeting
+- tone analysis
+- market intelligence
+- publishing strategy
+- reader pain points
+- writing style detection
+- positioning
+- bestseller patterns
+
+should be REMOVED from Research and generated automatically inside Analysis.
+
+Research should become lightweight and foundational only.
+
+====================================================
+RESEARCH STEP REFACTOR
+====================================================
+
+SIMPLIFY the Research step.
+
+Research should ONLY collect core foundational inputs needed before analysis begins.
+
+====================================================
+KEEP ONLY THESE IN RESEARCH
+====================================================
+
+1. Broad niche
+2. Sub-niche
+3. Book topic
+4. Optional short concept/idea
+5. Optional desired transformation
+6. Optional custom notes
+
+That’s it.
+
+Research should NOT attempt to do:
+- audience profiling
+- emotional targeting
+- tone strategy
+- pain analysis
+- positioning
+- energy style
+- writing fingerprinting
+- reader intelligence
+- market analysis
+
+because those are now handled automatically by the Analysis engine.
+
+====================================================
+REMOVE FROM RESEARCH
+====================================================
+
+Remove these sections entirely from the Research step UI:
+
+- Author tone
+- Reader preset
+- Target audience (specific)
+- Core promise
+- Reader pain level
+- Energy style
+- Publishing intelligence text
+- Emotional targeting controls
+- Writing style controls
+- Audience psychology controls
+- Any advanced publishing profile section
+
+These fields are now redundant.
+
+====================================================
+WHY THIS CHANGE MATTERS
+====================================================
+
+Currently the workflow is backwards.
+
+The user is being asked to manually define:
+- audience
+- tone
+- positioning
+- emotional style
+
+BEFORE the app has analyzed the market.
+
+Instead:
+
+Research
+↓
+Analysis (extract intelligence automatically)
+↓
+Use extracted intelligence throughout generation
+
+This creates:
+- smarter automation
+- less user friction
+- better consistency
+- more professional workflow
+- cleaner UI
+- more accurate outputs
+
+====================================================
+NEW RESEARCH STEP PHILOSOPHY
+====================================================
+
+Research should feel like:
+
+“Idea Input”
+
+NOT:
+
+“Publishing Strategy Configuration”
+
+The AI should do the strategic heavy lifting automatically after competitor analysis.
+
+====================================================
+NEW ANALYSIS RESPONSIBILITIES
+====================================================
+
+The Analysis engine should now automatically generate:
+
+- target audience
+- emotional triggers
+- tone recommendations
+- reader pain profile
+- transformation promises
+- writing style fingerprint
+- energy style
+- positioning strategy
+- market gap analysis
+- bestseller DNA
+- reader psychology
+- chapter structure patterns
+- review intelligence
+
+based on competitor books and review mining.
+
+====================================================
+AUTO-FILL SYSTEM
+====================================================
+
+After Analysis completes:
+
+Auto-fill downstream steps with extracted intelligence.
+
+Examples:
+
+Author Persona:
+→ auto-generated from market positioning
+
+Outline:
+→ generated from competitor structure intelligence
+
+Writing Style:
+→ generated from emotional + audience analysis
+
+Book Description:
+→ generated from bestseller copy patterns
+
+Title Suggestions:
+→ generated from emotional/title analysis
+
+====================================================
+UI/UX IMPROVEMENTS
+====================================================
+
+Research step should feel:
+- minimal
+- clean
+- fast
+- idea-focused
+
+Analysis step should feel:
+- intelligent
+- strategic
+- data-driven
+- powerful
+
+====================================================
+EXAMPLE OF IDEAL FLOW
+====================================================
+
+STEP 1 — RESEARCH
+User enters:
+- niche
+- sub-niche
+- book topic
+
+STEP 2 — ANALYSIS
+AI analyzes:
+- competitors
+- reviews
+- audience
+- emotions
+- positioning
+- structure
+- market gaps
+
+STEP 3+
+Everything else is auto-generated from analysis intelligence.
+
+====================================================
+IMPORTANT IMPLEMENTATION RULE
+====================================================
+
+Do NOT simply hide old fields.
+
+Actually remove the old logic dependencies from Research and move them into Analysis-generated intelligence.
+
+The Analysis step should become the single source of truth for publishing intelligence.
+
+====================================================
+FINAL GOAL
+====================================================
+
+The app should feel like a professional AI publishing studio where:
+
+The user provides the IDEA,
+and the AI handles the MARKET INTELLIGENCE automatically.
+```

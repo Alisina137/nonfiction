@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   analyzeBookConceptPrompt,
   architecturePreviewPrompt,
+  competitiveIntelligencePrompt,
   contextualBookTitlesPrompt,
   coverBriefPrompt,
   coverCriticPrompt,
@@ -303,6 +304,21 @@ router.post("/regenerate-title", async (req, res) => {
     );
     const data = extractJSON(text);
     return res.json({ title: data.title || currentTitle, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/competitive-intelligence", async (req, res) => {
+  try {
+    const { niche, subNiche, deepNiche, bookTopic, books } = req.body || {};
+    const prompt = competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, books });
+    const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "default");
+    const data = extractJSON(text);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "AI returned unparseable intelligence data." });
+    }
+    return res.json({ ...data, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

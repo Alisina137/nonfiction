@@ -34,7 +34,8 @@ const FINISH_STEP = BOOK_BUILDER_STEPS.findIndex((s) => s.id === "finish");
 const emptyAnalysis = {
   books: [],
   amazonDomain: "amazon.com",
-  lastSearchQuery: ""
+  lastSearchQuery: "",
+  intelligence: null
 };
 
 const emptyBookTitle = {
@@ -489,13 +490,9 @@ function resetProjectKeepingAuthor(current) {
 
 function validateResearch(research) {
   const errors = {};
-  if (!research.authorName?.trim()) errors.authorName = "Author name is required.";
-  if (!research.mainNicheId?.trim()) errors.mainNicheId = "Select a main niche.";
-  if (!research.subNicheId?.trim()) errors.subNicheId = "Select a sub-niche.";
-  if (!research.publishingGoal?.trim()) errors.publishingGoal = "Select a publishing goal.";
-  if (!research.bookTopic?.trim()) errors.bookTopic = "Book topic is required.";
-  if (!research.authorTones?.length) errors.authorTones = "Select at least one tone for this niche.";
-  if (!research.targetAudience?.trim()) errors.targetAudience = "Target audience is required.";
+  if (!research.authorName?.trim())   errors.authorName   = "Author name is required.";
+  if (!research.mainNicheId?.trim())  errors.mainNicheId  = "Select a main niche.";
+  if (!research.subNicheId?.trim())   errors.subNicheId   = "Select a sub-niche.";
   return errors;
 }
 
@@ -860,8 +857,8 @@ export default function Dashboard() {
         };
         next.idea = p.research.bookTopic?.trim() || "";
         next.title = p.research.bookTitle?.trim() || next.idea;
-        next.audience = p.research.targetAudience?.trim() || "";
-        next.tone = (p.research.authorTones || []).join("; ");
+        next.audience = p.audience || "";
+        next.tone = p.tone || "";
         const detailDefaults = architectureDefaultsForDetails(arch);
         if (detailDefaults.chapterCount || detailDefaults.wordCountRange) {
           next.bookDetails = {
@@ -869,6 +866,22 @@ export default function Dashboard() {
             ...detailDefaults,
             chapterCount: detailDefaults.chapterCount || p.bookDetails.chapterCount,
             wordCountRange: detailDefaults.wordCountRange || p.bookDetails.wordCountRange
+          };
+        }
+      }
+      if (currentStep === 1) {
+        const intel = p.analysis?.intelligence;
+        if (intel) {
+          next.audience = intel.targetAudience || p.audience || "";
+          next.tone     = Array.isArray(intel.authorTones) && intel.authorTones.length
+            ? intel.authorTones.join("; ")
+            : p.tone || "";
+          next.research = {
+            ...p.research,
+            targetAudience: intel.targetAudience  || p.research.targetAudience || "",
+            authorTones:    Array.isArray(intel.authorTones) ? intel.authorTones : p.research.authorTones || [],
+            energyStyle:    intel.energyStyle     || p.research.energyStyle    || "",
+            corePromise:    intel.transformationPromise || p.research.corePromise || ""
           };
         }
       }
@@ -932,8 +945,7 @@ export default function Dashboard() {
           </h1>
           {stepMeta.id === "research" && (
             <p className="mt-1 max-w-xl text-[11px] leading-snug text-slate-600 md:text-xs">
-              Select niche + sub-niche to unlock publishing intelligence—tones, pacing, and outline architecture adapt
-              automatically.
+              Enter your niche and concept — AI extracts market intelligence, audience, and tone automatically in Step 2.
             </p>
           )}
           {stepMeta.id === "authorPersona" && (
