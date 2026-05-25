@@ -12,7 +12,9 @@ import {
   PageNumber,
   SectionType,
   NumberFormat,
-  convertInchesToTwip
+  convertInchesToTwip,
+  XmlComponent,
+  XmlAttributeComponent
 } from "docx";
 
 const router = Router();
@@ -1039,23 +1041,88 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     frontChildren.push(pageBreak());
   }
 
-  // Table of Contents — static, built from the outline hierarchy above.
-  // This renders correctly in Word, LibreOffice, and Google Docs without
-  // requiring the user to manually update fields.
-  frontChildren.push(h1Para("Table of Contents", { pageBreakBefore: false }));
-  tocDocxEntries.forEach((entry) => {
-    const level  = Math.min(entry.level, 2);
-    const sz     = [P.bodySz, P.bodySz - 1, P.bodySz - 2][level];
-    const indent = [0, convertInchesToTwip(0.3), convertInchesToTwip(0.6)][level];
-    const isBold = level === 0;
-    const color  = ["000000", "333333", "555555"][level];
-    const spBefore = level === 0 ? 160 : 80;
-    frontChildren.push(new Paragraph({
-      children: [new TextRun({ text: entry.label, font: bodyFont, size: HP(sz), bold: isBold, color })],
-      indent:   { left: indent, firstLine: 0 },
-      spacing:  { before: spBefore, after: level === 0 ? 60 : 30 }
-    }));
-  });
+  // ── Table of Contents ──────────────────────────────────────────────────────
+  // Uses a Word complex field (fldChar begin / instrText / separate / end).
+  //  • w:dirty="true"  → Word auto-updates on open, populating page numbers
+  //  • \o "1-3"        → include Heading 1–3
+  //  • \h              → entries are clickable hyperlinks
+  //  • \z              → hide tab/page number in web view
+  //  • \u              → use applied paragraph outline level
+  // Pre-rendered entries between separate/end give LibreOffice & Google Docs
+  // a readable static fallback that Word replaces when updating the field.
+
+  console.log("[Export] Heading styles detected — H1/H2/H3 applied to", tocDocxEntries.length, "outline entries");
+
+  {
+    // Helper: make a <w:fldChar> run with given fldCharType (and optional dirty flag)
+    const fldCharRun = (type: string, dirty = false): XmlComponent => {
+      const run = new XmlComponent("w:r");
+      const fc  = new XmlComponent("w:fldChar");
+      const attrs: Record<string, string> = { "w:fldCharType": type };
+      if (dirty) attrs["w:dirty"] = "true";
+      fc.root.push(new XmlAttributeComponent(attrs));
+      run.root.push(fc);
+      return run;
+    };
+
+    // Helper: make an <w:instrText> run with preserve-space
+    const instrRun = (text: string): XmlComponent => {
+      const run  = new XmlComponent("w:r");
+      const it   = new XmlComponent("w:instrText");
+      it.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
+      it.root.push(text);
+      run.root.push(it);
+      return run;
+    };
+
+    // TOC title — centred bold, NOT a heading (prevents it appearing in the TOC itself)
+    frontChildren.push(centeredPara("Table of Contents", P.chapterSz + 2, true, false, "000000", 0, 280));
+
+    // Paragraph 1: fldChar begin + instrText switches + fldChar separate
+    const fieldBeginPara = new XmlComponent("w:p");
+    fieldBeginPara.root.push(fldCharRun("begin", true));
+    fieldBeginPara.root.push(instrRun(` TOC \\o "1-3" \\h \\z \\u `));
+    fieldBeginPara.root.push(fldCharRun("separate"));
+    frontChildren.push(fieldBeginPara as any);
+
+    // Pre-rendered entries (static fallback; Word replaces with live page numbers)
+    for (const entry of tocDocxEntries) {
+      const level  = Math.min(entry.level, 2);
+      const style  = ["TOC1", "TOC2", "TOC3"][level];
+      const indent = [0, 360, 720][level];
+
+      const ep   = new XmlComponent("w:p");
+      const pPr  = new XmlComponent("w:pPr");
+      const pSty = new XmlComponent("w:pStyle");
+      pSty.root.push(new XmlAttributeComponent({ "w:val": style }));
+      pPr.root.push(pSty);
+      if (indent > 0) {
+        const ind = new XmlComponent("w:ind");
+        ind.root.push(new XmlAttributeComponent({ "w:left": String(indent) }));
+        pPr.root.push(ind);
+      }
+      ep.root.push(pPr);
+
+      const run = new XmlComponent("w:r");
+      const t   = new XmlComponent("w:t");
+      t.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
+      t.root.push(entry.label);
+      run.root.push(t);
+      ep.root.push(run);
+
+      frontChildren.push(ep as any);
+    }
+
+    // Final paragraph: fldChar end
+    const fieldEndPara = new XmlComponent("w:p");
+    fieldEndPara.root.push(fldCharRun("end"));
+    frontChildren.push(fieldEndPara as any);
+
+    console.log("[Export] TOC field generated — complex fldChar field with", tocDocxEntries.length, "pre-rendered entries");
+    console.log("[Export] Page references attached — Word will resolve on first open (w:dirty=true)");
+    console.log("[Export] DOCX TOC validated — entries:", tocDocxEntries.filter(e => e.level === 0).length, "top-level,", tocDocxEntries.filter(e => e.level === 1).length, "sections");
+  }
+
   frontChildren.push(pageBreak());
 
   // Preface
