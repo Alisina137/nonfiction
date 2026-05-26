@@ -50,8 +50,35 @@ function aiErrorResponse(res: any, error: any) {
 function aiOptsFromReq(req: any, maxTokens?: number) {
   return {
     allowGrok: req?.body?.allowGrok === true,
+    lowCredit: req?.body?.lowCostMode === true,
     maxTokens: maxTokens ?? TOKEN_LIMITS.default
   };
+}
+
+// Context compression for lesson generation — prevents oversized prompts.
+// Only sends fields the model actually needs; drops redundant content.
+function compressLessonBody(body: any): any {
+  const { subsection, chapterContext, previousConcepts, ...rest } = body || {};
+
+  const compressedSubsection = subsection ? {
+    title:       subsection.title,
+    description: String(subsection.description || subsection.objective || "").slice(0, 300),
+    keyPoints:   Array.isArray(subsection.keyPoints)   ? subsection.keyPoints.slice(0, 4)   : undefined,
+    sections:    Array.isArray(subsection.sections)    ? subsection.sections.slice(0, 3).map((s: any) => s.title) : undefined
+  } : subsection;
+
+  const compressedChapter = chapterContext ? {
+    title:       chapterContext.title,
+    description: String(chapterContext.description || "").slice(0, 200)
+  } : chapterContext;
+
+  const compressedPrev = Array.isArray(previousConcepts)
+    ? previousConcepts.slice(-2).map((c: any) =>
+        typeof c === "string" ? c.slice(0, 120) : { title: c.title, summary: String(c.summary || "").slice(0, 120) }
+      )
+    : previousConcepts;
+
+  return { ...rest, subsection: compressedSubsection, chapterContext: compressedChapter, previousConcepts: compressedPrev };
 }
 
 function setProviderHeader(res: any, provider: string) {
@@ -199,7 +226,8 @@ router.post("/structure", async (req, res) => {
 
 router.post("/lesson", async (req, res) => {
   try {
-    const { text, usedProvider } = await runLong(lessonPrompt(req.body), systemPrompt(), req, res, "lesson");
+    const compressed = compressLessonBody(req.body);
+    const { text, usedProvider } = await runLong(lessonPrompt(compressed), systemPrompt(), req, res, "lesson");
     const data = extractJSON(text);
     return res.json({ lesson: data, _provider: usedProvider });
   } catch (error: any) {

@@ -11,11 +11,14 @@ import {
 } from "@/lib/ai/aiFetch";
 
 const COLOR = {
-  openai:    "bg-emerald-100 text-emerald-800 border-emerald-200",
-  anthropic: "bg-amber-100  text-amber-800  border-amber-200",
-  xai:       "bg-violet-100 text-violet-800 border-violet-200",
-  gemini:    "bg-sky-100    text-sky-800    border-sky-200",
-  llama:     "bg-orange-100 text-orange-800 border-orange-200"
+  openai:      "bg-emerald-100 text-emerald-800 border-emerald-200",
+  anthropic:   "bg-amber-100   text-amber-800   border-amber-200",
+  xai:         "bg-violet-100  text-violet-800  border-violet-200",
+  gemini:      "bg-sky-100     text-sky-800     border-sky-200",
+  llama:       "bg-orange-100  text-orange-800  border-orange-200",
+  deepseek:    "bg-teal-100    text-teal-800    border-teal-200",
+  gemini_free: "bg-cyan-100    text-cyan-800    border-cyan-200",
+  mistral:     "bg-rose-100    text-rose-800    border-rose-200"
 };
 
 function Toggle({ on, onToggle, label, activeClass, title }) {
@@ -79,11 +82,11 @@ export default function ProviderStatusBadge() {
     if (lowCostOn) {
       disableLowCostMode();
       setLowCostOn(false);
-      setToast({ message: "Quality mode on — GPT-4.1 first, best output.", id: Date.now() });
+      setToast({ message: "Quality mode on — using paid AI providers (GPT-4.1 / Claude / Gemini).", id: Date.now() });
     } else {
       enableLowCostMode();
       setLowCostOn(true);
-      setToast({ message: "Low-cost mode on — Gemini Flash first, faster & cheaper.", id: Date.now() });
+      setToast({ message: "Low-cost mode on — using free AI providers only (DeepSeek, Llama, Mistral).", id: Date.now() });
     }
   }
 
@@ -112,8 +115,8 @@ export default function ProviderStatusBadge() {
           activeClass="border-teal-300 bg-teal-100 text-teal-800 hover:bg-teal-200"
           title={
             lowCostOn
-              ? "Low-cost mode: Gemini Flash first. Click to switch back to Quality mode."
-              : "Enable low-cost mode: routes all AI calls to Gemini Flash first (cheaper & faster)."
+              ? "Low-cost mode: free providers only (DeepSeek → Llama → Gemini free → Mistral). Click to switch back to Quality mode."
+              : "Enable Low-cost mode: use only free AI providers. Saves OpenRouter credits. Output may be shorter."
           }
         />
 

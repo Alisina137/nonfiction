@@ -2,39 +2,45 @@
 // OpenRouter AI Router — optimised for free / low-credit usage
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// PROVIDER PRIORITY  (same for both long-form and short-form)
-//   gemini → openai → llama → deepseek → anthropic → grok*
+// PROVIDER CHAINS
+//   FULL (default):    gemini → openai → deepseek → llama → gemini_free
+//                      → mistral → anthropic → grok*
+//   FREE (lowCredit):  gemini_free → deepseek → llama → mistral
 //
 //   * Grok requires explicit user approval (allowGrok: true).
 //
 // TOKEN BUDGETS
-//   Hard cap: 2 500 tokens per request (never exceeded).
+//   Hard cap: 1 800 tokens per request (never exceeded).
 //   Each content type carries its own budget — see TOKEN_LIMITS below.
+//   Token estimation runs before each call; prompts are auto-truncated
+//   if input + output would exceed the per-model context budget.
 //
 // PROVIDER OFFLINE TRACKING
 //   Any provider that returns "No endpoints found", "temporarily disabled",
 //   a timeout, or a rate-limit error is automatically skipped for
-//   PROVIDER_DISABLE_MS (10 min).  Grok uses the same mechanism.
+//   PROVIDER_DISABLE_MS (10 min).
 //
-// LLAMA RATE GATE
-//   Free Llama allows ≈8 req/min.  A minimum 8-second gap is enforced
-//   between consecutive Llama calls via a simple in-process lock.
+// FREE MODEL RATE GATE
+//   Free-tier models share a minimum 7-second gap between calls to avoid
+//   hammering their rate limits.
 //
 // RETRY + BACKOFF
 //   Each provider attempt retries up to MAX_RETRIES (3) times with
-//   exponential back-off (1 s → 2 s → 4 s) on retriable errors.
+//   exponential back-off (2 s → 5 s → 10 s) on retriable errors.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const MODEL_BY_PROVIDER = {
-  gemini:    "google/gemini-2.5-flash",
-  openai:    "openai/gpt-4.1-mini",
-  llama:     "meta-llama/llama-3.3-70b-instruct:free",
-  deepseek:  "deepseek/deepseek-chat-v3-0324:free",
-  anthropic: "anthropic/claude-3.7-sonnet",
-  xai:       "x-ai/grok-3-mini-beta"
+  gemini:      "google/gemini-2.5-flash",
+  openai:      "openai/gpt-4.1-mini",
+  deepseek:    "deepseek/deepseek-chat-v3-0324:free",
+  llama:       "meta-llama/llama-3.3-70b-instruct:free",
+  gemini_free: "google/gemini-2.0-flash-exp:free",
+  mistral:     "mistralai/mistral-small-3.1-24b-instruct:free",
+  anthropic:   "anthropic/claude-3.7-sonnet",
+  xai:         "x-ai/grok-3-mini-beta"
 } as const;
 
 export type ProviderId = keyof typeof MODEL_BY_PROVIDER;
@@ -42,24 +48,57 @@ export type ProviderId = keyof typeof MODEL_BY_PROVIDER;
 // ─── Token budgets ────────────────────────────────────────────────────────
 // All values are capped at MAX_TOKENS_CAP — never exceed it.
 
-const MAX_TOKENS_CAP = 2500;
+const MAX_TOKENS_CAP = 1800;
 
 export const TOKEN_LIMITS: Record<string, number> = {
-  title:               150,   // 6 title suggestions
-  regenTitle:          150,   // single title replacement
-  outline:            1000,   // full chapter/section JSON outline
-  lesson:             2200,   // chapter section prose (largest content type)
-  improve:            1200,   // rewrite / improve existing text
+  title:               200,   // 6 title suggestion cards (rich JSON)
+  regenTitle:          120,   // single title replacement
+  outline:            1200,   // full chapter/section JSON outline
+  lesson:             1400,   // chapter section prose
+  improve:             900,   // rewrite / improve existing text
   description:         300,   // book description / hook
   cover:               600,   // cover brief JSON
-  analysis:            600,   // concept analysis JSON
-  architecturePreview: 600,   // architecture preview JSON
-  structure:           500,   // section structure JSON
-  default:            1200
+  analysis:            500,   // concept analysis JSON
+  architecturePreview: 500,   // architecture preview JSON
+  structure:           400,   // section structure JSON
+  default:             800
 };
+
+// When lowCredit is active, cap output at this many tokens (free models vary)
+const LOW_CREDIT_TOKEN_CAP = 900;
 
 function capTokens(n: number): number {
   return Math.min(n, MAX_TOKENS_CAP);
+}
+
+// ─── Token estimation ─────────────────────────────────────────────────────
+// Rough heuristic: 1 token ≈ 4 characters.  Used to guard against
+// prompts that would exhaust a model's budget before generating any output.
+
+const CHARS_PER_TOKEN = 4;
+const MAX_INPUT_CHARS  = 12_000;  // ~3 000 input tokens — leave room for output
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / CHARS_PER_TOKEN);
+}
+
+function ensureTokenBudget(
+  prompt: string,
+  maxOutputTokens: number
+): { prompt: string; maxTokens: number } {
+  // Truncate prompt if it is too long
+  const truncated =
+    prompt.length > MAX_INPUT_CHARS
+      ? prompt.slice(0, MAX_INPUT_CHARS) + "\n\n[Context truncated to fit token budget]"
+      : prompt;
+
+  // If even after truncation input + output looks tight, reduce output budget
+  const inputEst      = estimateTokens(truncated);
+  const totalBudget   = 4000; // conservative model context
+  const safeOutput    = Math.max(300, totalBudget - inputEst);
+  const finalOutput   = Math.min(maxOutputTokens, safeOutput);
+
+  return { prompt: truncated, maxTokens: capTokens(finalOutput) };
 }
 
 // ─── Provider offline tracking ────────────────────────────────────────────
@@ -91,21 +130,23 @@ export class GrokApprovalRequiredError extends Error {
   }
 }
 
-// ─── Llama rate gate ──────────────────────────────────────────────────────
-// Free Llama tier: ~8 req/min → enforce ≥8 s between calls.
+// ─── Free model rate gate ─────────────────────────────────────────────────
+// Free-tier models share a 7-second minimum gap to avoid rate-limit errors.
 
-const LLAMA_MIN_GAP_MS = 8000;
-let llamaLastCallTime = 0;
+const FREE_MODEL_MIN_GAP_MS = 7000;
+const FREE_PROVIDERS = new Set<ProviderId>(["deepseek", "llama", "gemini_free", "mistral"]);
+let freeLastCallTime = 0;
 
-async function waitForLlamaSlot(): Promise<void> {
+async function waitForFreeSlot(provider: ProviderId): Promise<void> {
+  if (!FREE_PROVIDERS.has(provider)) return;
   const now = Date.now();
-  const elapsed = now - llamaLastCallTime;
-  if (elapsed < LLAMA_MIN_GAP_MS && llamaLastCallTime > 0) {
-    const wait = LLAMA_MIN_GAP_MS - elapsed;
-    console.log(`[AI] Llama rate gate — waiting ${wait}ms before next call`);
+  const elapsed = now - freeLastCallTime;
+  if (elapsed < FREE_MODEL_MIN_GAP_MS && freeLastCallTime > 0) {
+    const wait = FREE_MODEL_MIN_GAP_MS - elapsed;
+    console.log(`[AI] Free model rate gate (${provider}) — waiting ${wait}ms`);
     await new Promise((r) => setTimeout(r, wait));
   }
-  llamaLastCallTime = Date.now();
+  freeLastCallTime = Date.now();
 }
 
 // ─── Error classification ─────────────────────────────────────────────────
@@ -125,7 +166,7 @@ function isHardUnavailable(msg: string): boolean {
 // ─── Core OpenRouter request ──────────────────────────────────────────────
 
 const MAX_RETRIES = 3;
-const RETRY_DELAYS_MS = [1000, 2000, 4000];
+const RETRY_DELAYS_MS = [2000, 5000, 10000];
 
 async function callOpenRouter(
   provider: ProviderId,
@@ -137,16 +178,21 @@ async function callOpenRouter(
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
 
+  // Apply token budget: truncate prompt + reduce output if needed
+  const budgeted = ensureTokenBudget(prompt, maxTokens);
+  const finalPrompt    = budgeted.prompt;
+  const finalMaxTokens = budgeted.maxTokens;
+
   const model = MODEL_BY_PROVIDER[provider];
   const messages: Array<{ role: string; content: string }> = [];
   if (system) messages.push({ role: "system", content: system });
-  messages.push({ role: "user", content: prompt });
+  messages.push({ role: "user", content: finalPrompt });
 
   const body = {
     model,
     messages,
     temperature,
-    max_tokens: capTokens(maxTokens),
+    max_tokens: finalMaxTokens,
     stream: false
   };
 
@@ -256,10 +302,8 @@ async function runChain(
       continue;
     }
 
-    // ── Llama rate gate ───────────────────────────────────────────────────
-    if (provider === "llama" || provider === "deepseek") {
-      await waitForLlamaSlot();
-    }
+    // ── Free model rate gate ──────────────────────────────────────────────
+    await waitForFreeSlot(provider);
 
     const modelLabel = MODEL_BY_PROVIDER[provider];
     console.log(`[AI] Trying ${modelLabel}…`);
@@ -285,8 +329,14 @@ async function runChain(
 
       // Friendly label for log
       const labels: Record<string, string> = {
-        gemini: "Gemini Flash", openai: "GPT-4.1-mini", anthropic: "Claude Sonnet",
-        xai: "Grok Mini", llama: "Llama 3.3", deepseek: "DeepSeek"
+        gemini:      "Gemini 2.5 Flash",
+        openai:      "GPT-4.1-mini",
+        anthropic:   "Claude Sonnet",
+        xai:         "Grok Mini",
+        llama:       "Llama 3.3 (free)",
+        deepseek:    "DeepSeek (free)",
+        gemini_free: "Gemini Flash (free)",
+        mistral:     "Mistral (free)"
       };
       const label = labels[provider] ?? provider;
       const shortMsg = msg.replace(`[${provider}] `, "").slice(0, 100);
@@ -297,50 +347,70 @@ async function runChain(
     }
   }
 
-  // All providers exhausted — build a detailed error message
-  const lines = attempts.map((a) => {
-    const label = a.status === "offline" ? "⏸ offline" : "✗ failed";
-    return `  ${a.provider} (${label}): ${a.error}`;
-  });
-  throw new Error(
-    `All AI providers exhausted:\n${lines.join("\n")}\n\nCheck your OpenRouter credits or wait for providers to come back online.`
-  );
+  // All providers exhausted
+  const failedCount = attempts.filter((a) => a.status === "failed").length;
+  const onFreeChain = opts.lowCredit;
+  const hint = onFreeChain
+    ? "All free AI providers are currently busy or rate-limited. Disable Low-cost mode to use paid providers, or wait a few minutes and try again."
+    : "All AI providers are unavailable. Your OpenRouter credits may be low — enable Low-cost mode to use free models, or add credits at openrouter.ai.";
+  throw new Error(`AI_EXHAUSTED:${failedCount}:${hint}`);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
 export interface GenOptions {
-  allowGrok?: boolean;
-  maxTokens?: number;
+  allowGrok?:  boolean;
+  maxTokens?:  number;
+  lowCredit?:  boolean;  // use free-only chain when true
   onFallback?: (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
-  onSuccess?: (provider: ProviderId) => void;
+  onSuccess?:  (provider: ProviderId) => void;
 }
 
-const FULL_CHAIN: ProviderId[] = ["gemini", "openai", "llama", "deepseek", "anthropic", "xai"];
+// Free-only chain: deepseek → llama → gemini_free → mistral
+const FREE_CHAIN: ProviderId[] = ["deepseek", "llama", "gemini_free", "mistral"];
+
+// Full chain: paid first, free as deep fallbacks, Grok last (gated)
+const FULL_CHAIN: ProviderId[] = ["gemini", "openai", "deepseek", "llama", "gemini_free", "mistral", "anthropic", "xai"];
+
+function resolveChainAndTokens(opts: GenOptions): { chain: ProviderId[]; resolvedOpts: GenOptions } {
+  if (opts.lowCredit) {
+    return {
+      chain: FREE_CHAIN,
+      resolvedOpts: {
+        ...opts,
+        maxTokens: Math.min(opts.maxTokens ?? TOKEN_LIMITS.default, LOW_CREDIT_TOKEN_CAP)
+      }
+    };
+  }
+  return { chain: FULL_CHAIN, resolvedOpts: opts };
+}
 
 /**
  * Long-form generation (lesson prose, descriptions, cover briefs, improvements).
- * Chain: gemini → openai → llama → deepseek → anthropic → grok*
+ * Routes to FREE_CHAIN when opts.lowCredit is true.
  */
 export async function generateContent(
   prompt: string,
   system?: string,
   opts: GenOptions = {}
 ): Promise<{ text: string; usedProvider: ProviderId }> {
-  return runChain(prompt, system, FULL_CHAIN, opts);
+  const { chain, resolvedOpts } = resolveChainAndTokens(opts);
+  return runChain(prompt, system, chain, resolvedOpts);
 }
 
 /**
  * Short-form generation (titles, outlines, structure, quick tasks).
- * Same chain — Gemini leads and is ideal for short, cheap tasks.
+ * Same routing as generateContent — Gemini leads and is cheapest.
  */
 export async function generateContentFast(
   prompt: string,
   system?: string,
   opts: GenOptions = {}
 ): Promise<{ text: string; usedProvider: ProviderId }> {
-  return runChain(prompt, system, FULL_CHAIN, opts);
+  const { chain, resolvedOpts } = resolveChainAndTokens(opts);
+  return runChain(prompt, system, chain, resolvedOpts);
 }
+
 
 // ─── JSON extraction + repair ─────────────────────────────────────────────
 
