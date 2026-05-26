@@ -76,11 +76,14 @@ const emptyBookDetails = {
   wordCountRange: "",
   chapterCount: 8,
   title: "",
+  subtitle: "",
   structure: "",
   genre: "",
   tone: "",
   audience: "",
   uniqueSellingProposition: "",
+  readerPainPoints: "",
+  keywords: "",
   authorPersonaNotes: ""
 };
 
@@ -334,12 +337,17 @@ function migrateProject(raw) {
       chapterCount: Number.isFinite(n) ? Math.min(15, Math.max(5, Math.round(n))) : emptyBookDetails.chapterCount,
       wordCountRange: typeof p.bookDetails.wordCountRange === "string" ? p.bookDetails.wordCountRange : "",
       title: typeof p.bookDetails.title === "string" ? p.bookDetails.title : "",
+      subtitle: typeof p.bookDetails.subtitle === "string" ? p.bookDetails.subtitle : "",
       structure: typeof p.bookDetails.structure === "string" ? p.bookDetails.structure : "",
       genre: typeof p.bookDetails.genre === "string" ? p.bookDetails.genre : "",
       tone: typeof p.bookDetails.tone === "string" ? p.bookDetails.tone : "",
       audience: typeof p.bookDetails.audience === "string" ? p.bookDetails.audience : "",
       uniqueSellingProposition:
         typeof p.bookDetails.uniqueSellingProposition === "string" ? p.bookDetails.uniqueSellingProposition : "",
+      readerPainPoints:
+        typeof p.bookDetails.readerPainPoints === "string" ? p.bookDetails.readerPainPoints : "",
+      keywords:
+        typeof p.bookDetails.keywords === "string" ? p.bookDetails.keywords : "",
       authorPersonaNotes:
         typeof p.bookDetails.authorPersonaNotes === "string" ? p.bookDetails.authorPersonaNotes : ""
     };

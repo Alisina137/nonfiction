@@ -129,7 +129,7 @@ export function buildBookContext(project) {
   const ctx = {
     // Book identity
     title:    cap(resolveBookTitle(project), 110),
-    subtitle: cap(research.bookSubtitle || project.bookTitle?.selectedCard?.subtitle, 100),
+    subtitle: cap(bd.subtitle || research.bookSubtitle || project.bookTitle?.selectedCard?.subtitle, 100),
 
     // Niche positioning
     niche:       cap(research.mainNicheLabel, 60),
@@ -152,6 +152,7 @@ export function buildBookContext(project) {
     usp,
     differentiation,
     keySellingPoints,
+    keywords:      cap(bd.keywords, 220),
 
     // Author
     authorName:    cap(bio.authorName || research.authorName, 80),
