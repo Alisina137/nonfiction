@@ -199,12 +199,11 @@ router.post("/outline", async (req, res) => {
 
 router.post("/niche-outline", async (req, res) => {
   try {
-    const { research, architecture, title, description, resources } = req.body || {};
+    const { research, architecture, title, description, resources, bookContext } = req.body || {};
     if (!architecture?.subNicheLabel)
       return res.status(400).json({ error: "Missing niche architecture" });
-    const resBlock = resources ? resourcesBlock(resources, "outline") : "";
     const { text, usedProvider } = await runLong(
-      nicheOutlinePrompt({ research, architecture, title, description }) + resBlock,
+      nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }),
       nicheSystemPrompt(architecture),
       req,
       res,
@@ -231,7 +230,7 @@ router.post("/lesson", async (req, res) => {
   try {
     const compressed = compressLessonBody(req.body);
     const { text, usedProvider } = await runLong(
-      lessonPrompt({ ...compressed, resources: req.body?.resources }),
+      lessonPrompt({ ...compressed, resources: req.body?.resources, bookContext: req.body?.bookContext }),
       systemPrompt(),
       req,
       res,

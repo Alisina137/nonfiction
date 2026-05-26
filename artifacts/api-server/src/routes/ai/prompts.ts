@@ -314,7 +314,7 @@ Idea: ${idea}, Title: ${title}, Audience: ${audience}, Tone: ${tone}
 Return JSON: {"chapters":[{"title":"...","summary":"1-2 lines"}]}`;
 }
 
-export function nicheOutlinePrompt({ research, architecture, title, description }: any) {
+export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }: any) {
   const a = architecture || {};
   const chapterCount = a.recommendedChapters?.default || 10;
   const flow = (a.chapterFlow || []).map((beat: string, i: number) => `${i + 1}. ${beat}`).join("\n");
@@ -368,7 +368,19 @@ PUBLISHING GOAL: ${research?.publishingGoal || ""}
 AUTHOR STANCE: ${research?.stanceOnTopic || ""}
 WHAT MAKES IT STAND OUT: ${research?.standout || ""}
 DESCRIPTION: ${description || ""}
-
+${bookContext ? `USP: ${bookContext.usp || ""}
+DIFFERENTIATION: ${bookContext.differentiation || ""}
+READER PAIN PROFILE: ${bookContext.readerPainProfile || ""}
+READER TRANSFORMATION PROMISE: ${bookContext.transformationPromise || ""}
+MARKET GAP TO FILL: ${bookContext.marketGap || ""}
+WRITING STYLE BENCHMARK: ${bookContext.writingStyleFingerprint || ""}
+POSITIONING STRATEGY: ${bookContext.positioningStrategy || ""}
+EMOTIONAL TRIGGERS: ${bookContext.emotionalTriggers || ""}
+AUTHOR BACKGROUND & STYLE: ${bookContext.authorSummary || ""}
+KEY SELLING POINTS:
+${bookContext.keySellingPoints || ""}
+COMPETING TITLES (differentiate from these): ${bookContext.competitorTitles || ""}` : ""}
+${resources ? resourcesBlock(resources, "outline") : ""}
 ========================================
 STRUCTURAL BLUEPRINT
 ========================================
@@ -481,10 +493,63 @@ Output JSON: {"sections":[{"title":"...","explanation":"...","subsections":[{"ti
 3 sections, 3 subsections each.`;
 }
 
-export function lessonPrompt({ subsection, chapterContext, previousConcepts, audience, tone, resources }: any) {
+/**
+ * Format the compact book memory object as a prompt block.
+ * All fields are already size-capped in buildBookContext on the frontend.
+ */
+export function bookContextBlock(ctx: any): string {
+  if (!ctx) return "";
+  const lines: string[] = [];
+
+  if (ctx.title)    lines.push(`Book: "${ctx.title}"${ctx.subtitle ? ` — ${ctx.subtitle}` : ""}`);
+  if (ctx.niche && ctx.subNiche) lines.push(`Niche: ${ctx.niche} › ${ctx.subNiche}${ctx.deepNiche ? ` › ${ctx.deepNiche}` : ""}`);
+  else if (ctx.niche) lines.push(`Niche: ${ctx.niche}`);
+  if (ctx.bookTopic)   lines.push(`Core Topic: ${ctx.bookTopic}`);
+  if (ctx.stance)      lines.push(`Author Stance: ${ctx.stance}`);
+  if (ctx.standout)    lines.push(`What Makes It Stand Out: ${ctx.standout}`);
+  if (ctx.audience)    lines.push(`Target Reader: ${ctx.audience}`);
+  if (ctx.tone)        lines.push(`Voice & Tone: ${ctx.tone}`);
+  if (ctx.genre)       lines.push(`Genre: ${ctx.genre}`);
+  if (ctx.wordCountRange) lines.push(`Target Length: ${ctx.wordCountRange}`);
+  if (ctx.structure)   lines.push(`Structure: ${ctx.structure}`);
+  if (ctx.usp)         lines.push(`USP: ${ctx.usp}`);
+  if (ctx.differentiation) lines.push(`Differentiation: ${ctx.differentiation}`);
+  if (ctx.keySellingPoints) lines.push(`Key Selling Points: ${ctx.keySellingPoints}`);
+  if (ctx.authorName)  lines.push(`Author: ${ctx.authorName}`);
+  if (ctx.authorSummary) lines.push(`Author Style/Background: ${ctx.authorSummary}`);
+  if (ctx.readerPainProfile)     lines.push(`Reader Pain Profile: ${ctx.readerPainProfile}`);
+  if (ctx.transformationPromise) lines.push(`Transformation Promise: ${ctx.transformationPromise}`);
+  if (ctx.marketGap)   lines.push(`Market Gap to Fill: ${ctx.marketGap}`);
+  if (ctx.writingStyleFingerprint) lines.push(`Ideal Writing Style: ${ctx.writingStyleFingerprint}`);
+  if (ctx.positioningStrategy) lines.push(`Positioning Strategy: ${ctx.positioningStrategy}`);
+  if (ctx.emotionalTriggers) lines.push(`Emotional Triggers: ${ctx.emotionalTriggers}`);
+  if (ctx.competitorTitles) lines.push(`Competing Titles: ${ctx.competitorTitles}`);
+
+  if (!lines.length) return "";
+
+  let block = `\n\n========================================\nBOOK MEMORY — carry this through all generation\n========================================\n${lines.join("\n")}`;
+
+  if (Array.isArray(ctx.previousChapterSummaries) && ctx.previousChapterSummaries.length) {
+    const s = ctx.previousChapterSummaries.map((c: any) => `  • ${c.title}: ${c.summary}`).join("\n");
+    block += `\n\nPreviously Written Chapters (build on these — don't repeat concepts):\n${s}`;
+  }
+
+  return block;
+}
+
+export function lessonPrompt({ subsection, chapterContext, previousConcepts, audience, tone, resources, bookContext }: any) {
   const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
-  return `Write a complete lesson for: ${JSON.stringify(subsection)}
-Chapter: ${JSON.stringify(chapterContext)}, Audience: ${audience}, Tone: ${tone}${resBlock}
+  const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
+  const prevNote = Array.isArray(previousConcepts) && previousConcepts.length
+    ? `\nConcepts already covered earlier (don't repeat): ${previousConcepts.slice(-8).join("; ")}`
+    : "";
+  return `Write a complete lesson for the subsection: ${JSON.stringify(subsection)}
+Chapter context: ${JSON.stringify(chapterContext)}
+Target Reader: ${audience}
+Voice & Tone: ${tone}${prevNote}${ctxBlock}${resBlock}
+
+Maintain the book's established voice. Build on previous chapters — advance the reader's transformation, introduce new frameworks, and stay consistent with the book's positioning and USP.
+
 Return JSON: {"title":"...","explanation":"...","example":"...","framework":"...","executionSteps":["..."]}`;
 }
 

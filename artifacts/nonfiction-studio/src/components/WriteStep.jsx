@@ -7,6 +7,7 @@ import {
   lessonToProse
 } from "@/lib/writeBlocks";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
+import { buildBookContext } from "@/lib/bookContext";
 
 const IMPROVE_ACTIONS = [
   { id: "sharpen", label: "Sharpen clarity" },
@@ -102,7 +103,8 @@ export default function WriteStep({
         previousConcepts: collectPreviousConcepts(blocks, lessonsSnapshot, index),
         audience: writingAudience(fullProject),
         tone: writingTone(fullProject),
-        resources: fullProject?.resources ?? null
+        resources: fullProject?.resources ?? null,
+        bookContext: buildBookContext(fullProject)
       });
       const lesson = data.lesson || data;
       const prose = lessonToProse(lesson);

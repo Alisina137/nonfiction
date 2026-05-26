@@ -4,6 +4,7 @@ import { applyNicheOutlineToBookOutline } from "@/lib/niche/outlineApply";
 import { loadNicheRegistry, resolveArchitecture } from "@/lib/niche/registry";
 import { resolveBookTitle } from "@/lib/projectMeta";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
+import { buildBookContext } from "@/lib/bookContext";
 
 function safeId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID)
@@ -378,7 +379,8 @@ export default function OutlineStep({
         architecture: arch,
         title: resolveBookTitle(fullProject),
         description: fullProject.description || "",
-        resources: fullProject?.resources ?? null
+        resources: fullProject?.resources ?? null,
+        bookContext: buildBookContext(fullProject)
       });
       const applied = applyNicheOutlineToBookOutline(data, arch);
       setBookOutline((prev) => {
