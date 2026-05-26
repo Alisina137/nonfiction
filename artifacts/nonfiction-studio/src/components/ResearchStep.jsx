@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import NicheManagerModal from "@/components/NicheManagerModal";
 import {
   findMainNiche,
@@ -8,6 +8,7 @@ import {
 } from "@/lib/niche/registry";
 import { getDeepNiches, detectAudience, inferAudienceProfile } from "@/lib/niche/deepNiches";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
+import { buildBookContext } from "@/lib/bookContext";
 
 function FieldLabel({ children, hint }) {
   return (
@@ -25,12 +26,21 @@ function FieldLabel({ children, hint }) {
   );
 }
 
-export default function ResearchStep({ research, setResearch, errors }) {
+export default function ResearchStep({ research, setResearch, errors, fullProject }) {
   const [registry, setRegistry] = useState(() => loadNicheRegistry());
   const [managerOpen, setManagerOpen] = useState(false);
+
+  // Title suggestions
   const [suggestedTitles, setSuggestedTitles] = useState([]);
   const [titlesLoading, setTitlesLoading] = useState(false);
   const [titlesError, setTitlesError] = useState("");
+
+  // Subtitle suggestions
+  const [subtitleSuggestions, setSubtitleSuggestions] = useState([]);
+  const [subtitlesLoading, setSubtitlesLoading] = useState(false);
+  const [subtitlesError, setSubtitlesError] = useState("");
+
+  const subtitleDebounceRef = useRef(null);
 
   useEffect(() => { setRegistry(loadNicheRegistry()); }, []);
 
@@ -58,11 +68,11 @@ export default function ResearchStep({ research, setResearch, errors }) {
   }
 
   function onMainNicheChange(id) {
-    const nextMain   = findMainNiche(registry, id);
-    const firstSub   = nextMain?.subNiches?.[0]?.id || "";
+    const nextMain = findMainNiche(registry, id);
+    const firstSub = nextMain?.subNiches?.[0]?.id || "";
     patch({
-      mainNicheId:   id,
-      subNicheId:    firstSub,
+      mainNicheId:    id,
+      subNicheId:     firstSub,
       mainNicheLabel: nextMain?.label || "",
       subNicheLabel:  nextMain?.subNiches?.find((s) => s.id === firstSub)?.label || "",
       deepNicheLabel: "",
@@ -70,6 +80,7 @@ export default function ResearchStep({ research, setResearch, errors }) {
     });
     setSuggestedTitles([]);
     setTitlesError("");
+    setSubtitleSuggestions([]);
   }
 
   function onSubNicheChange(id) {
@@ -77,6 +88,7 @@ export default function ResearchStep({ research, setResearch, errors }) {
     patch({ subNicheId: id, subNicheLabel: sub?.label || "", deepNicheLabel: "" });
     setSuggestedTitles([]);
     setTitlesError("");
+    setSubtitleSuggestions([]);
   }
 
   function onDeepNicheChange(label) {
@@ -85,6 +97,51 @@ export default function ResearchStep({ research, setResearch, errors }) {
     setTitlesError("");
   }
 
+  // ─── Auto-suggest subtitles (debounced) ─────────────────────────────────────
+  useEffect(() => {
+    const title = research?.bookTitle?.trim() || "";
+    if (!title || title.length < 4 || !mainNicheId) {
+      clearTimeout(subtitleDebounceRef.current);
+      return;
+    }
+    clearTimeout(subtitleDebounceRef.current);
+    subtitleDebounceRef.current = setTimeout(() => {
+      fetchSubtitles(title);
+    }, 1800);
+    return () => clearTimeout(subtitleDebounceRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [research?.bookTitle, mainNicheId, subNicheId]);
+
+  async function fetchSubtitles(titleOverride) {
+    const title = (titleOverride || research?.bookTitle || "").trim();
+    if (!title || subtitlesLoading) return;
+    setSubtitlesLoading(true);
+    setSubtitlesError("");
+    try {
+      const ctx = fullProject ? buildBookContext({ ...fullProject, research }) : null;
+      const data = await aiFetch("/api/ai/suggest-subtitles", {
+        title,
+        niche:     research?.mainNicheLabel || "",
+        subNiche:  research?.subNicheLabel  || "",
+        bookTopic: research?.bookTopic      || "",
+        bookContext: ctx
+      });
+      const subs = Array.isArray(data.subtitles) ? data.subtitles.filter(Boolean) : [];
+      if (!subs.length) throw new Error("No subtitles returned. Try again.");
+      setSubtitleSuggestions(subs);
+    } catch (err) {
+      setSubtitleSuggestions([]);
+      setSubtitlesError(
+        err instanceof GenerationCanceledError
+          ? "Generation canceled — Grok approval declined."
+          : err?.message || "Failed to suggest subtitles."
+      );
+    } finally {
+      setSubtitlesLoading(false);
+    }
+  }
+
+  // ─── Title suggestions ───────────────────────────────────────────────────────
   async function onSuggestTitles() {
     if (!deepNicheLabel || titlesLoading) return;
     setTitlesLoading(true);
@@ -124,7 +181,17 @@ export default function ResearchStep({ research, setResearch, errors }) {
   }
 
   function applyTitle(titleData) {
-    patch({ bookTitle: typeof titleData === "string" ? titleData : titleData?.title || "" });
+    const title    = typeof titleData === "string" ? titleData : (titleData?.title || "");
+    const subtitle = typeof titleData === "object" ? (titleData?.subtitle || "") : "";
+    patch({
+      bookTitle: title,
+      ...(subtitle ? { bookSubtitle: subtitle } : {})
+    });
+    // Trigger fresh subtitle suggestions for the chosen title
+    if (title) {
+      clearTimeout(subtitleDebounceRef.current);
+      subtitleDebounceRef.current = setTimeout(() => fetchSubtitles(title), 400);
+    }
   }
 
   return (
@@ -137,8 +204,8 @@ export default function ResearchStep({ research, setResearch, errors }) {
           Start with your idea
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-          Select your niche, choose a title, and add a concept in a sentence or two.
-          The AI extracts full market intelligence — audience, tone, positioning, pain profile — automatically in the next step.
+          Choose a niche, name your book, and describe its core topic.
+          Title, subtitle, and topic flow into every AI step — outline, writing, cover, and description.
         </p>
       </header>
 
@@ -290,7 +357,7 @@ export default function ResearchStep({ research, setResearch, errors }) {
           )}
         </section>
 
-        {/* Book title */}
+        {/* ── Book Title ── */}
         <section>
           <FieldLabel hint="Your working title — can be refined later in the Title step.">Book title</FieldLabel>
           <input
@@ -301,7 +368,66 @@ export default function ResearchStep({ research, setResearch, errors }) {
           />
         </section>
 
-        {/* Author name */}
+        {/* ── Book Subtitle ── */}
+        <section>
+          <div className="flex items-end justify-between gap-2">
+            <FieldLabel hint="Clarifies who the book is for and what transformation they get. Used in the outline, writing, cover, and description steps.">
+              Book subtitle <span className="font-normal text-slate-400">(recommended)</span>
+            </FieldLabel>
+            <button
+              type="button"
+              disabled={!research?.bookTitle?.trim() || subtitlesLoading}
+              onClick={() => fetchSubtitles()}
+              className="mb-0.5 whitespace-nowrap rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-400 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {subtitlesLoading ? "Generating…" : "AI Suggest"}
+            </button>
+          </div>
+          <input
+            className="input-light mt-1.5"
+            placeholder="e.g. The Entrepreneur's System for Unbreakable Daily Habits"
+            value={research.bookSubtitle || ""}
+            onChange={(e) => patch({ bookSubtitle: e.target.value })}
+          />
+
+          {/* Subtitle suggestions */}
+          {subtitlesError && <p className="mt-1.5 text-xs text-red-600">{subtitlesError}</p>}
+          {subtitleSuggestions.length > 0 && (
+            <section className="mt-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Suggested subtitles — click to apply
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {subtitleSuggestions.map((sub) => {
+                  const active = research.bookSubtitle === sub;
+                  return (
+                    <li key={sub}>
+                      <button
+                        type="button"
+                        onClick={() => patch({ bookSubtitle: sub })}
+                        className={`w-full rounded-lg border px-3.5 py-2.5 text-left text-sm transition ${
+                          active
+                            ? "border-sky-500 bg-sky-500 text-white font-semibold shadow-sm"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+                        }`}
+                      >
+                        {sub}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
+          {subtitlesLoading && (
+            <p className="mt-2 text-xs text-slate-400 animate-pulse">
+              Generating subtitle suggestions based on your title and niche…
+            </p>
+          )}
+        </section>
+
+        {/* ── Author name ── */}
         <section>
           <FieldLabel hint="Name as it will appear on the cover.">Author name</FieldLabel>
           <input
@@ -316,20 +442,23 @@ export default function ResearchStep({ research, setResearch, errors }) {
         {/* ── Optional fields ── */}
         <div className="rounded-2xl border border-slate-100 bg-slate-50/50 px-5 py-4 space-y-5">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Optional — helps the AI generate smarter content
+            Optional — shapes AI research, outline, and writing
           </p>
 
-          {/* Book concept */}
+          {/* Book Topic */}
           <section>
-            <FieldLabel hint="What is this book about? Who is it for, and what will they achieve?">
-              Book concept
+            <FieldLabel hint="The exact core subject of the book — who it's for and what it helps them achieve. Used in AI research, outline, and all generation steps.">
+              Book topic
             </FieldLabel>
             <textarea
-              className="input-light mt-1.5 min-h-[80px] resize-y"
-              placeholder="e.g. A practical system helping busy fathers build physical discipline in 30 minutes a day using stoic principles."
+              className="input-light mt-1.5 min-h-[72px] resize-y"
+              placeholder="e.g. Self-discipline for entrepreneurs — building unbreakable daily systems while running a business"
               value={research.bookTopic || ""}
               onChange={(e) => patch({ bookTopic: e.target.value })}
             />
+            <p className="mt-1 text-[11px] text-slate-400">
+              Tip: be specific. "Self-discipline for entrepreneurs" beats "discipline habits".
+            </p>
           </section>
 
           {/* Desired transformation */}
@@ -351,7 +480,7 @@ export default function ResearchStep({ research, setResearch, errors }) {
               Custom notes
             </FieldLabel>
             <textarea
-              className="input-light mt-1.5 min-h-[80px] resize-y"
+              className="input-light mt-1.5 min-h-[72px] resize-y"
               placeholder="e.g. I want this to stand out from Atomic Habits by focusing on identity-level change in masculine psychology. I have 10 years of coaching experience."
               value={research.standout || ""}
               onChange={(e) => patch({ standout: e.target.value })}

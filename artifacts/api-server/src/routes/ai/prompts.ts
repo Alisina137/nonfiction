@@ -497,6 +497,26 @@ Output JSON: {"sections":[{"title":"...","explanation":"...","subsections":[{"ti
  * Format the compact book memory object as a prompt block.
  * All fields are already size-capped in buildBookContext on the frontend.
  */
+export function subtitleSuggestPrompt({ title, niche, subNiche, bookTopic, bookContext }: any): string {
+  const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
+  const nicheStr = [niche, subNiche].filter(Boolean).join(" › ");
+  return `Generate 5 compelling, specific book subtitles for a nonfiction book.
+
+BOOK TITLE: "${title}"
+NICHE: ${nicheStr || "(not specified)"}
+CORE TOPIC: ${bookTopic || "(not specified)"}${ctxBlock}
+
+Rules for each subtitle:
+- Clearly state WHO it's for AND the specific outcome/transformation they get
+- 6–14 words, no more
+- Sound like an Amazon bestseller (specific, outcome-driven, emotionally resonant)
+- Each must be meaningfully different in angle or audience framing
+- No generic phrases: "A Guide to", "Everything You Need", "The Complete", "How to"
+- No quotes around the subtitle
+
+Return ONLY valid JSON: {"subtitles":["subtitle 1","subtitle 2","subtitle 3","subtitle 4","subtitle 5"]}`;
+}
+
 export function bookContextBlock(ctx: any): string {
   if (!ctx) return "";
   const lines: string[] = [];

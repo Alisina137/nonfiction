@@ -124,6 +124,7 @@ const emptyBookCover = {
 
 const emptyResearch = {
   bookTitle: "",
+  bookSubtitle: "",
   authorName: "",
   mainNicheId: "",
   subNicheId: "",
@@ -1106,6 +1107,7 @@ export default function Dashboard() {
                 }))
               }
               errors={researchErrors}
+              fullProject={project}
             />
           )}
 

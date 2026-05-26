@@ -18,6 +18,7 @@ import {
   regenTitlePrompt,
   resourcesBlock,
   structurePrompt,
+  subtitleSuggestPrompt,
   systemPrompt,
   titlesPrompt
 } from "./prompts.js";
@@ -108,6 +109,24 @@ async function runShort(prompt: string, system: string, req: any, res: any, cont
 }
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
+
+router.post("/suggest-subtitles", async (req, res) => {
+  try {
+    const { title, niche, subNiche, bookTopic, bookContext } = req.body || {};
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+    const { text, usedProvider } = await runShort(
+      subtitleSuggestPrompt({ title, niche, subNiche, bookTopic, bookContext }),
+      systemPrompt(),
+      req,
+      res,
+      "subtitle"
+    );
+    const parsed = JSON.parse(text);
+    res.json({ subtitles: parsed.subtitles || [], usedProvider });
+  } catch (e: any) {
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+});
 
 router.post("/titles", async (req, res) => {
   try {
