@@ -50,7 +50,8 @@ const emptyBookTitle = {
 const emptyResources = {
   links: [],
   findings: [],
-  files: []
+  files: [],
+  settings: { citation: { style: "none", inline: false, bibliography: false } }
 };
 
 const CREATE_NEW_PERSONA = "__create_new__";
@@ -233,18 +234,30 @@ function migrateProject(raw) {
       findings: Array.isArray(p.resources.findings) ? p.resources.findings : [],
       files: Array.isArray(p.resources.files) ? p.resources.files : []
     };
+    // Migrate IDs + new metadata fields (priority, useFor, category, isStyleRef)
+    const resourceDefaults = { priority: "medium", useFor: ["entire_book"], isStyleRef: false };
     p.resources.links = (p.resources.links || []).map((l, idx) => ({
+      ...resourceDefaults,
+      category: l.category || (l.kind === "journal" ? "academic_paper" : l.kind === "dataset" ? "statistics" : "blog_article"),
       ...l,
       id: l.id || `rlink-${idx}`
     }));
     p.resources.findings = (p.resources.findings || []).map((f, idx) => ({
+      ...resourceDefaults,
+      category: f.category || "note",
       ...f,
       id: f.id || `rfind-${idx}`
     }));
     p.resources.files = (p.resources.files || []).map((file, idx) => ({
+      ...resourceDefaults,
+      category: file.category || "book",
+      summary: file.summary ?? null,
       ...file,
       id: file.id || `rfile-${idx}`
     }));
+    if (!p.resources.settings || typeof p.resources.settings !== "object") {
+      p.resources.settings = { citation: { style: "none", inline: false, bibliography: false } };
+    }
   }
   if (!p.authorPersona || typeof p.authorPersona !== "object") {
     p.authorPersona = { ...emptyAuthorPersona };

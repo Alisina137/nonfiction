@@ -481,9 +481,10 @@ Output JSON: {"sections":[{"title":"...","explanation":"...","subsections":[{"ti
 3 sections, 3 subsections each.`;
 }
 
-export function lessonPrompt({ subsection, chapterContext, previousConcepts, audience, tone }: any) {
+export function lessonPrompt({ subsection, chapterContext, previousConcepts, audience, tone, resources }: any) {
+  const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
   return `Write a complete lesson for: ${JSON.stringify(subsection)}
-Chapter: ${JSON.stringify(chapterContext)}, Audience: ${audience}, Tone: ${tone}
+Chapter: ${JSON.stringify(chapterContext)}, Audience: ${audience}, Tone: ${tone}${resBlock}
 Return JSON: {"title":"...","explanation":"...","example":"...","framework":"...","executionSteps":["..."]}`;
 }
 
@@ -677,6 +678,78 @@ Return STRICT JSON only:
     {"style": "Philosophical", "title": "...", "subtitle": "...", "note": "..."}
   ]
 }`;
+}
+
+// ─── Resource helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Build a compact, priority-ordered resources block for prompt injection.
+ * @param resources  The project's resources object (links, findings, files, settings)
+ * @param context    Which prompt context: "outline" | "lesson" | "all"
+ */
+export function resourcesBlock(resources: any, context: "outline" | "lesson" | "all" = "all"): string {
+  if (!resources) return "";
+  const { links = [], findings = [], files = [] } = resources;
+  const all = [
+    ...links.map((r: any) => ({ ...r, _rtype: "link" })),
+    ...findings.map((r: any) => ({ ...r, _rtype: "finding" })),
+    ...files.map((r: any) => ({ ...r, _rtype: "file" }))
+  ];
+  if (!all.length) return "";
+
+  const contextAllowed: Record<string, string[]> = {
+    outline: ["entire_book", "outline_only"],
+    lesson:  ["entire_book", "statistics", "quotes", "research_only"],
+    all:     ["entire_book", "outline_only", "writing_style", "statistics", "quotes", "research_only"]
+  };
+  const allowed = contextAllowed[context] || contextAllowed.all;
+
+  const filtered = all.filter((r: any) => {
+    const useFor: string[] = Array.isArray(r.useFor) ? r.useFor : ["entire_book"];
+    return useFor.some((u: string) => allowed.includes(u));
+  });
+  if (!filtered.length) return "";
+
+  const PRIO: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  filtered.sort((a: any, b: any) => (PRIO[a.priority] ?? 2) - (PRIO[b.priority] ?? 2));
+
+  const lines: string[] = [];
+  for (const r of filtered.slice(0, 8)) {
+    const prio    = r.priority === "critical" ? " [CRITICAL]" : r.priority === "high" ? " [HIGH]" : "";
+    const title   = r.title || r.label || r.originalName || r._rtype;
+    const content = String(r.summary || r.body || r.note || (r._rtype === "link" ? r.url : "")).slice(0, 250);
+    if (!content) continue;
+    const style   = r.isStyleRef ? " [Writing Style Reference]" : "";
+    const useNote = Array.isArray(r.useFor) && r.useFor.length && !r.useFor.includes("entire_book")
+      ? ` [Focus: ${r.useFor.join(", ")}]` : "";
+    lines.push(`• ${title}${prio}${style}${useNote}: ${content}`);
+  }
+  if (!lines.length) return "";
+
+  const cite = resources.settings?.citation;
+  const citeNote = cite?.style && cite.style !== "none"
+    ? `\n[Citation format: ${cite.style.toUpperCase()}${cite.inline ? ", inline" : ""}${cite.bibliography ? ", bibliography" : ""}]`
+    : "";
+  return `\n\nAuthor's Research Resources (priority-ordered):\n${lines.join("\n")}${citeNote}`;
+}
+
+/**
+ * Prompt for extracting key insights from a resource's text content.
+ */
+export function extractResourcePrompt({ text, title, category }: any): string {
+  const truncated = String(text || "").slice(0, 5000);
+  return `Extract the most valuable information from this ${category || "resource"} titled "${title || "Untitled"}".
+
+Content:
+${truncated}
+
+Return a concise extraction with only the sections that have content:
+**Key Insights** — 3-5 bullet points of the most important takeaways
+**Statistics** — specific data points, percentages, or numbers worth citing
+**Notable Quotes** — verbatim phrases worth preserving verbatim
+**Frameworks / Models** — any named systems, processes, or structured approaches
+
+Keep the total response under 350 words. Be specific and factual. Do not add commentary.`;
 }
 
 export function competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, books }: any) {

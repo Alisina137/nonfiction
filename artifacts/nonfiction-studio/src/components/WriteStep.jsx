@@ -101,7 +101,8 @@ export default function WriteStep({
         chapterContext: block.chapterContext,
         previousConcepts: collectPreviousConcepts(blocks, lessonsSnapshot, index),
         audience: writingAudience(fullProject),
-        tone: writingTone(fullProject)
+        tone: writingTone(fullProject),
+        resources: fullProject?.resources ?? null
       });
       const lesson = data.lesson || data;
       const prose = lessonToProse(lesson);

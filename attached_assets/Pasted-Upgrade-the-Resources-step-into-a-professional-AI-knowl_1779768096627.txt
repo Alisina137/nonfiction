@@ -1,0 +1,200 @@
+Upgrade the “Resources” step into a professional AI knowledge system focused on source prioritization and intelligent resource management.
+
+Add the following features:
+
+1. Source Importance Weighting
+   Each resource must have a priority selector:
+
+* Critical
+* High
+* Medium
+* Low
+
+Critical sources should influence AI outputs more heavily than low-priority sources.
+
+Example UI:
+Source Priority:
+[ Critical ▼ ]
+
+2. “Use For” Targeting
+   Allow users to specify where the resource should be used:
+
+* Entire Book
+* Specific Chapters
+* Outline Only
+* Statistics Only
+* Quotes Only
+* Writing Style
+* Research Only
+
+Users should be able to select multiple options.
+
+3. Resource-to-Chapter Mapping
+   Add chapter targeting:
+
+* Apply to all chapters
+* Apply to selected chapters only
+
+Example:
+☑ Chapter 1
+☑ Chapter 3
+☐ Chapter 5
+
+The AI should only inject those resources into relevant chapter generations.
+
+4. Smart Resource Categories
+   Expand resource types:
+
+* Academic Paper
+* Book
+* Government Report
+* Research Study
+* Competitor Book
+* Case Study
+* Statistics Source
+* Interview / Transcript
+* Blog Article
+* Writing Style Reference
+
+Different categories should affect prompting differently.
+
+5. Writing Style Extraction
+   Add an option:
+   ☑ Use as writing style reference
+
+When enabled:
+
+* analyze sentence structure
+* tone
+* pacing
+* vocabulary
+* storytelling style
+
+Then apply those patterns during book writing.
+
+6. AI Resource Extraction
+   When users upload PDFs, DOCX, TXT, or links:
+   Automatically extract:
+
+* key insights
+* statistics
+* quotes
+* frameworks
+* case studies
+* actionable advice
+
+Store compressed summaries instead of repeatedly sending entire files to the model.
+
+7. Citation Support
+   Add citation settings:
+
+* APA
+* MLA
+* Chicago
+* None
+
+Options:
+☑ Inline citations
+☑ Bibliography generation
+☑ Auto-cite statistics
+
+8. Credibility Scoring
+   AI should evaluate each source:
+
+* Academic
+* Expert-written
+* Commercial
+* Weak credibility
+* Outdated
+
+Show warnings like:
+⚠ This source may contain outdated statistics.
+
+9. Duplicate Detection
+   Detect overlapping or duplicate uploaded resources.
+   Suggest:
+
+* merge summaries
+* remove duplicates
+* compress overlapping context
+
+10. Resource Locking
+    Allow:
+    ☑ Must use
+    ☑ Never modify quotes
+    ☑ Exact wording only
+
+11. AI Knowledge Base System
+    Convert all uploaded resources into:
+
+* searchable semantic chunks
+* compressed knowledge cards
+* retrieval-ready embeddings
+
+Only inject the most relevant chunks into prompts during generation.
+
+12. Resource Analytics
+    Show:
+
+* which chapters use each resource
+* citation counts
+* most influential sources
+* ignored resources
+
+13. Live Web Research Expansion
+    Add button:
+    [ AI Find More Sources ]
+
+AI automatically discovers:
+
+* recent studies
+* government reports
+* expert articles
+* statistics
+  related to the book topic.
+
+14. Resource Freshness Tracking
+    Show:
+    Updated: 2021
+    ⚠ Possibly outdated
+
+Especially important for:
+
+* health
+* finance
+* technology
+* psychology
+
+15. Source Conflict Detection
+    Detect contradictions between resources.
+
+Example:
+⚠ Two sources disagree on the reported statistics.
+
+Allow users to:
+
+* choose preferred source
+* prioritize higher-credibility source automatically
+
+16. Token Optimization
+    Never send entire resources to the model repeatedly.
+    Use:
+
+* chunking
+* summarization
+* embeddings
+* semantic retrieval
+* compressed memory cards
+
+17. UX Improvements
+    Add:
+
+* drag-and-drop uploads
+* bulk upload
+* resource search
+* filtering by type/priority/chapter
+* expandable preview cards
+* extracted insight previews
+
+Goal:
+Transform the Resources step from simple file upload into an enterprise-grade AI research and knowledge management system for nonfiction book generation.

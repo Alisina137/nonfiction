@@ -9,12 +9,14 @@ import {
   coverVariantsPrompt,
   descriptionPrompt,
   improvementPrompt,
+  extractResourcePrompt,
   lessonPrompt,
   marketingDescriptionPrompt,
   nicheOutlinePrompt,
   nicheSystemPrompt,
   outlinePrompt,
   regenTitlePrompt,
+  resourcesBlock,
   structurePrompt,
   systemPrompt,
   titlesPrompt
@@ -197,11 +199,12 @@ router.post("/outline", async (req, res) => {
 
 router.post("/niche-outline", async (req, res) => {
   try {
-    const { research, architecture, title, description } = req.body || {};
+    const { research, architecture, title, description, resources } = req.body || {};
     if (!architecture?.subNicheLabel)
       return res.status(400).json({ error: "Missing niche architecture" });
+    const resBlock = resources ? resourcesBlock(resources, "outline") : "";
     const { text, usedProvider } = await runLong(
-      nicheOutlinePrompt({ research, architecture, title, description }),
+      nicheOutlinePrompt({ research, architecture, title, description }) + resBlock,
       nicheSystemPrompt(architecture),
       req,
       res,
@@ -227,9 +230,32 @@ router.post("/structure", async (req, res) => {
 router.post("/lesson", async (req, res) => {
   try {
     const compressed = compressLessonBody(req.body);
-    const { text, usedProvider } = await runLong(lessonPrompt(compressed), systemPrompt(), req, res, "lesson");
+    const { text, usedProvider } = await runLong(
+      lessonPrompt({ ...compressed, resources: req.body?.resources }),
+      systemPrompt(),
+      req,
+      res,
+      "lesson"
+    );
     const data = extractJSON(text);
     return res.json({ lesson: data, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/extract-resource", async (req, res) => {
+  try {
+    const { text, title, category } = req.body || {};
+    if (!text || typeof text !== "string" || text.trim().length < 20)
+      return res.status(400).json({ error: "text is required (min 20 chars)." });
+    const { text: rawText, usedProvider } = await generateContentFast(
+      extractResourcePrompt({ text, title, category }),
+      systemPrompt(),
+      aiOptsFromReq(req, TOKEN_LIMITS.default)
+    );
+    setProviderHeader(res, usedProvider);
+    return res.json({ summary: rawText.trim(), _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

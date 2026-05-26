@@ -377,7 +377,8 @@ export default function OutlineStep({
         research: fullProject.research,
         architecture: arch,
         title: resolveBookTitle(fullProject),
-        description: fullProject.description || ""
+        description: fullProject.description || "",
+        resources: fullProject?.resources ?? null
       });
       const applied = applyNicheOutlineToBookOutline(data, arch);
       setBookOutline((prev) => {
