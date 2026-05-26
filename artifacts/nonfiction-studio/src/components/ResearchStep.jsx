@@ -181,13 +181,23 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
   }
 
   function applyTitle(titleData) {
-    const title    = typeof titleData === "string" ? titleData : (titleData?.title || "");
-    const subtitle = typeof titleData === "object" ? (titleData?.subtitle || "") : "";
-    patch({
-      bookTitle: title,
-      ...(subtitle ? { bookSubtitle: subtitle } : {})
-    });
-    // Trigger fresh subtitle suggestions for the chosen title
+    const isObj   = typeof titleData === "object" && titleData !== null;
+    const title    = isObj ? (titleData.title    || "") : String(titleData || "");
+    const subtitle = isObj ? (titleData.subtitle || "") : "";
+    const angle    = isObj ? (titleData.angle    || "") : "";   // → bookTopic
+    const hook     = isObj ? (titleData.hook     || "") : "";   // → stanceOnTopic
+    const audience = isObj ? (titleData.audience || "") : "";   // → targetAudience
+
+    setResearch((prev) => ({
+      ...prev,
+      bookTitle:   title,
+      ...(subtitle ? { bookSubtitle:   subtitle } : {}),
+      ...(angle    ? { bookTopic:      angle    } : {}),
+      ...(hook     ? { stanceOnTopic:  hook     } : {}),
+      ...(audience ? { targetAudience: audience } : {})
+    }));
+
+    // Fetch subtitle suggestions for the chosen title
     if (title) {
       clearTimeout(subtitleDebounceRef.current);
       subtitleDebounceRef.current = setTimeout(() => fetchSubtitles(title), 400);
@@ -427,6 +437,22 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
           )}
         </section>
 
+        {/* ── Book Topic ── */}
+        <section>
+          <FieldLabel hint="The exact core topic — who it's for and what it helps them achieve. Auto-filled when you pick a title suggestion; used by every AI step.">
+            Book topic
+          </FieldLabel>
+          <textarea
+            className="input-light mt-1.5 min-h-[72px] resize-y"
+            placeholder="e.g. Self-discipline for entrepreneurs — building unbreakable daily systems while running a business"
+            value={research.bookTopic || ""}
+            onChange={(e) => patch({ bookTopic: e.target.value })}
+          />
+          <p className="mt-1 text-[11px] text-slate-400">
+            Tip: be specific — "Self-discipline for entrepreneurs" beats "discipline habits".
+          </p>
+        </section>
+
         {/* ── Author name ── */}
         <section>
           <FieldLabel hint="Name as it will appear on the cover.">Author name</FieldLabel>
@@ -445,25 +471,9 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
             Optional — shapes AI research, outline, and writing
           </p>
 
-          {/* Book Topic */}
-          <section>
-            <FieldLabel hint="The exact core subject of the book — who it's for and what it helps them achieve. Used in AI research, outline, and all generation steps.">
-              Book topic
-            </FieldLabel>
-            <textarea
-              className="input-light mt-1.5 min-h-[72px] resize-y"
-              placeholder="e.g. Self-discipline for entrepreneurs — building unbreakable daily systems while running a business"
-              value={research.bookTopic || ""}
-              onChange={(e) => patch({ bookTopic: e.target.value })}
-            />
-            <p className="mt-1 text-[11px] text-slate-400">
-              Tip: be specific. "Self-discipline for entrepreneurs" beats "discipline habits".
-            </p>
-          </section>
-
           {/* Desired transformation */}
           <section>
-            <FieldLabel hint="The specific change the reader experiences by the last page.">
+            <FieldLabel hint="The specific change the reader experiences by the last page. Auto-filled from title suggestions.">
               Desired transformation
             </FieldLabel>
             <input
