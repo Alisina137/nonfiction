@@ -1,38 +1,36 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// OpenRouter AI Router — optimised for free / low-credit usage
+// OpenRouter AI Router — credit-aware multi-model orchestration
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // PROVIDER CHAINS
-//   FULL (default):    gemini → openai → deepseek → llama → gemini_free
-//                      → mistral → anthropic → grok*
-//   FREE (lowCredit):  gemini_free → deepseek → llama → mistral
+//   FULL (default):  gemini → openai → deepseek → llama → gemini_free
+//                    → mistral → anthropic → grok*
+//   FREE (lowCredit): deepseek → llama → gemini_free → mistral
 //
 //   * Grok requires explicit user approval (allowGrok: true).
 //
-// TOKEN BUDGETS
-//   Hard cap: 1 800 tokens per request (never exceeded).
-//   Each content type carries its own budget — see TOKEN_LIMITS below.
-//   Token estimation runs before each call; prompts are auto-truncated
-//   if input + output would exceed the per-model context budget.
-//
-// PROVIDER OFFLINE TRACKING
-//   Any provider that returns "No endpoints found", "temporarily disabled",
-//   a timeout, or a rate-limit error is automatically skipped for
-//   PROVIDER_DISABLE_MS (10 min).
-//
-// FREE MODEL RATE GATE
-//   Free-tier models share a minimum 7-second gap between calls to avoid
-//   hammering their rate limits.
+// DISABLE TRACKING
+//   credit exhaustion (402/insufficient credits): 4 hours
+//   hard unavailable (404/no endpoints):          60 minutes
+//   rate limited (429/quota):                     10 minutes
 //
 // RETRY + BACKOFF
-//   Each provider attempt retries up to MAX_RETRIES (3) times with
-//   exponential back-off (2 s → 5 s → 10 s) on retriable errors.
+//   Each provider retries up to MAX_RETRIES (3) times with exponential
+//   back-off (2s → 5s → 10s) on retriable errors.
+//
+// CLIENT OVERRIDE
+//   Callers can pass disabledProviders: string[] to skip specific providers
+//   (used by the frontend to honour manual user overrides + client-tracked
+//   credit exhaustion).
+//
+// STATUS EXPORT
+//   getModelStatus() returns a snapshot of all providers for the status API.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-const MODEL_BY_PROVIDER = {
+export const MODEL_BY_PROVIDER = {
   gemini:      "google/gemini-2.5-flash",
   openai:      "openai/gpt-4.1-mini",
   deepseek:    "deepseek/deepseek-chat-v3-0324:free",
@@ -45,26 +43,36 @@ const MODEL_BY_PROVIDER = {
 
 export type ProviderId = keyof typeof MODEL_BY_PROVIDER;
 
+export const PROVIDER_META: Record<ProviderId, { label: string; tier: "paid" | "free"; order: number }> = {
+  gemini:      { label: "Gemini 2.5 Flash",   tier: "paid", order: 1 },
+  openai:      { label: "GPT-4.1 Mini",       tier: "paid", order: 2 },
+  anthropic:   { label: "Claude 3.7 Sonnet",  tier: "paid", order: 7 },
+  xai:         { label: "Grok Mini",          tier: "paid", order: 8 },
+  deepseek:    { label: "DeepSeek (free)",    tier: "free", order: 3 },
+  llama:       { label: "Llama 3.3 (free)",   tier: "free", order: 4 },
+  gemini_free: { label: "Gemini Flash (free)","tier": "free", order: 5 },
+  mistral:     { label: "Mistral (free)",     tier: "free", order: 6 }
+};
+
 // ─── Token budgets ────────────────────────────────────────────────────────
-// All values are capped at MAX_TOKENS_CAP — never exceed it.
 
 const MAX_TOKENS_CAP = 1800;
 
 export const TOKEN_LIMITS: Record<string, number> = {
-  title:               200,   // 6 title suggestion cards (rich JSON)
-  regenTitle:          120,   // single title replacement
-  outline:            1200,   // full chapter/section JSON outline
-  lesson:             1400,   // chapter section prose
-  improve:             900,   // rewrite / improve existing text
-  description:         300,   // book description / hook
-  cover:               600,   // cover brief JSON
-  analysis:            500,   // concept analysis JSON
-  architecturePreview: 500,   // architecture preview JSON
-  structure:           400,   // section structure JSON
+  title:               200,
+  subtitle:            300,
+  regenTitle:          120,
+  outline:            1200,
+  lesson:             1400,
+  improve:             900,
+  description:         300,
+  cover:               600,
+  analysis:            500,
+  architecturePreview: 500,
+  structure:           400,
   default:             800
 };
 
-// When lowCredit is active, cap output at this many tokens (free models vary)
 const LOW_CREDIT_TOKEN_CAP = 900;
 
 function capTokens(n: number): number {
@@ -72,11 +80,9 @@ function capTokens(n: number): number {
 }
 
 // ─── Token estimation ─────────────────────────────────────────────────────
-// Rough heuristic: 1 token ≈ 4 characters.  Used to guard against
-// prompts that would exhaust a model's budget before generating any output.
 
 const CHARS_PER_TOKEN = 4;
-const MAX_INPUT_CHARS  = 12_000;  // ~3 000 input tokens — leave room for output
+const MAX_INPUT_CHARS  = 12_000;
 
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / CHARS_PER_TOKEN);
@@ -86,36 +92,89 @@ function ensureTokenBudget(
   prompt: string,
   maxOutputTokens: number
 ): { prompt: string; maxTokens: number } {
-  // Truncate prompt if it is too long
   const truncated =
     prompt.length > MAX_INPUT_CHARS
       ? prompt.slice(0, MAX_INPUT_CHARS) + "\n\n[Context truncated to fit token budget]"
       : prompt;
-
-  // If even after truncation input + output looks tight, reduce output budget
-  const inputEst      = estimateTokens(truncated);
-  const totalBudget   = 4000; // conservative model context
-  const safeOutput    = Math.max(300, totalBudget - inputEst);
-  const finalOutput   = Math.min(maxOutputTokens, safeOutput);
-
+  const inputEst    = estimateTokens(truncated);
+  const totalBudget = 4000;
+  const safeOutput  = Math.max(300, totalBudget - inputEst);
+  const finalOutput = Math.min(maxOutputTokens, safeOutput);
   return { prompt: truncated, maxTokens: capTokens(finalOutput) };
 }
 
-// ─── Provider offline tracking ────────────────────────────────────────────
-// Any provider can be disabled for 10 minutes on hard failures.
+// ─── Provider disable tracking ────────────────────────────────────────────
 
-const PROVIDER_DISABLE_MS = 10 * 60 * 1000;
-const providerDisabledUntil = new Map<ProviderId, number>();
+export type DisableReason = "credit" | "hard" | "rate_limit";
+
+const DISABLE_DURATION_MS: Record<DisableReason, number> = {
+  credit:     4 * 60 * 60 * 1000,   // 4 hours — daily credit reset
+  hard:       60 * 60 * 1000,       // 60 min — model offline / not found
+  rate_limit: 10 * 60 * 1000        // 10 min — temporary rate limiting
+};
+
+const providerDisabledUntil  = new Map<ProviderId, number>();
+const providerDisableReasonMap = new Map<ProviderId, DisableReason>();
 
 function isProviderDisabled(p: ProviderId): boolean {
-  const until = providerDisabledUntil.get(p) ?? 0;
-  return Date.now() < until;
+  return Date.now() < (providerDisabledUntil.get(p) ?? 0);
 }
 
-function disableProvider(p: ProviderId, reason: string) {
-  const until = Date.now() + PROVIDER_DISABLE_MS;
+function disableProvider(p: ProviderId, reason: string, type: DisableReason = "rate_limit") {
+  const duration = DISABLE_DURATION_MS[type];
+  const until = Date.now() + duration;
   providerDisabledUntil.set(p, until);
-  console.warn(`[AI] ${p} marked offline for 10 min — ${reason.slice(0, 120)}`);
+  providerDisableReasonMap.set(p, type);
+  const tag = type === "credit" ? "4h (credit)" : type === "hard" ? "60min (offline)" : "10min (rate)";
+  console.warn(`[AI] ${p} marked offline for ${tag} — ${reason.slice(0, 120)}`);
+}
+
+// ─── Error classification ─────────────────────────────────────────────────
+
+function isCreditsExhausted(msg: string): boolean {
+  return /insufficient.?credit|can.?only.?afford|requires.?more.?credit|out.?of.?credit|daily.?limit|credit.?exhausted|402/i.test(msg || "");
+}
+
+export function isLimitOrUnavailable(msg: string): boolean {
+  return /rate.?limit|quota|daily.?limit|exceeded|insufficient|429|503|overload|unavailable|temporarily|timeout|timed.?out/i.test(msg || "");
+}
+
+function isHardUnavailable(msg: string): boolean {
+  return /no.?endpoint|endpoint.?not.?found|temporarily.?disabled|model.*unavailable|not.*available|doesn.*exist|404/i.test(msg || "");
+}
+
+// ─── Model status export ──────────────────────────────────────────────────
+
+export interface ProviderStatus {
+  model:         string;
+  label:         string;
+  tier:          "paid" | "free";
+  order:         number;
+  disabled:      boolean;
+  disabledUntil: number | null;
+  reason:        DisableReason | null;
+}
+
+/** Returns a live snapshot of all provider states for the status API. */
+export function getModelStatus(): Record<ProviderId, ProviderStatus> {
+  const now = Date.now();
+  const result = {} as Record<ProviderId, ProviderStatus>;
+  for (const [provider, model] of Object.entries(MODEL_BY_PROVIDER) as [ProviderId, string][]) {
+    const until    = providerDisabledUntil.get(provider)    ?? 0;
+    const reason   = providerDisableReasonMap.get(provider) ?? null;
+    const disabled = now < until;
+    const meta     = PROVIDER_META[provider];
+    result[provider] = {
+      model,
+      label:         meta.label,
+      tier:          meta.tier,
+      order:         meta.order,
+      disabled,
+      disabledUntil: disabled ? until : null,
+      reason:        disabled ? reason : null
+    };
+  }
+  return result;
 }
 
 // ─── Grok approval gate ───────────────────────────────────────────────────
@@ -131,36 +190,20 @@ export class GrokApprovalRequiredError extends Error {
 }
 
 // ─── Free model rate gate ─────────────────────────────────────────────────
-// Free-tier models share a 7-second minimum gap to avoid rate-limit errors.
 
 const FREE_MODEL_MIN_GAP_MS = 7000;
-const FREE_PROVIDERS = new Set<ProviderId>(["deepseek", "llama", "gemini_free", "mistral"]);
+export const FREE_PROVIDERS = new Set<ProviderId>(["deepseek", "llama", "gemini_free", "mistral"]);
 let freeLastCallTime = 0;
 
 async function waitForFreeSlot(provider: ProviderId): Promise<void> {
   if (!FREE_PROVIDERS.has(provider)) return;
-  const now = Date.now();
-  const elapsed = now - freeLastCallTime;
+  const elapsed = Date.now() - freeLastCallTime;
   if (elapsed < FREE_MODEL_MIN_GAP_MS && freeLastCallTime > 0) {
     const wait = FREE_MODEL_MIN_GAP_MS - elapsed;
     console.log(`[AI] Free model rate gate (${provider}) — waiting ${wait}ms`);
     await new Promise((r) => setTimeout(r, wait));
   }
   freeLastCallTime = Date.now();
-}
-
-// ─── Error classification ─────────────────────────────────────────────────
-
-export function isLimitOrUnavailable(msg: string): boolean {
-  return /rate.?limit|quota|daily.?limit|exceeded|insufficient|429|503|overload|unavailable|temporarily|timeout|timed.?out/i.test(
-    msg || ""
-  );
-}
-
-function isHardUnavailable(msg: string): boolean {
-  return /no.?endpoint|endpoint.?not.?found|temporarily.?disabled|model.*unavailable|not.*available|doesn.*exist/i.test(
-    msg || ""
-  );
 }
 
 // ─── Core OpenRouter request ──────────────────────────────────────────────
@@ -178,23 +221,16 @@ async function callOpenRouter(
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
 
-  // Apply token budget: truncate prompt + reduce output if needed
-  const budgeted = ensureTokenBudget(prompt, maxTokens);
+  const budgeted       = ensureTokenBudget(prompt, maxTokens);
   const finalPrompt    = budgeted.prompt;
   const finalMaxTokens = budgeted.maxTokens;
 
-  const model = MODEL_BY_PROVIDER[provider];
+  const model    = MODEL_BY_PROVIDER[provider];
   const messages: Array<{ role: string; content: string }> = [];
   if (system) messages.push({ role: "system", content: system });
   messages.push({ role: "user", content: finalPrompt });
 
-  const body = {
-    model,
-    messages,
-    temperature,
-    max_tokens: finalMaxTokens,
-    stream: false
-  };
+  const body = { model, messages, temperature, max_tokens: finalMaxTokens, stream: false };
 
   let lastError = "";
 
@@ -207,7 +243,7 @@ async function callOpenRouter(
 
     const startMs = Date.now();
     const res = await fetch(OPENROUTER_URL, {
-      method: "POST",
+      method:  "POST",
       headers: {
         "Content-Type":  "application/json",
         Accept:          "application/json",
@@ -235,25 +271,18 @@ async function callOpenRouter(
 
       console.error("[AI] Request failed", {
         provider, model,
-        status: res.status,
-        retryCount: attempt,
-        generationTimeMs: elapsed,
-        errorMessage: detail.slice(0, 300)
+        status:            res.status,
+        retryCount:        attempt,
+        generationTimeMs:  elapsed,
+        errorMessage:      detail.slice(0, 300)
       });
 
-      // Hard unavailable — no point retrying this provider
-      if (isHardUnavailable(detail)) {
-        throw new Error(`[${provider}] ${detail}`);
-      }
-
-      if (attempt < MAX_RETRIES && isLimitOrUnavailable(detail + ` ${res.status}`)) {
-        continue;
-      }
+      if (isHardUnavailable(detail)) throw new Error(`[${provider}] ${detail}`);
+      if (attempt < MAX_RETRIES && isLimitOrUnavailable(detail + ` ${res.status}`)) continue;
       throw new Error(`[${provider}] ${detail}`);
     }
 
     const text: string = data?.choices?.[0]?.message?.content || "";
-
     if (!text) {
       lastError = "Empty response";
       if (attempt < MAX_RETRIES) continue;
@@ -269,13 +298,30 @@ async function callOpenRouter(
 
 // ─── Chain runner ─────────────────────────────────────────────────────────
 
+export interface GenOptions {
+  allowGrok?:        boolean;
+  maxTokens?:        number;
+  lowCredit?:        boolean;
+  disabledProviders?: string[];  // client-specified providers to skip
+  onFallback?:       (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
+  onSuccess?:        (provider: ProviderId) => void;
+}
+
+export interface GenResult {
+  text:               string;
+  usedProvider:       ProviderId;
+  exhaustedProviders: ProviderId[];  // providers that hit credit limits during this call
+}
+
 async function runChain(
   prompt: string,
   system: string | undefined,
   chain: ProviderId[],
   opts: GenOptions
-): Promise<{ text: string; usedProvider: ProviderId }> {
+): Promise<GenResult> {
   const attempts: Array<{ provider: ProviderId; status: string; error: string }> = [];
+  const exhaustedProviders: ProviderId[] = [];
+  const clientDisabled = new Set(opts.disabledProviders ?? []);
 
   for (const provider of chain) {
 
@@ -292,11 +338,17 @@ async function runChain(
       }
     }
 
-    // ── Per-provider offline check ────────────────────────────────────────
+    // ── Client-side disabled check ────────────────────────────────────────
+    if (clientDisabled.has(provider)) {
+      attempts.push({ provider, status: "client_disabled", error: "disabled by client" });
+      continue;
+    }
+
+    // ── Server-side offline check ─────────────────────────────────────────
     if (isProviderDisabled(provider)) {
-      const until = providerDisabledUntil.get(provider) ?? 0;
+      const until    = providerDisabledUntil.get(provider) ?? 0;
       const minsLeft = Math.ceil((until - Date.now()) / 60000);
-      const reason = `offline for ~${minsLeft} more min`;
+      const reason   = `offline for ~${minsLeft} more min`;
       console.log(`[AI] Skipping ${provider} — ${reason}`);
       attempts.push({ provider, status: "offline", error: reason });
       continue;
@@ -305,8 +357,7 @@ async function runChain(
     // ── Free model rate gate ──────────────────────────────────────────────
     await waitForFreeSlot(provider);
 
-    const modelLabel = MODEL_BY_PROVIDER[provider];
-    console.log(`[AI] Trying ${modelLabel}…`);
+    console.log(`[AI] Trying ${MODEL_BY_PROVIDER[provider]}…`);
 
     try {
       const text = await callOpenRouter(provider, prompt, system, 0.7, opts.maxTokens ?? TOKEN_LIMITS.default);
@@ -317,33 +368,26 @@ async function runChain(
         opts.onFallback?.({ from: prevFailed[prevFailed.length - 1].provider, to: provider, reason: "fallback" });
       }
 
-      return { text, usedProvider: provider };
+      return { text, usedProvider: provider, exhaustedProviders };
 
     } catch (e: any) {
       const msg: string = e?.message || String(e);
 
-      // Disable provider if it's hard-unavailable or repeated rate-limiting
-      if (isHardUnavailable(msg) || isLimitOrUnavailable(msg)) {
-        disableProvider(provider, msg);
+      // Classify and disable with appropriate duration
+      if (isCreditsExhausted(msg)) {
+        disableProvider(provider, msg, "credit");
+        exhaustedProviders.push(provider);
+        console.log(`[AI] ${PROVIDER_META[provider].label} — daily credits exhausted`);
+      } else if (isHardUnavailable(msg)) {
+        disableProvider(provider, msg, "hard");
+        console.log(`[AI] ${PROVIDER_META[provider].label} — offline/unavailable`);
+      } else if (isLimitOrUnavailable(msg)) {
+        disableProvider(provider, msg, "rate_limit");
+        console.log(`[AI] ${PROVIDER_META[provider].label} — rate limited`);
       }
 
-      // Friendly label for log
-      const labels: Record<string, string> = {
-        gemini:      "Gemini 2.5 Flash",
-        openai:      "GPT-4.1-mini",
-        anthropic:   "Claude Sonnet",
-        xai:         "Grok Mini",
-        llama:       "Llama 3.3 (free)",
-        deepseek:    "DeepSeek (free)",
-        gemini_free: "Gemini Flash (free)",
-        mistral:     "Mistral (free)"
-      };
-      const label = labels[provider] ?? provider;
       const shortMsg = msg.replace(`[${provider}] `, "").slice(0, 100);
-      console.log(`[AI] ${label} failed — ${shortMsg}`);
-
       attempts.push({ provider, status: "failed", error: shortMsg });
-      if (provider === "xai") disableProvider("xai", msg);
     }
   }
 
@@ -358,19 +402,8 @@ async function runChain(
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
-export interface GenOptions {
-  allowGrok?:  boolean;
-  maxTokens?:  number;
-  lowCredit?:  boolean;  // use free-only chain when true
-  onFallback?: (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
-  onSuccess?:  (provider: ProviderId) => void;
-}
-
-// Free-only chain: deepseek → llama → gemini_free → mistral
-const FREE_CHAIN: ProviderId[] = ["deepseek", "llama", "gemini_free", "mistral"];
-
-// Full chain: paid first, free as deep fallbacks, Grok last (gated)
-const FULL_CHAIN: ProviderId[] = ["gemini", "openai", "deepseek", "llama", "gemini_free", "mistral", "anthropic", "xai"];
+const FREE_CHAIN: ProviderId[]  = ["deepseek", "llama", "gemini_free", "mistral"];
+const FULL_CHAIN: ProviderId[]  = ["gemini", "openai", "deepseek", "llama", "gemini_free", "mistral", "anthropic", "xai"];
 
 function resolveChainAndTokens(opts: GenOptions): { chain: ProviderId[]; resolvedOpts: GenOptions } {
   if (opts.lowCredit) {
@@ -385,32 +418,23 @@ function resolveChainAndTokens(opts: GenOptions): { chain: ProviderId[]; resolve
   return { chain: FULL_CHAIN, resolvedOpts: opts };
 }
 
-/**
- * Long-form generation (lesson prose, descriptions, cover briefs, improvements).
- * Routes to FREE_CHAIN when opts.lowCredit is true.
- */
 export async function generateContent(
   prompt: string,
   system?: string,
   opts: GenOptions = {}
-): Promise<{ text: string; usedProvider: ProviderId }> {
+): Promise<GenResult> {
   const { chain, resolvedOpts } = resolveChainAndTokens(opts);
   return runChain(prompt, system, chain, resolvedOpts);
 }
 
-/**
- * Short-form generation (titles, outlines, structure, quick tasks).
- * Same routing as generateContent — Gemini leads and is cheapest.
- */
 export async function generateContentFast(
   prompt: string,
   system?: string,
   opts: GenOptions = {}
-): Promise<{ text: string; usedProvider: ProviderId }> {
+): Promise<GenResult> {
   const { chain, resolvedOpts } = resolveChainAndTokens(opts);
   return runChain(prompt, system, chain, resolvedOpts);
 }
-
 
 // ─── JSON extraction + repair ─────────────────────────────────────────────
 
@@ -420,7 +444,7 @@ function repairTruncatedJSON(raw: string): any {
 
   const stack: string[] = [];
   let inString = false;
-  let escape = false;
+  let escape   = false;
   let lastChildEndPos = -1;
 
   for (let i = 0; i < s.length; i++) {
@@ -443,11 +467,9 @@ function repairTruncatedJSON(raw: string): any {
   }
 
   const closers = stack.slice().reverse().join("");
-
   if (lastChildEndPos > 0) {
     try { return JSON.parse(s.slice(0, lastChildEndPos + 1) + closers); } catch { /* fall through */ }
   }
-
   try { return JSON.parse(s + closers); } catch { return null; }
 }
 
