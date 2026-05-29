@@ -11,7 +11,8 @@ import {
   subscribeAiBus,
   getLocallyExhaustedProviders,
   getManuallyDisabledProviders,
-  setManuallyDisabled
+  setManuallyDisabled,
+  EXHAUSTED_KEY
 } from "./aiFetch";
 
 const SERVER_CACHE_KEY = "nonfiction-ai-server-status";
@@ -21,10 +22,10 @@ const POLL_INTERVAL_MS = 3 * 60 * 1000;
 
 export const PROVIDER_DEFS = {
   gemini:     { label: "Gemini 2.5 Flash",      model: "gemini-2.5-flash",                               order: 1 },
-  groq:       { label: "Groq (Qwen)",            model: "qwen-qwq-32b",                                   order: 2 },
-  cerebras:   { label: "Cerebras (Llama)",       model: "llama-3.3-70b",                                  order: 3 },
-  fireworks:  { label: "Fireworks (Llama)",      model: "llama-v3p3-70b-instruct",                        order: 4 },
-  openrouter: { label: "OpenRouter (fallback)",  model: "deepseek/deepseek-chat-v3-0324:free",            order: 5 }
+  groq:       { label: "Groq (Llama)",           model: "llama-3.3-70b-versatile",                        order: 2 },
+  cerebras:   { label: "Cerebras (Llama)",       model: "llama3.3-70b",                                   order: 3 },
+  fireworks:  { label: "Fireworks (Llama)",      model: "llama-v3p1-70b-instruct",                        order: 4 },
+  openrouter: { label: "OpenRouter (fallback)",  model: "meta-llama/llama-3.3-70b-instruct:free",         order: 5 }
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_DEFS);
@@ -95,7 +96,9 @@ export function useModelStatus() {
 
   const [loading,     setLoading]     = useState(false);
   const [lastRefresh, setLastRefresh] = useState(null);
-  const abortRef = useRef(null);
+  const [localTick,   setLocalTick]   = useState(0);
+  const abortRef   = useRef(null);
+  const expiryRef  = useRef(null);
 
   async function refresh() {
     if (abortRef.current) abortRef.current.abort();
@@ -132,6 +135,24 @@ export function useModelStatus() {
     return unsub;
   }, []);
 
+  // Auto-expire locally-exhausted providers when their TTL runs out
+  useEffect(() => {
+    clearTimeout(expiryRef.current);
+    try {
+      const raw = window.localStorage.getItem(EXHAUSTED_KEY);
+      if (!raw) return;
+      const map = JSON.parse(raw);
+      const now = Date.now();
+      const upcoming = Object.values(map)
+        .filter((exp) => exp > now)
+        .sort((a, b) => a - b);
+      if (!upcoming.length) return;
+      const delay = upcoming[0] - now + 150;
+      expiryRef.current = setTimeout(() => setLocalTick((t) => t + 1), delay);
+    } catch {}
+    return () => clearTimeout(expiryRef.current);
+  }, [localTick]);
+
   function toggleManualDisabled(providerId) {
     const currentStatus = buildMergedStatus(serverProviders, manualDisabled)[providerId]?.status;
     // Never allow toggling exhausted / offline / unconfigured models
@@ -152,7 +173,9 @@ export function useModelStatus() {
 
   const models = useMemo(
     () => buildMergedStatus(serverProviders, manualDisabled),
-    [serverProviders, manualDisabled]
+    // localTick forces re-merge when a locally-exhausted provider's TTL expires
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [serverProviders, manualDisabled, localTick]
   );
 
   const availableCount = Object.values(models).filter((m) => m.status === "available").length;

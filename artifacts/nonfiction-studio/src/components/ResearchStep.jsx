@@ -40,6 +40,10 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
   const [subtitlesLoading, setSubtitlesLoading] = useState(false);
   const [subtitlesError, setSubtitlesError] = useState("");
 
+  // Topic suggestion
+  const [topicLoading, setTopicLoading] = useState(false);
+  const [topicError, setTopicError]     = useState("");
+
   const subtitleDebounceRef = useRef(null);
 
   useEffect(() => { setRegistry(loadNicheRegistry()); }, []);
@@ -138,6 +142,28 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
       );
     } finally {
       setSubtitlesLoading(false);
+    }
+  }
+
+  // ─── Topic suggestion ────────────────────────────────────────────────────────
+  async function fetchTopic() {
+    const title = (research?.bookTitle || "").trim();
+    if (!title || topicLoading) return;
+    setTopicLoading(true);
+    setTopicError("");
+    try {
+      const data = await aiFetch("/api/ai/suggest-topic", {
+        title,
+        subtitle:  research?.bookSubtitle   || "",
+        niche:     research?.mainNicheLabel || "",
+        subNiche:  research?.subNicheLabel  || "",
+        deepNiche: research?.deepNicheLabel || ""
+      });
+      if (data?.topic) patch({ bookTopic: data.topic });
+    } catch (err) {
+      setTopicError(err?.message || "Failed to generate topic. Try again.");
+    } finally {
+      setTopicLoading(false);
     }
   }
 
@@ -439,18 +465,36 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
 
         {/* ── Book Topic ── */}
         <section>
-          <FieldLabel hint="The exact core topic — who it's for and what it helps them achieve. Auto-filled when you pick a title suggestion; used by every AI step.">
-            Book topic
-          </FieldLabel>
+          <div className="flex items-end justify-between gap-2">
+            <FieldLabel hint="The exact core topic — who it's for and what it helps them achieve. Auto-filled when you pick a title suggestion; used by every AI step.">
+              Book topic
+            </FieldLabel>
+            <button
+              type="button"
+              disabled={!research?.bookTitle?.trim() || topicLoading}
+              onClick={fetchTopic}
+              className="mb-0.5 whitespace-nowrap rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-400 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {topicLoading ? "Generating…" : "AI Generate"}
+            </button>
+          </div>
           <textarea
             className="input-light mt-1.5 min-h-[72px] resize-y"
             placeholder="e.g. Self-discipline for entrepreneurs — building unbreakable daily systems while running a business"
             value={research.bookTopic || ""}
             onChange={(e) => patch({ bookTopic: e.target.value })}
           />
-          <p className="mt-1 text-[11px] text-slate-400">
-            Tip: be specific — "Self-discipline for entrepreneurs" beats "discipline habits".
-          </p>
+          {topicError && <p className="mt-1 text-xs text-red-600">{topicError}</p>}
+          {topicLoading && (
+            <p className="mt-1 text-xs text-slate-400 animate-pulse">
+              Generating topic description based on your title and niche…
+            </p>
+          )}
+          {!topicError && !topicLoading && (
+            <p className="mt-1 text-[11px] text-slate-400">
+              Tip: be specific — "Self-discipline for entrepreneurs" beats "discipline habits".
+            </p>
+          )}
         </section>
 
         {/* ── Author name ── */}

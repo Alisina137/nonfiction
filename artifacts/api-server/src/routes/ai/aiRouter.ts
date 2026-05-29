@@ -51,8 +51,8 @@ export const PROVIDERS: ProviderConfig[] = [
   },
   {
     id:     "groq",
-    label:  "Groq (Qwen)",
-    model:  "qwen-qwq-32b",
+    label:  "Groq (Llama)",
+    model:  "llama-3.3-70b-versatile",
     apiUrl: "https://api.groq.com/openai/v1/chat/completions",
     apiKey: () => process.env.GROQ_API_KEY,
     order:  2
@@ -60,7 +60,7 @@ export const PROVIDERS: ProviderConfig[] = [
   {
     id:     "cerebras",
     label:  "Cerebras (Llama)",
-    model:  "llama-3.3-70b",
+    model:  "llama3.3-70b",
     apiUrl: "https://api.cerebras.ai/v1/chat/completions",
     apiKey: () => process.env.CEREBRAS_API_KEY,
     order:  3
@@ -68,7 +68,7 @@ export const PROVIDERS: ProviderConfig[] = [
   {
     id:     "fireworks",
     label:  "Fireworks (Llama)",
-    model:  "accounts/fireworks/models/llama-v3p3-70b-instruct",
+    model:  "accounts/fireworks/models/llama-v3p1-70b-instruct",
     apiUrl: "https://api.fireworks.ai/inference/v1/chat/completions",
     apiKey: () => process.env.FIREWORKS_API_KEY,
     order:  5
@@ -76,7 +76,7 @@ export const PROVIDERS: ProviderConfig[] = [
   {
     id:     "openrouter",
     label:  "OpenRouter (fallback)",
-    model:  "deepseek/deepseek-chat-v3-0324:free",
+    model:  "meta-llama/llama-3.3-70b-instruct:free",
     apiUrl: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY,
     order:  6
@@ -534,11 +534,14 @@ function repairTruncatedJSON(raw: string): any {
     try { return JSON.parse(s); } catch { return null; }
   }
 
-  const closers = stack.slice().reverse().join("");
-  if (lastChildEndPos > 0) {
+  // If truncated mid-string, close the open string first before adding closers
+  const strClose = inString ? '"' : "";
+  const closers  = stack.slice().reverse().join("");
+
+  if (lastChildEndPos > 0 && !inString) {
     try { return JSON.parse(s.slice(0, lastChildEndPos + 1) + closers); } catch { /* fall through */ }
   }
-  try { return JSON.parse(s + closers); } catch { return null; }
+  try { return JSON.parse(s + strClose + closers); } catch { return null; }
 }
 
 export function extractJSON(text: string): any {

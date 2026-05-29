@@ -19,6 +19,7 @@ import {
   resourcesBlock,
   structurePrompt,
   subtitleSuggestPrompt,
+  topicSuggestPrompt,
   systemPrompt,
   titlesPrompt
 } from "./prompts.js";
@@ -138,8 +139,48 @@ router.post("/suggest-subtitles", async (req, res) => {
       res,
       "subtitle"
     );
-    const parsed = JSON.parse(text);
-    res.json({ subtitles: parsed.subtitles || [], usedProvider });
+    let subtitles: string[] = [];
+    try {
+      const parsed = extractJSON(text);
+      subtitles = Array.isArray(parsed?.subtitles) ? parsed.subtitles.filter(Boolean) : [];
+    } catch {
+      // Regex fallback: extract any complete quoted strings from a "subtitles":[...] array
+      const arrayMatch = text.match(/"subtitles"\s*:\s*\[([^\]]*)/s);
+      if (arrayMatch) {
+        const body = arrayMatch[1];
+        subtitles = [...body.matchAll(/"((?:[^"\\]|\\.)*)"/g)]
+          .map((m) => m[1].replace(/\\"/g, '"').trim())
+          .filter(Boolean);
+      }
+    }
+    res.json({ subtitles, usedProvider });
+  } catch (e: any) {
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/suggest-topic", async (req, res) => {
+  try {
+    const { title, subtitle, niche, subNiche, deepNiche } = req.body || {};
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+    const { text, usedProvider } = await runShort(
+      topicSuggestPrompt({ title, subtitle, niche, subNiche, deepNiche }),
+      systemPrompt(),
+      req,
+      res,
+      "title"
+    );
+    let topic = "";
+    try {
+      const parsed = extractJSON(text);
+      topic = typeof parsed?.topic === "string" ? parsed.topic.trim() : "";
+    } catch {
+      // Regex fallback: extract the "topic":"..." value even if JSON is truncated
+      const m = text.match(/"topic"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+      if (m) topic = m[1].replace(/\\"/g, '"').trim();
+    }
+    if (!topic) return res.status(500).json({ error: "No topic returned. Try again." });
+    res.json({ topic, usedProvider });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ error: e.message });
   }

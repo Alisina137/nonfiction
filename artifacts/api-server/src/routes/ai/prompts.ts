@@ -517,6 +517,27 @@ Rules for each subtitle:
 Return ONLY valid JSON: {"subtitles":["subtitle 1","subtitle 2","subtitle 3","subtitle 4","subtitle 5"]}`;
 }
 
+export function topicSuggestPrompt({ title, subtitle, niche, subNiche, deepNiche }: any): string {
+  const nicheStr = [niche, subNiche, deepNiche].filter(Boolean).join(" › ");
+  return `Write a concise book topic description for a nonfiction book.
+
+TITLE: "${title}"${subtitle ? `\nSUBTITLE: "${subtitle}"` : ""}
+NICHE: ${nicheStr || "(not specified)"}
+
+The book topic is a 1–2 sentence description that captures:
+- Exactly WHO the book is for (specific reader identity, not general)
+- WHAT core problem or desire it addresses
+- The specific TRANSFORMATION or outcome the reader achieves
+
+Rules:
+- 20–60 words total
+- Concrete and specific, no generic phrases
+- Written as a statement, not a question or list
+- No quotes, no bullet points, plain prose
+
+Return ONLY valid JSON: {"topic":"your topic description here"}`;
+}
+
 export function bookContextBlock(ctx: any): string {
   if (!ctx) return "";
   const lines: string[] = [];
