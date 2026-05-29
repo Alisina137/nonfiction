@@ -22,7 +22,6 @@ export const PROVIDER_LABELS = {
   gemini:     "Gemini",
   groq:       "Groq",
   cerebras:   "Cerebras",
-  together:   "Together",
   fireworks:  "Fireworks",
   openrouter: "OpenRouter"
 };

@@ -23,9 +23,8 @@ export const PROVIDER_DEFS = {
   gemini:     { label: "Gemini 2.5 Flash",      model: "gemini-2.5-flash",                               order: 1 },
   groq:       { label: "Groq (Qwen)",            model: "qwen-qwq-32b",                                   order: 2 },
   cerebras:   { label: "Cerebras (Llama)",       model: "llama-3.3-70b",                                  order: 3 },
-  together:   { label: "Together (DeepSeek)",    model: "deepseek-ai/DeepSeek-V3",                        order: 4 },
-  fireworks:  { label: "Fireworks (Llama)",      model: "llama-v3p3-70b-instruct",                        order: 5 },
-  openrouter: { label: "OpenRouter (fallback)",  model: "deepseek/deepseek-chat-v3-0324:free",            order: 6 }
+  fireworks:  { label: "Fireworks (Llama)",      model: "llama-v3p3-70b-instruct",                        order: 4 },
+  openrouter: { label: "OpenRouter (fallback)",  model: "deepseek/deepseek-chat-v3-0324:free",            order: 5 }
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_DEFS);

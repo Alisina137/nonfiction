@@ -66,14 +66,6 @@ export const PROVIDERS: ProviderConfig[] = [
     order:  3
   },
   {
-    id:     "together",
-    label:  "Together (DeepSeek)",
-    model:  "deepseek-ai/DeepSeek-V3",
-    apiUrl: "https://api.together.xyz/v1/chat/completions",
-    apiKey: () => process.env.TOGETHER_API_KEY,
-    order:  4
-  },
-  {
     id:     "fireworks",
     label:  "Fireworks (Llama)",
     model:  "accounts/fireworks/models/llama-v3p3-70b-instruct",

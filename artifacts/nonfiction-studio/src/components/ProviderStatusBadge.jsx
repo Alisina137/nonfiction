@@ -66,7 +66,6 @@ const PROVIDER_COLOR = {
   gemini:     "bg-sky-100     text-sky-800     border-sky-200",
   groq:       "bg-violet-100  text-violet-800  border-violet-200",
   cerebras:   "bg-orange-100  text-orange-800  border-orange-200",
-  together:   "bg-teal-100    text-teal-800    border-teal-200",
   fireworks:  "bg-rose-100    text-rose-800    border-rose-200",
   openrouter: "bg-slate-100   text-slate-700   border-slate-200"
 };
@@ -76,7 +75,6 @@ const ACTIVE_LABELS = {
   gemini:     "Gemini",
   groq:       "Groq",
   cerebras:   "Cerebras",
-  together:   "Together",
   fireworks:  "Fireworks",
   openrouter: "OpenRouter"
 };
