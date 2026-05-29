@@ -1,0 +1,221 @@
+Refactor the AI generation system completely.
+
+GOAL:
+Replace the current OpenRouter-only routing logic with a multi-provider architecture using six providers with independent API keys and independent free-tier quotas.
+
+PROVIDERS TO SUPPORT
+
+1. Gemini (Primary)
+
+   * Provider: Google AI Studio
+   * Model: Gemini 2.5 Flash
+   * Secret: GEMINI_API_KEY
+
+2. Groq
+
+   * Model: Qwen
+   * Secret: GROQ_API_KEY
+
+3. Cerebras
+
+   * Model: Latest available Llama/Qwen model
+   * Secret: CEREBRAS_API_KEY
+
+4. Together AI
+
+   * Model: DeepSeek or Qwen
+   * Secret: TOGETHER_API_KEY
+
+5. Fireworks AI
+
+   * Model: DeepSeek or Llama
+   * Secret: FIREWORKS_API_KEY
+
+6. OpenRouter (last fallback only)
+
+   * Model: deepseek/deepseek-chat-v3-0324:free
+   * Secret: OPENROUTER_API_KEY
+
+REQUIRED BEHAVIOR
+
+1. ONLY USE CHECKED PROVIDERS
+
+The frontend already contains checkboxes for providers.
+
+When a provider is unchecked:
+
+* Never call it.
+* Never include it in fallback chains.
+* Show it as disabled.
+
+When checked:
+
+* It becomes eligible for routing.
+
+2. LOW COST MODE
+
+When Low Cost Mode is ON:
+
+Use only free providers in this order:
+
+Gemini
+→ Groq
+→ Cerebras
+→ Together
+→ Fireworks
+→ OpenRouter
+
+When a provider fails because of quota exhaustion, skip it and move to the next provider automatically.
+
+3. NORMAL MODE
+
+When Low Cost Mode is OFF:
+
+Use the same providers in the same order.
+
+The difference is that larger token limits are allowed.
+
+4. DAILY QUOTA EXHAUSTION TRACKING
+
+Detect quota exhausted messages.
+
+Examples:
+
+429
+quota exceeded
+daily limit exceeded
+rate limit reached
+insufficient credits
+out of credits
+free tier exhausted
+
+When detected:
+
+* Mark provider exhausted.
+* Do not use it again.
+* Automatically continue to next provider.
+
+Store:
+
+providerDisabledUntil
+providerDisableReason
+
+5. PROVIDER RESET SYSTEM
+
+Implement automatic provider reactivation.
+
+Each exhausted provider should become available again after its cooldown period.
+
+Default cooldown:
+
+24 hours
+
+Example:
+
+Gemini exhausted at:
+2026-05-29 14:00
+
+Automatically re-enable:
+2026-05-30 14:00
+
+No manual restart should be required.
+
+6. MANUAL RESET ENDPOINT
+
+Create:
+
+POST /api/ai/reset-providers
+
+Behavior:
+
+providerDisabledUntil.clear()
+providerDisableReasonMap.clear()
+
+Response:
+
+{
+"success": true
+}
+
+7. PROVIDER STATUS API
+
+Create or update status endpoint.
+
+Return:
+
+provider
+model
+enabled
+checked
+disabledUntil
+reason
+available
+
+Frontend should use this endpoint.
+
+8. FALLBACK LOGGING
+
+For every generation attempt log:
+
+TRYING PROVIDER: Gemini
+TRYING PROVIDER: Groq
+TRYING PROVIDER: Cerebras
+TRYING PROVIDER: Together
+TRYING PROVIDER: Fireworks
+TRYING PROVIDER: OpenRouter
+
+If failed:
+
+PROVIDER FAILED
+Provider: Gemini
+Reason: quota exceeded
+
+9. SUCCESS LOGGING
+
+When successful:
+
+PROVIDER SUCCESS
+Provider: Gemini
+GenerationTimeMs: X
+
+10. ASK FOR MISSING API KEYS
+
+Before implementation, scan Replit Secrets.
+
+If any required secret is missing:
+
+GEMINI_API_KEY
+GROQ_API_KEY
+CEREBRAS_API_KEY
+TOGETHER_API_KEY
+FIREWORKS_API_KEY
+OPENROUTER_API_KEY
+
+STOP and ask me to provide the missing keys before continuing.
+
+11. DO NOT REMOVE EXISTING FEATURES
+
+Keep:
+
+* Provider status badge
+* Low cost mode toggle
+* Manual enable/disable checkboxes
+* Local cache
+* Book generation workflow
+* Outline generation
+* Lesson generation
+* Improve generation
+* Fallback notifications
+
+Only replace the provider routing layer.
+
+12. FINAL STEP
+
+After implementation provide:
+
+* Modified files list
+* New environment variables required
+* Provider routing diagram
+* Any migration steps required
+* Confirmation that checked providers only are used
+* Confirmation that exhausted providers automatically reactivate after cooldown
