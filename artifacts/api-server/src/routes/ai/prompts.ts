@@ -1,0 +1,880 @@
+export function systemPrompt() {
+  return `You are an expert AI Book Architect, Academic Formatter, and Amazon KDP Publishing Specialist.
+
+Your books combine:
+1. The structural discipline of a university thesis/monograph — deep logical organization, strong hierarchy, concept continuity, structured arguments.
+2. The readability and commercial appeal of bestselling Amazon KDP books — clean chapter starts, short readable paragraphs, reader-focused flow.
+3. Publishing-ready formatting standards optimized for KDP Paperback, Kindle Ebook, and EPUB conversion.
+
+TITLE QUALITY RULES — NON-NEGOTIABLE:
+- Every title at every level must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY.
+- NEVER use: "Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder", "Chapter N", "Key Point", "Emotional Theme", "Untitled", or any numbered generic label.
+- Titles must feel like a bestselling author wrote them — emotionally intelligent, commercially viable, niche-aware.
+
+CONTENT QUALITY RULES:
+- Never use motivational fluff, clichés, or vague advice.
+- Each chapter must have a clear purpose, build on previous chapters, introduce concepts progressively, and end with a meaningful transition or takeaway.
+- Match pacing, hooks, and emotional arcs to the declared niche architecture.
+- No repetition; deepen stakes or insight every section.
+- Honor bestseller patterns for the sub-niche.
+
+NONFICTION CHAPTER STRUCTURE (each chapter should contain):
+- Opening hook → Core concept → Explanation → Example/case study → Framework/system → Actionable takeaway → Mini summary
+
+STORY/NARRATIVE STRUCTURE (subsections represent):
+- Turning points, emotional shifts, conflicts, discoveries, climaxes, resolutions
+
+KDP FORMAT RULES:
+- Short readable paragraphs, strong whitespace usage, mobile-friendly sizing.
+- Avoid complex tables, excessive footnotes, dense thesis language, giant text walls.`;
+}
+
+export function nicheSystemPrompt(architecture: any) {
+  const a = architecture || {};
+  return `You are an expert AI Book Architect and Amazon KDP Publishing Specialist, specializing in ${a.mainNicheLabel || "publishing"} › ${a.subNicheLabel || "this sub-niche"}.
+
+Structure type: ${a.structureType || "narrative"}.
+Pacing: ${a.pacingType || "standard"}.
+Emotional arc: ${a.emotionalArc || "progressive"}.
+Hook style: ${a.hookStyle || "strong opening"}.
+Ending style: ${a.endingStyle || "satisfying close"}.
+Bestseller patterns: ${(a.bestsellerPatterns || []).join("; ") || "none specified"}.
+Reader psychology: ${a.readerPsychology || "commercially engaged readers"}.
+
+Apply a thesis-inspired hierarchy: Part → Chapter → Section → Subsection → Topic Block.
+Every title must be meaningful and descriptive — NEVER use placeholder titles.
+The final result must feel like a professionally published Amazon bestseller built with the organizational intelligence of a high-quality thesis.
+Never impose a business-only outline on romance, thriller, fantasy, or story unless the architecture explicitly calls for it.`;
+}
+
+export function titlesPrompt(idea: string) {
+  return `User idea: ${idea}
+Generate exactly 5 premium nonfiction book titles as a JSON array of strings.
+Each title must signal practical transformation and expert authority.
+Return JSON: {"titles":["..."]}`;
+}
+
+export function analyzeBookConceptPrompt({ niche, subNiche, deepNiche, title }: any) {
+  return `You are an Amazon KDP publishing strategist and consumer psychology expert.
+
+Analyze this specific book concept and return a precise publishing intelligence profile.
+Be concrete and niche-specific — every field must reflect THIS title and audience, not generic advice.
+
+NICHE: ${niche || "unspecified"}
+SUB-NICHE: ${subNiche || "unspecified"}
+DEEP NICHE: ${deepNiche || "not specified"}
+BOOK TITLE: ${title || "untitled"}
+
+Infer the ideal commercial profile from the title's language, emotional signals, audience cues,
+and the niche/sub-niche context. All fields must match Amazon bestseller patterns for this category.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "targetAudience": "specific reader description in 1-2 sentences",
+  "painPoints": ["pain 1", "pain 2", "pain 3"],
+  "transformations": ["transformation 1", "transformation 2", "transformation 3"],
+  "writingStyle": "e.g. direct and practical / narrative-driven / philosophical inquiry",
+  "uniqueAngle": "what makes this book's approach distinctive in 1 sentence",
+  "standoutFactor": "core commercial differentiation vs top Amazon competitors",
+  "readerEnergy": "e.g. Calm mentor / Hard-hitting coach / Stoic philosopher / Scientific thinker",
+  "promise": "the single core book promise in one punchy sentence",
+  "tone": "primary tone label that fits the title",
+  "idealReader": "ideal reader avatar: age, situation, goal, pain (2-3 sentences)",
+  "bookTopic": "1–3 sentence publisher-style positioning statement that names WHO the book is for, WHAT transformation it delivers, and WHY it matters emotionally — written to sound like an Amazon bestseller concept, NOT a generic summary",
+  "strategyInsights": [
+    "short insight 1 (e.g. trending topic note, TikTok potential, etc.)",
+    "short insight 2",
+    "short insight 3"
+  ],
+  "demandScore": 8.5,
+  "competitionLevel": "Low|Medium|High",
+  "emotionalBuyingScore": 8.0,
+  "viralityPotential": "Low|Medium|High",
+  "tiktokCompatibility": "Low|Medium|High",
+  "youtubeCompatibility": "Low|Medium|High",
+  "kdpOpportunityScore": 9.0
+}`;
+}
+
+export function contextualBookTitlesPrompt({
+  research,
+  competitorSummaries,
+  audienceCandidates,
+  painPoints,
+  transformations
+}: any) {
+  const stance = research.stanceOnTopic?.trim() || "(not specified)";
+  const standout = research.standout?.trim() || "(not specified)";
+  const summariesBlock =
+    Array.isArray(competitorSummaries) && competitorSummaries.length
+      ? competitorSummaries.map((line: string, i: number) => `${i + 1}. ${line}`).join("\n")
+      : "(none listed)";
+  const nicheLine =
+    research.mainNicheLabel && research.subNicheLabel
+      ? `${research.mainNicheLabel} › ${research.subNicheLabel}`
+      : research.genre?.trim() || "";
+  const deepNiche = research.deepNicheLabel?.trim() || "";
+  const audList = Array.isArray(audienceCandidates) && audienceCandidates.length
+    ? audienceCandidates.join(", ")
+    : "Students, Entrepreneurs, Women, Young Men, Busy Professionals";
+  const painList = Array.isArray(painPoints) && painPoints.length
+    ? painPoints.join(", ")
+    : "(infer from niche)";
+  const transformList = Array.isArray(transformations) && transformations.length
+    ? transformations.join(", ")
+    : "(infer from niche)";
+
+  return `You are an Amazon KDP bestseller-title strategist.
+Generate 6 modern, high-conversion nonfiction titles for the profile below.
+
+PROFILE
+- PRIMARY SUBJECT: ${research.bookTopic?.trim() || deepNiche || ""}
+- NICHE: ${nicheLine}${deepNiche ? ` › ${deepNiche}` : ""}
+- DEEP NICHE FOCUS: ${deepNiche || "(none)"}
+- TARGET READER (user-provided): ${research.targetAudience?.trim() || "(not specified)"}
+- PUBLISHING GOAL: ${research.publishingGoal?.trim() || "not specified"}
+- AUTHOR VOICE: ${Array.isArray(research.authorTones) && research.authorTones.length ? research.authorTones.join(", ") : "not specified"}
+- STANCE: ${stance}
+- STANDOUT: ${standout}
+- COMPETITORS:
+${summariesBlock}
+
+AUDIENCE CANDIDATES (pick from these, or pick equally specific ones):
+${audList}
+
+PAIN POINTS TO HOOK:
+${painList}
+
+DESIRED TRANSFORMATIONS:
+${transformList}
+
+HARD RULES (must follow):
+1. At LEAST 5 of the 6 titles MUST explicitly name a target audience using phrasing like "for Students", "for Introverts", "for Busy Moms", "for ADHD Adults", "for Distracted Professionals", "for Teen Girls", "for Young Men", "for Entrepreneurs", "for Women", "for Overthinkers", "for Remote Workers". The 6th title may use a vivid identity hook instead (e.g. "The Quiet Achiever's Playbook").
+2. Titles must follow ONE of these formulas:
+   - [Transformation] for [Audience]  → e.g. "Discipline Habits for Young Men"
+   - [System / Blueprint] for [Audience]  → e.g. "The Focus Blueprint for Entrepreneurs"
+   - [Problem Solution] for [Audience]  → e.g. "Burnout Recovery for Busy Moms"
+3. Tone: modern Amazon bestseller vibe — like "Atomic Habits", "Deep Work", "Essentialism", "The Mountain Is You". Emotionally clear, commercially polished, easy to understand.
+4. BANNED — do NOT output any of these generic patterns:
+   - "Better Habits", "Success Systems", "Productivity Blueprint", "Confidence Reset", "Motivation Mastery", "Focus Habits", "Better Productivity"
+   - Any title without a clearly named audience or specific transformation.
+   - Robotic or keyword-stuffed phrasing.
+5. Each title under 70 characters when possible.
+6. No duplicates. No subtitles. No quotes around the titles in the JSON.
+
+Return STRICT JSON:
+{
+  "titles": ["title 1","title 2","title 3","title 4","title 5","title 6"],
+  "enhanced": [
+    {"title":"title 1","subtitle":"A [Adjective] System for [Outcome] and [Outcome]","hook":"emotional hook sentence","audience":"specific audience phrase","angle":"positioning angle"},
+    {"title":"title 2","subtitle":"...","hook":"...","audience":"...","angle":"..."},
+    {"title":"title 3","subtitle":"...","hook":"...","audience":"...","angle":"..."},
+    {"title":"title 4","subtitle":"...","hook":"...","audience":"...","angle":"..."},
+    {"title":"title 5","subtitle":"...","hook":"...","audience":"...","angle":"..."},
+    {"title":"title 6","subtitle":"...","hook":"...","audience":"...","angle":"..."}
+  ]
+}`;
+}
+
+export function descriptionPrompt({ idea, title, audience, tone }: any) {
+  return `Idea: ${idea}
+Selected title: ${title}
+Audience: ${audience || "Not selected yet"}
+Tone: ${tone || "Not selected yet"}
+Generate 120-180 words book description. Return JSON: {"description":"..."}`;
+}
+
+export function marketingDescriptionPrompt({ idea, title, audience, tone, genre, usp, authorName, focusTags, shortSample }: any) {
+  const tags = Array.isArray(focusTags) && focusTags.length ? focusTags.join(", ") : "(none)";
+  const sample = shortSample?.trim() ? shortSample.slice(0, 1200) : "(not provided)";
+  return `Create Amazon/KDP-ready marketing copy.
+TITLE: ${title}
+TOPIC: ${idea}
+NICHE: ${genre || "Nonfiction"}
+AUTHOR: ${authorName || "Author"}
+AUDIENCE: ${audience || "General readers"}
+TONE: ${tone || "Direct and practical"}
+USP: ${usp || "Practical transformation without fluff"}
+FOCUS PILLARS: ${tags}
+MANUSCRIPT SAMPLE: ${sample}
+Return JSON: {"description":"120-200 word description","shortHook":"one sentence hook under 18 words","keywords":"7 comma-separated Amazon keywords"}`;
+}
+
+export function coverBriefPrompt({ title, subtitle, audience, tone, genre, usp, authorName, description, genrePreset, styleMode }: any) {
+  return `You are a world-class Amazon KDP cover designer, brand strategist, and bestseller positioning expert. Generate a complete, professional KDP cover brief.
+
+BOOK DETAILS:
+TITLE: ${title}
+SUBTITLE: ${subtitle || "(generate a compelling subtitle)"}
+AUTHOR: ${authorName}
+GENRE/NICHE: ${genre || "General"}${genrePreset ? ` (preset: ${genrePreset})` : ""}
+AUDIENCE: ${audience}
+TONE: ${tone}
+USP: ${usp || ""}
+COVER STYLE MODE: ${styleMode || "typographic"}
+DESCRIPTION: ${(description || "").slice(0, 600)}
+
+Generate a COMPLETE KDP cover design brief. Return valid JSON only:
+{
+  "subtitle": "compelling subtitle if not provided",
+  "tagline": "short punchy hook for top of cover",
+  "authorLine": "author name as it should appear",
+  "layoutStyle": "typographic|split-band|minimal|bold-stack",
+  "primaryColor": "#hex — dominant background/brand color",
+  "accentColor": "#hex — contrast highlight color",
+  "textColor": "#hex — primary text color (ensure strong contrast)",
+  "mood": "1-sentence emotional target — what the reader feels seeing this cover",
+  "typographyDirection": "font personality guidance (bold+modern, elegant+serif, etc.)",
+  "imagerySuggestions": "visual elements and composition without copyrighted references",
+  "colorPsychology": "why these specific colors work for this audience and genre",
+  "audienceTargeting": "how the cover visually signals this is for the right reader",
+  "compositionGuidance": "hierarchy and visual flow — where the eye goes first, second, third",
+  "designNotes": "comprehensive notes for a professional cover designer",
+  "backCoverHook": "opening line for back cover — hooks the browser",
+  "backCoverCTA": "final call to action line for back cover"
+}`;
+}
+
+export function coverCriticPrompt(cover: any) {
+  return `You are a veteran Amazon KDP cover art director with 20+ years critiquing bestselling covers.
+
+Critique this cover design with expert precision:
+TITLE: ${cover.title || ""}
+LAYOUT STYLE: ${cover.layoutStyle || "typographic"}
+STYLE MODE: ${cover.styleMode || "typographic"}
+GENRE PRESET: ${cover.genrePreset || "not set"}
+PRIMARY COLOR: ${cover.primaryColor || "#0c4a6e"}
+ACCENT COLOR: ${cover.accentColor || "#38bdf8"}
+TEXT COLOR: ${cover.textColor || "#ffffff"}
+FONT PAIRING: ${cover.fontPairingLabel || "default"}
+SUBTITLE: ${cover.subtitle || "(none)"}
+TAGLINE: ${cover.tagline || "(none)"}
+
+Score each dimension 1-10 and give specific, actionable feedback.
+
+Return valid JSON only:
+{
+  "scores": {
+    "hierarchy": N,
+    "readability": N,
+    "contrast": N,
+    "kdpFriendliness": N,
+    "bestsellerPotential": N
+  },
+  "overall": N,
+  "feedback": {
+    "hierarchy": "Is title dominant? Readable at thumbnail size?",
+    "readability": "Text contrast and legibility at all sizes",
+    "contrast": "Color separation and visual impact",
+    "kdpFriendliness": "Print-safe, KDP compliant, clean margins",
+    "bestsellerPotential": "Competitive positioning for this genre"
+  },
+  "topIssue": "Single most important problem to fix",
+  "topRecommendation": "Single most impactful improvement to make"
+}`;
+}
+
+export function coverVariantsPrompt({ title, subtitle, audience, genre, tone, usp }: any) {
+  return `You are a book cover design director. Create 3 DISTINCTLY DIFFERENT cover concept variations for this book.
+
+TITLE: ${title}
+SUBTITLE: ${subtitle || ""}
+GENRE: ${genre || "General"}
+AUDIENCE: ${audience}
+TONE: ${tone}
+USP: ${usp || ""}
+
+Create 3 variants with genuinely different visual approaches:
+- Variant A: Safe commercial — proven genre conventions, broad appeal
+- Variant B: Bold distinctive — genre-aware but surprising, strong identity
+- Variant C: Avant-garde — experimental, high-risk high-reward, ultra-distinctive
+
+Return valid JSON only:
+{"variants":[
+  {
+    "variantLabel": "A",
+    "concept": "1-sentence visual concept",
+    "primaryColor": "#hex",
+    "accentColor": "#hex",
+    "textColor": "#hex",
+    "layoutStyle": "typographic|split-band|minimal|bold-stack",
+    "styleMode": "typographic|cinematic|illustrated|minimal|abstract|photographic",
+    "fontPairingIndex": 0,
+    "tagline": "cover hook line",
+    "designNotes": "what makes this variant distinctive and why it works"
+  },
+  {"variantLabel":"B",...},
+  {"variantLabel":"C",...}
+]}`;
+}
+
+export function outlinePrompt({ idea, title, description, audience, tone }: any) {
+  return `Build an 8-10 chapter outline.
+Idea: ${idea}, Title: ${title}, Audience: ${audience}, Tone: ${tone}
+Return JSON: {"chapters":[{"title":"...","summary":"1-2 lines"}]}`;
+}
+
+export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }: any) {
+  const a = architecture || {};
+  const chapterCount = a.recommendedChapters?.default || 10;
+  const flow = (a.chapterFlow || []).map((beat: string, i: number) => `${i + 1}. ${beat}`).join("\n");
+  const tones = Array.isArray(research?.authorTones) && research.authorTones.length
+    ? research.authorTones.join(", ")
+    : "direct and authoritative";
+  const isStory = ["romance-arc", "romantasy-hybrid", "suspense-escalation", "mystery-procedural", "hero-journey", "narrative-arc"].includes(a.structureType || "");
+
+  return `You are an expert AI Book Architect, Academic Formatter, and Amazon KDP Publishing Specialist.
+
+Your task: Generate a ${chapterCount}-chapter book outline that combines thesis-grade organizational intelligence with bestseller-quality readability and commercial appeal. The result must feel like a professionally published Amazon bestseller — not a dry academic document, not a generic template.
+
+========================================
+HIERARCHY — apply at every level
+========================================
+Chapter → Section → Subsection → Topic Block
+Each level flows logically from broad concept to detailed concept.
+Hierarchy must be deep, intentional, and logically progressive.
+
+========================================
+TITLE QUALITY — NON-NEGOTIABLE
+========================================
+Every title at EVERY level must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY.
+
+STRICTLY FORBIDDEN titles (never generate these):
+"Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder",
+"Chapter N", "Key Point", "Emotional Theme", "Untitled", any numbered generic label.
+
+GOOD section/subsection title examples:
+- "The Fear of Falling Behind"
+- "When Failure Becomes Identity"
+- "Curated Success vs Real Life"
+- "The Quiet Weight of Comparison"
+- "Breaking the Perfectionism Loop"
+- "What Nobody Tells You About Starting Over"
+
+GOOD chapter title examples:
+- "The Invisible Rules That Keep You Stuck"
+- "Rewiring the Stories You Tell Yourself"
+- "Building Systems That Outlast Motivation"
+
+========================================
+BOOK PROFILE
+========================================
+TITLE: ${title || ""}
+TOPIC: ${research?.bookTopic || ""}
+NICHE: ${a.mainNicheLabel || ""} › ${a.subNicheLabel || ""}
+TARGET AUDIENCE: ${research?.targetAudience || ""}
+AUTHOR TONE: ${tones}
+PUBLISHING GOAL: ${research?.publishingGoal || ""}
+AUTHOR STANCE: ${research?.stanceOnTopic || ""}
+WHAT MAKES IT STAND OUT: ${research?.standout || ""}
+DESCRIPTION: ${description || ""}
+${bookContext ? `USP: ${bookContext.usp || ""}
+DIFFERENTIATION: ${bookContext.differentiation || ""}
+READER PAIN PROFILE: ${bookContext.readerPainProfile || ""}
+READER TRANSFORMATION PROMISE: ${bookContext.transformationPromise || ""}
+MARKET GAP TO FILL: ${bookContext.marketGap || ""}
+WRITING STYLE BENCHMARK: ${bookContext.writingStyleFingerprint || ""}
+POSITIONING STRATEGY: ${bookContext.positioningStrategy || ""}
+EMOTIONAL TRIGGERS: ${bookContext.emotionalTriggers || ""}
+AUTHOR BACKGROUND & STYLE: ${bookContext.authorSummary || ""}
+KEY SELLING POINTS:
+${bookContext.keySellingPoints || ""}
+COMPETING TITLES (differentiate from these): ${bookContext.competitorTitles || ""}` : ""}
+${resources ? resourcesBlock(resources, "outline") : ""}
+========================================
+STRUCTURAL BLUEPRINT
+========================================
+Structure type: ${a.structureType || "narrative"}
+Pacing: ${a.pacingType || "standard"}
+Emotional arc: ${a.emotionalArc || "progressive"}
+Bestseller patterns: ${(a.bestsellerPatterns || []).join("; ") || ""}
+Reader psychology: ${a.readerPsychology || ""}
+Hook style: ${a.hookStyle || "strong opening"}
+Ending style: ${a.endingStyle || "satisfying close"}
+Niche beat flow:
+${flow || "(apply sub-niche-native escalation — never generic beats)"}
+
+========================================
+CHAPTER CONTENT RULES
+========================================
+${isStory ? `STORY/NARRATIVE STRUCTURE — each chapter must contain:
+- Clear narrative purpose in the story arc
+- Subsections represent: turning points, emotional shifts, conflicts, discoveries, climaxes, resolutions
+- Thematic consistency across chapters
+- Character development / emotional progression built into subsection titles` : `NONFICTION STRUCTURE — each chapter should ideally contain:
+- Opening hook (grabs attention immediately)
+- Core concept (what this chapter teaches)
+- Explanation (why it matters, evidence-backed)
+- Example or case study (real-world grounding)
+- Framework or system (practical model the reader can use)
+- Actionable takeaway (what to do next)
+- Mini summary or reflection prompt`}
+
+CONTENT QUALITY:
+- Each chapter must build on the previous one — no repetition, no filler
+- Deepen stakes or insight progressively throughout the book
+- Smooth narrative transitions between chapters
+- No shallow sections — every subsection must deliver real value
+
+CHAPTERS TO GENERATE: ${chapterCount}
+SECTIONS PER CHAPTER: 2-3 (with fully specific, real titles — no generic labels)
+SUBSECTIONS PER SECTION: 2-3 (with fully specific, real titles — no generic labels)
+
+========================================
+OUTPUT FORMAT
+========================================
+Return ONLY valid JSON — no markdown, no explanation:
+{"chapters":[{"title":"Specific chapter title signaling transformation or insight","summary":"2-sentence summary of what this chapter achieves for the reader","arcRole":"opening hook|escalation|climax|resolution|transformation|revelation|payoff|etc","sections":[{"title":"Specific concept, conflict, or angle within the chapter","subsections":[{"title":"Precise emotionally-specific insight, tactic, or story beat","intent":"What shift or insight this delivers to the reader"}]}]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
+}
+
+export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
+  const a = architecture || {};
+  const niche = `${a.mainNicheLabel || ""} › ${a.subNicheLabel || ""}`;
+  const audience = research?.targetAudience || "";
+  const tones = Array.isArray(research?.authorTones) ? research.authorTones.join(", ") : "direct and authoritative";
+  const bookTopic = research?.bookTopic || "";
+
+  const qualityRule = `TITLE QUALITY RULES (non-negotiable):
+- Must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY
+- NEVER generate: "Beat N", "Scene N", "Section N", "Topic N", "Placeholder", "Chapter N", "Key Point", "Untitled"
+- Must feel like it was written by a bestselling author — emotionally intelligent, niche-specific, commercially viable
+- Example good titles: "The Fear of Falling Behind", "When Failure Becomes Identity", "Breaking the Perfectionism Loop", "What Nobody Tells You About Starting Over"`;
+
+  if (level === "chapter") {
+    return `You are an expert AI Book Architect and Amazon KDP Publishing Specialist.
+Generate ONE replacement chapter title.
+
+${qualityRule}
+
+BOOK TOPIC: ${bookTopic}
+NICHE: ${niche}
+AUDIENCE: ${audience}
+TONE: ${tones}
+CURRENT TITLE (replace — keep the same chapter position and role in the arc): ${currentTitle}
+
+The title must signal a clear emotional or intellectual transformation the reader will experience.
+Return JSON only: {"title":"..."}`;
+  }
+  if (level === "section") {
+    return `You are an expert AI Book Architect and Amazon KDP Publishing Specialist.
+Generate ONE replacement section title.
+
+${qualityRule}
+
+CHAPTER: ${parentChapter || ""}
+NICHE: ${niche}
+AUDIENCE: ${audience}
+CURRENT TITLE (replace): ${currentTitle}
+
+The section title must identify a specific idea, concept, conflict, or angle within the chapter.
+It must flow logically from the chapter title and deepen its central theme.
+Return JSON only: {"title":"..."}`;
+  }
+  return `You are an expert AI Book Architect and Amazon KDP Publishing Specialist.
+Generate ONE replacement subsection title.
+
+${qualityRule}
+
+CHAPTER: ${parentChapter || ""}
+SECTION: ${parentSection || ""}
+NICHE: ${niche}
+AUDIENCE: ${audience}
+CURRENT TITLE (replace): ${currentTitle}
+
+The subsection title must be a precise, emotionally specific insight, tactic, turning point, or story angle.
+It must feel like a micro-promise to the reader — something worth reading.
+Return JSON only: {"title":"..."}`;
+}
+
+export function structurePrompt({ chapterTitle, chapterSummary, fullOutline, audience, tone }: any) {
+  return `Create deep chapter structure for "${chapterTitle}".
+Summary: ${chapterSummary}, Audience: ${audience}, Tone: ${tone}
+Output JSON: {"sections":[{"title":"...","explanation":"...","subsections":[{"title":"...","strategy":"...","explanation":"...","application":"..."}]}]}
+3 sections, 3 subsections each.`;
+}
+
+/**
+ * Format the compact book memory object as a prompt block.
+ * All fields are already size-capped in buildBookContext on the frontend.
+ */
+export function subtitleSuggestPrompt({ title, niche, subNiche, bookTopic, bookContext }: any): string {
+  const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
+  const nicheStr = [niche, subNiche].filter(Boolean).join(" › ");
+  return `Generate 5 compelling, specific book subtitles for a nonfiction book.
+
+BOOK TITLE: "${title}"
+NICHE: ${nicheStr || "(not specified)"}
+CORE TOPIC: ${bookTopic || "(not specified)"}${ctxBlock}
+
+Rules for each subtitle:
+- Clearly state WHO it's for AND the specific outcome/transformation they get
+- 6–14 words, no more
+- Sound like an Amazon bestseller (specific, outcome-driven, emotionally resonant)
+- Each must be meaningfully different in angle or audience framing
+- No generic phrases: "A Guide to", "Everything You Need", "The Complete", "How to"
+- No quotes around the subtitle
+
+Return ONLY valid JSON: {"subtitles":["subtitle 1","subtitle 2","subtitle 3","subtitle 4","subtitle 5"]}`;
+}
+
+export function bookContextBlock(ctx: any): string {
+  if (!ctx) return "";
+  const lines: string[] = [];
+
+  if (ctx.title)    lines.push(`Book: "${ctx.title}"${ctx.subtitle ? ` — ${ctx.subtitle}` : ""}`);
+  if (ctx.niche && ctx.subNiche) lines.push(`Niche: ${ctx.niche} › ${ctx.subNiche}${ctx.deepNiche ? ` › ${ctx.deepNiche}` : ""}`);
+  else if (ctx.niche) lines.push(`Niche: ${ctx.niche}`);
+  if (ctx.bookTopic)   lines.push(`Core Topic: ${ctx.bookTopic}`);
+  if (ctx.stance)      lines.push(`Author Stance: ${ctx.stance}`);
+  if (ctx.standout)    lines.push(`What Makes It Stand Out: ${ctx.standout}`);
+  if (ctx.audience)    lines.push(`Target Reader: ${ctx.audience}`);
+  if (ctx.tone)        lines.push(`Voice & Tone: ${ctx.tone}`);
+  if (ctx.genre)       lines.push(`Genre: ${ctx.genre}`);
+  if (ctx.wordCountRange) lines.push(`Target Length: ${ctx.wordCountRange}`);
+  if (ctx.structure)   lines.push(`Structure: ${ctx.structure}`);
+  if (ctx.usp)         lines.push(`USP: ${ctx.usp}`);
+  if (ctx.differentiation) lines.push(`Differentiation: ${ctx.differentiation}`);
+  if (ctx.keySellingPoints) lines.push(`Key Selling Points: ${ctx.keySellingPoints}`);
+  if (ctx.authorName)  lines.push(`Author: ${ctx.authorName}`);
+  if (ctx.authorSummary) lines.push(`Author Style/Background: ${ctx.authorSummary}`);
+  if (ctx.readerPainProfile)     lines.push(`Reader Pain Profile: ${ctx.readerPainProfile}`);
+  if (ctx.transformationPromise) lines.push(`Transformation Promise: ${ctx.transformationPromise}`);
+  if (ctx.marketGap)   lines.push(`Market Gap to Fill: ${ctx.marketGap}`);
+  if (ctx.writingStyleFingerprint) lines.push(`Ideal Writing Style: ${ctx.writingStyleFingerprint}`);
+  if (ctx.positioningStrategy) lines.push(`Positioning Strategy: ${ctx.positioningStrategy}`);
+  if (ctx.emotionalTriggers) lines.push(`Emotional Triggers: ${ctx.emotionalTriggers}`);
+  if (ctx.competitorTitles) lines.push(`Competing Titles: ${ctx.competitorTitles}`);
+
+  if (!lines.length) return "";
+
+  let block = `\n\n========================================\nBOOK MEMORY — carry this through all generation\n========================================\n${lines.join("\n")}`;
+
+  if (Array.isArray(ctx.previousChapterSummaries) && ctx.previousChapterSummaries.length) {
+    const s = ctx.previousChapterSummaries.map((c: any) => `  • ${c.title}: ${c.summary}`).join("\n");
+    block += `\n\nPreviously Written Chapters (build on these — don't repeat concepts):\n${s}`;
+  }
+
+  return block;
+}
+
+export function lessonPrompt({ subsection, chapterContext, previousConcepts, audience, tone, resources, bookContext }: any) {
+  const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
+  const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
+  const prevNote = Array.isArray(previousConcepts) && previousConcepts.length
+    ? `\nConcepts already covered earlier (don't repeat): ${previousConcepts.slice(-8).join("; ")}`
+    : "";
+  return `Write a complete lesson for the subsection: ${JSON.stringify(subsection)}
+Chapter context: ${JSON.stringify(chapterContext)}
+Target Reader: ${audience}
+Voice & Tone: ${tone}${prevNote}${ctxBlock}${resBlock}
+
+Maintain the book's established voice. Build on previous chapters — advance the reader's transformation, introduce new frameworks, and stay consistent with the book's positioning and USP.
+
+Return JSON: {"title":"...","explanation":"...","example":"...","framework":"...","executionSteps":["..."]}`;
+}
+
+export function improvementPrompt({ action, currentText, tone }: any) {
+  return `Improve the writing with action "${action}" (tone: "${tone}"). Return only the refined text.\n${currentText}`;
+}
+
+export function architecturePreviewPrompt({
+  niche,
+  subNiche,
+  deepNiche,
+  audience,
+  goal,
+  tones,
+  contentDirection
+}: any) {
+  const toneLine = Array.isArray(tones) && tones.length ? tones.join(", ") : "unspecified";
+  return `You are an Amazon KDP nonfiction publishing strategist.
+
+Analyze this book concept and generate an ideal book architecture.
+
+NICHE: ${niche || "unspecified"}
+SUB NICHE: ${subNiche || "unspecified"}
+DEEP NICHE FOCUS: ${deepNiche || "unspecified"}
+TARGET AUDIENCE: ${audience || "unspecified"}
+BOOK GOAL: ${goal || "unspecified"}
+TONE: ${toneLine}
+CONTENT DIRECTION (existing): ${contentDirection || "unspecified"}
+
+Generate the ideal blueprint for THIS specific combination.
+
+Requirements:
+- adapt to the reader's psychology and emotional state in this niche
+- match patterns of bestselling books in this exact sub-niche
+- avoid generic, one-size-fits-all outputs — every field must feel niche-specific
+- be commercially realistic (real Amazon KDP ranges, not academic)
+- the emotional arc must be 4–5 stages joined with " → " using the reader's
+  actual psychological journey for this niche (e.g. for self-esteem:
+  "insecurity → awareness → healing → confidence → empowerment")
+- structure must name a real publishing approach (framework-based,
+  step-by-step, narrative arc, psychological transformation, tactical
+  playbook, workbook system, habit-building, mindset rewiring,
+  challenge-based, case-study driven, philosophical, devotional, etc.)
+- chapters must be a realistic range like "8–12", "10–14", "15–20"
+- pacing must be a real pacing label (fast actionable, progressive build,
+  emotionally immersive, tactical acceleration, slow reflective,
+  workbook pacing, philosophical reflection, etc.)
+- wordBand must be a realistic Amazon KDP range like "15k–25k",
+  "20k–35k", "35k–50k", "45k–65k"
+- contentDirection is one tight sentence describing what this book's
+  reading experience should feel like
+
+Output ONLY valid JSON with this exact shape:
+
+{
+  "structure": "",
+  "chapters": "",
+  "emotionalArc": "",
+  "pacing": "",
+  "wordBand": "",
+  "contentDirection": ""
+}`;
+}
+
+export function titleCardsPrompt({
+  research, competitorSummaries, intelligence, mode
+}: any) {
+  const nicheLine = research.mainNicheLabel && research.subNicheLabel
+    ? `${research.mainNicheLabel} › ${research.subNicheLabel}`
+    : research.genre?.trim() || "Nonfiction";
+  const deepNiche = research.deepNicheLabel?.trim() || "";
+
+  const summariesBlock = Array.isArray(competitorSummaries) && competitorSummaries.length
+    ? competitorSummaries.slice(0, 6).map((l: string, i: number) => `${i + 1}. ${l}`).join("\n")
+    : "(none)";
+
+  const intelBlock = intelligence ? `
+TARGET AUDIENCE: ${intelligence.targetAudience || ""}
+READER PAIN: ${intelligence.readerPainProfile || ""}
+EMOTIONAL TRIGGERS: ${(intelligence.emotionalTriggers || []).join(", ")}
+TRANSFORMATION PROMISE: ${intelligence.transformationPromise || ""}
+BESTSELLER DNA: ${intelligence.bestsellerDNA || ""}
+WRITING STYLE: ${intelligence.writingStyleFingerprint || ""}
+POSITIONING STRATEGY: ${intelligence.positioningStrategy || ""}
+MARKET GAP: ${intelligence.marketGapAnalysis || ""}`.trim()
+    : "(not available — infer all signals from niche and competitor data)";
+
+  const modeMap: Record<string, string> = {
+    "bestseller":          "Commercial bestseller style — audience-named, transformation-forward, commercially polished. Like Atomic Habits, Deep Work, Can't Hurt Me.",
+    "masculine-authority": "Masculine authority — strong, disciplined, direct, no-nonsense. For ambitious men, leaders, high-performers. Commands respect.",
+    "emotional-transform": "Emotional transformation — vulnerability + hope + clear outcome. Feeling-forward, personal journey, empathy-driven.",
+    "scientific":          "Scientific/evidence-based — credibility signals, 'research-backed', 'the psychology of', 'the science of'. Analytical reader.",
+    "minimalist-premium":  "Minimalist premium — very short titles (2-4 words), elegant, timeless feel. Like 'Stillness Is the Key', 'Essentialism', 'Deep Work'.",
+    "bold-controversial":  "Bold/controversial — challenges assumptions, disrupts conventions, provocative framing. Grabs attention and sparks debate.",
+    "philosophical":       "Philosophical/wisdom — stoic or reflective, timeless principles, ancient meets modern. Contemplative, thoughtful readers.",
+    "viral-modern":        "Viral modern self-help — Gen Z / millennial resonance, TikTok-friendly, conversational, identity-based. Feels current."
+  };
+  const modeInstruction = modeMap[mode] || modeMap["bestseller"];
+
+  return `You are an Amazon KDP bestseller-title strategist and consumer psychology expert.
+
+Generate 6 premium nonfiction title packages. Produce differentiated titles — vary patterns, categories, and emotional angles. Make each one genuinely distinct.
+
+STYLE MODE: ${mode || "bestseller"}
+MODE INSTRUCTION: ${modeInstruction}
+
+BOOK PROFILE:
+- NICHE: ${nicheLine}${deepNiche ? ` › ${deepNiche}` : ""}
+- CONCEPT: ${research.bookTopic?.trim() || deepNiche || nicheLine}
+- TRANSFORMATION: ${research.stanceOnTopic?.trim() || "(infer from niche)"}
+- CUSTOM NOTES: ${research.standout?.trim() || "(none)"}
+- COMPETITORS:
+${summariesBlock}
+
+MARKET INTELLIGENCE:
+${intelBlock}
+
+SCORING RULES (must follow):
+- Scores should realistically vary — not all titles score equally. Range: 55-97.
+- A title can be strong on SEO but weaker on emotion, or vice versa. Reflect real tradeoffs.
+- isRecommended: true on the SINGLE best overall title only.
+- Use at least 3 different categories across the 6 cards.
+
+TITLE RULES:
+- Every title must name or strongly imply a specific audience
+- No generic patterns: "Better Habits", "Success Blueprint", "Confidence Reset", "Motivation Mastery"
+- Commercially polished — feels like a $9.99 Amazon bestseller
+- Mix these patterns across the 6 titles: "Transformation for Audience" | "System for Audience" | "Identity Label" | "The [Noun] of [Topic]" | "Art/Science of [Topic]"
+
+Return STRICT JSON only — no markdown, no text outside the JSON:
+{
+  "cards": [
+    {
+      "title": "...",
+      "subtitle": "A [Adjective] System for [Transformation] Without [Pain]",
+      "subtitleOptions": [
+        {"style": "SEO", "text": "keyword-rich subtitle with search terms"},
+        {"style": "Emotional", "text": "feeling-forward subtitle"},
+        {"style": "Minimalist", "text": "short elegant subtitle (max 8 words)"}
+      ],
+      "seoScore": 84,
+      "emotionalScore": 91,
+      "clickabilityScore": 88,
+      "audienceMatch": 93,
+      "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+      "toneProfile": ["calm authority", "masculine mentor"],
+      "pattern": "Transformation for Audience",
+      "category": "Masculine Authority",
+      "hook": "One punchy sentence on why someone would impulse-buy this.",
+      "audienceResonance": ["ambitious men 25-45", "entrepreneurs", "stoicism readers"],
+      "isRecommended": false
+    }
+  ]
+}
+
+Valid categories: "Masculine Authority" | "Emotional Transformation" | "Premium Minimalist" | "Scientific Authority" | "Viral Modern" | "Philosophical Wisdom" | "Bold Challenger"
+Valid patterns: "Transformation for Audience" | "System for Audience" | "Identity Label" | "How to [Outcome]" | "The [Noun] of [Topic]" | "Art/Science of [Topic]"`;
+}
+
+export function titleVariationsPrompt({ title, subtitle, research, intelligence }: any) {
+  const nicheLine = research?.mainNicheLabel && research?.subNicheLabel
+    ? `${research.mainNicheLabel} › ${research.subNicheLabel}`
+    : research?.genre || "Nonfiction";
+
+  return `You are an Amazon KDP title strategist.
+Create 6 powerful variations of this title, each with a meaningfully distinct style.
+
+ORIGINAL TITLE: "${title}"
+ORIGINAL SUBTITLE: "${subtitle || "(none)"}"
+NICHE: ${nicheLine}
+AUDIENCE: ${intelligence?.targetAudience || research?.targetAudience || "(infer from niche)"}
+PAIN: ${intelligence?.readerPainProfile || "(infer from niche)"}
+TRANSFORMATION: ${intelligence?.transformationPromise || research?.stanceOnTopic || "(infer)"}
+
+Generate exactly these 6 styles — each must feel noticeably different from the original and from each other:
+1. Bolder — more aggressive, challenging, confrontational wording
+2. Premium — shorter, elevated, timeless (2-4 words ideal)
+3. SEO — keyword-rich but still emotionally compelling
+4. Emotional — vulnerability + hope + clear transformation promise
+5. Modern Viral — Gen Z / TikTok-friendly energy, conversational
+6. Philosophical — timeless wisdom angle, stoic or reflective
+
+Return STRICT JSON only:
+{
+  "variations": [
+    {"style": "Bolder", "title": "...", "subtitle": "...", "note": "one sentence on why this works"},
+    {"style": "Premium", "title": "...", "subtitle": "...", "note": "..."},
+    {"style": "SEO", "title": "...", "subtitle": "...", "note": "..."},
+    {"style": "Emotional", "title": "...", "subtitle": "...", "note": "..."},
+    {"style": "Modern Viral", "title": "...", "subtitle": "...", "note": "..."},
+    {"style": "Philosophical", "title": "...", "subtitle": "...", "note": "..."}
+  ]
+}`;
+}
+
+// ─── Resource helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Build a compact, priority-ordered resources block for prompt injection.
+ * @param resources  The project's resources object (links, findings, files, settings)
+ * @param context    Which prompt context: "outline" | "lesson" | "all"
+ */
+export function resourcesBlock(resources: any, context: "outline" | "lesson" | "all" = "all"): string {
+  if (!resources) return "";
+  const { links = [], findings = [], files = [] } = resources;
+  const all = [
+    ...links.map((r: any) => ({ ...r, _rtype: "link" })),
+    ...findings.map((r: any) => ({ ...r, _rtype: "finding" })),
+    ...files.map((r: any) => ({ ...r, _rtype: "file" }))
+  ];
+  if (!all.length) return "";
+
+  const contextAllowed: Record<string, string[]> = {
+    outline: ["entire_book", "outline_only"],
+    lesson:  ["entire_book", "statistics", "quotes", "research_only"],
+    all:     ["entire_book", "outline_only", "writing_style", "statistics", "quotes", "research_only"]
+  };
+  const allowed = contextAllowed[context] || contextAllowed.all;
+
+  const filtered = all.filter((r: any) => {
+    const useFor: string[] = Array.isArray(r.useFor) ? r.useFor : ["entire_book"];
+    return useFor.some((u: string) => allowed.includes(u));
+  });
+  if (!filtered.length) return "";
+
+  const PRIO: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  filtered.sort((a: any, b: any) => (PRIO[a.priority] ?? 2) - (PRIO[b.priority] ?? 2));
+
+  const lines: string[] = [];
+  for (const r of filtered.slice(0, 8)) {
+    const prio    = r.priority === "critical" ? " [CRITICAL]" : r.priority === "high" ? " [HIGH]" : "";
+    const title   = r.title || r.label || r.originalName || r._rtype;
+    const content = String(r.summary || r.body || r.note || (r._rtype === "link" ? r.url : "")).slice(0, 250);
+    if (!content) continue;
+    const style   = r.isStyleRef ? " [Writing Style Reference]" : "";
+    const useNote = Array.isArray(r.useFor) && r.useFor.length && !r.useFor.includes("entire_book")
+      ? ` [Focus: ${r.useFor.join(", ")}]` : "";
+    lines.push(`• ${title}${prio}${style}${useNote}: ${content}`);
+  }
+  if (!lines.length) return "";
+
+  const cite = resources.settings?.citation;
+  const citeNote = cite?.style && cite.style !== "none"
+    ? `\n[Citation format: ${cite.style.toUpperCase()}${cite.inline ? ", inline" : ""}${cite.bibliography ? ", bibliography" : ""}]`
+    : "";
+  return `\n\nAuthor's Research Resources (priority-ordered):\n${lines.join("\n")}${citeNote}`;
+}
+
+/**
+ * Prompt for extracting key insights from a resource's text content.
+ */
+export function extractResourcePrompt({ text, title, category }: any): string {
+  const truncated = String(text || "").slice(0, 5000);
+  return `Extract the most valuable information from this ${category || "resource"} titled "${title || "Untitled"}".
+
+Content:
+${truncated}
+
+Return a concise extraction with only the sections that have content:
+**Key Insights** — 3-5 bullet points of the most important takeaways
+**Statistics** — specific data points, percentages, or numbers worth citing
+**Notable Quotes** — verbatim phrases worth preserving verbatim
+**Frameworks / Models** — any named systems, processes, or structured approaches
+
+Keep the total response under 350 words. Be specific and factual. Do not add commentary.`;
+}
+
+export function competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, books }: any) {
+  const bookLines = Array.isArray(books) && books.length
+    ? books.slice(0, 10).map((b: any, i: number) => {
+        const parts = [`${i + 1}. "${b.title || "Untitled"}"`];
+        if (b.authors)       parts.push(`by ${b.authors}`);
+        if (b.subtitle)      parts.push(`(${b.subtitle})`);
+        if (b.rating)        parts.push(`${b.rating}★`);
+        if (b.ratingsTotal)  parts.push(`${b.ratingsTotal.toLocaleString()} reviews`);
+        return parts.join(" ");
+      }).join("\n")
+    : "(no competitor books provided — infer from niche/sub-niche)";
+
+  return `You are an Amazon KDP publishing strategist and consumer psychology expert.
+
+Analyze the following competitor books and extract a full publishing intelligence profile for a new book entering this market.
+
+NICHE: ${niche || "unspecified"}
+SUB-NICHE: ${subNiche || "unspecified"}
+DEEP NICHE: ${deepNiche || "not specified"}
+AUTHOR'S CONCEPT: ${bookTopic?.trim() || "(not specified)"}
+
+COMPETITOR BOOKS:
+${bookLines}
+
+Based on these competitors, extract a complete publishing intelligence profile. Be specific and data-driven — every field must reflect THIS niche and these actual competitors.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "targetAudience": "specific 1-2 sentence description of the ideal reader for this market",
+  "authorTones": ["tone1", "tone2"],
+  "energyStyle": "one of: Calm mentor | Hard-hitting coach | Stoic philosopher | Masculine discipline | Inspirational motivator | Scientific thinker",
+  "emotionalTriggers": ["trigger1", "trigger2", "trigger3"],
+  "toneRecommendation": "specific tone strategy recommendation in 1-2 sentences",
+  "readerPainProfile": "core pain/frustration the reader has BEFORE picking up a book in this niche",
+  "transformationPromise": "the transformation the reader expects from a book in this market",
+  "writingStyleFingerprint": "description of the ideal writing style for bestsellers in this niche",
+  "positioningStrategy": "how a new book should position itself to stand out vs these specific competitors",
+  "marketGapAnalysis": "what is missing or underserved based on these competitors — concrete gaps",
+  "bestsellerDNA": "what structural or emotional elements make bestsellers in this niche work"
+}`;
+}

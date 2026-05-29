@@ -1,0 +1,102 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+
+  --color-studio-900: #070b14;
+  --color-studio-800: #0f1729;
+  --color-studio-700: #172139;
+  --color-studio-600: #243354;
+  --color-studio-400: #63b3ff;
+  --color-studio-300: #8ec5ff;
+
+  --shadow-glow: 0 0 0 1px rgba(99,179,255,0.2), 0 12px 40px rgba(6,10,24,0.5);
+  --shadow-soft-card: 0 2px 28px -8px rgba(15,23,42,0.085), 0 2px 10px -4px rgba(15,23,42,0.045);
+  --shadow-elevated-sm: 0 1px 3px rgba(15,23,42,0.06), 0 8px 28px -10px rgba(14,165,233,0.22);
+}
+
+:root {
+  --app-font-sans: 'Inter', system-ui, 'Segoe UI', sans-serif;
+  --app-font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --app-font-mono: Menlo, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-studio-900 text-slate-100;
+  background-image:
+    radial-gradient(circle at 25% -10%, rgba(99, 179, 255, 0.22), transparent 42%),
+    radial-gradient(circle at 92% 8%, rgba(147, 197, 253, 0.06), transparent 38%);
+}
+
+@layer components {
+  .panel {
+    @apply rounded-[1.35rem] border backdrop-blur-xl transition-colors duration-300;
+    border-color: rgba(255, 255, 255, 0.12);
+    background-color: rgba(255, 255, 255, 0.055);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .btn-primary {
+    @apply inline-flex cursor-pointer items-center justify-center rounded-xl bg-studio-400 px-4 py-2.5 text-sm font-semibold text-slate-950 outline-none transition hover:bg-studio-300 focus-visible:ring-2 focus-visible:ring-studio-300 focus-visible:ring-offset-2 active:translate-y-px;
+    box-shadow:
+      0 10px 15px -3px rgba(99, 179, 255, 0.25),
+      0 4px 6px -4px rgba(99, 179, 255, 0.2);
+  }
+
+  .btn-primary:hover {
+    box-shadow:
+      0 20px 25px -5px rgba(99, 179, 255, 0.35),
+      0 8px 10px -6px rgba(99, 179, 255, 0.25);
+  }
+
+  .btn-secondary {
+    @apply inline-flex cursor-pointer items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-medium text-slate-100 backdrop-blur-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-studio-400 focus-visible:ring-offset-2 focus-visible:ring-offset-studio-900;
+    border-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .btn-secondary:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .input {
+    @apply w-full rounded-xl border px-3 py-2 text-sm text-white outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-studio-400;
+    border-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(15, 23, 41, 0.7);
+  }
+
+  .input:focus {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .book-builder {
+    @apply text-slate-900;
+  }
+
+  .book-panel {
+    @apply rounded-[1.35rem] border p-6 backdrop-blur-sm md:p-8;
+    border-color: rgb(226 232 240 / 0.8);
+    background-color: rgb(255 255 255 / 0.95);
+    box-shadow: var(--shadow-soft-card);
+  }
+
+  .book-builder .input-light {
+    @apply w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:ring-2 focus:ring-sky-500 focus:ring-offset-0;
+    border-color: rgb(226 232 240 / 0.95);
+  }
+
+  .book-builder .input-light:hover {
+    border-color: rgb(203 213 225 / 0.9);
+  }
+
+  .book-builder .input-light:focus {
+    border-color: rgb(56 189 248 / 0.85);
+  }
+}
