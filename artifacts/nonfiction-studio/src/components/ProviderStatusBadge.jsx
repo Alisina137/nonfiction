@@ -2,9 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   subscribeAiBus,
   providerLabel,
-  isGrokApproved,
-  grantGrokApproval,
-  revokeGrokApproval,
   isLowCostMode,
   enableLowCostMode,
   disableLowCostMode
@@ -164,7 +161,6 @@ function ModelRow({ m, onToggle, isGrok }) {
 export default function ProviderStatusBadge() {
   const [activeProvider, setActiveProvider] = useState(null);
   const [toast,          setToast]          = useState(null);
-  const [grokOn,         setGrokOn]         = useState(() => isGrokApproved());
   const [lowCostOn,      setLowCostOn]      = useState(() => isLowCostMode());
   const [panelOpen,      setPanelOpen]      = useState(false);
   const panelRef  = useRef(null);
@@ -177,10 +173,6 @@ export default function ProviderStatusBadge() {
     const unsubP = subscribeAiBus("provider", ({ provider }) => setActiveProvider(provider));
     const unsubF = subscribeAiBus("fallback", ({ message }) => {
       setToast({ message, id: Date.now() });
-      setGrokOn(isGrokApproved());
-    });
-    const unsubA = subscribeAiBus("approval", ({ open }) => {
-      if (!open) setGrokOn(isGrokApproved());
     });
     const unsubE = subscribeAiBus("exhausted", ({ providers }) => {
       const names = providers.map((p) => PROVIDER_DEFS[p]?.label || p).join(", ");
@@ -190,7 +182,7 @@ export default function ProviderStatusBadge() {
         kind: "warn"
       });
     });
-    return () => { unsubP(); unsubF(); unsubA(); unsubE(); };
+    return () => { unsubP(); unsubF(); unsubE(); };
   }, []);
 
   // Auto-dismiss toast
@@ -214,11 +206,6 @@ export default function ProviderStatusBadge() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [panelOpen]);
-
-  function toggleGrok() {
-    if (grokOn) { revokeGrokApproval(); setGrokOn(false); }
-    else        { grantGrokApproval();  setGrokOn(true);  }
-  }
 
   function toggleLowCost() {
     if (lowCostOn) {
@@ -363,18 +350,6 @@ export default function ProviderStatusBadge() {
           }
         />
 
-        {/* Grok fallback toggle */}
-        <Toggle
-          on={grokOn}
-          onToggle={toggleGrok}
-          label="Grok"
-          activeClass="border-violet-300 bg-violet-100 text-violet-800 hover:bg-violet-200"
-          title={
-            grokOn
-              ? "Grok is enabled as fallback. Click to disable."
-              : "Enable Grok as last-resort fallback (requires API approval)."
-          }
-        />
       </div>
 
       {/* Toast notifications */}
