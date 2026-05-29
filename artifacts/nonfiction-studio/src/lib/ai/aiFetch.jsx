@@ -19,14 +19,12 @@ export const MANUAL_OFF_KEY = "nonfiction-ai-disabled-manual";   // [provider, .
 const NO_CACHE_PATHS = ["/api/ai/improve"];
 
 export const PROVIDER_LABELS = {
-  openai:      "GPT-4.1",
-  anthropic:   "Claude",
-  xai:         "Grok",
-  gemini:      "Gemini",
-  llama:       "Llama (free)",
-  deepseek:    "DeepSeek (free)",
-  gemini_free: "Gemini (free)",
-  mistral:     "Mistral (free)"
+  gemini:     "Gemini",
+  groq:       "Groq",
+  cerebras:   "Cerebras",
+  together:   "Together",
+  fireworks:  "Fireworks",
+  openrouter: "OpenRouter"
 };
 
 // ─── Tiny event bus ──────────────────────────────────────────────────────────
@@ -82,7 +80,7 @@ export function markProvidersExhausted(providers) {
   try {
     const raw = window.localStorage.getItem(EXHAUSTED_KEY);
     const map = raw ? JSON.parse(raw) : {};
-    const expiresAt = Date.now() + 4 * 60 * 60 * 1000;
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
     providers.forEach((p) => { map[p] = expiresAt; });
     // Prune expired
     const now = Date.now();

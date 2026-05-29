@@ -3,12 +3,8 @@
 // Merges three sources of truth:
 //   1. Server-polled status from GET /api/ai/model-status (every 3 min)
 //   2. Client-tracked exhausted providers (from X-Exhausted-Providers headers,
-//      written by aiFetch.jsx → localStorage EXHAUSTED_KEY with 4-hour TTL)
+//      written by aiFetch.jsx → localStorage EXHAUSTED_KEY with 24-hour TTL)
 //   3. Manual user overrides (MANUAL_OFF_KEY localStorage, indefinite)
-//
-// Non-React helpers (markProvidersExhausted, getLocallyExhaustedProviders,
-// getManuallyDisabledProviders, setManuallyDisabled) live in aiFetch.jsx to
-// avoid a circular import — aiFetch ← modelStatus ← aiFetch.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -18,36 +14,24 @@ import {
   setManuallyDisabled
 } from "./aiFetch";
 
-const SERVER_CACHE_KEY  = "nonfiction-ai-server-status";
-const POLL_INTERVAL_MS  = 3 * 60 * 1000;  // poll every 3 minutes
+const SERVER_CACHE_KEY = "nonfiction-ai-server-status";
+const POLL_INTERVAL_MS = 3 * 60 * 1000;
 
-// ─── Static provider metadata (matches aiRouter.ts) ──────────────────────────
+// ─── Static provider metadata (mirrors aiRouter.ts PROVIDERS array) ───────────
 
 export const PROVIDER_DEFS = {
-  gemini:      { label: "Gemini 2.5 Flash",    model: "google/gemini-2.5-flash",                         tier: "paid",  order: 1 },
-  openai:      { label: "GPT-4.1 Mini",        model: "openai/gpt-4.1-mini",                              tier: "paid",  order: 2 },
-  anthropic:   { label: "Claude 3.7 Sonnet",   model: "anthropic/claude-3.7-sonnet",                      tier: "paid",  order: 7 },
-  xai:         { label: "Grok Mini",           model: "x-ai/grok-3-mini-beta",                            tier: "paid",  order: 8 },
-  deepseek:    { label: "DeepSeek (free)",     model: "deepseek/deepseek-chat-v3-0324:free",              tier: "free",  order: 3 },
-  llama:       { label: "Llama 3.3 (free)",    model: "meta-llama/llama-3.3-70b-instruct:free",          tier: "free",  order: 4 },
-  gemini_free: { label: "Gemini Flash (free)", model: "google/gemini-2.0-flash-exp:free",                tier: "free",  order: 5 },
-  mistral:     { label: "Mistral (free)",      model: "mistralai/mistral-small-3.1-24b-instruct:free",   tier: "free",  order: 6 }
+  gemini:     { label: "Gemini 2.5 Flash",      model: "gemini-2.5-flash",                               order: 1 },
+  groq:       { label: "Groq (Qwen)",            model: "qwen-qwq-32b",                                   order: 2 },
+  cerebras:   { label: "Cerebras (Llama)",       model: "llama-3.3-70b",                                  order: 3 },
+  together:   { label: "Together (DeepSeek)",    model: "deepseek-ai/DeepSeek-V3",                        order: 4 },
+  fireworks:  { label: "Fireworks (Llama)",      model: "llama-v3p3-70b-instruct",                        order: 5 },
+  openrouter: { label: "OpenRouter (fallback)",  model: "deepseek/deepseek-chat-v3-0324:free",            order: 6 }
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_DEFS);
 
 // ─── Status merge logic ───────────────────────────────────────────────────────
 
-/**
- * Builds a merged status record from:
- *   serverProviders  — raw payload from GET /api/ai/model-status
- *   manualDisabledSet — Set of provider IDs the user has manually toggled off
- *
- * Each entry has:
- *   status: 'available' | 'exhausted' | 'rate_limited' | 'offline' | 'manually_disabled'
- *   disabledUntil: timestamp | null
- *   inFallback: boolean
- */
 function buildMergedStatus(serverProviders, manualDisabledSet) {
   const now            = Date.now();
   const localExhausted = new Set(getLocallyExhaustedProviders());
@@ -61,21 +45,24 @@ function buildMergedStatus(serverProviders, manualDisabledSet) {
     const isLocalExhausted = localExhausted.has(id);
     const isServerDisabled = srv.disabled && srv.disabledUntil && srv.disabledUntil > now;
     const serverReason     = srv.reason || null;
+    const hasKey           = srv.hasKey !== false;  // default true if server hasn't responded yet
 
-    let status       = "available";
+    let status        = "available";
     let disabledUntil = null;
 
-    if (isManual) {
+    if (!hasKey) {
+      status = "no_key";
+    } else if (isManual) {
       status = "manually_disabled";
     } else if (isServerDisabled || isLocalExhausted) {
       if (serverReason === "credit" || (isLocalExhausted && serverReason !== "hard" && serverReason !== "rate_limit")) {
-        status       = "exhausted";
+        status        = "exhausted";
         disabledUntil = srv.disabledUntil || null;
       } else if (serverReason === "hard") {
-        status       = "offline";
+        status        = "offline";
         disabledUntil = srv.disabledUntil || null;
       } else {
-        status       = "rate_limited";
+        status        = "rate_limited";
         disabledUntil = srv.disabledUntil || null;
       }
     }
@@ -84,7 +71,6 @@ function buildMergedStatus(serverProviders, manualDisabledSet) {
       id,
       label:        def.label,
       model:        def.model,
-      tier:         def.tier,
       order:        def.order,
       status,
       disabledUntil,
@@ -149,8 +135,8 @@ export function useModelStatus() {
 
   function toggleManualDisabled(providerId) {
     const currentStatus = buildMergedStatus(serverProviders, manualDisabled)[providerId]?.status;
-    // Never allow re-enabling exhausted / offline models — they reset automatically
-    if (currentStatus === "exhausted" || currentStatus === "offline") return;
+    // Never allow toggling exhausted / offline / unconfigured models
+    if (["exhausted", "offline", "no_key"].includes(currentStatus)) return;
 
     setManualDisabledState((prev) => {
       const next = new Set(prev);

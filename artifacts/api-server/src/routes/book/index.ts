@@ -20,23 +20,52 @@ function countAudienceTitles(titles: string[]): number {
   return titles.filter((t) => AUDIENCE_REGEX.test(t)).length;
 }
 
+/** Extract titles from a potentially-truncated AI response. */
+function parseTitlesFromText(text: string): { titles: string[]; enhanced: any[] } {
+  // 1. Try clean JSON parse first
+  try {
+    const data = extractJSON(text);
+    const titles = Array.isArray(data.titles)
+      ? data.titles.map((t: any) => String(t || "").trim()).filter(Boolean).slice(0, 12)
+      : typeof data.title === "string" ? [data.title.trim()] : [];
+    const enhanced = Array.isArray(data.enhanced)
+      ? data.enhanced.filter((e: any) => e?.title).slice(0, 12)
+      : [];
+    if (titles.length > 0) return { titles, enhanced };
+  } catch { /* fall through */ }
+
+  // 2. Regex fallback — extract completed quoted strings from a "titles": [...] array
+  //    Works even when the JSON is truncated mid-element
+  const arrayMatch = text.match(/"titles"\s*:\s*\[([^\]]*)/s);
+  if (arrayMatch) {
+    const arrayBody = arrayMatch[1];
+    const titleMatches = [...arrayBody.matchAll(/"([^"\\](?:[^"\\]|\\.)*)"/g)];
+    const titles = titleMatches
+      .map((m) => m[1].replace(/\\"/g, '"').trim())
+      .filter(Boolean)
+      .slice(0, 12);
+    if (titles.length > 0) return { titles, enhanced: [] };
+  }
+
+  // 3. Last resort — pull any quoted string longer than 10 chars
+  const allQuoted = [...text.matchAll(/"([A-Z][^"]{9,80})"/g)];
+  const titles = allQuoted
+    .map((m) => m[1].trim())
+    .filter((t) => !t.includes("{") && !t.includes(":"))
+    .slice(0, 12);
+  return { titles, enhanced: [] };
+}
+
 async function runTitleGeneration(
   params: any,
-  opts: { lowCredit?: boolean; disabledProviders?: string[] }
+  opts: { lowCredit?: boolean; disabledProviders?: string[]; maxTokens?: number }
 ): Promise<{ titles: string[]; enhanced: any[]; usedProvider: ProviderId }> {
   const { text, usedProvider } = await generateContentFast(
     contextualBookTitlesPrompt(params),
     systemPrompt(),
-    opts
+    { ...opts, maxTokens: opts.maxTokens ?? 1200 }
   );
-  const data = extractJSON(text);
-  let titles = data.titles;
-  if (!Array.isArray(titles))
-    titles = typeof data.title === "string" ? [data.title] : [];
-  titles = titles.map((t: any) => String(t || "").trim()).filter(Boolean).slice(0, 12);
-  const enhanced: any[] = Array.isArray(data.enhanced)
-    ? data.enhanced.filter((e: any) => e?.title).slice(0, 12)
-    : [];
+  const { titles, enhanced } = parseTitlesFromText(text);
   return { titles, enhanced, usedProvider };
 }
 
@@ -66,7 +95,7 @@ router.post("/contextual-titles", async (req, res) => {
 
     if (mode) {
       const prompt = titleCardsPrompt({ research, competitorSummaries, intelligence, mode });
-      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), opts);
+      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 1200 });
       const data = extractJSON(text);
       const cards: any[] = Array.isArray(data.cards)
         ? data.cards.filter((c: any) => c?.title).slice(0, 6)

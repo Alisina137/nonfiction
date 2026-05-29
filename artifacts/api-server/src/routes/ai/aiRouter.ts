@@ -1,58 +1,106 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// OpenRouter AI Router — credit-aware multi-model orchestration
+// Multi-Provider AI Router — 6 independent providers, independent free quotas
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// PROVIDER CHAINS
-//   PAID (normal mode):  gemini → openai → anthropic → xai
-//   FREE (lowCredit):    deepseek → llama → gemini_free → mistral
+// PROVIDER CHAIN (both normal and low-cost mode — same order, same providers):
+//   1. Gemini     — Google AI Studio (GEMINI_API_KEY)
+//   2. Groq       — Groq Cloud (GROQ_API_KEY)
+//   3. Cerebras   — Cerebras Cloud (CEREBRAS_API_KEY)
+//   4. Together   — Together AI (TOGETHER_API_KEY)
+//   5. Fireworks  — Fireworks AI (FIREWORKS_API_KEY)
+//   6. OpenRouter — last-resort fallback (OPENROUTER_API_KEY)
 //
-//   Normal mode NEVER falls through to free models.
-//   Low-cost mode NEVER uses paid models.
+// DIFFERENCES BETWEEN MODES:
+//   Normal mode:   standard token limits
+//   Low-cost mode: capped token limits (900 max)
 //
-// DISABLE TRACKING
-//   credit exhaustion (402/insufficient credits): 4 hours
-//   hard unavailable (404/no endpoints):          60 minutes
-//   rate limited (429/quota):                     10 minutes
+// QUOTA TRACKING:
+//   On 429 / quota / rate-limit / daily-limit errors:
+//     → provider disabled for 24 hours (independent per-provider cooldown)
+//   On hard unavailable (404 / no endpoint):
+//     → provider disabled for 60 minutes
+//   On transient rate limit (short-lived):
+//     → provider disabled for 10 minutes
 //
-// CLIENT OVERRIDE
-//   Callers can pass disabledProviders: string[] to skip specific providers
-//   (used by the frontend to honour manual user overrides + client-tracked
-//   credit exhaustion).
-//
-// STATUS EXPORT
-//   getModelStatus() returns a snapshot of all providers for the status API.
+// CLIENT OVERRIDE:
+//   disabledProviders: string[] — skip these in the chain (user manual toggle)
 //
 // ═══════════════════════════════════════════════════════════════════════════
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+// ─── Provider configuration ───────────────────────────────────────────────
 
-export const MODEL_BY_PROVIDER = {
-  gemini:      "google/gemini-2.5-flash",
-  openai:      "openai/gpt-4.1-mini",
-  deepseek:    "deepseek/deepseek-chat-v3-0324:free",
-  llama:       "meta-llama/llama-3.3-70b-instruct:free",
-  gemini_free: "google/gemini-2.0-flash-exp:free",
-  mistral:     "mistralai/mistral-small-3.1-24b-instruct:free",
-  anthropic:   "anthropic/claude-3.7-sonnet",
-  xai:         "x-ai/grok-3-mini-beta"
-} as const;
+export type ProviderId = "gemini" | "groq" | "cerebras" | "together" | "fireworks" | "openrouter";
 
-export type ProviderId = keyof typeof MODEL_BY_PROVIDER;
+export interface ProviderConfig {
+  id:      ProviderId;
+  label:   string;
+  model:   string;
+  apiUrl:  string;
+  apiKey:  () => string | undefined;
+  order:   number;
+}
 
-export const PROVIDER_META: Record<ProviderId, { label: string; tier: "paid" | "free"; order: number }> = {
-  gemini:      { label: "Gemini 2.5 Flash",   tier: "paid", order: 1 },
-  openai:      { label: "GPT-4.1 Mini",       tier: "paid", order: 2 },
-  anthropic:   { label: "Claude 3.7 Sonnet",  tier: "paid", order: 7 },
-  xai:         { label: "Grok Mini",          tier: "paid", order: 8 },
-  deepseek:    { label: "DeepSeek (free)",    tier: "free", order: 3 },
-  llama:       { label: "Llama 3.3 (free)",   tier: "free", order: 4 },
-  gemini_free: { label: "Gemini Flash (free)","tier": "free", order: 5 },
-  mistral:     { label: "Mistral (free)",     tier: "free", order: 6 }
-};
+export const PROVIDERS: ProviderConfig[] = [
+  {
+    id:     "gemini",
+    label:  "Gemini 2.5 Flash",
+    model:  "gemini-2.5-flash",
+    apiUrl: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    apiKey: () => process.env.GEMINI_API_KEY,
+    order:  1
+  },
+  {
+    id:     "groq",
+    label:  "Groq (Qwen)",
+    model:  "qwen-qwq-32b",
+    apiUrl: "https://api.groq.com/openai/v1/chat/completions",
+    apiKey: () => process.env.GROQ_API_KEY,
+    order:  2
+  },
+  {
+    id:     "cerebras",
+    label:  "Cerebras (Llama)",
+    model:  "llama-3.3-70b",
+    apiUrl: "https://api.cerebras.ai/v1/chat/completions",
+    apiKey: () => process.env.CEREBRAS_API_KEY,
+    order:  3
+  },
+  {
+    id:     "together",
+    label:  "Together (DeepSeek)",
+    model:  "deepseek-ai/DeepSeek-V3",
+    apiUrl: "https://api.together.xyz/v1/chat/completions",
+    apiKey: () => process.env.TOGETHER_API_KEY,
+    order:  4
+  },
+  {
+    id:     "fireworks",
+    label:  "Fireworks (Llama)",
+    model:  "accounts/fireworks/models/llama-v3p3-70b-instruct",
+    apiUrl: "https://api.fireworks.ai/inference/v1/chat/completions",
+    apiKey: () => process.env.FIREWORKS_API_KEY,
+    order:  5
+  },
+  {
+    id:     "openrouter",
+    label:  "OpenRouter (fallback)",
+    model:  "deepseek/deepseek-chat-v3-0324:free",
+    apiUrl: "https://openrouter.ai/api/v1/chat/completions",
+    apiKey: () => process.env.OPENROUTER_API_KEY,
+    order:  6
+  }
+];
 
-// ─── Token budgets ────────────────────────────────────────────────────────
+export const PROVIDER_IDS = PROVIDERS.map((p) => p.id);
 
-const MAX_TOKENS_CAP = 1800;
+const PROVIDER_BY_ID = Object.fromEntries(PROVIDERS.map((p) => [p.id, p])) as Record<ProviderId, ProviderConfig>;
+
+// Model lookup for external status consumers
+export const MODEL_BY_PROVIDER = Object.fromEntries(
+  PROVIDERS.map((p) => [p.id, p.model])
+) as Record<ProviderId, string>;
+
+// ─── Token budgets ─────────────────────────────────────────────────────────
 
 export const TOKEN_LIMITS: Record<string, number> = {
   title:               200,
@@ -69,19 +117,13 @@ export const TOKEN_LIMITS: Record<string, number> = {
   default:             800
 };
 
-const LOW_CREDIT_TOKEN_CAP = 900;
+const MAX_TOKENS_CAP       = 4096;
+const LOW_COST_TOKEN_CAP   = 1800;
+const MAX_INPUT_CHARS      = 12_000;
+const CHARS_PER_TOKEN      = 4;
 
 function capTokens(n: number): number {
   return Math.min(n, MAX_TOKENS_CAP);
-}
-
-// ─── Token estimation ─────────────────────────────────────────────────────
-
-const CHARS_PER_TOKEN = 4;
-const MAX_INPUT_CHARS  = 12_000;
-
-function estimateTokens(text: string): number {
-  return Math.ceil(text.length / CHARS_PER_TOKEN);
 }
 
 function ensureTokenBudget(
@@ -92,208 +134,268 @@ function ensureTokenBudget(
     prompt.length > MAX_INPUT_CHARS
       ? prompt.slice(0, MAX_INPUT_CHARS) + "\n\n[Context truncated to fit token budget]"
       : prompt;
-  const inputEst    = estimateTokens(truncated);
-  const totalBudget = 4000;
-  const safeOutput  = Math.max(300, totalBudget - inputEst);
+  const inputEst    = Math.ceil(truncated.length / CHARS_PER_TOKEN);
+  const totalBudget = 8000;  // generous budget — all providers support this
+  const safeOutput  = Math.max(512, totalBudget - inputEst);
   const finalOutput = Math.min(maxOutputTokens, safeOutput);
   return { prompt: truncated, maxTokens: capTokens(finalOutput) };
 }
 
-// ─── Provider disable tracking ────────────────────────────────────────────
+// ─── Provider disable tracking (server-side) ──────────────────────────────
 
 export type DisableReason = "credit" | "hard" | "rate_limit";
 
 const DISABLE_DURATION_MS: Record<DisableReason, number> = {
-  credit:     4 * 60 * 60 * 1000,   // 4 hours — daily credit reset
-  hard:       60 * 60 * 1000,       // 60 min — model offline / not found
-  rate_limit: 10 * 60 * 1000        // 10 min — temporary rate limiting
+  credit:     24 * 60 * 60 * 1000,  // 24 hours — daily quota reset
+  hard:       60 * 60 * 1000,       // 60 minutes — model offline
+  rate_limit: 10 * 60 * 1000        // 10 minutes — transient rate limit
 };
 
 const providerDisabledUntil    = new Map<ProviderId, number>();
 const providerDisableReasonMap = new Map<ProviderId, DisableReason>();
 
-function isProviderDisabled(p: ProviderId): boolean {
-  return Date.now() < (providerDisabledUntil.get(p) ?? 0);
+function isProviderDisabled(id: ProviderId): boolean {
+  return Date.now() < (providerDisabledUntil.get(id) ?? 0);
 }
 
-function disableProvider(p: ProviderId, reason: string, type: DisableReason = "rate_limit") {
+function disableProvider(id: ProviderId, reason: string, type: DisableReason) {
   const duration = DISABLE_DURATION_MS[type];
-  const until = Date.now() + duration;
-  providerDisabledUntil.set(p, until);
-  providerDisableReasonMap.set(p, type);
-  const tag = type === "credit" ? "4h (credit)" : type === "hard" ? "60min (offline)" : "10min (rate)";
-  console.log("DISABLING PROVIDER:", p);
-  console.log("REASON:", reason.slice(0, 200));
-  console.log("TYPE:", type, `→ disabled for ${tag}`);
+  const until    = Date.now() + duration;
+  providerDisabledUntil.set(id, until);
+  providerDisableReasonMap.set(id, type);
+  const tag = type === "credit"
+    ? "24h (daily quota)"
+    : type === "hard"
+      ? "60min (offline)"
+      : "10min (rate limit)";
+  console.log(`PROVIDER FAILED`);
+  console.log(`Provider: ${id}`);
+  console.log(`Reason: ${reason.slice(0, 200)}`);
+  console.log(`Disabled for: ${tag}`);
 }
 
-/** Clears all server-side disable state (used by POST /api/ai/reset-providers). */
+/** Clears all server-side disable state. */
 export function resetProviders(): void {
   providerDisabledUntil.clear();
   providerDisableReasonMap.clear();
   console.log("[AI] All provider disable states cleared by reset-providers call.");
 }
 
-// ─── Error classification ─────────────────────────────────────────────────
+// ─── Error classification ──────────────────────────────────────────────────
 
-function isCreditsExhausted(msg: string): boolean {
-  return /insufficient.?credit|can.?only.?afford|requires.?more.?credit|out.?of.?credit|daily.?limit|credit.?exhausted|402/i.test(msg || "");
+function isQuotaExhausted(msg: string, status?: number): boolean {
+  if (status === 429) return true;
+  return /quota.?exceed|daily.?limit|rate.?limit.?reached|insufficient.?credit|out.?of.?credit|credit.?exhaust|free.?tier.?exhaust|daily.?quota|resource.?exhaust|RESOURCE_EXHAUSTED/i.test(msg || "");
+}
+
+function isHardUnavailable(msg: string, status?: number): boolean {
+  if (status === 404) return true;
+  return /no.?endpoint|endpoint.?not.?found|temporarily.?disabled|model.*unavailable|doesn.*exist|not.*available/i.test(msg || "");
+}
+
+function isTransientError(msg: string, status?: number): boolean {
+  if (status === 503 || status === 502 || status === 500) return true;
+  return /overload|temporarily|timeout|timed.?out|service.?unavailable/i.test(msg || "");
 }
 
 export function isLimitOrUnavailable(msg: string): boolean {
-  return /rate.?limit|quota|daily.?limit|exceeded|insufficient|429|503|overload|unavailable|temporarily|timeout|timed.?out/i.test(msg || "");
+  return isQuotaExhausted(msg) || isHardUnavailable(msg) || isTransientError(msg);
 }
 
-function isHardUnavailable(msg: string): boolean {
-  return /no.?endpoint|endpoint.?not.?found|temporarily.?disabled|model.*unavailable|not.*available|doesn.*exist|404/i.test(msg || "");
-}
-
-// ─── Model status export ──────────────────────────────────────────────────
+// ─── Model status export ───────────────────────────────────────────────────
 
 export interface ProviderStatus {
   model:         string;
   label:         string;
-  tier:          "paid" | "free";
   order:         number;
   disabled:      boolean;
   disabledUntil: number | null;
   reason:        DisableReason | null;
+  hasKey:        boolean;
 }
 
-/** Returns a live snapshot of all provider states for the status API. */
 export function getModelStatus(): Record<ProviderId, ProviderStatus> {
-  const now = Date.now();
+  const now    = Date.now();
   const result = {} as Record<ProviderId, ProviderStatus>;
-  for (const [provider, model] of Object.entries(MODEL_BY_PROVIDER) as [ProviderId, string][]) {
-    const until    = providerDisabledUntil.get(provider)    ?? 0;
-    const reason   = providerDisableReasonMap.get(provider) ?? null;
+  for (const p of PROVIDERS) {
+    const until    = providerDisabledUntil.get(p.id)    ?? 0;
+    const reason   = providerDisableReasonMap.get(p.id) ?? null;
     const disabled = now < until;
-    const meta     = PROVIDER_META[provider];
-    result[provider] = {
-      model,
-      label:         meta.label,
-      tier:          meta.tier,
-      order:         meta.order,
+    result[p.id] = {
+      model:         p.model,
+      label:         p.label,
+      order:         p.order,
       disabled,
       disabledUntil: disabled ? until : null,
-      reason:        disabled ? reason : null
+      reason:        disabled ? reason : null,
+      hasKey:        Boolean(p.apiKey())
     };
   }
   return result;
 }
 
-// ─── Free model rate gate ─────────────────────────────────────────────────
+// ─── Per-provider callers ──────────────────────────────────────────────────
 
-const FREE_MODEL_MIN_GAP_MS = 7000;
-export const FREE_PROVIDERS = new Set<ProviderId>(["deepseek", "llama", "gemini_free", "mistral"]);
-let freeLastCallTime = 0;
+const MAX_RETRIES      = 2;
+const RETRY_DELAYS_MS  = [2000, 5000];
 
-async function waitForFreeSlot(provider: ProviderId): Promise<void> {
-  if (!FREE_PROVIDERS.has(provider)) return;
-  const elapsed = Date.now() - freeLastCallTime;
-  if (elapsed < FREE_MODEL_MIN_GAP_MS && freeLastCallTime > 0) {
-    const wait = FREE_MODEL_MIN_GAP_MS - elapsed;
-    console.log(`[AI] Free model rate gate (${provider}) — waiting ${wait}ms`);
-    await new Promise((r) => setTimeout(r, wait));
-  }
-  freeLastCallTime = Date.now();
-}
+interface CallResult { text: string; status: number }
 
-// ─── Core OpenRouter request ──────────────────────────────────────────────
-
-const MAX_RETRIES = 3;
-const RETRY_DELAYS_MS = [2000, 5000, 10000];
-
-async function callOpenRouter(
-  provider: ProviderId,
+/** Gemini native REST API (different shape from OpenAI-compatible) */
+async function callGemini(
   prompt: string,
   system: string | undefined,
-  temperature = 0.7,
-  maxTokens = MAX_TOKENS_CAP
-): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
+  maxTokens: number
+): Promise<CallResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw Object.assign(new Error("GEMINI_API_KEY is not configured"), { skipProvider: true });
 
-  const budgeted       = ensureTokenBudget(prompt, maxTokens);
-  const finalPrompt    = budgeted.prompt;
-  const finalMaxTokens = budgeted.maxTokens;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-  const model    = MODEL_BY_PROVIDER[provider];
+  const contents: any[] = [];
+  if (system) {
+    contents.push({ role: "user", parts: [{ text: `[System]: ${system}` }] });
+    contents.push({ role: "model", parts: [{ text: "Understood." }] });
+  }
+  contents.push({ role: "user", parts: [{ text: prompt }] });
+
+  const body = {
+    contents,
+    generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 }
+  };
+
+  const res     = await fetch(url, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(body)
+  });
+  const rawText = await res.text();
+
+  if (!res.ok) {
+    let errMsg = rawText.slice(0, 400);
+    try { const d = JSON.parse(rawText); errMsg = d?.error?.message || errMsg; } catch {}
+    throw Object.assign(new Error(errMsg), { httpStatus: res.status });
+  }
+
+  let data: any = {};
+  try { data = JSON.parse(rawText); } catch {}
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  if (!text) throw new Error("Gemini returned empty response");
+  return { text, status: res.status };
+}
+
+/** OpenAI-compatible caller (Groq, Cerebras, Together, Fireworks, OpenRouter) */
+async function callOpenAICompat(
+  provider: ProviderConfig,
+  prompt: string,
+  system: string | undefined,
+  maxTokens: number
+): Promise<CallResult> {
+  const apiKey = provider.apiKey();
+  if (!apiKey) throw Object.assign(
+    new Error(`${provider.id.toUpperCase()}_API_KEY is not configured`),
+    { skipProvider: true }
+  );
+
   const messages: Array<{ role: string; content: string }> = [];
   if (system) messages.push({ role: "system", content: system });
-  messages.push({ role: "user", content: finalPrompt });
+  messages.push({ role: "user", content: prompt });
 
-  const body = { model, messages, temperature, max_tokens: finalMaxTokens, stream: false };
+  const extraHeaders: Record<string, string> = {};
+  if (provider.id === "openrouter") {
+    extraHeaders["HTTP-Referer"] = "https://nonfiction-studio.replit.app";
+    extraHeaders["X-Title"]      = "Nonfiction AI Studio";
+  }
+
+  const res = await fetch(provider.apiUrl, {
+    method:  "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization:  `Bearer ${apiKey}`,
+      ...extraHeaders
+    },
+    body: JSON.stringify({ model: provider.model, messages, temperature: 0.7, max_tokens: maxTokens, stream: false })
+  });
+
+  const rawText = await res.text();
+  if (!res.ok) {
+    let errMsg = rawText.slice(0, 400);
+    try {
+      const d = JSON.parse(rawText);
+      errMsg = d?.error?.message || (typeof d?.error === "string" ? d.error : errMsg);
+    } catch {}
+    throw Object.assign(new Error(errMsg), { httpStatus: res.status });
+  }
+
+  let data: any = {};
+  try { data = JSON.parse(rawText); } catch {}
+  const text = data?.choices?.[0]?.message?.content || "";
+  if (!text) throw new Error(`${provider.id} returned empty response`);
+  return { text, status: res.status };
+}
+
+/** Dispatch to the correct caller for a given provider */
+async function callProvider(
+  provider: ProviderConfig,
+  prompt: string,
+  system: string | undefined,
+  maxTokens: number
+): Promise<string> {
+  const { prompt: finalPrompt, maxTokens: finalMax } = ensureTokenBudget(prompt, maxTokens);
+  const startMs = Date.now();
 
   let lastError = "";
-
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = RETRY_DELAYS_MS[attempt - 1] ?? 4000;
-      console.log(`[AI] Retry ${attempt}/${MAX_RETRIES} for ${model} in ${delay}ms…`);
+      console.log(`[AI] Retry ${attempt}/${MAX_RETRIES} for ${provider.id} in ${delay}ms…`);
       await new Promise((r) => setTimeout(r, delay));
     }
 
-    const startMs = Date.now();
-    const res = await fetch(OPENROUTER_URL, {
-      method:  "POST",
-      headers: {
-        "Content-Type":  "application/json",
-        Accept:          "application/json",
-        Authorization:   `Bearer ${apiKey}`,
-        "HTTP-Referer":  "https://nonfiction-studio.replit.app",
-        "X-Title":       "Nonfiction AI Studio"
-      },
-      body: JSON.stringify(body)
-    });
+    try {
+      let result: CallResult;
+      if (provider.id === "gemini") {
+        result = await callGemini(finalPrompt, system, finalMax);
+      } else {
+        result = await callOpenAICompat(provider, finalPrompt, system, finalMax);
+      }
 
-    const rawText = await res.text();
-    console.log(`OPENROUTER HTTP STATUS: ${res.status} — model: ${model}`);
-    if (!res.ok) console.log("OPENROUTER ERROR BODY:", rawText.slice(0, 500));
+      const elapsed = Date.now() - startMs;
+      console.log(`PROVIDER SUCCESS`);
+      console.log(`Provider: ${provider.id}`);
+      console.log(`GenerationTimeMs: ${elapsed}`);
+      return result.text;
 
-    let data: any = {};
-    try { data = rawText ? JSON.parse(rawText) : {}; }
-    catch { data = { _raw: rawText }; }
+    } catch (e: any) {
+      if (e?.skipProvider) throw e;  // misconfigured key — propagate immediately
+      const httpStatus: number | undefined = e?.httpStatus;
+      const msg = e?.message || String(e);
+      lastError = msg;
 
-    const elapsed = Date.now() - startMs;
+      console.log(`HTTP STATUS: ${httpStatus ?? "unknown"} — ${provider.id}`);
+      console.log(`ERROR BODY: ${msg.slice(0, 300)}`);
 
-    if (!res.ok) {
-      const detail: string =
-        data?.error?.message ||
-        (typeof data?.error === "string" ? data.error : "") ||
-        data?._raw || `HTTP ${res.status}`;
+      // Hard errors — no point retrying
+      if (isHardUnavailable(msg, httpStatus) || isQuotaExhausted(msg, httpStatus)) {
+        throw Object.assign(e, { httpStatus });
+      }
 
-      lastError = detail;
+      // Transient — retry if attempts left
+      if (attempt < MAX_RETRIES && isTransientError(msg, httpStatus)) continue;
 
-      console.error("FAILED:", provider);
-      console.error("ERROR:", detail.slice(0, 300));
-      console.error("HTTP STATUS:", res.status, "| attempt:", attempt, "| elapsed:", elapsed + "ms");
-
-      if (isHardUnavailable(detail)) throw new Error(`[${provider}] ${detail}`);
-      if (attempt < MAX_RETRIES && isLimitOrUnavailable(detail + ` ${res.status}`)) continue;
-      throw new Error(`[${provider}] ${detail}`);
+      throw Object.assign(e, { httpStatus });
     }
-
-    const text: string = data?.choices?.[0]?.message?.content || "";
-    if (!text) {
-      lastError = "Empty response";
-      if (attempt < MAX_RETRIES) continue;
-      throw new Error(`[${provider}] ${model} returned empty response`);
-    }
-
-    console.log("SUCCESS:", provider, `(${model}) in ${elapsed}ms`);
-    return text;
   }
 
-  throw new Error(`[${provider}] ${model} failed after ${MAX_RETRIES} retries: ${lastError}`);
+  throw new Error(`[${provider.id}] failed after ${MAX_RETRIES} retries: ${lastError}`);
 }
 
-// ─── Chain runner ─────────────────────────────────────────────────────────
+// ─── Chain runner ──────────────────────────────────────────────────────────
 
 export interface GenOptions {
   maxTokens?:         number;
   lowCredit?:         boolean;
-  disabledProviders?: string[];  // client-specified providers to skip
+  disabledProviders?: string[];
   onFallback?:        (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
   onSuccess?:         (provider: ProviderId) => void;
 }
@@ -301,120 +403,105 @@ export interface GenOptions {
 export interface GenResult {
   text:               string;
   usedProvider:       ProviderId;
-  exhaustedProviders: ProviderId[];  // providers that hit credit limits during this call
+  exhaustedProviders: ProviderId[];
 }
 
 async function runChain(
   prompt: string,
   system: string | undefined,
-  chain: ProviderId[],
   opts: GenOptions
 ): Promise<GenResult> {
-  const attempts: Array<{ provider: ProviderId; status: string; error: string }> = [];
+  const clientDisabled   = new Set(opts.disabledProviders ?? []);
   const exhaustedProviders: ProviderId[] = [];
-  const clientDisabled = new Set(opts.disabledProviders ?? []);
+  const maxTokens = opts.lowCredit
+    ? Math.min(opts.maxTokens ?? TOKEN_LIMITS.default, LOW_COST_TOKEN_CAP)
+    : (opts.maxTokens ?? TOKEN_LIMITS.default);
+
+  // Build eligible chain — only providers with configured keys
+  const chain = PROVIDERS.filter((p) => Boolean(p.apiKey()));
 
   console.log("================================");
   console.log("ROUTER START");
   console.log("LOW COST MODE:", opts.lowCredit ?? false);
   console.log("CLIENT DISABLED:", [...clientDisabled]);
-  console.log("CHAIN:", chain);
+  console.log("CHAIN:", chain.map((p) => p.id));
   console.log("================================");
+
+  const attempts: Array<{ id: ProviderId; error: string }> = [];
+  let lastSuccessfulId: ProviderId | null = null;
 
   for (const provider of chain) {
 
     // ── Client-side disabled check ────────────────────────────────────────
-    if (clientDisabled.has(provider)) {
-      console.log(`SKIPPING ${provider} — client disabled`);
-      attempts.push({ provider, status: "client_disabled", error: "disabled by client" });
+    if (clientDisabled.has(provider.id)) {
+      console.log(`SKIPPING ${provider.id} — disabled by client`);
       continue;
     }
 
-    // ── Server-side offline check ─────────────────────────────────────────
-    if (isProviderDisabled(provider)) {
-      const until    = providerDisabledUntil.get(provider) ?? 0;
+    // ── Server-side cooldown check ────────────────────────────────────────
+    if (isProviderDisabled(provider.id)) {
+      const until    = providerDisabledUntil.get(provider.id) ?? 0;
       const minsLeft = Math.ceil((until - Date.now()) / 60000);
-      const reason   = `offline for ~${minsLeft} more min`;
-      console.log(`SKIPPING ${provider} — ${reason}`);
-      attempts.push({ provider, status: "offline", error: reason });
+      console.log(`SKIPPING ${provider.id} — in cooldown for ~${minsLeft} more min`);
       continue;
     }
 
-    // ── Free model rate gate ──────────────────────────────────────────────
-    await waitForFreeSlot(provider);
-
-    console.log("TRYING PROVIDER:", provider);
-    console.log("MODEL:", MODEL_BY_PROVIDER[provider]);
+    console.log(`TRYING PROVIDER: ${provider.id}`);
+    console.log(`MODEL: ${provider.model}`);
 
     try {
-      const text = await callOpenRouter(provider, prompt, system, 0.7, opts.maxTokens ?? TOKEN_LIMITS.default);
-      opts.onSuccess?.(provider);
+      const text = await callProvider(provider, prompt, system, maxTokens);
 
-      const prevFailed = attempts.filter((a) => a.status === "failed");
-      if (prevFailed.length > 0) {
-        opts.onFallback?.({ from: prevFailed[prevFailed.length - 1].provider, to: provider, reason: "fallback" });
+      // Notify on fallback
+      if (attempts.length > 0) {
+        const prevId = attempts[attempts.length - 1].id;
+        opts.onFallback?.({ from: prevId, to: provider.id, reason: "fallback" });
       }
+      opts.onSuccess?.(provider.id);
 
-      return { text, usedProvider: provider, exhaustedProviders };
+      return { text, usedProvider: provider.id, exhaustedProviders };
 
     } catch (e: any) {
-      const msg = e?.message || String(e);
+      const msg        = e?.message || String(e);
+      const httpStatus = e?.httpStatus as number | undefined;
 
-      // Classify and disable with appropriate duration
-      if (isCreditsExhausted(msg)) {
-        disableProvider(provider, msg, "credit");
-        exhaustedProviders.push(provider);
-      } else if (isHardUnavailable(msg)) {
-        disableProvider(provider, msg, "hard");
-      } else if (isLimitOrUnavailable(msg)) {
-        disableProvider(provider, msg, "rate_limit");
-      } else {
-        // Unclassified failure — still log it
-        console.log("FAILED:", provider);
-        console.log("ERROR (unclassified):", msg.slice(0, 200));
+      if (e?.skipProvider) {
+        // Key not configured — skip silently
+        console.log(`SKIPPING ${provider.id} — key not configured`);
+        continue;
       }
 
-      const shortMsg = msg.replace(`[${provider}] `, "").slice(0, 100);
-      attempts.push({ provider, status: "failed", error: shortMsg });
+      if (isQuotaExhausted(msg, httpStatus)) {
+        disableProvider(provider.id, msg, "credit");
+        exhaustedProviders.push(provider.id);
+      } else if (isHardUnavailable(msg, httpStatus)) {
+        disableProvider(provider.id, msg, "hard");
+      } else if (isTransientError(msg, httpStatus)) {
+        disableProvider(provider.id, msg, "rate_limit");
+      } else {
+        console.log(`PROVIDER FAILED`);
+        console.log(`Provider: ${provider.id}`);
+        console.log(`Reason: ${msg.slice(0, 200)}`);
+      }
+
+      attempts.push({ id: provider.id, error: msg.slice(0, 100) });
     }
   }
 
-  // All providers in the chain exhausted
-  const onFreeChain = opts.lowCredit;
-  const hint = onFreeChain
-    ? "All free AI providers have exhausted their daily credits. Disable Low-cost mode to use paid providers, or wait a few minutes and try again."
-    : "All paid AI providers have exhausted their daily credits. Enable Low-cost mode to use free models, or add credits at openrouter.ai.";
-  throw new Error(`AI_EXHAUSTED:${attempts.filter((a) => a.status === "failed").length}:${hint}`);
+  const hint = opts.lowCredit
+    ? "All AI providers have exhausted their daily credits (low-cost mode). Wait for quotas to reset or disable Low-cost mode."
+    : "All AI providers have exhausted their daily credits. Try again later or enable Low-cost mode.";
+  throw new Error(`AI_EXHAUSTED:${attempts.length}:${hint}`);
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────
-
-// Normal mode: paid models only. Does NOT fall through to free.
-const PAID_CHAIN: ProviderId[] = ["gemini", "openai", "anthropic", "xai"];
-
-// Low-cost mode: free models only. Does NOT use paid models.
-const FREE_CHAIN: ProviderId[] = ["deepseek", "llama", "gemini_free", "mistral"];
-
-function resolveChainAndTokens(opts: GenOptions): { chain: ProviderId[]; resolvedOpts: GenOptions } {
-  if (opts.lowCredit) {
-    return {
-      chain: FREE_CHAIN,
-      resolvedOpts: {
-        ...opts,
-        maxTokens: Math.min(opts.maxTokens ?? TOKEN_LIMITS.default, LOW_CREDIT_TOKEN_CAP)
-      }
-    };
-  }
-  return { chain: PAID_CHAIN, resolvedOpts: opts };
-}
+// ─── Public API ────────────────────────────────────────────────────────────
 
 export async function generateContent(
   prompt: string,
   system?: string,
   opts: GenOptions = {}
 ): Promise<GenResult> {
-  const { chain, resolvedOpts } = resolveChainAndTokens(opts);
-  return runChain(prompt, system, chain, resolvedOpts);
+  return runChain(prompt, system, opts);
 }
 
 export async function generateContentFast(
@@ -422,11 +509,10 @@ export async function generateContentFast(
   system?: string,
   opts: GenOptions = {}
 ): Promise<GenResult> {
-  const { chain, resolvedOpts } = resolveChainAndTokens(opts);
-  return runChain(prompt, system, chain, resolvedOpts);
+  return runChain(prompt, system, opts);
 }
 
-// ─── JSON extraction + repair ─────────────────────────────────────────────
+// ─── JSON extraction + repair ──────────────────────────────────────────────
 
 function repairTruncatedJSON(raw: string): any {
   const s = raw.trim();

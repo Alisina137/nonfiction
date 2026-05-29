@@ -27,7 +27,8 @@ function StatusDot({ status }) {
     exhausted:         "bg-red-400",
     offline:           "bg-red-400",
     rate_limited:      "bg-amber-400",
-    manually_disabled: "bg-slate-300"
+    manually_disabled: "bg-slate-300",
+    no_key:            "bg-slate-200"
   }[status] || "bg-slate-300";
   return <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${cls}`} />;
 }
@@ -35,9 +36,10 @@ function StatusDot({ status }) {
 function statusLabel(m) {
   if (m.status === "available")         return "Available";
   if (m.status === "manually_disabled") return "Disabled";
+  if (m.status === "no_key")            return "API key not configured";
   if (m.status === "exhausted") {
     const left = timeRemaining(m.disabledUntil);
-    return left ? `Credits exhausted · resets in ${left}` : "Credits exhausted";
+    return left ? `Quota exhausted · resets in ${left}` : "Quota exhausted · resets in ~24h";
   }
   if (m.status === "offline") {
     const left = timeRemaining(m.disabledUntil);
@@ -56,18 +58,27 @@ function statusTextColor(status) {
   if (status === "offline")           return "text-red-600";
   if (status === "rate_limited")      return "text-amber-600";
   if (status === "manually_disabled") return "text-slate-400";
+  if (status === "no_key")            return "text-slate-300";
   return "text-slate-500";
 }
 
 const PROVIDER_COLOR = {
-  openai:      "bg-emerald-100 text-emerald-800 border-emerald-200",
-  anthropic:   "bg-amber-100   text-amber-800   border-amber-200",
-  xai:         "bg-violet-100  text-violet-800  border-violet-200",
-  gemini:      "bg-sky-100     text-sky-800     border-sky-200",
-  llama:       "bg-orange-100  text-orange-800  border-orange-200",
-  deepseek:    "bg-teal-100    text-teal-800    border-teal-200",
-  gemini_free: "bg-cyan-100    text-cyan-800    border-cyan-200",
-  mistral:     "bg-rose-100    text-rose-800    border-rose-200"
+  gemini:     "bg-sky-100     text-sky-800     border-sky-200",
+  groq:       "bg-violet-100  text-violet-800  border-violet-200",
+  cerebras:   "bg-orange-100  text-orange-800  border-orange-200",
+  together:   "bg-teal-100    text-teal-800    border-teal-200",
+  fireworks:  "bg-rose-100    text-rose-800    border-rose-200",
+  openrouter: "bg-slate-100   text-slate-700   border-slate-200"
+};
+
+// Provider display labels for the active badge
+const ACTIVE_LABELS = {
+  gemini:     "Gemini",
+  groq:       "Groq",
+  cerebras:   "Cerebras",
+  together:   "Together",
+  fireworks:  "Fireworks",
+  openrouter: "OpenRouter"
 };
 
 function Toggle({ on, onToggle, label, activeClass, title, disabled: btnDisabled }) {
@@ -104,7 +115,7 @@ function Toggle({ on, onToggle, label, activeClass, title, disabled: btnDisabled
 // ─── Model list row ───────────────────────────────────────────────────────────
 
 function ModelRow({ m, onToggle }) {
-  const canToggle = m.status !== "exhausted" && m.status !== "offline";
+  const canToggle = m.status !== "exhausted" && m.status !== "offline" && m.status !== "no_key";
   const isOn      = m.status === "available";
 
   return (
@@ -113,26 +124,24 @@ function ModelRow({ m, onToggle }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-1.5">
           <span className="text-[12px] font-semibold text-slate-800">{m.label}</span>
-          {m.tier === "free" && (
-            <span className="text-[10px] font-medium text-slate-400">free</span>
-          )}
         </div>
         <p className={`mt-px text-[11px] leading-tight ${statusTextColor(m.status)}`}>
           {statusLabel(m)}
         </p>
       </div>
 
-      {/* Manual enable/disable toggle — locked when exhausted/offline */}
       <button
         type="button"
         disabled={!canToggle}
         onClick={() => canToggle && onToggle(m.id)}
         title={
-          !canToggle
-            ? "Automatically re-enables when credits reset"
-            : isOn
-              ? `Disable ${m.label}`
-              : `Enable ${m.label}`
+          m.status === "no_key"
+            ? "API key not configured"
+            : !canToggle
+              ? "Automatically re-enables when quota resets"
+              : isOn
+                ? `Disable ${m.label}`
+                : `Enable ${m.label}`
         }
         className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
           !canToggle
@@ -165,6 +174,8 @@ export default function ProviderStatusBadge() {
 
   const { models, availableCount, loading, lastRefresh, refresh, toggleManualDisabled } = useModelStatus();
 
+  const totalCount = Object.keys(PROVIDER_DEFS).length;
+
   // Bus subscriptions
   useEffect(() => {
     const unsubP = subscribeAiBus("provider", ({ provider }) => setActiveProvider(provider));
@@ -174,9 +185,9 @@ export default function ProviderStatusBadge() {
     const unsubE = subscribeAiBus("exhausted", ({ providers }) => {
       const names = providers.map((p) => PROVIDER_DEFS[p]?.label || p).join(", ");
       setToast({
-        message: `Daily credits exhausted for ${names}. Switching to next available model.`,
-        id: Date.now(),
-        kind: "warn"
+        message: `Daily quota exhausted for ${names}. Automatically switching to next provider.`,
+        id:      Date.now(),
+        kind:    "warn"
       });
     });
     return () => { unsubP(); unsubF(); unsubE(); };
@@ -195,7 +206,7 @@ export default function ProviderStatusBadge() {
     function handleClick(e) {
       if (
         panelRef.current && !panelRef.current.contains(e.target) &&
-        btnRef.current  && !btnRef.current.contains(e.target)
+        btnRef.current   && !btnRef.current.contains(e.target)
       ) {
         setPanelOpen(false);
       }
@@ -208,11 +219,11 @@ export default function ProviderStatusBadge() {
     if (lowCostOn) {
       disableLowCostMode();
       setLowCostOn(false);
-      setToast({ message: "Quality mode on — using paid AI providers (GPT-4.1 / Claude / Gemini).", id: Date.now() });
+      setToast({ message: "Normal mode — full token limits.", id: Date.now() });
     } else {
       enableLowCostMode();
       setLowCostOn(true);
-      setToast({ message: "Low-cost mode on — using free AI providers only (DeepSeek, Llama, Mistral).", id: Date.now() });
+      setToast({ message: "Low-cost mode — reduced token limits. Same provider chain.", id: Date.now() });
     }
   }
 
@@ -229,30 +240,28 @@ export default function ProviderStatusBadge() {
     }
   }
 
-  const label      = activeProvider ? providerLabel(activeProvider) : "Idle";
-  const colorClass = activeProvider
+  const activeLabel      = activeProvider ? (ACTIVE_LABELS[activeProvider] || activeProvider) : "Idle";
+  const colorClass       = activeProvider
     ? (PROVIDER_COLOR[activeProvider] || "bg-slate-100 text-slate-700 border-slate-200")
     : "bg-slate-50 text-slate-500 border-slate-200";
 
-  const totalCount = 8;
-  const paidModels = Object.values(models).filter((m) => m.tier === "paid").sort((a, b) => a.order - b.order);
-  const freeModels = Object.values(models).filter((m) => m.tier === "free").sort((a, b) => a.order - b.order);
+  const allModels = Object.values(models).sort((a, b) => a.order - b.order);
 
   const statusSummaryColor =
-    availableCount >= 6 ? "text-emerald-700" :
+    availableCount >= 5 ? "text-emerald-700" :
     availableCount >= 3 ? "text-amber-700"   :
     "text-red-600";
 
   return (
     <>
       <div className="relative flex items-center gap-2">
-        {/* Current provider badge */}
+        {/* Active provider badge */}
         <div
-          title={activeProvider ? `Active AI: ${label}` : "No AI calls yet this session"}
+          title={activeProvider ? `Active AI: ${activeLabel}` : "No AI calls yet this session"}
           className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${colorClass}`}
         >
           <span className={`h-1.5 w-1.5 rounded-full ${activeProvider ? "bg-current" : "bg-slate-400"}`} />
-          {activeProvider ? `${label}` : "AI idle"}
+          {activeProvider ? activeLabel : "AI idle"}
         </div>
 
         {/* Model status button */}
@@ -261,7 +270,7 @@ export default function ProviderStatusBadge() {
             ref={btnRef}
             type="button"
             onClick={() => setPanelOpen((v) => !v)}
-            title="View all AI model availability"
+            title="View all AI provider availability"
             className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
               panelOpen
                 ? "border-sky-300 bg-sky-50 text-sky-800"
@@ -283,7 +292,10 @@ export default function ProviderStatusBadge() {
               {/* Header */}
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                 <div>
-                  <p className="text-[12px] font-bold text-slate-800">AI Model Status</p>
+                  <p className="text-[12px] font-bold text-slate-800">AI Provider Status</p>
+                  <p className="text-[10px] text-slate-400">
+                    Providers tried in order · quota resets in 24h
+                  </p>
                   {lastRefresh && (
                     <p className="text-[10px] text-slate-400">
                       Updated {Math.round((Date.now() - lastRefresh) / 1000)}s ago
@@ -294,7 +306,7 @@ export default function ProviderStatusBadge() {
                   type="button"
                   onClick={() => refresh()}
                   disabled={loading}
-                  title="Refresh model availability"
+                  title="Refresh provider availability"
                   className="rounded-lg border border-slate-200 p-1 text-slate-400 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700 disabled:opacity-40"
                 >
                   <svg
@@ -308,23 +320,17 @@ export default function ProviderStatusBadge() {
               </div>
 
               <div className="px-4 py-2">
-                {/* Paid models */}
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Paid · Normal mode
+                  Fallback order
                 </p>
                 <div className="divide-y divide-slate-50">
-                  {paidModels.map((m) => (
-                    <ModelRow key={m.id} m={m} onToggle={toggleManualDisabled} />
-                  ))}
-                </div>
-
-                {/* Free models */}
-                <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Free · Low-cost mode
-                </p>
-                <div className="divide-y divide-slate-50">
-                  {freeModels.map((m) => (
-                    <ModelRow key={m.id} m={m} onToggle={toggleManualDisabled} />
+                  {allModels.map((m, i) => (
+                    <div key={m.id} className="flex items-center gap-1">
+                      <span className="w-4 shrink-0 text-[10px] font-bold text-slate-300">{i + 1}</span>
+                      <div className="flex-1">
+                        <ModelRow m={m} onToggle={toggleManualDisabled} />
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -333,7 +339,7 @@ export default function ProviderStatusBadge() {
               <div className="flex items-center justify-between rounded-b-2xl border-t border-slate-100 bg-slate-50 px-4 py-2.5">
                 <span className="text-[11px] text-slate-500">
                   <span className={`font-bold ${statusSummaryColor}`}>{availableCount}</span>
-                  <span> of {totalCount} models active</span>
+                  <span> of {totalCount} available</span>
                 </span>
                 <button
                   type="button"
@@ -357,11 +363,10 @@ export default function ProviderStatusBadge() {
           activeClass="border-teal-300 bg-teal-100 text-teal-800 hover:bg-teal-200"
           title={
             lowCostOn
-              ? "Low-cost mode: free providers only (DeepSeek → Llama → Gemini free → Mistral). Click to switch back to Quality mode."
-              : "Enable Low-cost mode: use only free AI providers. Saves OpenRouter credits."
+              ? "Low-cost mode: reduced token limits. Click to restore full limits."
+              : "Enable Low-cost mode: use reduced token limits to stay within free-tier quotas."
           }
         />
-
       </div>
 
       {/* Toast notifications */}
