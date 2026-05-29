@@ -28,7 +28,7 @@ import {
   generateContentFast,
   extractJSON,
   getModelStatus,
-  GrokApprovalRequiredError,
+  resetProviders,
   TOKEN_LIMITS
 } from "./aiRouter.js";
 
@@ -37,17 +37,9 @@ const router = Router();
 /**
  * Express response shape for AI endpoints:
  *   - 200: { ...payload, _provider: "openai"|"anthropic"|"xai"|"gemini" }
- *   - 409: { needsApproval: "grok", attempted, message }  ← client should show modal
  *   - 500: { error }
  */
 function aiErrorResponse(res: any, error: any) {
-  if (error instanceof GrokApprovalRequiredError) {
-    return res.status(409).json({
-      needsApproval: "grok",
-      attempted: error.attempted,
-      message: error.message
-    });
-  }
   return res.status(500).json({ error: error?.message || "AI request failed" });
 }
 
@@ -57,9 +49,8 @@ function aiOptsFromReq(req: any, maxTokens?: number) {
     ? body.disabledProviders.filter((p: any) => typeof p === "string")
     : [];
   return {
-    allowGrok:        body.allowGrok    === true,
-    lowCredit:        body.lowCostMode  === true,
-    maxTokens:        maxTokens ?? TOKEN_LIMITS.default,
+    lowCredit: body.lowCostMode === true,
+    maxTokens: maxTokens ?? TOKEN_LIMITS.default,
     ...(disabledProviders.length ? { disabledProviders } : {})
   };
 }
@@ -95,19 +86,16 @@ function setProviderHeader(res: any, provider: string, exhausted: string[] = [])
   if (exhausted.length) res.setHeader("X-Exhausted-Providers", exhausted.join(","));
 }
 
-// Long-form (OpenAI primary) — uses fast chain when client sets lowCostMode=true
+// Long-form — uses free chain when client sets lowCostMode=true
 async function runLong(prompt: string, system: string, req: any, res: any, contentType = "default") {
   const maxTokens = TOKEN_LIMITS[contentType] ?? TOKEN_LIMITS.default;
   const opts      = aiOptsFromReq(req, maxTokens);
-  const useFast   = req?.body?.lowCostMode === true;
-  const { text, usedProvider, exhaustedProviders } = useFast
-    ? await generateContentFast(prompt, system, opts)
-    : await generateContent(prompt, system, opts);
+  const { text, usedProvider, exhaustedProviders } = await generateContent(prompt, system, opts);
   setProviderHeader(res, usedProvider, exhaustedProviders);
   return { text, usedProvider };
 }
 
-// Short-form (Gemini primary)
+// Short-form
 async function runShort(prompt: string, system: string, req: any, res: any, contentType = "default") {
   const maxTokens = TOKEN_LIMITS[contentType] ?? TOKEN_LIMITS.default;
   const { text, usedProvider, exhaustedProviders } = await generateContentFast(
@@ -126,6 +114,16 @@ router.get("/model-status", (_req, res) => {
     res.json({ providers, timestamp: Date.now() });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || "Failed to get model status" });
+  }
+});
+
+/** POST /api/ai/reset-providers — clears all server-side provider disable state. */
+router.post("/reset-providers", (_req, res) => {
+  try {
+    resetProviders();
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || "Failed to reset providers" });
   }
 });
 

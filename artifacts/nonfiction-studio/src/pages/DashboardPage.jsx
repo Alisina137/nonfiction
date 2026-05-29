@@ -18,7 +18,6 @@ import { effectiveBookTitle } from "@/lib/proposedBook";
 import ResearchStep from "@/components/ResearchStep";
 import { loadNicheRegistry, resolveArchitecture } from "@/lib/niche/registry";
 import { architectureDefaultsForDetails } from "@/lib/niche/outlineApply";
-import GrokApprovalModal from "@/components/GrokApprovalModal";
 import ProviderStatusBadge from "@/components/ProviderStatusBadge";
 
 const STEP_COUNT = BOOK_BUILDER_STEPS.length;
@@ -951,7 +950,6 @@ export default function Dashboard() {
 
   return (
     <div className="book-builder flex h-screen min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-900 [background-image:radial-gradient(ellipse_125%_80%_at_50%_-28%,rgba(14,165,233,0.11),transparent_55%),radial-gradient(ellipse_80%_50%_at_100%_0%,rgba(99,102,241,0.05),transparent_45%)]">
-      <GrokApprovalModal />
       <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-md md:gap-8 md:px-8 md:py-3.5 supports-[backdrop-filter]:bg-white/70">
         <div className="flex shrink-0 items-center gap-3">
           <button

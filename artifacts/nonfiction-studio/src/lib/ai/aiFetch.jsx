@@ -5,12 +5,10 @@
 //   2. Track credit exhaustion via X-Exhausted-Providers header → localStorage (4-hour TTL).
 //   3. Include client-tracked exhausted + manually-disabled providers in every request
 //      so the server skips them in the fallback chain.
-//   4. Handle 409 { needsApproval: "grok" } → GrokApprovalModal → auto-retry.
-//   5. Inject lowCostMode when the user has enabled the low-cost toggle.
-//   6. Cache successful responses in localStorage (30-min TTL).
-//   7. Translate raw provider errors into friendly human-readable messages.
+//   4. Inject lowCostMode when the user has enabled the low-cost toggle.
+//   5. Cache successful responses in localStorage (30-min TTL).
+//   6. Translate raw provider errors into friendly human-readable messages.
 
-const APPROVAL_KEY  = "nonfiction-ai-grok-approval";
 const LOW_COST_KEY  = "nonfiction-ai-low-cost-mode";
 const CACHE_PREFIX  = "nonfiction-ai-cache-";
 const CACHE_TTL_MS  = 30 * 60 * 1000;
@@ -36,7 +34,6 @@ export const PROVIDER_LABELS = {
 const listeners = {
   provider:  new Set(),
   fallback:  new Set(),
-  approval:  new Set(),
   exhausted: new Set()   // { providers: string[] }
 };
 
@@ -53,18 +50,6 @@ export function subscribeAiBus(channel, fn) {
 
 export function providerLabel(id) {
   return PROVIDER_LABELS[id] || id || "Unknown";
-}
-
-// ─── Grok approval state ─────────────────────────────────────────────────────
-
-export function isGrokApproved() {
-  try { return window.localStorage.getItem(APPROVAL_KEY) === "granted"; } catch { return false; }
-}
-export function grantGrokApproval() {
-  try { window.localStorage.setItem(APPROVAL_KEY, "granted"); } catch {}
-}
-export function revokeGrokApproval() {
-  try { window.localStorage.removeItem(APPROVAL_KEY); } catch {}
 }
 
 // ─── Low-cost mode state ─────────────────────────────────────────────────────
@@ -107,6 +92,10 @@ export function markProvidersExhausted(providers) {
   } catch {}
 }
 
+export function clearLocallyExhaustedProviders() {
+  try { window.localStorage.removeItem(EXHAUSTED_KEY); } catch {}
+}
+
 // ─── Manual disable/enable ────────────────────────────────────────────────────
 
 export function getManuallyDisabledProviders() {
@@ -137,7 +126,7 @@ function hashStr(s) {
 }
 
 function cacheKey(url, body) {
-  const { allowGrok: _a, lowCostMode: _l, noCache: _n, disabledProviders: _d, ...stable } = body || {};
+  const { lowCostMode: _l, noCache: _n, disabledProviders: _d, ...stable } = body || {};
   return CACHE_PREFIX + hashStr(url + JSON.stringify(stable));
 }
 
@@ -182,28 +171,6 @@ function friendlyError(rawMsg) {
   return "AI generation failed. Please try again in a moment.";
 }
 
-// ─── Modal request gate ───────────────────────────────────────────────────────
-
-let pendingApprovalResolver = null;
-
-export function requestGrokApproval(meta = {}) {
-  if (pendingApprovalResolver) return pendingApprovalResolver.promise;
-  let resolveFn;
-  const promise = new Promise((resolve) => { resolveFn = resolve; });
-  pendingApprovalResolver = { promise, resolve: resolveFn };
-  emit("approval", { open: true, meta });
-  return promise;
-}
-
-export function resolveGrokApproval(approved) {
-  if (!pendingApprovalResolver) return;
-  const r = pendingApprovalResolver;
-  pendingApprovalResolver = null;
-  emit("approval", { open: false });
-  if (approved) grantGrokApproval();
-  r.resolve(approved);
-}
-
 // ─── Provider tracking ────────────────────────────────────────────────────────
 
 const FREE_PROVIDERS = new Set(["llama", "deepseek", "gemini_free", "mistral"]);
@@ -215,9 +182,7 @@ function emitProviderUsed(provider) {
     const fromFree = FREE_PROVIDERS.has(lastProvider);
     const toFree   = FREE_PROVIDERS.has(provider);
     let message;
-    if (provider === "xai") {
-      message = "Switching to Grok (approved fallback).";
-    } else if (!fromFree && toFree) {
+    if (!fromFree && toFree) {
       message = `Paid providers busy — switching to ${providerLabel(provider)} automatically.`;
     } else if (fromFree && !toFree) {
       message = `${providerLabel(provider)} available — resumed quality mode.`;
@@ -232,20 +197,32 @@ function emitProviderUsed(provider) {
   emit("provider", { provider });
 }
 
-// ─── Main fetch wrapper ───────────────────────────────────────────────────────
+// ─── Kept for backward compat — never thrown, no-ops if called ───────────────
 
 export class GenerationCanceledError extends Error {
   constructor() {
-    super("Generation canceled — Grok approval declined.");
+    super("Generation canceled.");
     this.name     = "GenerationCanceledError";
     this.canceled = true;
   }
 }
 
+// ─── Reset all client-side provider state ─────────────────────────────────────
+
+export async function resetAllProviders() {
+  clearLocallyExhaustedProviders();
+  try { window.localStorage.removeItem(MANUAL_OFF_KEY); } catch {}
+  // Also reset the server-side state
+  try {
+    await fetch("/api/ai/reset-providers", { method: "POST" });
+  } catch {}
+}
+
+// ─── Main fetch wrapper ───────────────────────────────────────────────────────
+
 /**
  * POST JSON body to an AI endpoint. Transparently handles:
  *   - Caching (localStorage, 30-min TTL)
- *   - Grok approval gate (HTTP 409)
  *   - Low-cost mode (routes to free-only provider chain)
  *   - Exhausted + manually-disabled providers (sent as disabledProviders[])
  *   - X-Exhausted-Providers response header → marks in localStorage
@@ -263,76 +240,39 @@ export async function aiFetch(url, body = {}, { signal, noCache } = {}) {
     }
   }
 
-  const doPost = async (extra) => {
-    // Merge client-tracked exhausted + manual disables into every request
-    const exhausted = getLocallyExhaustedProviders();
-    const manual    = getManuallyDisabledProviders();
-    const disabled  = [...new Set([...exhausted, ...manual])];
+  // Merge client-tracked exhausted + manual disables into every request
+  const exhausted = getLocallyExhaustedProviders();
+  const manual    = getManuallyDisabledProviders();
+  const disabled  = [...new Set([...exhausted, ...manual])];
 
-    // comment 1
-    // const merged = {
-    //   ...body,
-    //   ...(isLowCostMode()  ? { lowCostMode:       true    } : {}),
-    //   ...(isGrokApproved() ? { allowGrok:          true    } : {}),
-    //   ...(disabled.length  ? { disabledProviders:  disabled } : {}),
-    //   ...extra
-    // };
-    const merged = {
-      ...body,
-      lowCostMode: isLowCostMode(),
-      ...(isGrokApproved() ? { allowGrok: true } : {}),
-      ...(disabled.length ? { disabledProviders: disabled } : {}),
-      ...extra
-    };
-
-    // comment 2
-    // const res  = await fetch(url, {
-    //   method:  "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body:    JSON.stringify(merged),
-    //   signal
-    // });
-    console.log("Sending request:", url);
-    console.log("Request body:", merged);
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(merged),
-      signal
-    });
-
-    console.log("Status:", res.status);
-
-    const responseText = await res.clone().text();
-    console.log("Response body:", responseText);
-    // comment 2
-    // Track which provider succeeded
-    const providerHeader = res.headers.get("X-AI-Provider");
-    if (providerHeader) emitProviderUsed(providerHeader);
-
-    // Track which providers were credit-exhausted during this call
-    const exhaustedHeader = res.headers.get("X-Exhausted-Providers");
-    if (exhaustedHeader) {
-      const exhaustedList = exhaustedHeader.split(",").map((s) => s.trim()).filter(Boolean);
-      if (exhaustedList.length) {
-        markProvidersExhausted(exhaustedList);
-        console.log(`[aiFetch] credit-exhausted providers tracked: ${exhaustedList.join(", ")}`);
-      }
-    }
-
-    const data = await res.json().catch(() => ({}));
-    return { res, data };
+  const merged = {
+    ...body,
+    lowCostMode: isLowCostMode(),
+    ...(disabled.length ? { disabledProviders: disabled } : {})
   };
 
-  let { res, data } = await doPost({});
+  const res = await fetch(url, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(merged),
+    signal
+  });
 
-  // 409 = server wants Grok approval before using as fallback.
-  if (res.status === 409 && data?.needsApproval === "grok") {
-    const approved = await requestGrokApproval({ attempted: data.attempted });
-    if (!approved) throw new GenerationCanceledError();
-    ({ res, data } = await doPost({ allowGrok: true }));
+  // Track which provider succeeded
+  const providerHeader = res.headers.get("X-AI-Provider");
+  if (providerHeader) emitProviderUsed(providerHeader);
+
+  // Track which providers were credit-exhausted during this call
+  const exhaustedHeader = res.headers.get("X-Exhausted-Providers");
+  if (exhaustedHeader) {
+    const exhaustedList = exhaustedHeader.split(",").map((s) => s.trim()).filter(Boolean);
+    if (exhaustedList.length) {
+      markProvidersExhausted(exhaustedList);
+      console.log(`[aiFetch] credit-exhausted providers tracked: ${exhaustedList.join(", ")}`);
+    }
   }
+
+  const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
     const raw = data?.error || `Request failed (${res.status})`;

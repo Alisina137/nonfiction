@@ -4,7 +4,8 @@ import {
   providerLabel,
   isLowCostMode,
   enableLowCostMode,
-  disableLowCostMode
+  disableLowCostMode,
+  resetAllProviders
 } from "@/lib/ai/aiFetch";
 import { useModelStatus, PROVIDER_DEFS } from "@/lib/ai/modelStatus";
 
@@ -102,7 +103,7 @@ function Toggle({ on, onToggle, label, activeClass, title, disabled: btnDisabled
 
 // ─── Model list row ───────────────────────────────────────────────────────────
 
-function ModelRow({ m, onToggle, isGrok }) {
+function ModelRow({ m, onToggle }) {
   const canToggle = m.status !== "exhausted" && m.status !== "offline";
   const isOn      = m.status === "available";
 
@@ -114,11 +115,6 @@ function ModelRow({ m, onToggle, isGrok }) {
           <span className="text-[12px] font-semibold text-slate-800">{m.label}</span>
           {m.tier === "free" && (
             <span className="text-[10px] font-medium text-slate-400">free</span>
-          )}
-          {isGrok && (
-            <span className="rounded bg-violet-100 px-1 py-px text-[10px] font-semibold text-violet-700">
-              approval
-            </span>
           )}
         </div>
         <p className={`mt-px text-[11px] leading-tight ${statusTextColor(m.status)}`}>
@@ -163,6 +159,7 @@ export default function ProviderStatusBadge() {
   const [toast,          setToast]          = useState(null);
   const [lowCostOn,      setLowCostOn]      = useState(() => isLowCostMode());
   const [panelOpen,      setPanelOpen]      = useState(false);
+  const [resetting,      setResetting]      = useState(false);
   const panelRef  = useRef(null);
   const btnRef    = useRef(null);
 
@@ -216,6 +213,19 @@ export default function ProviderStatusBadge() {
       enableLowCostMode();
       setLowCostOn(true);
       setToast({ message: "Low-cost mode on — using free AI providers only (DeepSeek, Llama, Mistral).", id: Date.now() });
+    }
+  }
+
+  async function handleReset() {
+    setResetting(true);
+    try {
+      await resetAllProviders();
+      await refresh();
+      setToast({ message: "All provider states reset — every model is now available.", id: Date.now() });
+    } catch {
+      setToast({ message: "Reset failed. Try refreshing the page.", id: Date.now(), kind: "warn" });
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -299,28 +309,22 @@ export default function ProviderStatusBadge() {
 
               <div className="px-4 py-2">
                 {/* Paid models */}
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Paid</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Paid · Normal mode
+                </p>
                 <div className="divide-y divide-slate-50">
                   {paidModels.map((m) => (
-                    <ModelRow
-                      key={m.id}
-                      m={m}
-                      onToggle={toggleManualDisabled}
-                      isGrok={m.id === "xai"}
-                    />
+                    <ModelRow key={m.id} m={m} onToggle={toggleManualDisabled} />
                   ))}
                 </div>
 
                 {/* Free models */}
-                <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Free</p>
+                <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Free · Low-cost mode
+                </p>
                 <div className="divide-y divide-slate-50">
                   {freeModels.map((m) => (
-                    <ModelRow
-                      key={m.id}
-                      m={m}
-                      onToggle={toggleManualDisabled}
-                      isGrok={false}
-                    />
+                    <ModelRow key={m.id} m={m} onToggle={toggleManualDisabled} />
                   ))}
                 </div>
               </div>
@@ -331,7 +335,15 @@ export default function ProviderStatusBadge() {
                   <span className={`font-bold ${statusSummaryColor}`}>{availableCount}</span>
                   <span> of {totalCount} models active</span>
                 </span>
-                <span className="text-[10px] text-slate-400">Toggle row to disable</span>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={resetting}
+                  title="Reset all provider states — clears exhausted and disabled flags"
+                  className="rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40"
+                >
+                  {resetting ? "Resetting…" : "Reset all"}
+                </button>
               </div>
             </div>
           )}

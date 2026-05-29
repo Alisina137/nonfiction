@@ -3,20 +3,16 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // PROVIDER CHAINS
-//   FULL (default):  gemini → openai → deepseek → llama → gemini_free
-//                    → mistral → anthropic → grok*
-//   FREE (lowCredit): deepseek → llama → gemini_free → mistral
+//   PAID (normal mode):  gemini → openai → anthropic → xai
+//   FREE (lowCredit):    deepseek → llama → gemini_free → mistral
 //
-//   * Grok requires explicit user approval (allowGrok: true).
+//   Normal mode NEVER falls through to free models.
+//   Low-cost mode NEVER uses paid models.
 //
 // DISABLE TRACKING
 //   credit exhaustion (402/insufficient credits): 4 hours
 //   hard unavailable (404/no endpoints):          60 minutes
 //   rate limited (429/quota):                     10 minutes
-//
-// RETRY + BACKOFF
-//   Each provider retries up to MAX_RETRIES (3) times with exponential
-//   back-off (2s → 5s → 10s) on retriable errors.
 //
 // CLIENT OVERRIDE
 //   Callers can pass disabledProviders: string[] to skip specific providers
@@ -113,7 +109,7 @@ const DISABLE_DURATION_MS: Record<DisableReason, number> = {
   rate_limit: 10 * 60 * 1000        // 10 min — temporary rate limiting
 };
 
-const providerDisabledUntil  = new Map<ProviderId, number>();
+const providerDisabledUntil    = new Map<ProviderId, number>();
 const providerDisableReasonMap = new Map<ProviderId, DisableReason>();
 
 function isProviderDisabled(p: ProviderId): boolean {
@@ -126,7 +122,16 @@ function disableProvider(p: ProviderId, reason: string, type: DisableReason = "r
   providerDisabledUntil.set(p, until);
   providerDisableReasonMap.set(p, type);
   const tag = type === "credit" ? "4h (credit)" : type === "hard" ? "60min (offline)" : "10min (rate)";
-  console.warn(`[AI] ${p} marked offline for ${tag} — ${reason.slice(0, 120)}`);
+  console.log("DISABLING PROVIDER:", p);
+  console.log("REASON:", reason.slice(0, 200));
+  console.log("TYPE:", type, `→ disabled for ${tag}`);
+}
+
+/** Clears all server-side disable state (used by POST /api/ai/reset-providers). */
+export function resetProviders(): void {
+  providerDisabledUntil.clear();
+  providerDisableReasonMap.clear();
+  console.log("[AI] All provider disable states cleared by reset-providers call.");
 }
 
 // ─── Error classification ─────────────────────────────────────────────────
@@ -175,18 +180,6 @@ export function getModelStatus(): Record<ProviderId, ProviderStatus> {
     };
   }
   return result;
-}
-
-// ─── Grok approval gate ───────────────────────────────────────────────────
-
-export class GrokApprovalRequiredError extends Error {
-  needsApproval = "grok" as const;
-  attempted: Array<{ provider: ProviderId; error: string }>;
-  constructor(attempted: Array<{ provider: ProviderId; error: string }>) {
-    super("Grok approval required: all other providers are unavailable.");
-    this.name = "GrokApprovalRequiredError";
-    this.attempted = attempted;
-  }
 }
 
 // ─── Free model rate gate ─────────────────────────────────────────────────
@@ -255,9 +248,9 @@ async function callOpenRouter(
     });
 
     const rawText = await res.text();
-    console.log("OPENROUTER STATUS:", res.status);
-    console.log("OPENROUTER RESPONSE:", rawText);
-    
+    console.log(`OPENROUTER HTTP STATUS: ${res.status} — model: ${model}`);
+    if (!res.ok) console.log("OPENROUTER ERROR BODY:", rawText.slice(0, 500));
+
     let data: any = {};
     try { data = rawText ? JSON.parse(rawText) : {}; }
     catch { data = { _raw: rawText }; }
@@ -272,13 +265,9 @@ async function callOpenRouter(
 
       lastError = detail;
 
-      console.error("[AI] Request failed", {
-        provider, model,
-        status:            res.status,
-        retryCount:        attempt,
-        generationTimeMs:  elapsed,
-        errorMessage:      detail.slice(0, 300)
-      });
+      console.error("FAILED:", provider);
+      console.error("ERROR:", detail.slice(0, 300));
+      console.error("HTTP STATUS:", res.status, "| attempt:", attempt, "| elapsed:", elapsed + "ms");
 
       if (isHardUnavailable(detail)) throw new Error(`[${provider}] ${detail}`);
       if (attempt < MAX_RETRIES && isLimitOrUnavailable(detail + ` ${res.status}`)) continue;
@@ -292,7 +281,7 @@ async function callOpenRouter(
       throw new Error(`[${provider}] ${model} returned empty response`);
     }
 
-    console.log(`[AI] ${provider} (${model}) succeeded in ${elapsed}ms`);
+    console.log("SUCCESS:", provider, `(${model}) in ${elapsed}ms`);
     return text;
   }
 
@@ -302,12 +291,11 @@ async function callOpenRouter(
 // ─── Chain runner ─────────────────────────────────────────────────────────
 
 export interface GenOptions {
-  allowGrok?:        boolean;
-  maxTokens?:        number;
-  lowCredit?:        boolean;
+  maxTokens?:         number;
+  lowCredit?:         boolean;
   disabledProviders?: string[];  // client-specified providers to skip
-  onFallback?:       (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
-  onSuccess?:        (provider: ProviderId) => void;
+  onFallback?:        (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
+  onSuccess?:         (provider: ProviderId) => void;
 }
 
 export interface GenResult {
@@ -326,23 +314,18 @@ async function runChain(
   const exhaustedProviders: ProviderId[] = [];
   const clientDisabled = new Set(opts.disabledProviders ?? []);
 
-  for (const provider of chain) {
+  console.log("================================");
+  console.log("ROUTER START");
+  console.log("LOW COST MODE:", opts.lowCredit ?? false);
+  console.log("CLIENT DISABLED:", [...clientDisabled]);
+  console.log("CHAIN:", chain);
+  console.log("================================");
 
-    // ── Grok checkpoint ──────────────────────────────────────────────────
-    if (provider === "xai") {
-      if (!opts.allowGrok) {
-        throw new GrokApprovalRequiredError(
-          attempts.map((a) => ({ provider: a.provider, error: a.error }))
-        );
-      }
-      if (!process.env.OPENROUTER_API_KEY) {
-        attempts.push({ provider, status: "skip", error: "OPENROUTER_API_KEY missing" });
-        continue;
-      }
-    }
+  for (const provider of chain) {
 
     // ── Client-side disabled check ────────────────────────────────────────
     if (clientDisabled.has(provider)) {
+      console.log(`SKIPPING ${provider} — client disabled`);
       attempts.push({ provider, status: "client_disabled", error: "disabled by client" });
       continue;
     }
@@ -352,19 +335,17 @@ async function runChain(
       const until    = providerDisabledUntil.get(provider) ?? 0;
       const minsLeft = Math.ceil((until - Date.now()) / 60000);
       const reason   = `offline for ~${minsLeft} more min`;
-      console.log(`[AI] Skipping ${provider} — ${reason}`);
+      console.log(`SKIPPING ${provider} — ${reason}`);
       attempts.push({ provider, status: "offline", error: reason });
       continue;
     }
 
     // ── Free model rate gate ──────────────────────────────────────────────
     await waitForFreeSlot(provider);
-// comment
-    console.log("================================");
+
     console.log("TRYING PROVIDER:", provider);
     console.log("MODEL:", MODEL_BY_PROVIDER[provider]);
-    console.log("================================");
-    // 
+
     try {
       const text = await callOpenRouter(provider, prompt, system, 0.7, opts.maxTokens ?? TOKEN_LIMITS.default);
       opts.onSuccess?.(provider);
@@ -376,23 +357,21 @@ async function runChain(
 
       return { text, usedProvider: provider, exhaustedProviders };
 
-      } catch (e: any) {
+    } catch (e: any) {
       const msg = e?.message || String(e);
 
-      console.error("PROVIDER FAILED");
-      console.error("Provider:", provider);
-      console.error("Error:", msg);
       // Classify and disable with appropriate duration
       if (isCreditsExhausted(msg)) {
         disableProvider(provider, msg, "credit");
         exhaustedProviders.push(provider);
-        console.log(`[AI] ${PROVIDER_META[provider].label} — daily credits exhausted`);
       } else if (isHardUnavailable(msg)) {
         disableProvider(provider, msg, "hard");
-        console.log(`[AI] ${PROVIDER_META[provider].label} — offline/unavailable`);
       } else if (isLimitOrUnavailable(msg)) {
         disableProvider(provider, msg, "rate_limit");
-        console.log(`[AI] ${PROVIDER_META[provider].label} — rate limited`);
+      } else {
+        // Unclassified failure — still log it
+        console.log("FAILED:", provider);
+        console.log("ERROR (unclassified):", msg.slice(0, 200));
       }
 
       const shortMsg = msg.replace(`[${provider}] `, "").slice(0, 100);
@@ -400,19 +379,21 @@ async function runChain(
     }
   }
 
-  // All providers exhausted
-  const failedCount = attempts.filter((a) => a.status === "failed").length;
+  // All providers in the chain exhausted
   const onFreeChain = opts.lowCredit;
   const hint = onFreeChain
-    ? "All free AI providers are currently busy or rate-limited. Disable Low-cost mode to use paid providers, or wait a few minutes and try again."
-    : "All AI providers are unavailable. Your OpenRouter credits may be low — enable Low-cost mode to use free models, or add credits at openrouter.ai.";
-  throw new Error(`AI_EXHAUSTED:${failedCount}:${hint}`);
+    ? "All free AI providers have exhausted their daily credits. Disable Low-cost mode to use paid providers, or wait a few minutes and try again."
+    : "All paid AI providers have exhausted their daily credits. Enable Low-cost mode to use free models, or add credits at openrouter.ai.";
+  throw new Error(`AI_EXHAUSTED:${attempts.filter((a) => a.status === "failed").length}:${hint}`);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
-const FREE_CHAIN: ProviderId[]  = ["deepseek", "llama", "gemini_free", "mistral"];
-const FULL_CHAIN: ProviderId[]  = ["gemini", "openai", "deepseek", "llama", "gemini_free", "mistral", "anthropic", "xai"];
+// Normal mode: paid models only. Does NOT fall through to free.
+const PAID_CHAIN: ProviderId[] = ["gemini", "openai", "anthropic", "xai"];
+
+// Low-cost mode: free models only. Does NOT use paid models.
+const FREE_CHAIN: ProviderId[] = ["deepseek", "llama", "gemini_free", "mistral"];
 
 function resolveChainAndTokens(opts: GenOptions): { chain: ProviderId[]; resolvedOpts: GenOptions } {
   if (opts.lowCredit) {
@@ -424,7 +405,7 @@ function resolveChainAndTokens(opts: GenOptions): { chain: ProviderId[]; resolve
       }
     };
   }
-  return { chain: FULL_CHAIN, resolvedOpts: opts };
+  return { chain: PAID_CHAIN, resolvedOpts: opts };
 }
 
 export async function generateContent(

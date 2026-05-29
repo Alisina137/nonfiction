@@ -1,0 +1,411 @@
+```text
+I need a complete refactor of my AI routing system and model status panel.
+
+IMPORTANT:
+Before making changes, inspect the existing codebase and identify all files involved in:
+- AI routing
+- OpenRouter integration
+- Model status API
+- Model status UI
+- Local storage persistence
+- Settings/toggles
+
+If any required file is missing, stop and ask me before making assumptions.
+
+==================================================================
+PRIMARY GOAL
+==================================================================
+
+The router must behave like a true credit-aware model orchestrator.
+
+Current problem:
+
+- All models show "Available"
+- When generation starts, most models suddenly become unavailable
+- Only Llama usually survives
+- Status panel becomes inaccurate
+- Grok approval blocks generation
+
+I want this fixed.
+
+==================================================================
+1. ONLY USE CHECKED MODELS
+==================================================================
+
+The router must ONLY use models that are enabled (checked) in the AI Model Status panel.
+
+If a model is unchecked:
+
+- Never include it in the routing chain
+- Never send requests to it
+- Never show it as available for routing
+- Treat it as manually disabled
+
+Create a helper similar to:
+
+function getEnabledProviders(): ProviderId[]
+
+All routing chains must be built dynamically from enabled providers only.
+
+Example:
+
+Enabled:
+- Gemini
+- OpenAI
+- Claude
+
+Disabled:
+- Grok
+- DeepSeek
+- Llama
+
+Only:
+
+Gemini → OpenAI → Claude
+
+may be attempted.
+
+==================================================================
+2. LOW-COST MODE
+==================================================================
+
+When Low-Cost mode is ON:
+
+Use ONLY free models.
+
+Priority order:
+
+1. DeepSeek
+2. Llama
+3. Gemini Free
+4. Mistral
+
+Routing flow:
+
+DeepSeek
+↓ exhausted
+Llama
+↓ exhausted
+Gemini Free
+↓ exhausted
+Mistral
+↓ exhausted
+STOP
+
+Return:
+
+"All free AI providers have exhausted their daily credits."
+
+NO paid model may ever be attempted while Low-Cost mode is enabled.
+
+The router must automatically skip any free model that is:
+- manually disabled
+- credit exhausted
+- rate limited
+- unavailable
+
+and continue to the next enabled free model.
+
+==================================================================
+3. NORMAL MODE
+==================================================================
+
+When Low-Cost mode is OFF:
+
+Use ONLY paid models.
+
+Priority order:
+
+1. Gemini
+2. OpenAI
+3. Claude
+4. Grok
+
+Routing flow:
+
+Gemini
+↓ exhausted
+OpenAI
+↓ exhausted
+Claude
+↓ exhausted
+Grok
+↓ exhausted
+STOP
+
+Return:
+
+"All paid AI providers have exhausted their daily credits."
+
+Do NOT automatically switch to free models.
+
+The router must automatically skip any paid model that is:
+- manually disabled
+- credit exhausted
+- rate limited
+- unavailable
+
+and continue to the next enabled paid model.
+
+==================================================================
+4. CREDIT EXHAUSTION DETECTION
+==================================================================
+
+When OpenRouter returns errors such as:
+
+- 402
+- insufficient credits
+- requires more credits
+- can only afford
+- out of credit
+- credit exhausted
+- daily limit reached
+
+Immediately:
+
+disableProvider(provider, reason, "credit")
+
+Then:
+
+- mark provider unavailable
+- update status panel
+- persist state
+- move to next provider automatically
+
+==================================================================
+5. PERSIST PROVIDER STATES
+==================================================================
+
+Persist all provider states.
+
+Store:
+
+- provider
+- disabledUntil
+- reason
+- manuallyDisabled
+
+Persist:
+
+- credit exhausted providers
+- rate limited providers
+- unavailable providers
+- manually disabled providers
+
+Use localStorage and restore state during startup.
+
+Provider state must survive refreshes.
+
+==================================================================
+6. STATUS PANEL MUST REFLECT REAL ROUTER STATE
+==================================================================
+
+The status panel must show actual provider status.
+
+Examples:
+
+Gemini
+Disabled (Credits exhausted)
+
+OpenAI
+Available
+
+Claude
+Disabled (Manual)
+
+DeepSeek
+Disabled (Rate limited)
+
+Grok
+Disabled (Unavailable)
+
+Status updates must happen immediately.
+
+No page refresh required.
+
+==================================================================
+7. REMOVE GROK APPROVAL SYSTEM
+==================================================================
+
+Remove the Grok approval system entirely.
+
+Delete:
+
+- GrokApprovalRequiredError
+- needsApproval responses
+- approval modal logic
+- approval checks
+- approval API flow
+
+Grok must behave exactly like any other paid provider.
+
+If enabled:
+
+Gemini
+↓
+OpenAI
+↓
+Claude
+↓
+Grok
+
+No approval required.
+
+==================================================================
+8. ROUTER DIAGNOSTICS
+==================================================================
+
+Add detailed logs.
+
+At router start:
+
+console.log("================================");
+console.log("ROUTER START");
+console.log("LOW COST MODE:", opts.lowCredit);
+console.log("ENABLED PROVIDERS:", enabledProviders);
+console.log("CHAIN:", chain);
+console.log("================================");
+
+Before each attempt:
+
+console.log("TRYING PROVIDER:", provider);
+console.log("MODEL:", MODEL_BY_PROVIDER[provider]);
+
+On success:
+
+console.log("SUCCESS:", provider);
+
+On failure:
+
+console.log("FAILED:", provider);
+console.log("ERROR:", msg);
+
+BEFORE disabling a provider:
+
+console.log("DISABLING PROVIDER:", provider);
+console.log("REASON:", msg);
+console.log("TYPE:", disableReason);
+
+==================================================================
+9. RESET PROVIDERS API
+==================================================================
+
+Add endpoint:
+
+POST /api/ai/reset-providers
+
+Behavior:
+
+providerDisabledUntil.clear();
+providerDisableReasonMap.clear();
+
+Also clear persisted provider states.
+
+Return:
+
+{
+  "success": true
+}
+
+==================================================================
+10. INVESTIGATE ROOT CAUSE
+==================================================================
+
+Do not guess.
+
+Find why providers appear available initially but become unavailable after generation begins.
+
+Log:
+
+- HTTP status
+- OpenRouter error body
+- model name
+- provider name
+- disable reason
+
+Show the exact OpenRouter response that causes provider disabling.
+
+I want evidence, not assumptions.
+
+==================================================================
+11. VERIFY ROUTING BEHAVIOR
+==================================================================
+
+Confirm the final system works as follows:
+
+LOW COST MODE ON
+
+Enabled Free Models:
+
+✓ DeepSeek
+✓ Llama
+✓ Gemini Free
+✓ Mistral
+
+DeepSeek exhausted
+→ disable DeepSeek
+→ use Llama
+
+Llama exhausted
+→ disable Llama
+→ use Gemini Free
+
+Gemini Free exhausted
+→ disable Gemini Free
+→ use Mistral
+
+Mistral exhausted
+→ stop
+
+NORMAL MODE
+
+Enabled Paid Models:
+
+✓ Gemini
+✓ OpenAI
+✓ Claude
+✓ Grok
+
+Gemini exhausted
+→ disable Gemini
+→ use OpenAI
+
+OpenAI exhausted
+→ disable OpenAI
+→ use Claude
+
+Claude exhausted
+→ disable Claude
+→ use Grok
+
+Grok exhausted
+→ stop
+
+==================================================================
+12. FINAL REPORT
+==================================================================
+
+After implementation provide:
+
+1. Modified files
+2. New files
+3. Routing flow explanation
+4. Status synchronization explanation
+5. Persistence explanation
+6. Credit exhaustion explanation
+7. Root cause discovered
+8. Verification checklist
+
+Confirm:
+
+✓ Only checked models are used
+✓ Low-cost mode uses only free models
+✓ Normal mode uses only paid models
+✓ Exhausted models automatically deactivate
+✓ Next enabled model automatically takes over
+✓ States persist after refresh
+✓ Grok approval removed
+✓ Status panel reflects actual state
+✓ Reset endpoint works
+✓ Root cause identified and fixed
+```
