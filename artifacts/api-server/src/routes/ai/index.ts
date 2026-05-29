@@ -27,6 +27,7 @@ import {
   generateContent,
   generateContentFast,
   extractJSON,
+  getModelStatus,
   GrokApprovalRequiredError,
   TOKEN_LIMITS
 } from "./aiRouter.js";
@@ -51,10 +52,15 @@ function aiErrorResponse(res: any, error: any) {
 }
 
 function aiOptsFromReq(req: any, maxTokens?: number) {
+  const body = req?.body || {};
+  const disabledProviders: string[] = Array.isArray(body.disabledProviders)
+    ? body.disabledProviders.filter((p: any) => typeof p === "string")
+    : [];
   return {
-    allowGrok: req?.body?.allowGrok === true,
-    lowCredit: req?.body?.lowCostMode === true,
-    maxTokens: maxTokens ?? TOKEN_LIMITS.default
+    allowGrok:        body.allowGrok    === true,
+    lowCredit:        body.lowCostMode  === true,
+    maxTokens:        maxTokens ?? TOKEN_LIMITS.default,
+    ...(disabledProviders.length ? { disabledProviders } : {})
   };
 }
 
@@ -84,31 +90,44 @@ function compressLessonBody(body: any): any {
   return { ...rest, subsection: compressedSubsection, chapterContext: compressedChapter, previousConcepts: compressedPrev };
 }
 
-function setProviderHeader(res: any, provider: string) {
+function setProviderHeader(res: any, provider: string, exhausted: string[] = []) {
   res.setHeader("X-AI-Provider", provider);
+  if (exhausted.length) res.setHeader("X-Exhausted-Providers", exhausted.join(","));
 }
 
-// Long-form (OpenAI primary) — uses short chain when client sets lowCostMode=true
+// Long-form (OpenAI primary) — uses fast chain when client sets lowCostMode=true
 async function runLong(prompt: string, system: string, req: any, res: any, contentType = "default") {
   const maxTokens = TOKEN_LIMITS[contentType] ?? TOKEN_LIMITS.default;
-  const opts = aiOptsFromReq(req, maxTokens);
-  const useFast = req?.body?.lowCostMode === true;
-  const { text, usedProvider } = useFast
+  const opts      = aiOptsFromReq(req, maxTokens);
+  const useFast   = req?.body?.lowCostMode === true;
+  const { text, usedProvider, exhaustedProviders } = useFast
     ? await generateContentFast(prompt, system, opts)
     : await generateContent(prompt, system, opts);
-  setProviderHeader(res, usedProvider);
+  setProviderHeader(res, usedProvider, exhaustedProviders);
   return { text, usedProvider };
 }
 
 // Short-form (Gemini primary)
 async function runShort(prompt: string, system: string, req: any, res: any, contentType = "default") {
   const maxTokens = TOKEN_LIMITS[contentType] ?? TOKEN_LIMITS.default;
-  const { text, usedProvider } = await generateContentFast(prompt, system, aiOptsFromReq(req, maxTokens));
-  setProviderHeader(res, usedProvider);
+  const { text, usedProvider, exhaustedProviders } = await generateContentFast(
+    prompt, system, aiOptsFromReq(req, maxTokens)
+  );
+  setProviderHeader(res, usedProvider, exhaustedProviders);
   return { text, usedProvider };
 }
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
+
+/** GET /api/ai/model-status — real-time provider health for the client status badge. */
+router.get("/model-status", (_req, res) => {
+  try {
+    const providers = getModelStatus();
+    res.json({ providers, timestamp: Date.now() });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || "Failed to get model status" });
+  }
+});
 
 router.post("/suggest-subtitles", async (req, res) => {
   try {
