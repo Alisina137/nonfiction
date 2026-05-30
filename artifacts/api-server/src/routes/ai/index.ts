@@ -8,6 +8,7 @@ import {
   coverCriticPrompt,
   coverVariantsPrompt,
   descriptionPrompt,
+  generateResourcePrompt,
   improvementPrompt,
   extractResourcePrompt,
   lessonPrompt,
@@ -434,6 +435,26 @@ router.post("/regenerate-title", async (req, res) => {
     );
     const data = extractJSON(text);
     return res.json({ title: data.title || currentTitle, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/generate-resource", async (req, res) => {
+  try {
+    const { bookContext, category, priority, useFor, existingResources, competitorBooks } = req.body || {};
+    const prompt = generateResourcePrompt({ bookContext, category, priority, useFor, existingResources, competitorBooks });
+    const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "default");
+    const data = extractJSON(text);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "AI returned unparseable resource data." });
+    }
+    return res.json({
+      url:   typeof data.url   === "string" ? data.url.trim()   : "",
+      label: typeof data.label === "string" ? data.label.trim() : "",
+      note:  typeof data.note  === "string" ? data.note.trim()  : "",
+      _provider: usedProvider
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

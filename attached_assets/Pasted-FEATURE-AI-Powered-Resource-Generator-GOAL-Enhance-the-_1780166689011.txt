@@ -1,0 +1,398 @@
+FEATURE: AI-Powered Resource Generator
+
+GOAL
+
+Enhance the Resources step by adding intelligent resource generation that automatically fills:
+
+- URL
+- Label
+- Note for Generation
+
+based on:
+
+1. All previous book-building steps
+2. Selected Category
+3. Selected Priority
+4. Selected Use For options
+
+The user can then review/edit and click "Add Link" to save the resource.
+
+====================================================
+NEW UI
+====================================================
+
+Add a button beside "Add Link":
+
+[✨ Generate Resource]
+
+====================================================
+BOOK CONTEXT
+====================================================
+
+When generating resources, the AI must use all available project context:
+
+- Research
+- Analysis
+- Competitor Books
+- Market Findings
+- Book Title
+- Subtitle
+- Proposed Book
+- Author Persona
+- Audience
+- Book Positioning
+- Core Topics
+- Pain Points
+- Outline (if available)
+- Any previously added resources
+
+The generated resource must directly support the current book project.
+
+====================================================
+RESOURCE SETTINGS
+====================================================
+
+Use current form selections:
+
+{
+  category,
+  priority,
+  useFor
+}
+
+====================================================
+CATEGORY RULES
+====================================================
+
+CATEGORY: Academic Paper
+
+Generate:
+
+- Peer-reviewed papers
+- PubMed articles
+- NIH resources
+- University research
+- Journal publications
+
+Purpose:
+
+Scientific evidence and citations.
+
+----------------------------------------------------
+
+CATEGORY: Research Study
+
+Generate:
+
+- Research studies
+- Meta-analyses
+- Systematic reviews
+- Behavioral studies
+- Industry studies
+
+Purpose:
+
+Evidence-based insights.
+
+----------------------------------------------------
+
+CATEGORY: Government Report
+
+Generate:
+
+- CDC
+- NIH
+- WHO
+- OECD
+- Bureau of Labor Statistics
+- Government publications
+
+Purpose:
+
+Trusted data and statistics.
+
+----------------------------------------------------
+
+CATEGORY: Statistics Source
+
+Generate:
+
+- Surveys
+- Industry reports
+- Public datasets
+- National studies
+- Research dashboards
+
+Purpose:
+
+Charts, numbers, data points.
+
+----------------------------------------------------
+
+CATEGORY: Competitor Book
+
+IMPORTANT:
+
+Do NOT invent books.
+
+Use books discovered during Analysis.
+
+AI must:
+
+1. Read competitor books already collected.
+2. Rank by relevance.
+3. Recommend books not already added.
+4. Generate notes explaining how to use them.
+
+Purpose:
+
+Positioning, structure, chapter ideas.
+
+----------------------------------------------------
+
+CATEGORY: Book
+
+Generate:
+
+- Influential nonfiction books
+- Bestselling books
+- Strong references relevant to the topic
+
+Purpose:
+
+Research and framework development.
+
+----------------------------------------------------
+
+CATEGORY: Writing Style Reference
+
+Generate:
+
+Books, articles, or authors whose writing style matches the desired tone.
+
+Examples:
+
+Direct & Practical:
+- Atomic Habits
+- Deep Work
+- Essentialism
+
+Conversational:
+- The Subtle Art of Not Giving a F*ck
+
+Authoritative:
+- Thinking, Fast and Slow
+
+Purpose:
+
+Voice, flow, and writing quality.
+
+----------------------------------------------------
+
+CATEGORY: Interview / Transcript
+
+Generate:
+
+- Podcast transcripts
+- TED Talks
+- Expert interviews
+- Researcher discussions
+
+Purpose:
+
+Stories, examples, and quotes.
+
+----------------------------------------------------
+
+CATEGORY: Blog / Article
+
+Generate:
+
+High-quality long-form content from trusted sources such as:
+
+- Harvard Business Review
+- Psychology Today
+- Farnam Street
+- ADDitude Magazine
+- McKinsey
+- HubSpot
+- Industry authorities
+
+Purpose:
+
+Current insights and examples.
+
+----------------------------------------------------
+
+CATEGORY: Case Study
+
+Generate:
+
+- Business case studies
+- Personal transformation stories
+- Academic case studies
+- Organizational examples
+
+Purpose:
+
+Real-world examples.
+
+----------------------------------------------------
+
+CATEGORY: Note / Finding
+
+SPECIAL BEHAVIOR
+
+Do NOT require a URL.
+
+Generate a valuable research insight.
+
+Example:
+
+Label:
+ADHD Motivation Depends More on Interest Than Importance
+
+Note:
+Use this principle throughout productivity chapters when explaining task initiation and procrastination.
+
+URL may remain empty.
+
+----------------------------------------------------
+
+CATEGORY: Other
+
+Generate the best available source based on book context.
+
+====================================================
+PRIORITY RULES
+====================================================
+
+HIGH
+
+Generate:
+
+- Most authoritative source available
+- Most trusted source
+- Most relevant source
+- Highest research quality
+
+MEDIUM
+
+Balanced relevance and accessibility.
+
+LOW
+
+Supplementary supporting material.
+
+====================================================
+USE FOR RULES
+====================================================
+
+Entire Book
+
+Generate foundational resources that support the whole manuscript.
+
+----------------------------------------------------
+
+Outline Only
+
+Generate resources focused on frameworks, structures, and organization.
+
+----------------------------------------------------
+
+Writing Style
+
+Generate stylistic references and exemplary authors.
+
+----------------------------------------------------
+
+Statistics
+
+Generate quantitative data sources.
+
+----------------------------------------------------
+
+Quotes
+
+Generate interview, transcript, speech, and quote-rich sources.
+
+----------------------------------------------------
+
+Research Only
+
+Generate deep research and evidence-based material.
+
+====================================================
+AI GENERATION OUTPUT
+====================================================
+
+Generate ONLY valid JSON:
+
+{
+  "url": "",
+  "label": "",
+  "note": ""
+}
+
+Requirements:
+
+- Real resource
+- High relevance
+- High credibility
+- Specific URL when possible
+- Never generate fake links
+- Never generate placeholder URLs
+- Never generate generic homepages when a direct page exists
+
+====================================================
+AUTO FILL
+====================================================
+
+After successful generation:
+
+form.url = result.url
+form.label = result.label
+form.note = result.note
+
+====================================================
+SMART FILTERING
+====================================================
+
+Never recommend:
+
+- Duplicate resources
+- Already-added resources
+- Broken links
+- Low-authority websites
+- Spam content
+- Irrelevant sources
+
+Prefer:
+
+- Universities
+- Government agencies
+- Research institutions
+- Trusted journals
+- Recognized experts
+- Established publishers
+- Existing competitor books from Analysis
+
+====================================================
+LOADING UX
+====================================================
+
+Show:
+
+"Analyzing book context..."
+
+"Searching for relevant resources..."
+
+"Generating resource recommendation..."
+
+Then populate the form automatically.
+
+====================================================
+SUCCESS GOAL
+====================================================
+
+The Resources step should feel like an AI research librarian that understands the user's entire book project and recommends the most useful sources for writing a high-quality nonfiction book.

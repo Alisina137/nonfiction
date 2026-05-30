@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import {
   ALLOWED_RESOURCE_EXTENSIONS,
   bytesToLabel,
@@ -6,6 +6,7 @@ import {
   RESOURCE_FILE_MAX_BYTES
 } from "@/lib/resources/fileUpload";
 import { aiFetch } from "@/lib/ai/aiFetch";
+import { buildBookContext } from "@/lib/bookContext";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -316,25 +317,55 @@ function CitationPanel({ settings, onUpdate }) {
 
 // ─── Add forms ────────────────────────────────────────────────────────────────
 
-function AddLinkForm({ onAdd }) {
+const GENERATE_PHASES = [
+  "Analyzing book context…",
+  "Searching for relevant resources…",
+  "Generating resource recommendation…"
+];
+
+function AddLinkForm({ onAdd, onRequestGenerate, generating, generatePhase, generateError }) {
   const [f, setF] = useState({ url: "", title: "", category: "blog_article", priority: "medium", useFor: ["entire_book"], isStyleRef: false, note: "" });
   const patch = (k, v) => setF((p) => ({ ...p, [k]: v }));
 
+  const isNote = f.category === "note";
+
+  function canSubmit() {
+    if (isNote) return f.title.trim().length > 0 || f.note.trim().length > 0;
+    return f.url.trim().length > 0 && isProbablyUrl(f.url);
+  }
+
   function submit() {
-    if (!f.url.trim() || !isProbablyUrl(f.url)) return;
-    onAdd({ id: safeId(), ...f, url: f.url.trim(), title: f.title.trim() || f.url.trim(), note: f.note.trim() });
+    if (!canSubmit()) return;
+    const urlVal   = f.url.trim();
+    const titleVal = f.title.trim() || urlVal || "Resource";
+    onAdd({ id: safeId(), ...f, url: urlVal, title: titleVal, note: f.note.trim() });
     setF({ url: "", title: "", category: "blog_article", priority: "medium", useFor: ["entire_book"], isStyleRef: false, note: "" });
+  }
+
+  async function handleGenerate() {
+    if (!onRequestGenerate || generating) return;
+    const result = await onRequestGenerate({ category: f.category, priority: f.priority, useFor: f.useFor });
+    if (result) {
+      setF((prev) => ({
+        ...prev,
+        url:   result.url   || "",
+        title: result.label || "",
+        note:  result.note  || ""
+      }));
+    }
   }
 
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
-        <FormRow label="URL *">
-          <input className="input-light" placeholder="https://…" value={f.url} onChange={(e) => patch("url", e.target.value)}
+        <FormRow label={isNote ? "URL (optional)" : "URL *"}>
+          <input className="input-light" placeholder={isNote ? "optional for notes" : "https://…"} value={f.url}
+            onChange={(e) => patch("url", e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()} />
         </FormRow>
-        <FormRow label="Label (optional)">
-          <input className="input-light" placeholder="e.g. NIH Sleep Study 2023" value={f.title} onChange={(e) => patch("title", e.target.value)} />
+        <FormRow label={isNote ? "Title / Label *" : "Label (optional)"}>
+          <input className="input-light" placeholder={isNote ? "e.g. Key finding or principle" : "e.g. NIH Sleep Study 2023"}
+            value={f.title} onChange={(e) => patch("title", e.target.value)} />
         </FormRow>
         <FormRow label="Category">
           <select className="input-light" value={f.category} onChange={(e) => patch("category", e.target.value)}>
@@ -361,11 +392,37 @@ function AddLinkForm({ onAdd }) {
           className="h-4 w-4 rounded border-slate-300 accent-violet-600" />
         Use as writing style reference
       </label>
-      <button type="button" onClick={submit}
-        className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
-        disabled={!f.url.trim() || !isProbablyUrl(f.url)}>
-        Add link
-      </button>
+
+      {/* Loading phase indicator */}
+      {generating && generatePhase && (
+        <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2">
+          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+          <span className="text-xs font-medium text-sky-700">{generatePhase}</span>
+        </div>
+      )}
+      {!generating && generateError && (
+        <p className="text-xs text-rose-600">{generateError}</p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={submit} disabled={!canSubmit()}
+          className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50">
+          Add link
+        </button>
+        {onRequestGenerate && (
+          <button type="button" onClick={handleGenerate} disabled={generating}
+            className="flex items-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-5 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:opacity-50 transition-colors">
+            {generating ? (
+              <>
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
+                Generating…
+              </>
+            ) : (
+              <>✨ Generate Resource</>
+            )}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -486,7 +543,7 @@ function FileDropZone({ onFilesChosen, fileLoading, fileForm, setFileForm }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ResourcesStep({ resources, setResources }) {
+export default function ResourcesStep({ resources, setResources, fullProject }) {
   const [activeTab, setActiveTab] = useState("links");
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState("all");
@@ -495,6 +552,9 @@ export default function ResourcesStep({ resources, setResources }) {
   const [fileError, setFileError] = useState("");
   const [extractingIds, setExtractingIds] = useState(new Set());
   const [fileForm, setFileForm] = useState({ category: "book", priority: "medium", useFor: ["entire_book"], isStyleRef: false, note: "" });
+  const [linkGenerating, setLinkGenerating] = useState(false);
+  const [linkGeneratePhase, setLinkGeneratePhase] = useState("");
+  const [linkGenerateError, setLinkGenerateError] = useState("");
 
   const links    = resources.links    || [];
   const findings = resources.findings || [];
@@ -607,6 +667,41 @@ export default function ResourcesStep({ resources, setResources }) {
     }
   }
 
+  // ── AI Generate Resource ───────────────────────────────────────────────────
+
+  async function handleGenerateLink({ category, priority, useFor }) {
+    setLinkGenerating(true);
+    setLinkGenerateError("");
+    setLinkGeneratePhase(GENERATE_PHASES[0]);
+
+    const t1 = setTimeout(() => setLinkGeneratePhase(GENERATE_PHASES[1]), 1200);
+    const t2 = setTimeout(() => setLinkGeneratePhase(GENERATE_PHASES[2]), 2600);
+
+    try {
+      const bookContext = buildBookContext(fullProject);
+      const existingResources = [
+        ...links.map((l) => ({ label: l.title || l.label, url: l.url })),
+        ...findings.map((f) => ({ label: f.label })),
+      ];
+      const competitorBooks = fullProject?.analysis?.books || [];
+
+      const data = await aiFetch(
+        "/api/ai/generate-resource",
+        { bookContext, category, priority, useFor, existingResources, competitorBooks },
+        { noCache: true }
+      );
+      return data;
+    } catch (e) {
+      setLinkGenerateError(e.message || "Generation failed. Try again.");
+      return null;
+    } finally {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      setLinkGenerating(false);
+      setLinkGeneratePhase("");
+    }
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const filteredLinks    = applyFilters(links);
@@ -693,7 +788,13 @@ export default function ResourcesStep({ resources, setResources }) {
             <>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <h3 className="mb-4 text-sm font-semibold text-slate-900">Add a reference link</h3>
-                <AddLinkForm onAdd={addLink} />
+                <AddLinkForm
+                  onAdd={addLink}
+                  onRequestGenerate={handleGenerateLink}
+                  generating={linkGenerating}
+                  generatePhase={linkGeneratePhase}
+                  generateError={linkGenerateError}
+                />
               </div>
 
               {filteredLinks.length > 0 ? (

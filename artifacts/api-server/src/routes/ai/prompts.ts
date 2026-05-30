@@ -858,6 +858,99 @@ Return a concise extraction with only the sections that have content:
 Keep the total response under 350 words. Be specific and factual. Do not add commentary.`;
 }
 
+export function generateResourcePrompt({ bookContext, category, priority, useFor, existingResources, competitorBooks }: any) {
+  const ctx = bookContext || {};
+  const bc = Array.isArray(competitorBooks) ? competitorBooks : [];
+  const existing = Array.isArray(existingResources) ? existingResources : [];
+
+  const categoryDescriptions: Record<string, string> = {
+    academic_paper:  "peer-reviewed papers, PubMed articles, NIH resources, university research, journal publications — for scientific evidence and citations",
+    research_study:  "research studies, meta-analyses, systematic reviews, behavioral or industry studies — for evidence-based insights",
+    gov_report:      "CDC, NIH, WHO, OECD, Bureau of Labor Statistics, or similar government publications — for trusted data and statistics",
+    statistics:      "surveys, industry reports, public datasets, national studies, research dashboards — for charts, numbers, data points",
+    competitor_book: "books from the competitor analysis — rank by relevance, pick one not already added, explain how to use it",
+    book:            "influential nonfiction books, bestselling references relevant to the topic — for research and framework development",
+    writing_style:   "books, articles, or authors whose style matches the desired tone — for voice, flow, and writing quality",
+    interview:       "podcast transcripts, TED Talks, expert interviews, researcher discussions — for stories, examples, and quotes",
+    blog_article:    "high-quality long-form content from Harvard Business Review, Psychology Today, Farnam Street, McKinsey, or industry authorities",
+    case_study:      "business case studies, personal transformation stories, academic or organizational examples — for real-world proof",
+    note:            "a valuable research insight or principle — NO URL REQUIRED, generate a key finding to weave into the book",
+    other:           "the best available source based on book context and topic"
+  };
+
+  const priorityDescriptions: Record<string, string> = {
+    critical: "the single most authoritative and relevant source available — highest research quality",
+    high:     "most authoritative, trusted, and relevant source available",
+    medium:   "balanced relevance and accessibility",
+    low:      "supplementary supporting material"
+  };
+
+  const useForDescriptions: Record<string, string> = {
+    entire_book:   "foundational resources that support the whole manuscript",
+    outline_only:  "resources focused on frameworks, structures, and organization",
+    writing_style: "stylistic references and exemplary authors",
+    statistics:    "quantitative data sources",
+    quotes:        "interview, transcript, speech, and quote-rich sources",
+    research_only: "deep research and evidence-based material"
+  };
+
+  const useForList = (Array.isArray(useFor) ? useFor : ["entire_book"])
+    .map((u: string) => useForDescriptions[u] || u)
+    .join("; ");
+
+  const competitorList = bc.length
+    ? bc.slice(0, 8).map((b: any, i: number) =>
+        `${i + 1}. "${b.title || "Untitled"}"${b.authors ? ` by ${b.authors}` : ""}${b.asin ? ` (ASIN: ${b.asin})` : ""}`
+      ).join("\n")
+    : "(none discovered)";
+
+  const existingList = existing.length
+    ? existing.slice(0, 20).map((r: any) =>
+        `- ${r.label || r.title || ""}${r.url ? `: ${r.url}` : ""}`
+      ).join("\n")
+    : "(none yet)";
+
+  const categoryKey = (category as string) || "other";
+  const priorityKey = (priority as string) || "medium";
+  const isNoteCategory = categoryKey === "note";
+  const isCompetitorBook = categoryKey === "competitor_book";
+
+  return `You are an AI research librarian helping to build a high-quality nonfiction book. Recommend ONE specific, highly relevant resource.
+
+BOOK PROJECT:
+Title: ${ctx.title || "not set"}
+Subtitle: ${ctx.subtitle || ""}
+Topic: ${ctx.bookTopic || ""}
+Niche: ${ctx.niche || ""}${ctx.subNiche ? ` › ${ctx.subNiche}` : ""}${ctx.deepNiche ? ` › ${ctx.deepNiche}` : ""}
+Audience: ${ctx.audience || ""}
+Tone: ${ctx.tone || ""}
+Transformation Promise: ${ctx.transformationPromise || ""}
+Reader Pain: ${ctx.readerPainProfile || ""}
+Market Gap: ${ctx.marketGap || ""}
+Positioning: ${ctx.positioningStrategy || ""}
+
+COMPETITOR BOOKS DISCOVERED:
+${competitorList}
+
+ALREADY ADDED RESOURCES — do NOT recommend these:
+${existingList}
+
+REQUEST:
+Category: ${categoryKey} — ${categoryDescriptions[categoryKey] || "best available source"}
+Priority: ${priorityKey} — ${priorityDescriptions[priorityKey] || ""}
+Purpose: ${useForList}
+
+${isCompetitorBook ? "COMPETITOR BOOK RULE: Only recommend a book from the 'COMPETITOR BOOKS DISCOVERED' list. Pick the most relevant one not already in the added resources list. If all are added, recommend the closest published rival in the same niche." : ""}
+${isNoteCategory ? "NOTE/FINDING RULE: Generate a valuable insight, principle, or finding — NOT a URL. Leave url as empty string \"\"." : "URL RULE: Only use real, verifiable URLs. Never fabricate deep links. If a specific page URL is uncertain, use the authoritative domain (e.g. https://pubmed.ncbi.nlm.nih.gov) rather than a fake path."}
+
+Return ONLY valid JSON:
+{
+  "url": "${isNoteCategory ? "" : "<real URL or empty string>"}",
+  "label": "<descriptive title for this resource>",
+  "note": "<1-2 sentences: exactly how to use this in the book>"
+}`;
+}
+
 export function competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, books }: any) {
   const bookLines = Array.isArray(books) && books.length
     ? books.slice(0, 10).map((b: any, i: number) => {

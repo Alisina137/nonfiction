@@ -1167,6 +1167,7 @@ export default function Dashboard() {
 
           {currentStep === 3 && (
             <ResourcesStep
+              fullProject={project}
               resources={project.resources}
               setResources={(partial) =>
                 setProject((p) => ({
