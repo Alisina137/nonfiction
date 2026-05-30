@@ -2,9 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   subscribeAiBus,
   providerLabel,
-  isLowCostMode,
-  enableLowCostMode,
-  disableLowCostMode,
   resetAllProviders
 } from "@/lib/ai/aiFetch";
 import { useModelStatus, PROVIDER_DEFS } from "@/lib/ai/modelStatus";
@@ -77,37 +74,6 @@ const ACTIVE_LABELS = {
   openrouter: "OpenRouter"
 };
 
-function Toggle({ on, onToggle, label, activeClass, title, disabled: btnDisabled }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={btnDisabled}
-      title={title}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-        btnDisabled
-          ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
-          : on
-            ? activeClass
-            : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50"
-      }`}
-    >
-      <span
-        className={`relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors ${
-          on && !btnDisabled ? "bg-current opacity-80" : "bg-slate-300"
-        }`}
-      >
-        <span
-          className={`absolute h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${
-            on && !btnDisabled ? "translate-x-2.5" : "translate-x-0.5"
-          }`}
-        />
-      </span>
-      {label}
-    </button>
-  );
-}
-
 // ─── Model list row ───────────────────────────────────────────────────────────
 
 function ModelRow({ m, onToggle }) {
@@ -162,7 +128,6 @@ function ModelRow({ m, onToggle }) {
 export default function ProviderStatusBadge() {
   const [activeProvider, setActiveProvider] = useState(null);
   const [toast,          setToast]          = useState(null);
-  const [lowCostOn,      setLowCostOn]      = useState(() => isLowCostMode());
   const [panelOpen,      setPanelOpen]      = useState(false);
   const [resetting,      setResetting]      = useState(false);
   const panelRef  = useRef(null);
@@ -210,18 +175,6 @@ export default function ProviderStatusBadge() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [panelOpen]);
-
-  function toggleLowCost() {
-    if (lowCostOn) {
-      disableLowCostMode();
-      setLowCostOn(false);
-      setToast({ message: "Normal mode — full token limits.", id: Date.now() });
-    } else {
-      enableLowCostMode();
-      setLowCostOn(true);
-      setToast({ message: "Low-cost mode — reduced token limits. Same provider chain.", id: Date.now() });
-    }
-  }
 
   async function handleReset() {
     setResetting(true);
@@ -352,18 +305,6 @@ export default function ProviderStatusBadge() {
           )}
         </div>
 
-        {/* Low-cost mode toggle */}
-        <Toggle
-          on={lowCostOn}
-          onToggle={toggleLowCost}
-          label="Low-cost"
-          activeClass="border-teal-300 bg-teal-100 text-teal-800 hover:bg-teal-200"
-          title={
-            lowCostOn
-              ? "Low-cost mode: reduced token limits. Click to restore full limits."
-              : "Enable Low-cost mode: use reduced token limits to stay within free-tier quotas."
-          }
-        />
       </div>
 
       {/* Toast notifications */}
