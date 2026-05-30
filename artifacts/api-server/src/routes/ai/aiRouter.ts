@@ -1,14 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Multi-Provider AI Router — 7 independent providers, independent free quotas
+// Multi-Provider AI Router — 5 independent providers, independent free quotas
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // PROVIDER CHAIN (both normal and low-cost mode — same order, same providers):
 //   1. Gemini     — Google AI Studio (GEMINI_API_KEY)
 //   2. Groq       — Groq Cloud (GROQ_API_KEY)
-//   3. Cerebras   — Cerebras Cloud (CEREBRAS_API_KEY)
-//   4. xAI        — xAI Cloud / Grok (XAI_API_KEY)
-//   5. Fireworks  — Fireworks AI (FIREWORKS_API_KEY)
-//   6. OpenRouter — last-resort fallback (OPENROUTER_API_KEY)
+//   3. xAI        — xAI Cloud / Grok (XAI_API_KEY)
+//   4. OpenRouter — last-resort fallback (OPENROUTER_API_KEY)
 //
 // DIFFERENCES BETWEEN MODES:
 //   Normal mode:   standard token limits
@@ -29,7 +27,7 @@
 
 // ─── Provider configuration ───────────────────────────────────────────────
 
-export type ProviderId = "gemini" | "groq" | "cerebras" | "xai" | "together" | "fireworks" | "openrouter";
+export type ProviderId = "gemini" | "groq" | "xai" | "openrouter";
 
 // ─── xAI model list (configurable from one place) ─────────────────────────
 export const XAI_MODELS = [
@@ -68,28 +66,12 @@ export const PROVIDERS: ProviderConfig[] = [
     order:  2
   },
   {
-    id:     "cerebras",
-    label:  "Cerebras (Llama)",
-    model:  "llama3.3-70b",
-    apiUrl: "https://api.cerebras.ai/v1/chat/completions",
-    apiKey: () => process.env.CEREBRAS_API_KEY,
-    order:  3
-  },
-  {
     id:     "xai",
     label:  "xAI (Grok)",
     model:  XAI_DEFAULT_MODEL,
     apiUrl: "https://api.x.ai/v1/chat/completions",
     apiKey: () => process.env.XAI_API_KEY,
-    order:  4
-  },
-  {
-    id:     "fireworks",
-    label:  "Fireworks (Llama)",
-    model:  "accounts/fireworks/models/llama-v3p1-70b-instruct",
-    apiUrl: "https://api.fireworks.ai/inference/v1/chat/completions",
-    apiKey: () => process.env.FIREWORKS_API_KEY,
-    order:  5
+    order:  3
   },
   {
     id:     "openrouter",
@@ -97,7 +79,7 @@ export const PROVIDERS: ProviderConfig[] = [
     model:  "meta-llama/llama-3.3-70b-instruct:free",
     apiUrl: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY,
-    order:  6
+    order:  4
   }
 ];
 
