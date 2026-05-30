@@ -24,8 +24,9 @@ export const PROVIDER_DEFS = {
   gemini:     { label: "Gemini 2.5 Flash",      model: "gemini-2.5-flash",                               order: 1 },
   groq:       { label: "Groq (Llama)",           model: "llama-3.3-70b-versatile",                        order: 2 },
   cerebras:   { label: "Cerebras (Llama)",       model: "llama3.3-70b",                                   order: 3 },
-  fireworks:  { label: "Fireworks (Llama)",      model: "llama-v3p1-70b-instruct",                        order: 4 },
-  openrouter: { label: "OpenRouter (fallback)",  model: "meta-llama/llama-3.3-70b-instruct:free",         order: 5 }
+  xai:        { label: "xAI (Grok)",             model: "grok-3-mini",                                    order: 4 },
+  fireworks:  { label: "Fireworks (Llama)",      model: "llama-v3p1-70b-instruct",                        order: 5 },
+  openrouter: { label: "OpenRouter (fallback)",  model: "meta-llama/llama-3.3-70b-instruct:free",         order: 6 }
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_DEFS);

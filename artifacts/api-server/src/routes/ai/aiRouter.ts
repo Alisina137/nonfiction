@@ -1,12 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Multi-Provider AI Router — 6 independent providers, independent free quotas
+// Multi-Provider AI Router — 7 independent providers, independent free quotas
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // PROVIDER CHAIN (both normal and low-cost mode — same order, same providers):
 //   1. Gemini     — Google AI Studio (GEMINI_API_KEY)
 //   2. Groq       — Groq Cloud (GROQ_API_KEY)
 //   3. Cerebras   — Cerebras Cloud (CEREBRAS_API_KEY)
-//   4. Together   — Together AI (TOGETHER_API_KEY)
+//   4. xAI        — xAI Cloud / Grok (XAI_API_KEY)
 //   5. Fireworks  — Fireworks AI (FIREWORKS_API_KEY)
 //   6. OpenRouter — last-resort fallback (OPENROUTER_API_KEY)
 //
@@ -29,7 +29,17 @@
 
 // ─── Provider configuration ───────────────────────────────────────────────
 
-export type ProviderId = "gemini" | "groq" | "cerebras" | "together" | "fireworks" | "openrouter";
+export type ProviderId = "gemini" | "groq" | "cerebras" | "xai" | "together" | "fireworks" | "openrouter";
+
+// ─── xAI model list (configurable from one place) ─────────────────────────
+export const XAI_MODELS = [
+  "grok-3-mini",
+  "grok-3",
+  "grok-2-1212",
+  "grok-beta"
+] as const;
+export type XaiModel = typeof XAI_MODELS[number];
+export const XAI_DEFAULT_MODEL: XaiModel = "grok-3-mini";
 
 export interface ProviderConfig {
   id:      ProviderId;
@@ -66,6 +76,14 @@ export const PROVIDERS: ProviderConfig[] = [
     order:  3
   },
   {
+    id:     "xai",
+    label:  "xAI (Grok)",
+    model:  XAI_DEFAULT_MODEL,
+    apiUrl: "https://api.x.ai/v1/chat/completions",
+    apiKey: () => process.env.XAI_API_KEY,
+    order:  4
+  },
+  {
     id:     "fireworks",
     label:  "Fireworks (Llama)",
     model:  "accounts/fireworks/models/llama-v3p1-70b-instruct",
@@ -86,6 +104,18 @@ export const PROVIDERS: ProviderConfig[] = [
 export const PROVIDER_IDS = PROVIDERS.map((p) => p.id);
 
 const PROVIDER_BY_ID = Object.fromEntries(PROVIDERS.map((p) => [p.id, p])) as Record<ProviderId, ProviderConfig>;
+
+// ─── Startup key warnings ──────────────────────────────────────────────────
+(function warnMissingKeys() {
+  for (const p of PROVIDERS) {
+    if (!p.apiKey()) {
+      console.warn(`[AI] WARNING: ${p.id.toUpperCase()}_API_KEY is not set — ${p.label} will be skipped in the provider chain.`);
+      if (p.id === "xai") {
+        console.warn("[AI] To enable xAI (Grok), add XAI_API_KEY to your Replit Secrets. Get your key at https://console.x.ai/");
+      }
+    }
+  }
+})();
 
 // Model lookup for external status consumers
 export const MODEL_BY_PROVIDER = Object.fromEntries(
