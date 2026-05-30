@@ -2,14 +2,12 @@
 //
 // Wraps POSTs to /api/ai/* so they:
 //   1. Surface the AI provider via X-AI-Provider header → event bus → ProviderStatusBadge.
-//   2. Track credit exhaustion via X-Exhausted-Providers header → localStorage (4-hour TTL).
+//   2. Track credit exhaustion via X-Exhausted-Providers header → localStorage (24-hour TTL).
 //   3. Include client-tracked exhausted + manually-disabled providers in every request
 //      so the server skips them in the fallback chain.
-//   4. Inject lowCostMode when the user has enabled the low-cost toggle.
-//   5. Cache successful responses in localStorage (30-min TTL).
-//   6. Translate raw provider errors into friendly human-readable messages.
+//   4. Cache successful responses in localStorage (30-min TTL).
+//   5. Translate raw provider errors into friendly human-readable messages.
 
-const LOW_COST_KEY  = "nonfiction-ai-low-cost-mode";
 const CACHE_PREFIX  = "nonfiction-ai-cache-";
 const CACHE_TTL_MS  = 30 * 60 * 1000;
 
@@ -21,8 +19,7 @@ const NO_CACHE_PATHS = ["/api/ai/improve"];
 export const PROVIDER_LABELS = {
   gemini:     "Gemini",
   groq:       "Groq",
-  cerebras:   "Cerebras",
-  fireworks:  "Fireworks",
+  xai:        "xAI (Grok)",
   openrouter: "OpenRouter"
 };
 
@@ -47,18 +44,6 @@ export function subscribeAiBus(channel, fn) {
 
 export function providerLabel(id) {
   return PROVIDER_LABELS[id] || id || "Unknown";
-}
-
-// ─── Low-cost mode state ─────────────────────────────────────────────────────
-
-export function isLowCostMode() {
-  try { return window.localStorage.getItem(LOW_COST_KEY) === "on"; } catch { return false; }
-}
-export function enableLowCostMode() {
-  try { window.localStorage.setItem(LOW_COST_KEY, "on"); } catch {}
-}
-export function disableLowCostMode() {
-  try { window.localStorage.removeItem(LOW_COST_KEY); } catch {}
 }
 
 // ─── Credit exhaustion tracking (localStorage) ────────────────────────────────
@@ -123,7 +108,7 @@ function hashStr(s) {
 }
 
 function cacheKey(url, body) {
-  const { lowCostMode: _l, noCache: _n, disabledProviders: _d, ...stable } = body || {};
+  const { noCache: _n, disabledProviders: _d, ...stable } = body || {};
   return CACHE_PREFIX + hashStr(url + JSON.stringify(stable));
 }
 
@@ -170,24 +155,12 @@ function friendlyError(rawMsg) {
 
 // ─── Provider tracking ────────────────────────────────────────────────────────
 
-const FREE_PROVIDERS = new Set(["llama", "deepseek", "gemini_free", "mistral"]);
 let lastProvider = null;
 
 function emitProviderUsed(provider) {
   if (!provider) return;
   if (lastProvider && lastProvider !== provider) {
-    const fromFree = FREE_PROVIDERS.has(lastProvider);
-    const toFree   = FREE_PROVIDERS.has(provider);
-    let message;
-    if (!fromFree && toFree) {
-      message = `Paid providers busy — switching to ${providerLabel(provider)} automatically.`;
-    } else if (fromFree && !toFree) {
-      message = `${providerLabel(provider)} available — resumed quality mode.`;
-    } else if (toFree) {
-      message = `Trying ${providerLabel(provider)} (free backup)…`;
-    } else {
-      message = `Switching: ${providerLabel(lastProvider)} → ${providerLabel(provider)}.`;
-    }
+    const message = `Switching: ${providerLabel(lastProvider)} → ${providerLabel(provider)}.`;
     emit("fallback", { message, from: lastProvider, to: provider });
   }
   lastProvider = provider;
@@ -220,7 +193,6 @@ export async function resetAllProviders() {
 /**
  * POST JSON body to an AI endpoint. Transparently handles:
  *   - Caching (localStorage, 30-min TTL)
- *   - Low-cost mode (routes to free-only provider chain)
  *   - Exhausted + manually-disabled providers (sent as disabledProviders[])
  *   - X-Exhausted-Providers response header → marks in localStorage
  *   - X-AI-Provider response header → updates status badge
@@ -244,7 +216,6 @@ export async function aiFetch(url, body = {}, { signal, noCache } = {}) {
 
   const merged = {
     ...body,
-    lowCostMode: isLowCostMode(),
     ...(disabled.length ? { disabledProviders: disabled } : {})
   };
 

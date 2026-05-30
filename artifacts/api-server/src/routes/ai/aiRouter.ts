@@ -8,10 +8,6 @@
 //   3. xAI        — xAI Cloud / Grok (XAI_API_KEY)
 //   4. OpenRouter — last-resort fallback (OPENROUTER_API_KEY)
 //
-// DIFFERENCES BETWEEN MODES:
-//   Normal mode:   standard token limits
-//   Low-cost mode: capped token limits (900 max)
-//
 // QUOTA TRACKING:
 //   On 429 / quota / rate-limit / daily-limit errors:
 //     → provider disabled for 24 hours (independent per-provider cooldown)
@@ -193,8 +189,8 @@ function isQuotaExhausted(msg: string, status?: number): boolean {
 }
 
 function isHardUnavailable(msg: string, status?: number): boolean {
-  if (status === 404) return true;
-  return /no.?endpoint|endpoint.?not.?found|temporarily.?disabled|model.*unavailable|doesn.*exist|not.*available/i.test(msg || "");
+  if (status === 404 || status === 403) return true;
+  return /no.?endpoint|endpoint.?not.?found|temporarily.?disabled|model.*unavailable|doesn.*exist|not.*available|no.?credits|no.?license/i.test(msg || "");
 }
 
 function isTransientError(msg: string, status?: number): boolean {
@@ -492,9 +488,7 @@ async function runChain(
     }
   }
 
-  const hint = opts.lowCredit
-    ? "All AI providers have exhausted their daily credits (low-cost mode). Wait for quotas to reset or disable Low-cost mode."
-    : "All AI providers have exhausted their daily credits. Try again later or enable Low-cost mode.";
+  const hint = "All AI providers have exhausted their daily credits. Wait for quotas to reset (up to 24h) or reset provider states manually.";
   throw new Error(`AI_EXHAUSTED:${attempts.length}:${hint}`);
 }
 
