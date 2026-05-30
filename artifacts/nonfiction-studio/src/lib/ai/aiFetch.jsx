@@ -47,7 +47,7 @@ export function providerLabel(id) {
 }
 
 // ─── Credit exhaustion tracking (localStorage) ────────────────────────────────
-// Mirrors server-side tracking on the client with a 4-hour TTL.
+// Mirrors server-side tracking on the client with a 24-hour TTL.
 
 export function getLocallyExhaustedProviders() {
   try {
@@ -180,9 +180,8 @@ export class GenerationCanceledError extends Error {
 // ─── Reset all client-side provider state ─────────────────────────────────────
 
 export async function resetAllProviders() {
+  // Only reset quota/exhaustion state — manual enable/disable preferences are preserved
   clearLocallyExhaustedProviders();
-  try { window.localStorage.removeItem(MANUAL_OFF_KEY); } catch {}
-  // Also reset the server-side state
   try {
     await fetch("/api/ai/reset-providers", { method: "POST" });
   } catch {}

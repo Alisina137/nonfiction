@@ -361,9 +361,7 @@ async function callProvider(
       }
 
       const elapsed = Date.now() - startMs;
-      console.log(`PROVIDER SUCCESS`);
-      console.log(`Provider: ${provider.id}`);
-      console.log(`GenerationTimeMs: ${elapsed}`);
+      console.log(`[AI] ✓ ${provider.id} succeeded in ${elapsed}ms`);
       return result.text;
 
     } catch (e: any) {
@@ -420,11 +418,11 @@ async function runChain(
   // Build eligible chain — only providers with configured keys
   const chain = PROVIDERS.filter((p) => Boolean(p.apiKey()));
 
+  const activeIds = chain.map((p) => p.id).filter((id) => !clientDisabled.has(id));
   console.log("================================");
   console.log("ROUTER START");
-  console.log("LOW COST MODE:", opts.lowCredit ?? false);
-  console.log("CLIENT DISABLED:", [...clientDisabled]);
-  console.log("CHAIN:", chain.map((p) => p.id));
+  console.log(`[AI] Client-disabled: [${[...clientDisabled].join(", ") || "none"}]`);
+  console.log(`[AI] Active providers: [${activeIds.join(", ")}]`);
   console.log("================================");
 
   const attempts: Array<{ id: ProviderId; error: string }> = [];
@@ -434,7 +432,7 @@ async function runChain(
 
     // ── Client-side disabled check ────────────────────────────────────────
     if (clientDisabled.has(provider.id)) {
-      console.log(`SKIPPING ${provider.id} — disabled by client`);
+      console.log(`[AI] Skipping ${provider.id} — disabled by user`);
       continue;
     }
 
@@ -442,12 +440,11 @@ async function runChain(
     if (isProviderDisabled(provider.id)) {
       const until    = providerDisabledUntil.get(provider.id) ?? 0;
       const minsLeft = Math.ceil((until - Date.now()) / 60000);
-      console.log(`SKIPPING ${provider.id} — in cooldown for ~${minsLeft} more min`);
+      console.log(`[AI] Skipping ${provider.id} — cooldown ~${minsLeft}min remaining`);
       continue;
     }
 
-    console.log(`TRYING PROVIDER: ${provider.id}`);
-    console.log(`MODEL: ${provider.model}`);
+    console.log(`[AI] Trying: ${provider.id} (${provider.model})`);
 
     try {
       const text = await callProvider(provider, prompt, system, maxTokens);
@@ -466,29 +463,32 @@ async function runChain(
       const httpStatus = e?.httpStatus as number | undefined;
 
       if (e?.skipProvider) {
-        // Key not configured — skip silently
-        console.log(`SKIPPING ${provider.id} — key not configured`);
+        console.log(`[AI] Skipping ${provider.id} — key not configured`);
         continue;
       }
 
       if (isQuotaExhausted(msg, httpStatus)) {
+        console.log(`[AI] ${provider.id} quota exhausted — disabled 24h, switching to next provider`);
         disableProvider(provider.id, msg, "credit");
         exhaustedProviders.push(provider.id);
       } else if (isHardUnavailable(msg, httpStatus)) {
+        console.log(`[AI] ${provider.id} hard unavailable (${httpStatus}) — disabled 60min`);
         disableProvider(provider.id, msg, "hard");
       } else if (isTransientError(msg, httpStatus)) {
+        console.log(`[AI] ${provider.id} transient error — disabled 10min`);
         disableProvider(provider.id, msg, "rate_limit");
       } else {
-        console.log(`PROVIDER FAILED`);
-        console.log(`Provider: ${provider.id}`);
-        console.log(`Reason: ${msg.slice(0, 200)}`);
+        console.log(`[AI] ${provider.id} failed: ${msg.slice(0, 200)}`);
       }
 
       attempts.push({ id: provider.id, error: msg.slice(0, 100) });
     }
   }
 
-  const hint = "All AI providers have exhausted their daily credits. Wait for quotas to reset (up to 24h) or reset provider states manually.";
+  const enabledCount = activeIds.length;
+  const hint = enabledCount === 0
+    ? "No providers are currently enabled. Enable at least one provider in the AI Provider Status panel."
+    : `All ${enabledCount} enabled provider${enabledCount === 1 ? "" : "s"} are unavailable (quota exhausted or offline). Wait for quotas to reset (up to 24h) or click "Reset all" in the provider status panel.`;
   throw new Error(`AI_EXHAUSTED:${attempts.length}:${hint}`);
 }
 

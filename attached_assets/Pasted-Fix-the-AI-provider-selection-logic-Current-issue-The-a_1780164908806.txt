@@ -1,0 +1,61 @@
+Fix the AI provider selection logic.
+
+Current issue:
+The app shows a list of providers under "AI Provider Status" with enable/disable toggles, but the analysis engine still tries providers that are not checked.
+
+Required behavior:
+
+1. ONLY use providers that are currently enabled (checked/toggled ON) in the AI Provider Status panel.
+2. Ignore all disabled providers completely.
+3. Before every AI request, build the active provider list from the current toggle state.
+4. The fallback chain must contain ONLY active providers.
+5. If a provider is disabled, it must never be selected automatically.
+6. If a provider becomes enabled again, it should immediately be eligible for use without requiring a restart.
+7. When a provider exhausts its quota, mark only that provider as unavailable and continue with the next ACTIVE provider.
+8. Do not automatically disable other providers when one provider fails.
+9. The "Reset All" button should only reset provider availability status, not change the user's enabled/disabled selections.
+10. Persist provider toggle preferences in local storage/database so they survive page refreshes.
+
+Example:
+
+Provider Status:
+✓ Gemini 2.5 Flash
+✗ OpenAI
+✓ xAI (Grok)
+✗ Claude
+✓ OpenRouter
+
+Fallback order should become:
+
+1. Gemini 2.5 Flash
+2. xAI (Grok)
+3. OpenRouter
+
+OpenAI and Claude must never be attempted because they are disabled.
+
+Implementation requirements:
+
+- Find where provider fallback order is generated.
+- Filter providers using:
+  provider.enabled === true
+
+Example:
+
+const activeProviders = providers
+  .filter(provider => provider.enabled)
+  .filter(provider => provider.available);
+
+All AI requests must use activeProviders only.
+
+Add detailed logging:
+
+[AI] Active Providers: Gemini, xAI, OpenRouter
+[AI] Trying Gemini...
+[AI] Gemini exhausted, switching to xAI...
+[AI] xAI succeeded
+
+If no enabled providers remain:
+
+"All enabled AI providers are unavailable. Enable another provider or wait for quota reset."
+
+Return all modified files and explain the changes made.
