@@ -1,0 +1,123 @@
+--------------------------------------------------
+AUTO-FILL FIELDS
+--------------------------------------------------
+
+Automatically generate and prefill:
+
+- Genre
+- Structure
+- Tone
+- Audience
+
+using:
+
+- Research
+- Analysis
+- Book Title
+- Resources
+- Author Persona
+- Proposed Book
+
+Allow manual override after generation.
+
+--------------------------------------------------
+STRUCTURE INTELLIGENCE
+--------------------------------------------------
+
+The Structure field should not require manual selection by default.
+
+When Generate Details is clicked, the AI should analyze the book concept and choose the most appropriate structure.
+
+Possible structures include:
+
+- Problem → Solution
+- Step-by-Step Framework
+- Sequential Transformation
+- Skill Building
+- Myth Busting
+- Case Study Driven
+- Research Driven
+- Blueprint / System
+- Challenge-Based
+- Hybrid Structure
+
+Display:
+
+Recommended Structure
+
+with a short explanation.
+
+Example:
+
+Structure:
+Blueprint / System
+
+Reason:
+The book teaches a repeatable ADHD productivity framework that readers implement progressively.
+
+Users may still manually override the recommendation.
+
+--------------------------------------------------
+GENERATE DETAILS CONTEXT
+--------------------------------------------------
+
+The Generate Details button must use ALL available project data.
+
+Context sources include:
+
+- Research step
+- Analysis step
+- Book Title step
+- Resources step
+- Author Persona step
+- Proposed Book step
+- Existing Details step values
+- Previously generated findings
+- Uploaded files
+- Research links
+- Research notes
+- Analysis outputs
+- Market insights
+- Competitor intelligence
+- Reader pain points
+- Existing strategic fields
+- Any stored project metadata
+
+The AI should treat the entire project as a single knowledge base.
+
+--------------------------------------------------
+GENERATE DETAILS BEHAVIOR
+--------------------------------------------------
+
+When the user clicks:
+
+✨ Generate Details
+
+the AI should:
+
+1. Read all previous workflow data.
+2. Read all existing Detail step values.
+3. Preserve user-entered information whenever possible.
+4. Improve incomplete or weak fields.
+5. Generate missing strategic fields.
+6. Recommend:
+   - Structure
+   - Genre
+   - Tone
+   - Audience
+   - Chapter Count
+   - Word Count
+7. Populate all strategic planning fields.
+
+The generated result should feel like a professional publishing consultant has reviewed the entire project and prepared a complete book blueprint.
+
+Do not generate generic content.
+
+All generated fields must directly reflect:
+- the book concept
+- market opportunity
+- research findings
+- audience needs
+- competitive positioning
+
+The output should be cohesive across the entire project.

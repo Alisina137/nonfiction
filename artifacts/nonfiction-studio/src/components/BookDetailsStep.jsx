@@ -9,6 +9,7 @@ import {
 } from "@/lib/constants";
 import { effectiveBookTitle } from "@/lib/proposedBook";
 import { getActivePersona } from "@/lib/bookContext";
+import { aiFetch } from "@/lib/ai/aiFetch";
 
 const CREATE_NEW_PERSONA = "__create_new__";
 
@@ -246,12 +247,61 @@ function SectionTitle({ children }) {
   return <p className="mt-8 mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">{children}</p>;
 }
 
+/** Structure Intelligence recommendation card — shown after AI generation */
+function StructureIntelligenceCard({ structure, reason, onAccept, onOverride }) {
+  if (!structure || !reason) return null;
+  return (
+    <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm">✦</div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-violet-500">Recommended Structure</p>
+          <p className="mt-0.5 text-sm font-bold text-violet-900">{structure}</p>
+          <p className="mt-1 text-xs leading-relaxed text-violet-800">{reason}</p>
+        </div>
+        <div className="flex shrink-0 flex-col gap-1.5 mt-0.5">
+          <button
+            type="button"
+            onClick={onAccept}
+            className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-violet-700 shadow-sm hover:bg-violet-50 transition"
+          >
+            Apply ✓
+          </button>
+          <button
+            type="button"
+            onClick={onOverride}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-50 transition"
+          >
+            Override
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** "AI Generated" badge to show on fields just filled by Generate Details */
+function AiGeneratedBadge() {
+  return (
+    <span className="ml-2 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">
+      ✦ AI Generated
+    </span>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function BookDetailsStep({ bookDetails, setBookDetails, fullProject, currentStep, detailsStepIndex }) {
   const bd = bookDetails || {};
   const [suggestions, setSuggestions] = useState({});
   const visitedRef = useRef(false);
+
+  // AI generation state
+  const [aiGenerating, setAiGenerating]   = useState(false);
+  const [aiError, setAiError]             = useState("");
+  const [structureRec, setStructureRec]   = useState(null); // { structure, reason }
+  const [aiGenFields, setAiGenFields]     = useState(new Set()); // fields filled this session
+  const [aiGenPhase, setAiGenPhase]       = useState("");
 
   // Compute suggestions once on first step visit
   useEffect(() => {
@@ -308,6 +358,101 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
     });
   }
 
+  // ── AI Generate Details ────────────────────────────────────────────────────
+
+  async function handleGenerateDetails() {
+    if (aiGenerating) return;
+    setAiGenerating(true);
+    setAiError("");
+    setAiGenFields(new Set());
+    setStructureRec(null);
+
+    const phases = [
+      "Reading your research…",
+      "Analyzing competitor data…",
+      "Reviewing author persona…",
+      "Synthesizing book blueprint…",
+      "Finalizing recommendations…"
+    ];
+    let phaseIdx = 0;
+    setAiGenPhase(phases[0]);
+    const phaseTimer = setInterval(() => {
+      phaseIdx = Math.min(phaseIdx + 1, phases.length - 1);
+      setAiGenPhase(phases[phaseIdx]);
+    }, 3000);
+
+    try {
+      const data = await aiFetch(
+        "/api/ai/generate-details",
+        { project: fullProject },
+        { noCache: true }
+      );
+
+      const updates = {};
+      const filled = new Set();
+
+      // Apply all returned fields — preserve existing user-entered values only if the AI
+      // returned something meaningful (non-empty). Empty AI returns are skipped.
+      const fieldMap = {
+        genre:                    data.genre,
+        tone:                     data.tone,
+        audience:                 data.audience,
+        uniqueSellingProposition: data.uniqueSellingProposition,
+        readerPainPoints:         data.readerPainPoints,
+        keywords:                 data.keywords,
+        subtitle:                 data.subtitle,
+      };
+
+      for (const [key, val] of Object.entries(fieldMap)) {
+        if (val && String(val).trim()) {
+          updates[key] = String(val).trim();
+          filled.add(key);
+        }
+      }
+
+      // Chapter count
+      if (data.chapterCount && Number.isFinite(data.chapterCount)) {
+        updates.chapterCount = data.chapterCount;
+        filled.add("chapterCount");
+      }
+
+      // Word count range
+      if (data.wordCountRange && BOOK_WORD_COUNT_RANGES.includes(data.wordCountRange)) {
+        updates.wordCountRange = data.wordCountRange;
+        filled.add("wordCountRange");
+      }
+
+      // Structure: set in bookDetails AND show the intelligence card
+      if (data.structure && BOOK_STRUCTURE_OPTIONS.includes(data.structure)) {
+        updates.structure = data.structure;
+        filled.add("structure");
+      }
+      if (data.structureReason && data.structure) {
+        setStructureRec({ structure: data.structure, reason: data.structureReason });
+      }
+
+      patch(updates);
+      setAiGenFields(filled);
+
+      // Dismiss any pending static suggestions that have been overridden
+      if (filled.size > 0) {
+        setSuggestions((prev) => {
+          const next = { ...prev };
+          for (const k of filled) {
+            if (next[k]) next[k] = { ...next[k], status: "accepted" };
+          }
+          return next;
+        });
+      }
+    } catch (e) {
+      setAiError(e?.message || "Generation failed. Please try again.");
+    } finally {
+      clearInterval(phaseTimer);
+      setAiGenPhase("");
+      setAiGenerating(false);
+    }
+  }
+
   // Dynamic option lists (add custom values so they appear in dropdowns)
   const genreOptions = useMemo(() => {
     const set = new Set(GENRE_OPTIONS);
@@ -338,13 +483,65 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <p className="text-xs font-semibold uppercase tracking-wider text-sky-700/90">Step 7 — Book details</p>
         <h2 className="mt-1 font-serif text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Strategic synthesis</h2>
         <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-          Your workflow data has been analyzed. Accept the AI suggestions or override any field manually — your edits are always final.
+          Your workflow data has been analyzed. Use <strong>✦ Generate Details</strong> to have the AI fill everything from your project, or accept the suggestions below manually.
         </p>
       </header>
 
-      {/* ── Accept all banner ── */}
+      {/* ── Generate Details button ── */}
+      <div className="mt-5">
+        <button
+          type="button"
+          onClick={handleGenerateDetails}
+          disabled={aiGenerating}
+          className={`w-full flex items-center justify-center gap-2.5 rounded-xl border px-5 py-3.5 text-sm font-semibold shadow-sm transition ${
+            aiGenerating
+              ? "border-violet-200 bg-violet-50 text-violet-400 cursor-not-allowed"
+              : "border-violet-300 bg-white text-violet-700 hover:bg-violet-50 hover:border-violet-400"
+          }`}
+        >
+          {aiGenerating ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-violet-300 border-t-violet-600" />
+              <span>{aiGenPhase || "Generating…"}</span>
+            </>
+          ) : (
+            <>
+              <span>✦</span>
+              <span>Generate Details</span>
+              <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">Uses all project data</span>
+            </>
+          )}
+        </button>
+
+        {aiError && (
+          <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {aiError}
+          </div>
+        )}
+
+        {!aiGenerating && aiGenFields.size > 0 && (
+          <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 flex items-center gap-2">
+            <span className="text-emerald-600 text-base">✓</span>
+            <div>
+              <p className="text-xs font-semibold text-emerald-800">
+                {aiGenFields.size} field{aiGenFields.size !== 1 ? "s" : ""} generated
+              </p>
+              <p className="text-[11px] text-emerald-700">
+                {[...aiGenFields].map((k) => ({
+                  genre: "Genre", structure: "Structure", tone: "Tone", audience: "Audience",
+                  chapterCount: "Chapters", wordCountRange: "Word count",
+                  uniqueSellingProposition: "USP", readerPainPoints: "Pain points",
+                  keywords: "Keywords", subtitle: "Subtitle"
+                }[k] || k)).filter(Boolean).join(", ")}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Accept all banner (static suggestions) ── */}
       {pendingCount > 0 && (
-        <div className="mt-5 flex items-center justify-between rounded-xl border border-sky-200 bg-sky-50 px-4 py-3">
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-sky-200 bg-sky-50 px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-sky-900">
               {pendingCount} suggestion{pendingCount !== 1 ? "s" : ""} ready
@@ -366,11 +563,13 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             {suggestedWordCount && (
               <span className="ml-2 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-700">Niche Recommended</span>
             )}
+            {aiGenFields.has("wordCountRange") && <AiGeneratedBadge />}
           </FieldLabel>
           <div className="mt-3 flex flex-wrap gap-2">
             {BOOK_WORD_COUNT_RANGES.map((range) => {
               const on  = bd.wordCountRange === range;
               const rec = suggestedWordCount === range;
+              const aiRec = aiGenFields.has("wordCountRange") && bd.wordCountRange === range;
               return (
                 <button
                   key={range}
@@ -380,7 +579,8 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
                     setSuggestions((prev) => ({ ...prev, wordCountRange: { ...prev.wordCountRange, status: "accepted" } }));
                   }}
                   className={`relative rounded-full border px-3 py-2 text-xs font-semibold transition ${
-                    on ? "border-slate-900 bg-slate-900 text-white"
+                    on && aiRec ? "border-violet-600 bg-violet-600 text-white"
+                    : on ? "border-slate-900 bg-slate-900 text-white"
                     : rec ? "border-sky-400 bg-sky-50 text-sky-800 ring-1 ring-sky-300"
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                   }`}
@@ -400,11 +600,13 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             {suggestedChapters && (
               <span className="ml-2 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-700">Niche Recommended</span>
             )}
+            {aiGenFields.has("chapterCount") && <AiGeneratedBadge />}
           </FieldLabel>
           <div className="mt-3 flex flex-wrap gap-2">
             {BOOK_CHAPTER_OPTIONS.map((n) => {
               const on  = Number(bd.chapterCount) === n;
               const rec = suggestedChapters === n;
+              const aiRec = aiGenFields.has("chapterCount") && Number(bd.chapterCount) === n;
               return (
                 <button
                   key={n}
@@ -415,7 +617,8 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
                     setSuggestions((prev) => ({ ...prev, chapterCount: { ...prev.chapterCount, status: "accepted" } }));
                   }}
                   className={`relative flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition ${
-                    on ? "border-slate-900 bg-slate-900 text-white"
+                    on && aiRec ? "border-violet-600 bg-violet-600 text-white"
+                    : on ? "border-slate-900 bg-slate-900 text-white"
                     : rec ? "border-sky-400 bg-sky-50 text-sky-800 ring-1 ring-sky-300"
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                   }`}
@@ -454,6 +657,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="Clarifies the book's promise — inherited from Research if set.">
             Subtitle <span className="font-normal text-slate-400">(optional)</span>
+            {aiGenFields.has("subtitle") && <AiGeneratedBadge />}
           </FieldLabel>
           <input
             className="input-light mt-1.5"
@@ -477,7 +681,10 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         {/* ── Genre + Structure ── */}
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <FieldLabel hint="Market category — inherited from your Research niche.">Genre</FieldLabel>
+            <FieldLabel hint="Market category — inherited from your Research niche.">
+              Genre
+              {aiGenFields.has("genre") && <AiGeneratedBadge />}
+            </FieldLabel>
             <select className="input-light mt-1.5" value={bd.genre ?? ""} onChange={(e) => patch({ genre: e.target.value })}>
               <option value="">Select genre</option>
               {genreOptions.map((g) => <option key={g} value={g}>{g}</option>)}
@@ -491,12 +698,35 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             )}
           </div>
           <div>
-            <FieldLabel hint="Architectural blueprint — inferred from your niche's structural fingerprint.">Structure</FieldLabel>
-            <select className="input-light mt-1.5" value={bd.structure ?? ""} onChange={(e) => patch({ structure: e.target.value })}>
+            <FieldLabel hint="Architectural blueprint — AI analyzes your concept to recommend the best fit.">
+              Structure
+              {aiGenFields.has("structure") && <AiGeneratedBadge />}
+            </FieldLabel>
+            <select className="input-light mt-1.5" value={bd.structure ?? ""} onChange={(e) => {
+              patch({ structure: e.target.value });
+              // Manual override dismisses the AI rec card
+              if (structureRec && e.target.value !== structureRec.structure) {
+                setStructureRec(null);
+              }
+            }}>
               <option value="">Select structure</option>
               {BOOK_STRUCTURE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            {isActive("structure") && (
+
+            {/* Structure Intelligence card */}
+            {structureRec && (
+              <StructureIntelligenceCard
+                structure={structureRec.structure}
+                reason={structureRec.reason}
+                onAccept={() => {
+                  patch({ structure: structureRec.structure });
+                  setStructureRec(null);
+                }}
+                onOverride={() => setStructureRec(null)}
+              />
+            )}
+
+            {!structureRec && isActive("structure") && (
               <DropdownSuggestion
                 suggestion={suggestions.structure}
                 onAccept={() => accept("structure", suggestions.structure.value)}
@@ -505,7 +735,10 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             )}
           </div>
           <div>
-            <FieldLabel hint="Dominant tonal register — inherited from Author Persona or Research.">Tone</FieldLabel>
+            <FieldLabel hint="Dominant tonal register — inherited from Author Persona or Research.">
+              Tone
+              {aiGenFields.has("tone") && <AiGeneratedBadge />}
+            </FieldLabel>
             <select className="input-light mt-1.5" value={bd.tone ?? ""} onChange={(e) => patch({ tone: e.target.value })}>
               <option value="">Select tone</option>
               {toneOptions.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -519,7 +752,10 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             )}
           </div>
           <div>
-            <FieldLabel hint="Reader demographic — inherited from Competitor Analysis or Research.">Audience</FieldLabel>
+            <FieldLabel hint="Primary reader demographic — inherited from Analysis or Research.">
+              Audience
+              {aiGenFields.has("audience") && <AiGeneratedBadge />}
+            </FieldLabel>
             <select className="input-light mt-1.5" value={bd.audience ?? ""} onChange={(e) => patch({ audience: e.target.value })}>
               <option value="">Select audience</option>
               {audienceOptions.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -538,7 +774,10 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
 
         {/* ── USP ── */}
         <div>
-          <FieldLabel hint="Hook for listings — inherited from Proposed Book step.">Unique Selling Proposition</FieldLabel>
+          <FieldLabel hint="Hook for listings — inherited from Proposed Book step.">
+            Unique Selling Proposition
+            {aiGenFields.has("uniqueSellingProposition") && <AiGeneratedBadge />}
+          </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[110px] resize-y"
             value={bd.uniqueSellingProposition ?? ""}
@@ -556,10 +795,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           )}
         </div>
 
-        {/* ── Reader Pain Points (NEW) ── */}
+        {/* ── Reader Pain Points ── */}
         <div>
           <FieldLabel hint="The reader's core frustrations — inherited from Competitor Analysis intelligence.">
             Reader pain points
+            {aiGenFields.has("readerPainPoints") && <AiGeneratedBadge />}
           </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[90px] resize-y"
@@ -578,10 +818,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           )}
         </div>
 
-        {/* ── Keywords (NEW) ── */}
+        {/* ── Keywords ── */}
         <div>
           <FieldLabel hint="SEO/Amazon keywords — low-confidence derivation from your niche and topic. Edit freely.">
             Keywords <span className="font-normal text-slate-400">(optional)</span>
+            {aiGenFields.has("keywords") && <AiGeneratedBadge />}
           </FieldLabel>
           <input
             className="input-light mt-1.5"

@@ -8,6 +8,7 @@ import {
   coverCriticPrompt,
   coverVariantsPrompt,
   descriptionPrompt,
+  generateDetailsPrompt,
   generateFindingPrompt,
   generateResourcePrompt,
   improvementPrompt,
@@ -495,6 +496,65 @@ router.post("/competitive-intelligence", async (req, res) => {
       return res.status(500).json({ error: "AI returned unparseable intelligence data." });
     }
     return res.json({ ...data, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** POST /api/ai/generate-details — auto-fill the Details step from all project data */
+router.post("/generate-details", async (req, res) => {
+  try {
+    const { project } = req.body || {};
+    if (!project || typeof project !== "object") {
+      return res.status(400).json({ error: "project object is required" });
+    }
+
+    const prompt = generateDetailsPrompt(project);
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "default");
+
+    // ── Parse the delimiter-based output ──────────────────────────────────
+    function field(name: string): string {
+      const m = text.match(new RegExp(`^${name}:\\s*(.+)$`, "m"));
+      return m ? m[1].trim() : "";
+    }
+    function block(name: string): string {
+      const m = text.match(new RegExp(`===\\s*${name}\\s*===\\n([\\s\\S]*?)(?:===|$)`, "i"));
+      return m ? m[1].trim() : "";
+    }
+
+    const GENRE_OPTIONS     = ["Business","Self-help","Productivity","Personal finance","Entrepreneurship","Leadership","Investing","Marketing","Career development","Philosophy / ideas","Health & wellness","Cookbooks & food writing","Spirituality","Parenting & family","Technology","Memoir / narrative nonfiction","Other"];
+    const STRUCTURE_OPTIONS = ["Chronological","Comparative","How-to","List-based","Modular","Problem-solution","Workbook","Question and answer","Thematic","Hybrid / mixed","Other"];
+    const TONE_OPTIONS      = ["Conversational","Academic","Neutral","Reflective","Authoritative","Witty","Narrative","Persuasive","Minimalist","Direct & practical"];
+    const AUDIENCE_OPTIONS  = ["Adult","Young adult","Child","Teen","Senior"];
+    const WC_OPTIONS        = ["10k–15k","15k–20k","20k–25k","25k–30k","30k–35k","35k–40k","40k–50k","50k–70k","70k–90k","90k–120k"];
+
+    function validate(val: string, list: string[]): string {
+      if (!val) return "";
+      const exact = list.find((o) => o.toLowerCase() === val.toLowerCase());
+      if (exact) return exact;
+      const partial = list.find((o) => o.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(o.toLowerCase()));
+      return partial || "";
+    }
+
+    const rawChapters = parseInt(field("CHAPTERS"), 10);
+    const chapters    = !isNaN(rawChapters) && rawChapters >= 5 && rawChapters <= 15 ? rawChapters : null;
+
+    const result = {
+      genre:                  validate(field("GENRE"),       GENRE_OPTIONS),
+      structure:              validate(field("STRUCTURE"),    STRUCTURE_OPTIONS),
+      structureReason:        field("STRUCTURE_REASON"),
+      tone:                   validate(field("TONE"),         TONE_OPTIONS),
+      audience:               validate(field("AUDIENCE"),     AUDIENCE_OPTIONS),
+      chapterCount:           chapters,
+      wordCountRange:         validate(field("WORD_COUNT"),   WC_OPTIONS),
+      uniqueSellingProposition: block("USP"),
+      readerPainPoints:       block("PAIN_POINTS"),
+      keywords:               block("KEYWORDS"),
+      subtitle:               block("SUBTITLE"),
+      _provider:              usedProvider
+    };
+
+    return res.json(result);
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
