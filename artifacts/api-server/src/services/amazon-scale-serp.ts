@@ -1,84 +1,51 @@
 /**
  * amazon-scale-serp
  *
- * Amazon book research powered by Scale SERP.
+ * Amazon book research powered by Scale SERP (Google SERP API).
  *
- * Flow (search):
- *   1. POST https://api.scaleserp.com/search with search_type=amazon
- *   2. Paginate until at least 25 valid books collected (or no more pages)
- *   3. Extract: asin, title, author, rating, reviewsCount, price, thumbnail, url
- *   4. Score = (reviewsCount * 0.6) + (rating * 1000 * 0.4)
- *   5. Sort descending by score, return top 15–25
+ * Strategy (3 parallel API calls per search):
+ *   Call A: site:amazon.com organic pages 1–3  → Amazon /dp/ URLs → ASINs + titles
+ *   Call B: Google Shopping search              → titles + ratings + reviews + price
  *
- * Flow (product detail):
- *   GET https://api.scaleserp.com/search?search_type=amazon&amazon_type=product&asin=<ASIN>
+ *   Cross-reference A ↔ B by normalized title to assemble complete records.
+ *   Fall back to shopping-only rows (no ASIN) when no organic match exists.
+ *
+ * Score = (reviewsCount * 0.6) + (rating * 1000 * 0.4)
+ * Returns top 15–25 books sorted by score descending.
+ *
+ * Product detail: fetches a single organic search for `amazon.com dp <ASIN>`.
  */
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SCALE_SERP_BASE = "https://api.scaleserp.com/search";
 const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 1000;
-const MAX_PAGES = 5;
+const RETRY_DELAY_MS = 1500;
 
 // ─── TypeScript Interfaces ────────────────────────────────────────────────────
 
-/** A single item from Scale SERP amazon_results */
-export interface ScaleSerpAmazonResultItem {
+interface ScaleSerpOrganicResult {
   position?: number;
-  asin?: string;
   title?: string;
   link?: string;
-  image?: string;
-  rating?: number;
-  ratings_total?: number;
-  price?: {
-    value?: number;
-    symbol?: string;
-    currency?: string;
-    raw?: string;
-  } | string;
-  authors?: string | string[];
-  byline?: string;
-  byline_info?: {
-    contributers?: Array<{ name?: string; link?: string }>;
-    by_text?: string;
+  domain?: string;
+  snippet?: string;
+  rich_snippet?: {
+    top?: { extensions?: string[] };
+    bottom?: { extensions?: string[] };
   };
-  is_sponsored?: boolean;
-  categories?: string[];
 }
 
-/** Raw Scale SERP product detail response */
-export interface ScaleSerpProductResult {
+interface ScaleSerpShoppingResult {
+  position?: number;
   title?: string;
-  full_title?: string;
-  link?: string;
-  asin?: string;
+  image?: string;
   rating?: number;
-  ratings_total?: number;
-  main_image?: string;
-  images?: string[];
-  authors?: string | string[] | Array<{ name?: string; link?: string }>;
-  author?: string;
-  byline?: string;
-  byline_info?: {
-    contributers?: Array<{ name?: string; link?: string }>;
-    by_text?: string;
-  };
-  publication_date?: string;
-  date_first_available?: string;
-  bestsellers_rank?: Array<{
-    category?: string;
-    rank?: number;
-    link?: string;
-  }>;
-  price?: {
-    value?: number;
-    symbol?: string;
-    currency?: string;
-    raw?: string;
-  } | string;
-  subtitle?: string;
+  reviews?: number;
+  price?: number;
+  price_raw?: string;
+  price_parsed?: { symbol?: string; value?: number; currency?: string; raw?: string };
+  merchant?: string;
 }
 
 /** Canonical book shape used by the app */
@@ -94,13 +61,12 @@ export interface ScaleSerpBook {
   score: number;
 }
 
-/** Shape returned by searchAmazonBooks */
 export interface ScaleSerpSearchResult {
   keyword: string;
   books: ScaleSerpBook[];
 }
 
-/** Expanded product detail — matches NormalizedProductDetail used by routes */
+/** Expanded product detail — matches NormalizedProductDetail shape used by routes */
 export interface NormalizedProductDetail {
   title: string | null;
   subtitle: string | null;
@@ -120,61 +86,55 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function extractPrice(raw: any): string | null {
-  if (!raw) return null;
-  if (typeof raw === "string") return raw;
-  if (typeof raw === "object") {
-    if (raw.raw) return raw.raw as string;
-    if (raw.value != null) return `${raw.symbol || "$"}${raw.value}`;
-  }
-  return null;
+function extractAsinFromUrl(url: string): string | null {
+  if (!url) return null;
+  const m = url.match(/\/dp\/([A-Z0-9]{10})/i);
+  return m ? m[1].toUpperCase() : null;
 }
 
-function extractAuthorFromItem(item: ScaleSerpAmazonResultItem): string | null {
-  // 1. byline_info.contributers
-  if (item.byline_info?.contributers?.length) {
-    const names = item.byline_info.contributers
-      .map((c) => c.name)
-      .filter(Boolean) as string[];
-    if (names.length) return names.join(", ");
-  }
-  // 2. authors field
-  if (item.authors) {
-    if (typeof item.authors === "string") return item.authors;
-    if (Array.isArray(item.authors)) return item.authors.join(", ");
-  }
-  // 3. byline string (often "by Author Name")
-  if (item.byline) {
-    return item.byline.replace(/^by\s+/i, "").trim() || null;
-  }
-  return null;
-}
-
-function extractAuthorsFromProduct(p: ScaleSerpProductResult): string | null {
-  if (p.byline_info?.contributers?.length) {
-    const names = p.byline_info.contributers
-      .map((c) => c.name)
-      .filter(Boolean) as string[];
-    if (names.length) return names.join(", ");
-  }
-  if (p.authors) {
-    if (typeof p.authors === "string") return p.authors;
-    if (Array.isArray(p.authors)) {
-      return (p.authors as any[])
-        .map((a: any) => (typeof a === "string" ? a : a?.name ?? ""))
-        .filter(Boolean)
-        .join(", ") || null;
-    }
-  }
-  if (p.author) return p.author;
-  if (p.byline) return p.byline.replace(/^by\s+/i, "").trim() || null;
-  return null;
+/** Amazon CDN thumbnail URL built from ASIN — always a valid image URL */
+function asinThumbnail(asin: string): string {
+  return `https://images-na.ssl-images-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_.jpg`;
 }
 
 function computeScore(reviewsCount: number | null, rating: number | null): number {
-  const r = reviewsCount ?? 0;
-  const s = rating ?? 0;
-  return r * 0.6 + s * 1000 * 0.4;
+  return (reviewsCount ?? 0) * 0.6 + (rating ?? 0) * 1000 * 0.4;
+}
+
+/** Normalize title for cross-referencing: lowercase, strip punctuation, collapse spaces */
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Returns true if two titles refer to the same book.
+ * Handles truncated Google snippet titles (end with "...") gracefully.
+ */
+function titlesMatch(a: string, b: string): boolean {
+  const na = normalizeTitle(a.replace(/\.\.\.$/g, "").replace(/\s*:\s*.*$/, ""));
+  const nb = normalizeTitle(b.replace(/\.\.\.$/g, "").replace(/\s*:\s*.*$/, ""));
+  if (na === nb) return true;
+  // Prefix match — one title is a leading substring of the other (handles truncation)
+  const shorter = na.length <= nb.length ? na : nb;
+  const longer  = na.length <= nb.length ? nb : na;
+  if (shorter.length >= 10 && longer.startsWith(shorter)) return true;
+  // Word-overlap: 3+ shared meaningful words in first 6 words
+  const stopWords = new Set(["a", "an", "the", "of", "to", "for", "and", "with", "in", "on", "its"]);
+  const wa = na.split(" ").slice(0, 6).filter((w) => w.length > 2 && !stopWords.has(w));
+  const wb = new Set(nb.split(" ").slice(0, 6).filter((w) => w.length > 2 && !stopWords.has(w)));
+  const overlap = wa.filter((w) => wb.has(w)).length;
+  return overlap >= 3;
+}
+
+/** Try to extract author from organic snippet text: "by John Smith" */
+function extractAuthorFromSnippet(snippet?: string): string | null {
+  if (!snippet) return null;
+  const m = snippet.match(/\bby\s+([A-Z][a-z]+(?:\s+[A-Z]\.?\s*)?[A-Z][a-z]+)/);
+  return m ? m[1].trim() : null;
 }
 
 // ─── Low-level Scale SERP fetch with retry ───────────────────────────────────
@@ -201,7 +161,6 @@ async function scaleSerpFetch(
         { code: "NETWORK_FAILURE" }
       );
       if (attempt < MAX_RETRIES) {
-        console.warn(`[scale-serp] Network error (attempt ${attempt}/${MAX_RETRIES}), retrying…`);
         await sleep(RETRY_DELAY_MS * attempt);
         continue;
       }
@@ -217,9 +176,8 @@ async function scaleSerpFetch(
 
     if (res.status === 429) {
       if (attempt < MAX_RETRIES) {
-        const retryAfter = Number(res.headers.get("retry-after") || "2");
-        const delay = (retryAfter || 2) * 1000;
-        console.warn(`[scale-serp] Rate limited, waiting ${delay}ms before retry ${attempt + 1}`);
+        const delay = Number(res.headers.get("retry-after") || "2") * 1000 || 3000;
+        console.warn(`[scale-serp] Rate limited, waiting ${delay}ms (attempt ${attempt})`);
         await sleep(delay);
         continue;
       }
@@ -237,11 +195,16 @@ async function scaleSerpFetch(
       const msg = data?.error || data?.message || `Scale SERP request failed (HTTP ${res.status})`;
       lastErr = Object.assign(new Error(msg), { code: "API_FAILURE", httpStatus: res.status });
       if (attempt < MAX_RETRIES) {
-        console.warn(`[scale-serp] HTTP ${res.status} (attempt ${attempt}/${MAX_RETRIES}): ${msg}`);
+        console.warn(`[scale-serp] HTTP ${res.status} (attempt ${attempt}): ${msg}`);
         await sleep(RETRY_DELAY_MS * attempt);
         continue;
       }
       throw lastErr;
+    }
+
+    if (data?.request_info?.success === false) {
+      const msg = data.request_info.message || "Scale SERP request was rejected";
+      throw Object.assign(new Error(msg), { code: "API_REJECTED" });
     }
 
     return data;
@@ -260,7 +223,14 @@ export interface AmazonSearchOptions {
 
 /**
  * Search Amazon Books via Scale SERP.
- * Paginates until maxResults valid books are collected or no more pages exist.
+ *
+ * Three parallel calls:
+ *   - Organic pages 1, 2, 3: `site:amazon.com <keyword> books`
+ *   - Shopping: `<keyword> books`
+ *
+ * Organic results yield ASINs + titles from amazon.com/dp/ URLs.
+ * Shopping results yield ratings, review counts, and prices.
+ * The two sets are cross-referenced by normalized title.
  */
 export async function searchAmazonBooks(
   apiKey: string,
@@ -270,142 +240,184 @@ export async function searchAmazonBooks(
     throw Object.assign(new Error("keyword is required"), { code: "BAD_INPUT" });
   }
 
-  const domain = amazonDomain.replace(/^www\./, "");
-  // Append "books" if not already present to bias toward book results
-  const q = keyword.trim().toLowerCase().endsWith("books")
+  const domain = (amazonDomain || "amazon.com").replace(/^www\./, "");
+  const baseQ = keyword.trim().toLowerCase().endsWith("books")
     ? keyword.trim()
     : `${keyword.trim()} books`;
 
-  console.log(`[scale-serp] Searching Amazon for: "${q}" on ${domain}`);
+  console.log(`[scale-serp] Searching: "${baseQ}" on ${domain}`);
 
-  const collected: ScaleSerpAmazonResultItem[] = [];
+  const organicQ = `site:${domain} ${baseQ}`;
 
-  for (let page = 1; page <= MAX_PAGES && collected.length < maxResults; page++) {
-    const data = await scaleSerpFetch(apiKey, {
-      search_type: "amazon",
-      amazon_domain: domain,
-      q,
-      page,
-    });
+  // Fire 4 calls in parallel: 3 organic pages + 1 shopping
+  const [p1, p2, p3, shopping] = await Promise.allSettled([
+    scaleSerpFetch(apiKey, { q: organicQ, num: 20, gl: "us", hl: "en", page: 1 }),
+    scaleSerpFetch(apiKey, { q: organicQ, num: 20, gl: "us", hl: "en", page: 2 }),
+    scaleSerpFetch(apiKey, { q: organicQ, num: 20, gl: "us", hl: "en", page: 3 }),
+    scaleSerpFetch(apiKey, { search_type: "shopping", q: baseQ, num: 40, gl: "us", hl: "en" }),
+  ]);
 
-    const results: ScaleSerpAmazonResultItem[] = Array.isArray(data?.amazon_results)
-      ? data.amazon_results
-      : [];
-
-    console.log(`[scale-serp] Page ${page}: ${results.length} raw results`);
-
-    if (results.length === 0) break;
-
-    // Only keep items that look like books (have title + asin)
-    for (const item of results) {
-      if (item.title && (item.asin || item.link)) {
-        collected.push(item);
-      }
+  // Collect organic results from all 3 pages
+  const allOrganic: ScaleSerpOrganicResult[] = [];
+  for (const r of [p1, p2, p3]) {
+    if (r.status === "fulfilled") {
+      const items: ScaleSerpOrganicResult[] = r.value?.organic_results ?? [];
+      allOrganic.push(...items);
     }
-
-    // Stop early if Scale SERP signals no next page
-    if (!data?.pagination?.next && page > 1) break;
   }
 
-  console.log(`[scale-serp] Total collected: ${collected.length} for "${q}"`);
+  // Collect shopping results
+  const allShopping: ScaleSerpShoppingResult[] =
+    shopping.status === "fulfilled" ? (shopping.value?.shopping_results ?? []) : [];
 
-  // Normalize and score
-  const books: ScaleSerpBook[] = collected.map((item) => {
-    const asin = item.asin?.toUpperCase() ?? "";
-    const link = item.link ?? (asin ? `https://www.${domain}/dp/${asin}` : "");
-    const rating = typeof item.rating === "number" ? item.rating : null;
-    const reviewsCount = typeof item.ratings_total === "number" ? item.ratings_total : null;
+  console.log(`[scale-serp] Raw organic: ${allOrganic.length}, shopping: ${allShopping.length}`);
 
-    return {
-      asin: asin || extractAsinFromUrl(link) || "",
-      title: item.title ?? "Unknown title",
-      author: extractAuthorFromItem(item),
+  // ── Extract Amazon /dp/ entries from organic results ──────────────────────
+  const seenAsins = new Set<string>();
+  const organicBooks: Array<{
+    asin: string;
+    title: string;
+    author: string | null;
+    url: string;
+    snippet: string;
+  }> = [];
+
+  for (const item of allOrganic) {
+    if (!item.link || !item.title) continue;
+    if (!item.link.includes(domain)) continue;
+    const asin = extractAsinFromUrl(item.link);
+    if (!asin || seenAsins.has(asin)) continue;
+    seenAsins.add(asin);
+    organicBooks.push({
+      asin,
+      title: item.title,
+      author: extractAuthorFromSnippet(item.snippet),
+      url: `https://www.${domain}/dp/${asin}`,
+      snippet: item.snippet ?? "",
+    });
+  }
+
+  console.log(`[scale-serp] Unique ASINs from organic: ${organicBooks.length}`);
+
+  // ── Build final books list ────────────────────────────────────────────────
+  const books: ScaleSerpBook[] = [];
+  const usedShoppingIdx = new Set<number>();
+
+  // Pass 1: organic-anchored books — enrich with shopping data by title match
+  for (const ob of organicBooks) {
+    let rating: number | null = null;
+    let reviewsCount: number | null = null;
+    let price: string | null = null;
+
+    const matchIdx = allShopping.findIndex(
+      (s, i) => !usedShoppingIdx.has(i) && s.title && titlesMatch(ob.title, s.title)
+    );
+    if (matchIdx !== -1) {
+      const s = allShopping[matchIdx];
+      usedShoppingIdx.add(matchIdx);
+      rating = typeof s.rating === "number" ? s.rating : null;
+      reviewsCount = typeof s.reviews === "number" ? s.reviews : null;
+      price = s.price_raw ?? (s.price != null ? `$${s.price}` : null);
+    }
+
+    books.push({
+      asin: ob.asin,
+      title: ob.title,
+      author: ob.author,
       rating,
       reviewsCount,
-      price: extractPrice(item.price),
-      thumbnail: item.image ?? null,
-      url: link,
+      price,
+      thumbnail: asinThumbnail(ob.asin),
+      url: ob.url,
       score: computeScore(reviewsCount, rating),
-    };
-  });
+    });
+  }
 
-  // Sort descending by score
+  // Pass 2: shopping-only books — no ASIN, but have ratings
+  // Include when we still need more results
+  const seenTitles = new Set(books.map((b) => normalizeTitle(b.title)));
+
+  for (let i = 0; i < allShopping.length && books.length < maxResults + 10; i++) {
+    if (usedShoppingIdx.has(i)) continue;
+    const s = allShopping[i];
+    if (!s.title) continue;
+    if (seenTitles.has(normalizeTitle(s.title))) continue;
+    seenTitles.add(normalizeTitle(s.title));
+
+    const rating = typeof s.rating === "number" ? s.rating : null;
+    const reviewsCount = typeof s.reviews === "number" ? s.reviews : null;
+    const price = s.price_raw ?? (s.price != null ? `$${s.price}` : null);
+
+    books.push({
+      asin: "",
+      title: s.title,
+      author: null,
+      rating,
+      reviewsCount,
+      price,
+      thumbnail: null,
+      url: `https://www.amazon.com/s?k=${encodeURIComponent(s.title)}`,
+      score: computeScore(reviewsCount, rating),
+    });
+  }
+
+  // Sort by score descending, return top 15–25
   books.sort((a, b) => b.score - a.score);
+  const topN = Math.max(15, Math.min(maxResults, 25));
+  const result = books.slice(0, topN);
 
-  const top = books.slice(0, Math.max(15, Math.min(maxResults, 25)));
-  console.log(`[scale-serp] Returning ${top.length} books for "${q}"`);
-
-  return { keyword, books: top };
+  console.log(`[scale-serp] Returning ${result.length} books (${books.filter(b => b.asin).length} with ASIN, ${books.filter(b => !b.asin).length} shopping-only)`);
+  return { keyword, books: result };
 }
 
 // ─── Public: Amazon product detail ───────────────────────────────────────────
 
 /**
- * Fetch expanded product detail for a single ASIN via Scale SERP.
+ * Fetch expanded product detail for a single ASIN.
+ * Searches `amazon.com dp <ASIN>` and extracts the matching result.
  */
 export async function fetchAmazonProductDetail(
   apiKey: string,
   { asin, amazonDomain = "amazon.com" }: { asin: string; amazonDomain?: string }
 ): Promise<NormalizedProductDetail> {
-  const domain = amazonDomain.replace(/^www\./, "");
-  console.log(`[scale-serp] Fetching product detail for ASIN ${asin} on ${domain}`);
+  const domain = (amazonDomain || "amazon.com").replace(/^www\./, "");
+  const asinUpper = asin.toUpperCase();
+  console.log(`[scale-serp] Product detail for ASIN ${asinUpper} on ${domain}`);
 
   const data = await scaleSerpFetch(apiKey, {
-    search_type: "amazon",
-    amazon_domain: domain,
-    amazon_type: "product",
-    asin: asin.toUpperCase(),
+    q:   `${domain} dp ${asinUpper}`,
+    num: 10,
+    gl:  "us",
+    hl:  "en",
   });
 
-  const p: ScaleSerpProductResult = data?.product ?? data ?? {};
+  const organics: ScaleSerpOrganicResult[] = data?.organic_results ?? [];
 
-  if (!p || (!p.title && !p.full_title)) {
+  // Prefer the result that contains this exact ASIN
+  const match =
+    organics.find((r) => r.link && extractAsinFromUrl(r.link) === asinUpper) ??
+    organics.find((r) => r.link?.includes(domain)) ??
+    organics[0];
+
+  if (!match) {
     throw Object.assign(
-      new Error(`No product data returned for ASIN ${asin}`),
+      new Error(`No product data found for ASIN ${asin}`),
       { code: "EMPTY_PRODUCT" }
     );
   }
 
-  // Bestseller ranks
-  let bestsellersRanks: NormalizedProductDetail["bestsellersRanks"] = null;
-  let bestsellersRankFlat: string | null = null;
-
-  if (Array.isArray(p.bestsellers_rank) && p.bestsellers_rank.length) {
-    bestsellersRanks = p.bestsellers_rank
-      .filter((r) => r.rank != null && r.category)
-      .map((r) => ({ category: r.category!, rank: r.rank!, link: r.link ?? null }));
-    bestsellersRankFlat = bestsellersRanks
-      .map((r) => `#${r.rank} in ${r.category}`)
-      .join(" · ") || null;
-  }
-
-  const thumbnail =
-    p.main_image
-    ?? (Array.isArray(p.images) && p.images.length ? p.images[0] : null)
-    ?? null;
-
-  const rating = typeof p.rating === "number" ? p.rating : null;
-  const ratingsTotal = typeof p.ratings_total === "number" ? p.ratings_total : null;
-  const publicationDate = p.publication_date ?? p.date_first_available ?? null;
+  const authors = extractAuthorFromSnippet(match.snippet);
 
   return {
-    title: p.full_title ?? p.title ?? null,
-    subtitle: p.subtitle ?? null,
-    authors: extractAuthorsFromProduct(p),
-    thumbnail,
-    rating,
-    ratingsTotal,
-    bestsellersRankFlat,
-    bestsellersRanks,
-    publicationDate,
+    title:               match.title ?? null,
+    subtitle:            null,
+    authors,
+    thumbnail:           asinThumbnail(asinUpper),
+    rating:              null,
+    ratingsTotal:        null,
+    bestsellersRankFlat: null,
+    bestsellersRanks:    null,
+    publicationDate:     null,
     expandedDetailsLoaded: true,
   };
-}
-
-// ─── Internal: ASIN extraction from URL ──────────────────────────────────────
-
-function extractAsinFromUrl(url: string): string | null {
-  if (!url) return null;
-  const m = url.match(/\/dp\/([A-Z0-9]{10})/i);
-  return m ? m[1].toUpperCase() : null;
 }
