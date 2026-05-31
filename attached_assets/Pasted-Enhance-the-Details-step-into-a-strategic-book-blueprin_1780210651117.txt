@@ -1,0 +1,383 @@
+Enhance the Details step into a strategic book blueprint builder rather than a simple metadata form.
+
+GOAL
+
+The Details step should become the final place where the user validates and refines all strategic information collected from previous steps before outline generation.
+
+The system should automatically use data from:
+
+- Research
+- Analysis
+- Book Title
+- Resources
+- Author Persona
+- Proposed Book
+
+and intelligently prefill the Details step.
+
+--------------------------------------------------
+AUTO-GENERATE DETAILS
+--------------------------------------------------
+
+Add a new button:
+
+✨ Generate Details
+
+When clicked:
+
+1. Gather all project context from previous completed steps.
+2. Analyze the book concept.
+3. Generate and populate all strategic fields.
+4. Do not overwrite manually edited fields unless the user confirms.
+
+Show loading state:
+
+Generating book details...
+
+--------------------------------------------------
+KEEP EXISTING FIELDS
+--------------------------------------------------
+
+Keep:
+
+- Title
+- Subtitle
+- Target Word Count
+- Number of Chapters
+- Structure
+- Unique Selling Proposition
+- Reader Pain Points
+
+--------------------------------------------------
+AUTO-FILL FIELDS
+--------------------------------------------------
+
+Auto-fill from previous steps:
+
+- Genre
+- Tone
+- Audience
+
+Allow manual override.
+
+--------------------------------------------------
+REMOVE
+--------------------------------------------------
+
+Remove:
+
+Keywords
+
+Replace with:
+
+Focus Topics
+
+--------------------------------------------------
+NEW STRATEGIC FIELDS
+--------------------------------------------------
+
+1. Core Promise
+
+Description:
+What outcome does the book promise?
+
+Example:
+Build an ADHD-friendly productivity system that consistently turns intentions into completed work.
+
+--------------------------------------------------
+
+2. Reader Transformation
+
+Before Reading
+
+Examples:
+- Overwhelmed
+- Inconsistent
+- Missing deadlines
+- Disorganized
+
+After Reading
+
+Examples:
+- Focused
+- Organized
+- Productive
+- In control
+
+Store as separate fields.
+
+--------------------------------------------------
+
+3. Core Thesis
+
+Description:
+The central argument of the book.
+
+Example:
+Adults with ADHD become more productive when they rely on systems rather than motivation.
+
+--------------------------------------------------
+
+4. Unique Mechanism
+
+Description:
+The proprietary framework or method used throughout the book.
+
+Examples:
+- Momentum Loop Framework
+- Focus Cycle System
+- Execution Architecture Method
+
+Generate a marketable framework name and explanation.
+
+--------------------------------------------------
+
+5. Reader Objections
+
+Description:
+What beliefs or frustrations may prevent readers from accepting the book’s message?
+
+Examples:
+- Nothing works for my ADHD
+- I've already tried productivity systems
+- I lack discipline
+
+Generate 5–10 objections.
+
+--------------------------------------------------
+
+6. Desired Emotional Outcome
+
+Description:
+How should readers feel after finishing the book?
+
+Examples:
+- Empowered
+- Hopeful
+- Confident
+- In control
+
+--------------------------------------------------
+
+7. Positioning Statement
+
+Format:
+
+This book helps ______ achieve ______ without ______.
+
+Example:
+
+This book helps adults with ADHD achieve reliable productivity without relying on willpower.
+
+--------------------------------------------------
+
+8. Research Intensity
+
+Options:
+
+- Light
+- Moderate
+- Heavy
+
+Used later during chapter generation to determine citation density and evidence requirements.
+
+--------------------------------------------------
+
+9. Focus Topics
+
+Replace Keywords with:
+
+Focus Topics
+
+Generate 10–20 highly relevant topics from:
+
+- Research
+- Analysis
+- Resources
+- Proposed Book
+
+Examples:
+
+- Executive Function Systems
+- Time Blindness Solutions
+- Task Initiation Methods
+- Dopamine Motivation
+- Focus Recovery Protocols
+
+These topics should later guide outline generation.
+
+--------------------------------------------------
+SMART RECOMMENDATIONS
+--------------------------------------------------
+
+For Word Count:
+
+Display:
+
+Recommended Word Count
+
+Based on:
+- Genre
+- Audience
+- Research intensity
+- Chapter count
+
+Example:
+
+Recommended:
+45,000–55,000 words
+
+Reason:
+Standard range for evidence-based self-help books.
+
+--------------------------------------------------
+
+For Chapter Count:
+
+Display:
+
+Recommended Chapters
+
+Example:
+
+12 Chapters
+
+Reason:
+Best fit for framework-based self-help structure.
+
+--------------------------------------------------
+PROJECT BLUEPRINT EXPORT
+--------------------------------------------------
+
+Add a new button at the bottom of the Details page:
+
+📄 Export Project Blueprint
+
+Purpose:
+
+Generate a professional DOCX file containing ALL gathered information from previous steps.
+
+The exported DOCX should include:
+
+--------------------------------------------------
+SECTION 1
+PROJECT OVERVIEW
+--------------------------------------------------
+
+- Project Name
+- Book Title
+- Subtitle
+- Genre
+- Structure
+- Audience
+- Tone
+- Word Count
+- Chapter Count
+
+--------------------------------------------------
+SECTION 2
+MARKET ANALYSIS
+--------------------------------------------------
+
+Include:
+
+- Analysis results
+- Competitor findings
+- Market opportunities
+- Reader demand insights
+
+--------------------------------------------------
+SECTION 3
+RESEARCH
+--------------------------------------------------
+
+Include:
+
+- Research resources
+- Findings
+- Notes
+- URLs
+- Uploaded resources
+- Key statistics
+
+--------------------------------------------------
+SECTION 4
+AUTHOR PERSONA
+--------------------------------------------------
+
+Include:
+
+- Author Name
+- Author Bio
+- Author Positioning
+- Writing Style
+
+--------------------------------------------------
+SECTION 5
+BOOK STRATEGY
+--------------------------------------------------
+
+Include:
+
+- Core Promise
+- Core Thesis
+- Unique Mechanism
+- Positioning Statement
+- Reader Transformation
+- Reader Objections
+- Emotional Outcomes
+
+--------------------------------------------------
+SECTION 6
+CONTENT FOUNDATION
+--------------------------------------------------
+
+Include:
+
+- Focus Topics
+- Reader Pain Points
+- USP
+- Research Intensity
+
+--------------------------------------------------
+SECTION 7
+PROJECT METADATA
+--------------------------------------------------
+
+Include:
+
+- Creation Date
+- Last Updated
+- Generated Recommendations
+
+--------------------------------------------------
+DOCX REQUIREMENTS
+--------------------------------------------------
+
+Generate a properly formatted Microsoft Word document.
+
+Include:
+
+- Title page
+- Headings
+- Table of contents
+- Clean formatting
+- Page breaks between major sections
+
+The DOCX should act as a complete project blueprint that can be reviewed, shared, or archived before outline generation.
+
+--------------------------------------------------
+SUCCESS CRITERIA
+--------------------------------------------------
+
+The Details step should become the definitive strategic planning stage of the book creation workflow.
+
+A user should be able to click:
+
+✨ Generate Details
+
+then
+
+📄 Export Project Blueprint
+
+and receive a professional DOCX containing the complete book strategy assembled from all previous steps.

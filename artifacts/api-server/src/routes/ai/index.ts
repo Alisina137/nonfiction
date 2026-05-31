@@ -512,7 +512,7 @@ router.post("/generate-details", async (req, res) => {
     const prompt = generateDetailsPrompt(project);
     const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "default");
 
-    // ── Parse the delimiter-based output ──────────────────────────────────
+    // ── Parsers ────────────────────────────────────────────────────────────
     function field(name: string): string {
       const m = text.match(new RegExp(`^${name}:\\s*(.+)$`, "m"));
       return m ? m[1].trim() : "";
@@ -527,34 +527,50 @@ router.post("/generate-details", async (req, res) => {
     const TONE_OPTIONS      = ["Conversational","Academic","Neutral","Reflective","Authoritative","Witty","Narrative","Persuasive","Minimalist","Direct & practical"];
     const AUDIENCE_OPTIONS  = ["Adult","Young adult","Child","Teen","Senior"];
     const WC_OPTIONS        = ["10k–15k","15k–20k","20k–25k","25k–30k","30k–35k","35k–40k","40k–50k","50k–70k","70k–90k","90k–120k"];
+    const RI_OPTIONS        = ["Light","Moderate","Heavy"];
 
     function validate(val: string, list: string[]): string {
       if (!val) return "";
       const exact = list.find((o) => o.toLowerCase() === val.toLowerCase());
       if (exact) return exact;
-      const partial = list.find((o) => o.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(o.toLowerCase()));
-      return partial || "";
+      return list.find((o) => o.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(o.toLowerCase())) || "";
     }
 
     const rawChapters = parseInt(field("CHAPTERS"), 10);
     const chapters    = !isNaN(rawChapters) && rawChapters >= 5 && rawChapters <= 15 ? rawChapters : null;
 
-    const result = {
-      genre:                  validate(field("GENRE"),       GENRE_OPTIONS),
-      structure:              validate(field("STRUCTURE"),    STRUCTURE_OPTIONS),
-      structureReason:        field("STRUCTURE_REASON"),
-      tone:                   validate(field("TONE"),         TONE_OPTIONS),
-      audience:               validate(field("AUDIENCE"),     AUDIENCE_OPTIONS),
-      chapterCount:           chapters,
-      wordCountRange:         validate(field("WORD_COUNT"),   WC_OPTIONS),
-      uniqueSellingProposition: block("USP"),
-      readerPainPoints:       block("PAIN_POINTS"),
-      keywords:               block("KEYWORDS"),
-      subtitle:               block("SUBTITLE"),
-      _provider:              usedProvider
-    };
+    // Positioning statement — strip the template label if present
+    let positioningStatement = field("POSITIONING_STATEMENT");
+    if (!positioningStatement) {
+      const m = text.match(/POSITIONING_STATEMENT:\s*([\s\S]*?)(?:\n[A-Z_]+:|===|$)/);
+      if (m) positioningStatement = m[1].trim();
+    }
 
-    return res.json(result);
+    return res.json({
+      genre:                    validate(field("GENRE"),            GENRE_OPTIONS),
+      structure:                validate(field("STRUCTURE"),         STRUCTURE_OPTIONS),
+      structureReason:          field("STRUCTURE_REASON"),
+      tone:                     validate(field("TONE"),              TONE_OPTIONS),
+      audience:                 validate(field("AUDIENCE"),          AUDIENCE_OPTIONS),
+      chapterCount:             chapters,
+      chapterCountReason:       field("CHAPTERS_REASON"),
+      wordCountRange:           validate(field("WORD_COUNT"),        WC_OPTIONS),
+      wordCountReason:          field("WORD_COUNT_REASON"),
+      researchIntensity:        validate(field("RESEARCH_INTENSITY"), RI_OPTIONS),
+      positioningStatement,
+      desiredEmotionalOutcome:  field("DESIRED_EMOTIONAL_OUTCOME"),
+      uniqueSellingProposition: block("USP"),
+      readerPainPoints:         block("PAIN_POINTS"),
+      subtitle:                 block("SUBTITLE"),
+      corePromise:              block("CORE_PROMISE"),
+      coreThesis:               block("CORE_THESIS"),
+      uniqueMechanism:          block("UNIQUE_MECHANISM"),
+      readerTransformationBefore: block("TRANSFORMATION_BEFORE"),
+      readerTransformationAfter:  block("TRANSFORMATION_AFTER"),
+      readerObjections:           block("READER_OBJECTIONS"),
+      focusTopics:                block("FOCUS_TOPICS"),
+      _provider:                  usedProvider
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

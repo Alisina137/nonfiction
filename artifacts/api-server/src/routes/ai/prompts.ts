@@ -1107,16 +1107,10 @@ export function generateDetailsPrompt(project: any): string {
   const persona = pid ? saved.find((p: any) => p.id === pid) || saved[0] : saved[0];
 
   const titleVal =
-    bt?.selectedCard?.title?.trim() ||
-    pb.title?.trim() ||
-    r.bookTitle?.trim() ||
-    "(not set)";
+    bt?.selectedCard?.title?.trim() || pb.title?.trim() || r.bookTitle?.trim() || "(not set)";
 
   const subtitleVal =
-    bd.subtitle?.trim() ||
-    bt?.selectedCard?.subtitle?.trim() ||
-    r.bookSubtitle?.trim() ||
-    "";
+    bd.subtitle?.trim() || bt?.selectedCard?.subtitle?.trim() || r.bookSubtitle?.trim() || "";
 
   const personaBlock = persona
     ? [
@@ -1132,8 +1126,7 @@ export function generateDetailsPrompt(project: any): string {
     const findings = project?.findings;
     if (!findings || typeof findings !== "object") return "(none)";
     const entries = Object.values(findings) as any[];
-    return entries
-      .slice(0, 6)
+    return entries.slice(0, 6)
       .map((f: any) => `• ${f.title || ""}: ${String(f.content || "").slice(0, 120)}`)
       .join("\n") || "(none)";
   })();
@@ -1141,8 +1134,7 @@ export function generateDetailsPrompt(project: any): string {
   const resourcesBlock = (() => {
     const links = project?.resources?.links;
     if (!Array.isArray(links) || !links.length) return "(none)";
-    return links
-      .slice(0, 5)
+    return links.slice(0, 5)
       .map((l: any) => `• ${l.label || l.url || "link"}: ${(l.note || "").slice(0, 100)}`)
       .join("\n");
   })();
@@ -1150,27 +1142,28 @@ export function generateDetailsPrompt(project: any): string {
   const competitorBlock = (() => {
     const books = project?.analysis?.books;
     if (!Array.isArray(books) || !books.length) return "(none)";
-    return books
-      .slice(0, 5)
+    return books.slice(0, 5)
       .map((b: any) => `• "${b.title}" by ${b.author || "unknown"} — ${String(b.description || "").slice(0, 80)}`)
       .join("\n");
   })();
 
   const existingFields = [
-    bd.genre               && `Genre already set: ${bd.genre}`,
-    bd.structure           && `Structure already set: ${bd.structure}`,
-    bd.tone                && `Tone already set: ${bd.tone}`,
-    bd.audience            && `Audience already set: ${bd.audience}`,
-    bd.wordCountRange      && `Word count already set: ${bd.wordCountRange}`,
-    bd.chapterCount        && `Chapter count already set: ${bd.chapterCount}`,
-    bd.uniqueSellingProposition?.trim() && `USP already set (preserve unless weak): ${bd.uniqueSellingProposition.slice(0, 120)}`,
-    bd.readerPainPoints?.trim()         && `Pain points already set (preserve unless weak): ${bd.readerPainPoints.slice(0, 120)}`,
-    bd.keywords?.trim()                 && `Keywords already set: ${bd.keywords.slice(0, 120)}`
+    bd.genre               && `Genre: ${bd.genre}`,
+    bd.structure           && `Structure: ${bd.structure}`,
+    bd.tone                && `Tone: ${bd.tone}`,
+    bd.audience            && `Audience: ${bd.audience}`,
+    bd.wordCountRange      && `Word count: ${bd.wordCountRange}`,
+    bd.chapterCount        && `Chapters: ${bd.chapterCount}`,
+    bd.researchIntensity   && `Research intensity: ${bd.researchIntensity}`,
+    bd.uniqueSellingProposition?.trim() && `USP (preserve unless weak): ${bd.uniqueSellingProposition.slice(0, 120)}`,
+    bd.readerPainPoints?.trim()         && `Pain points (preserve unless weak): ${bd.readerPainPoints.slice(0, 120)}`,
+    bd.corePromise?.trim()              && `Core promise already set: ${bd.corePromise.slice(0, 120)}`,
+    bd.coreThesis?.trim()               && `Core thesis already set: ${bd.coreThesis.slice(0, 120)}`
   ].filter(Boolean).join("\n");
 
   return `You are a professional publishing consultant and Amazon KDP book strategist.
 
-You have been given a complete view of this book project. Your job is to analyze ALL of the data below and generate a complete, cohesive book blueprint for the Details step.
+Analyze ALL project data below and generate a complete strategic book blueprint.
 
 ═══════════════════════════
 PROJECT DATA
@@ -1178,92 +1171,104 @@ PROJECT DATA
 
 BOOK TITLE: ${titleVal}
 SUBTITLE: ${subtitleVal || "(none yet)"}
-
 NICHE: ${r.mainNicheLabel || "(not set)"}
 SUB-NICHE: ${r.subNicheLabel || "(not set)"}
 DEEP NICHE: ${r.deepNicheLabel || "(not set)"}
-BOOK TOPIC / CONCEPT: ${r.bookTopic || pb.bookTopic || "(not set)"}
+BOOK TOPIC: ${r.bookTopic || pb.bookTopic || "(not set)"}
 PUBLISHING GOAL: ${r.publishingGoal || "(not set)"}
 AUTHOR STANCE: ${r.stanceOnTopic || "(not set)"}
 STANDOUT ANGLE: ${r.standout || "(not set)"}
-RESEARCH TARGET AUDIENCE: ${r.targetAudience || "(not set)"}
-RESEARCH AUTHOR TONES: ${Array.isArray(r.authorTones) ? r.authorTones.join(", ") : "(not set)"}
+TARGET AUDIENCE (research): ${r.targetAudience || "(not set)"}
+AUTHOR TONES: ${Array.isArray(r.authorTones) ? r.authorTones.join(", ") : "(not set)"}
 
 COMPETITIVE INTELLIGENCE:
-  Target Audience (from analysis): ${intel.targetAudience || "(not set)"}
+  Audience (analysis): ${intel.targetAudience || "(not set)"}
   Reader Pain Profile: ${intel.readerPainProfile || "(not set)"}
   Transformation Promise: ${intel.transformationPromise || "(not set)"}
   Market Gap: ${intel.marketGapAnalysis || "(not set)"}
   Positioning Strategy: ${intel.positioningStrategy || "(not set)"}
   Energy Style: ${intel.energyStyle || "(not set)"}
-  Writing Style Fingerprint: ${intel.writingStyleFingerprint || "(not set)"}
   Emotional Triggers: ${Array.isArray(intel.emotionalTriggers) ? intel.emotionalTriggers.join(", ") : "(not set)"}
 
 PROPOSED BOOK:
   USP: ${pb.uniqueSellingProposition || "(not set)"}
-  Proposed Audience: ${pb.proposedAudience || "(not set)"}
+  Audience: ${pb.proposedAudience || "(not set)"}
   Differentiation: ${pb.differentiation || "(not set)"}
   Key Selling Points: ${pb.keySellingPoints || "(not set)"}
 
 AUTHOR PERSONA:
 ${personaBlock}
 
-RESEARCH FINDINGS (selected):
+RESEARCH FINDINGS:
 ${findingsBlock}
 
-RESOURCES / REFERENCES:
+RESOURCES:
 ${resourcesBlock}
 
 COMPETITOR BOOKS:
 ${competitorBlock}
 
-EXISTING DETAILS (user-entered — PRESERVE unless clearly weak):
-${existingFields || "(none — all fields are empty)"}
+EXISTING DETAILS (preserve strong values):
+${existingFields || "(none yet)"}
 
 ═══════════════════════════
-VALID OPTION LISTS (you MUST choose from these exactly)
+VALID OPTIONS (use exactly)
 ═══════════════════════════
 
-GENRE options: Business | Self-help | Productivity | Personal finance | Entrepreneurship | Leadership | Investing | Marketing | Career development | Philosophy / ideas | Health & wellness | Cookbooks & food writing | Spirituality | Parenting & family | Technology | Memoir / narrative nonfiction | Other
-
-STRUCTURE options: Chronological | Comparative | How-to | List-based | Modular | Problem-solution | Workbook | Question and answer | Thematic | Hybrid / mixed | Other
-
-TONE options: Conversational | Academic | Neutral | Reflective | Authoritative | Witty | Narrative | Persuasive | Minimalist | Direct & practical
-
-AUDIENCE options: Adult | Young adult | Child | Teen | Senior
-
-WORD COUNT options: 10k–15k | 15k–20k | 20k–25k | 25k–30k | 30k–35k | 35k–40k | 40k–50k | 50k–70k | 70k–90k | 90k–120k
-
-CHAPTER COUNT: a number between 5 and 15
+GENRE: Business | Self-help | Productivity | Personal finance | Entrepreneurship | Leadership | Investing | Marketing | Career development | Philosophy / ideas | Health & wellness | Cookbooks & food writing | Spirituality | Parenting & family | Technology | Memoir / narrative nonfiction | Other
+STRUCTURE: Chronological | Comparative | How-to | List-based | Modular | Problem-solution | Workbook | Question and answer | Thematic | Hybrid / mixed | Other
+TONE: Conversational | Academic | Neutral | Reflective | Authoritative | Witty | Narrative | Persuasive | Minimalist | Direct & practical
+AUDIENCE: Adult | Young adult | Child | Teen | Senior
+WORD COUNT: 10k–15k | 15k–20k | 20k–25k | 25k–30k | 30k–35k | 35k–40k | 40k–50k | 50k–70k | 70k–90k | 90k–120k
+CHAPTERS: 5–15
+RESEARCH INTENSITY: Light | Moderate | Heavy
 
 ═══════════════════════════
 INSTRUCTIONS
 ═══════════════════════════
 
-1. Read ALL project data above as a single knowledge base.
-2. Preserve any EXISTING DETAILS that are strong — only improve weak or missing fields.
-3. For Structure: analyze the book's concept, teaching method, and audience journey. Choose the single best structural pattern. Write a 1–2 sentence explanation of WHY this structure fits.
-4. Every field must be SPECIFIC to THIS book — not generic advice.
-5. The USP must be punchy and commercially oriented (not a summary).
-6. Pain points must reflect THIS audience's real frustrations.
-7. Keywords must be Amazon/SEO optimized for this niche.
+Every field must be SPECIFIC to THIS book. No generic content.
+Structure: pick the best fit and give a clear reason.
+Word count and chapter recommendations: base on genre, audience, research intensity, and book concept.
+Unique Mechanism: invent a marketable proprietary framework name (e.g. "The Momentum Loop Framework") and explain it in 2-3 sentences.
+Reader Transformation: list 4-6 concrete states BEFORE and AFTER reading.
+Reader Objections: list 5-8 specific objections this audience has.
+Focus Topics: 10-15 highly specific topic areas that should guide chapter generation.
+Positioning Statement: complete the template exactly: "This book helps [audience] achieve [outcome] without [obstacle]."
 
-OUTPUT FORMAT — follow exactly, one value per line:
+OUTPUT FORMAT — follow exactly:
 
-GENRE: <exact option from list>
-STRUCTURE: <exact option from list>
-STRUCTURE_REASON: <1-2 sentences explaining why this structure fits this book>
-TONE: <exact option from list>
-AUDIENCE: <exact option from list>
-CHAPTERS: <number 5-15>
-WORD_COUNT: <exact option from list>
+GENRE: <value>
+STRUCTURE: <value>
+STRUCTURE_REASON: <1-2 sentences>
+TONE: <value>
+AUDIENCE: <value>
+CHAPTERS: <5-15>
+CHAPTERS_REASON: <1 sentence on why this count fits>
+WORD_COUNT: <value>
+WORD_COUNT_REASON: <1 sentence on why this range fits>
+RESEARCH_INTENSITY: <Light|Moderate|Heavy>
+POSITIONING_STATEMENT: This book helps <audience> achieve <outcome> without <obstacle>.
+DESIRED_EMOTIONAL_OUTCOME: <comma-separated emotions, e.g. Empowered, Hopeful, Confident>
 ===USP===
-<2-4 sentences: the core hook that makes this book uniquely valuable to the reader>
+<2-3 sentences: core commercial hook>
 ===PAIN_POINTS===
-<2-4 sentences: the reader's core frustrations, failures, and gaps that drive them to this book>
-===KEYWORDS===
-<6-10 comma-separated Amazon/SEO keywords for this niche>
+<2-3 sentences: reader's core frustrations before picking up this book>
 ===SUBTITLE===
-<subtitle suggestion — leave blank if the existing one is strong>
+<subtitle — blank if existing is strong>
+===CORE_PROMISE===
+<1-2 sentences: the specific, measurable outcome the book promises>
+===CORE_THESIS===
+<1-2 sentences: the central argument or conviction the book makes>
+===UNIQUE_MECHANISM===
+<Framework name on first line, then 2-3 sentence explanation>
+===TRANSFORMATION_BEFORE===
+<4-6 states, one per line, e.g. "Overwhelmed by competing priorities">
+===TRANSFORMATION_AFTER===
+<4-6 states, one per line, e.g. "Clear on daily priorities">
+===READER_OBJECTIONS===
+<5-8 objections, one per line, e.g. "I've tried systems before and they never stick">
+===FOCUS_TOPICS===
+<10-15 topic areas, comma-separated, e.g. "Executive Function Systems, Time Blindness Solutions">
 ===END===`;
 }
