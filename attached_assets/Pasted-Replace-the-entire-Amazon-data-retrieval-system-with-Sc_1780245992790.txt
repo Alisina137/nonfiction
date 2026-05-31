@@ -1,0 +1,112 @@
+Replace the entire Amazon data retrieval system with Scale SERP.
+
+Requirements:
+
+1. Remove all Apify dependencies, actors, SDK calls, environment variables, and related code.
+2. Add support for:
+   SCALE_SERP_API_KEY
+
+3. Use the Scale SERP Amazon Search API as the sole source of Amazon book data.
+
+4. Create a service:
+   src/services/amazon-scale-serp.ts
+
+5. Input:
+   - keyword/topic
+   - marketplace (default: amazon.com)
+   - maxResults (default: 25)
+
+6. Process:
+
+   Step 1:
+   Search Amazon Books using the user topic.
+
+   Example query:
+   "ADHD"
+   "Mediterranean Diet"
+   "Productivity"
+   etc.
+
+   Step 2:
+   Retrieve enough results to evaluate books.
+
+   Step 3:
+   For every returned book extract:
+
+   - ASIN
+   - Title
+   - Author
+   - Rating
+   - Reviews Count
+   - Price
+   - Thumbnail
+   - Amazon URL
+
+   Step 4:
+   Calculate a ranking score:
+
+   score =
+   (
+     reviews_count * 0.6
+   ) +
+   (
+     rating * 1000 * 0.4
+   )
+
+   Step 5:
+   Sort descending by score.
+
+   Step 6:
+   Return only the best 15–25 books.
+
+7. Output schema:
+
+{
+  "keyword": "...",
+  "books": [
+    {
+      "asin": "...",
+      "title": "...",
+      "author": "...",
+      "rating": 4.8,
+      "reviewsCount": 12345,
+      "price": "...",
+      "thumbnail": "...",
+      "url": "...",
+      "score": 9999
+    }
+  ]
+}
+
+8. Error handling:
+
+   - Retry failed requests up to 3 times.
+   - Handle rate limits gracefully.
+   - Return meaningful errors.
+   - Never crash the application.
+
+9. Update all routes and services that currently call Apify so they use the new Scale SERP service instead.
+
+10. Update environment validation:
+
+Required:
+SCALE_SERP_API_KEY
+
+Remove:
+APIFY_TOKEN
+APIFY_API_TOKEN
+APIFY_ACTOR_ID
+
+11. Add TypeScript interfaces for all responses.
+
+12. Use async/await.
+
+13. Add logging for:
+   - query
+   - result count
+   - API errors
+
+14. Keep the existing UI unchanged.
+Only replace the backend data provider.
+
+15. If Scale SERP returns pagination, automatically fetch additional pages until at least 25 valid books are collected or no more results exist.

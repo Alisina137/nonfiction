@@ -1,15 +1,18 @@
 /**
- * Analysis routes — Amazon book research powered by Apify.
+ * Analysis routes — Amazon book research powered by Scale SERP.
  *
- * POST /api/analysis/amazon-search  — search Amazon Books for a topic
+ * POST /api/analysis/amazon-search  — search Amazon Books for a keyword
  * POST /api/analysis/amazon-product — fetch expanded product detail for an ASIN
  *
- * Both endpoints return { needsApiKey: true } when APIFY_API_KEY is not set,
+ * Both endpoints return { needsApiKey: true } when SCALE_SERP_API_KEY is not set,
  * allowing the UI to degrade gracefully (manual URL entry still works).
  */
 
 import { Router } from "express";
-import { amazonResearchService, amazonProductDetail } from "../../services/amazonResearchService";
+import {
+  searchAmazonBooks,
+  fetchAmazonProductDetail,
+} from "../../services/amazon-scale-serp";
 
 const router = Router();
 
@@ -37,7 +40,7 @@ function parseAsinFromBody(body: any): string | null {
 // ─── POST /amazon-search ──────────────────────────────────────────────────
 
 router.post("/amazon-search", async (req, res) => {
-  const apiKey = process.env.APIFY_API_KEY;
+  const apiKey = process.env.SCALE_SERP_API_KEY;
   const { query, amazonDomain } = req.body || {};
   const q = typeof query === "string" ? query.trim() : "";
 
@@ -48,32 +51,32 @@ router.post("/amazon-search", async (req, res) => {
     return res.json({
       needsApiKey: true,
       books: [],
-      message: "Live Amazon search is disabled. Add APIFY_API_KEY to enable search. You can still add reference URLs manually."
+      message: "Live Amazon search is disabled. Add SCALE_SERP_API_KEY to enable search. You can still add reference URLs manually.",
     });
   }
 
   try {
-    const normalized = await amazonResearchService(apiKey, {
-      topic:        q,
-      maxResults:   24,
+    const result = await searchAmazonBooks(apiKey, {
+      keyword: q,
+      maxResults: 25,
       amazonDomain: amazonDomain || "amazon.com",
     });
 
-    // Map NormalizedBook → app book row shape expected by the UI
-    const books = normalized.map((b) => ({
-      asin:                 b.asin,
-      title:                b.title,
-      url:                  b.amazonUrl,
-      thumbnail:            b.thumbnail,
-      rating:               b.rating,
-      ratingsTotal:         b.reviewCount,
-      recentSales:          null,
-      sponsored:            false,
-      bestsellerBadge:      b.bestsellerBadge ? { category: "Books" } : null,
-      subtitle:             null,
-      authors:              b.author,
-      bestsellersRankFlat:  null,
-      bestsellersRanks:     null,
+    // Map ScaleSerpBook → app book row shape expected by the UI
+    const books = result.books.map((b) => ({
+      asin:                  b.asin || null,
+      title:                 b.title,
+      url:                   b.url,
+      thumbnail:             b.thumbnail,
+      rating:                b.rating,
+      ratingsTotal:          b.reviewsCount,
+      recentSales:           null,
+      sponsored:             false,
+      bestsellerBadge:       null,
+      subtitle:              null,
+      authors:               b.author,
+      bestsellersRankFlat:   null,
+      bestsellersRanks:      null,
       expandedDetailsLoaded: false,
     }));
 
@@ -88,7 +91,7 @@ router.post("/amazon-search", async (req, res) => {
 // ─── POST /amazon-product ─────────────────────────────────────────────────
 
 router.post("/amazon-product", async (req, res) => {
-  const apiKey = process.env.APIFY_API_KEY;
+  const apiKey = process.env.SCALE_SERP_API_KEY;
   const { amazonDomain } = req.body || {};
   const asin = parseAsinFromBody(req.body);
 
@@ -99,12 +102,12 @@ router.post("/amazon-product", async (req, res) => {
     return res.json({
       needsApiKey: true,
       details: null,
-      message: "Add APIFY_API_KEY to load ratings and bestseller rank from Amazon."
+      message: "Add SCALE_SERP_API_KEY to load ratings and bestseller rank from Amazon.",
     });
   }
 
   try {
-    const details = await amazonProductDetail(apiKey, {
+    const details = await fetchAmazonProductDetail(apiKey, {
       asin,
       amazonDomain: amazonDomain || "amazon.com",
     });
