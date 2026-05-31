@@ -858,6 +858,104 @@ Return a concise extraction with only the sections that have content:
 Keep the total response under 350 words. Be specific and factual. Do not add commentary.`;
 }
 
+export function generateFindingPrompt({ bookContext, category, priority, useFor, existingFindings, competitorBooks }: any) {
+  const ctx = bookContext || {};
+  const existing = Array.isArray(existingFindings) ? existingFindings : [];
+  const bc = Array.isArray(competitorBooks) ? competitorBooks : [];
+
+  const categoryGuidance: Record<string, string> = {
+    academic_paper:  "Generate a research summary: key findings, implications, and evidence-based insights from academic literature relevant to this book's topic.",
+    research_study:  "Generate a study summary: methodology overview, key findings, practical implications, and how this applies to the book's core argument.",
+    gov_report:      "Generate a report summary: key statistics, demographic trends, policy findings, and data points directly useful for the book.",
+    statistics:      "Generate a statistics finding: key metrics, trends, quantitative findings, and how to use these numbers persuasively in the manuscript.",
+    competitor_book: "Generate a competitive analysis: this competitor's positioning, core strengths, weaknesses, gaps the author can exploit, and structural insights worth borrowing or avoiding.",
+    book:            "Generate a book analysis: core concepts, major frameworks, lessons learned, and ideas the author can reference, adapt, or build upon.",
+    writing_style:   "Generate a style observation: tone characteristics, voice patterns, sentence structure, readability techniques, and stylistic elements to emulate or contrast.",
+    interview:       "Generate an interview analysis: notable insights, recurring themes, useful observations, and any memorable quotes or examples worth referencing.",
+    blog_article:    "Generate an article analysis: key arguments, supporting evidence, useful ideas, and notable observations that strengthen the book's thesis.",
+    case_study:      "Generate a case study breakdown: the situation, key actions taken, outcomes achieved, and lessons directly applicable to the book's readers.",
+    note:            "Generate a research insight: a valuable principle, finding, or concept that should be woven into the book. Expand the idea with evidence and application guidance.",
+    other:           "Generate the most useful research finding possible for this specific book project. Be creative and specific."
+  };
+
+  const priorityDepth: Record<string, string> = {
+    critical: "Highly detailed, deeply actionable, ready for direct manuscript use. Include specific data points, evidence, and concrete application guidance.",
+    high:     "Detailed and actionable. Provide strong analysis with specific examples and clear manuscript application.",
+    medium:   "Moderate detail. Provide useful context and supporting analysis.",
+    low:      "Brief and supplemental. Concise supporting notes with key takeaways."
+  };
+
+  const useForFocus: Record<string, string> = {
+    entire_book:   "Make this broadly useful across the full manuscript.",
+    outline_only:  "Focus on chapter ideas, structural insights, and organizational guidance.",
+    writing_style: "Focus on voice, tone, flow, and readability insights.",
+    statistics:    "Focus on data, metrics, trends, and quantitative evidence.",
+    quotes:        "Highlight memorable quotes, anecdotes, and story-worthy moments.",
+    research_only: "Deep research focus — evidence, citations, methodological detail."
+  };
+
+  const useForList = (Array.isArray(useFor) ? useFor : ["entire_book"])
+    .map((u: string) => useForFocus[u] || u)
+    .join(" ");
+
+  const competitorList = bc.length
+    ? bc.slice(0, 6).map((b: any, i: number) =>
+        `${i + 1}. "${b.title || "Untitled"}"${b.authors ? ` by ${b.authors}` : ""}`
+      ).join("\n")
+    : "(none)";
+
+  const existingList = existing.length
+    ? existing.slice(0, 12).map((f: any) =>
+        `- ${f.label || f.title || "(untitled)"}`
+      ).join("\n")
+    : "(none yet)";
+
+  const categoryKey = (category as string) || "note";
+  const priorityKey = (priority as string) || "medium";
+
+  return `You are a professional nonfiction research assistant. Generate a single, highly relevant research finding for a nonfiction book project.
+
+BOOK PROJECT:
+Title: ${ctx.title || "not set"}
+Subtitle: ${ctx.subtitle || ""}
+Topic: ${ctx.bookTopic || ""}
+Niche: ${ctx.niche || ""}${ctx.subNiche ? ` › ${ctx.subNiche}` : ""}${ctx.deepNiche ? ` › ${ctx.deepNiche}` : ""}
+Audience: ${ctx.audience || ""}
+Tone: ${ctx.tone || ""}
+Transformation Promise: ${ctx.transformationPromise || ""}
+Reader Pain: ${ctx.readerPainProfile || ""}
+Market Gap: ${ctx.marketGap || ""}
+Positioning: ${ctx.positioningStrategy || ""}
+Writing Style Fingerprint: ${ctx.writingStyleFingerprint || ""}
+
+COMPETITOR BOOKS:
+${competitorList}
+
+EXISTING FINDINGS (do NOT duplicate these topics):
+${existingList}
+
+FINDING REQUEST:
+Category: ${categoryKey}
+Priority: ${priorityKey} — ${priorityDepth[priorityKey] || ""}
+Focus: ${useForList}
+
+CATEGORY INSTRUCTION: ${categoryGuidance[categoryKey] || categoryGuidance.note}
+
+CONTENT REQUIREMENTS:
+- Directly related to THIS specific book project — not generic advice
+- Written as professional nonfiction research notes
+- Structured and easy to scan (use short paragraphs, bold key terms, bullet lists where helpful)
+- Actionable and specific — include concrete examples or data where possible
+- Unique — do not repeat existing findings
+- Target length: 300–800 words for the content field
+
+Return ONLY valid JSON:
+{
+  "title": "<concise, specific finding title — like a published research headline>",
+  "content": "<full finding content — structured, actionable, book-ready research notes>"
+}`;
+}
+
 export function generateResourcePrompt({ bookContext, category, priority, useFor, existingResources, competitorBooks }: any) {
   const ctx = bookContext || {};
   const bc = Array.isArray(competitorBooks) ? competitorBooks : [];

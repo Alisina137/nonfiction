@@ -427,7 +427,7 @@ function AddLinkForm({ onAdd, onRequestGenerate, generating, generatePhase, gene
   );
 }
 
-function AddFindingForm({ onAdd }) {
+function AddFindingForm({ onAdd, onRequestGenerate, generating, generateError }) {
   const [f, setF] = useState({ label: "", body: "", category: "note", priority: "medium", useFor: ["entire_book"], isStyleRef: false });
   const patch = (k, v) => setF((p) => ({ ...p, [k]: v }));
 
@@ -435,6 +435,18 @@ function AddFindingForm({ onAdd }) {
     if (!f.body.trim()) return;
     onAdd({ id: safeId(), ...f, label: f.label.trim() || "Finding", body: f.body.trim() });
     setF({ label: "", body: "", category: "note", priority: "medium", useFor: ["entire_book"], isStyleRef: false });
+  }
+
+  async function handleGenerate() {
+    if (!onRequestGenerate || generating) return;
+    const result = await onRequestGenerate({ category: f.category, priority: f.priority, useFor: f.useFor });
+    if (result) {
+      setF((prev) => ({
+        ...prev,
+        label: result.title   || "",
+        body:  result.content || ""
+      }));
+    }
   }
 
   return (
@@ -467,10 +479,36 @@ function AddFindingForm({ onAdd }) {
           className="h-4 w-4 rounded border-slate-300 accent-violet-600" />
         Use as writing style reference
       </label>
-      <button type="button" onClick={submit} disabled={!f.body.trim()}
-        className="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50">
-        Add finding
-      </button>
+
+      {generating && (
+        <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2">
+          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+          <span className="text-xs font-medium text-sky-700">Generating finding…</span>
+        </div>
+      )}
+      {!generating && generateError && (
+        <p className="text-xs text-rose-600">{generateError}</p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={submit} disabled={!f.body.trim()}
+          className="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50">
+          Add finding
+        </button>
+        {onRequestGenerate && (
+          <button type="button" onClick={handleGenerate} disabled={generating}
+            className="flex items-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-5 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100 disabled:opacity-50 transition-colors">
+            {generating ? (
+              <>
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
+                Generating…
+              </>
+            ) : (
+              <>✨ Generate Finding</>
+            )}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -555,6 +593,8 @@ export default function ResourcesStep({ resources, setResources, fullProject }) 
   const [linkGenerating, setLinkGenerating] = useState(false);
   const [linkGeneratePhase, setLinkGeneratePhase] = useState("");
   const [linkGenerateError, setLinkGenerateError] = useState("");
+  const [findingGenerating, setFindingGenerating] = useState(false);
+  const [findingGenerateError, setFindingGenerateError] = useState("");
 
   const links    = resources.links    || [];
   const findings = resources.findings || [];
@@ -699,6 +739,29 @@ export default function ResourcesStep({ resources, setResources, fullProject }) 
       clearTimeout(t2);
       setLinkGenerating(false);
       setLinkGeneratePhase("");
+    }
+  }
+
+  // ── AI Generate Finding ────────────────────────────────────────────────────
+
+  async function handleGenerateFinding({ category, priority, useFor }) {
+    setFindingGenerating(true);
+    setFindingGenerateError("");
+    try {
+      const bookContext = buildBookContext(fullProject);
+      const existingFindings = findings.map((f) => ({ label: f.label || f.title }));
+      const competitorBooks  = fullProject?.analysis?.books || [];
+      const data = await aiFetch(
+        "/api/ai/generate-finding",
+        { bookContext, category, priority, useFor, existingFindings, competitorBooks },
+        { noCache: true }
+      );
+      return data;
+    } catch (e) {
+      setFindingGenerateError(e.message || "Unable to generate finding. Please try again.");
+      return null;
+    } finally {
+      setFindingGenerating(false);
     }
   }
 
@@ -848,7 +911,12 @@ export default function ResourcesStep({ resources, setResources, fullProject }) 
             <>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <h3 className="mb-4 text-sm font-semibold text-slate-900">Add a finding</h3>
-                <AddFindingForm onAdd={addFinding} />
+                <AddFindingForm
+                  onAdd={addFinding}
+                  onRequestGenerate={handleGenerateFinding}
+                  generating={findingGenerating}
+                  generateError={findingGenerateError}
+                />
               </div>
 
               {filteredFindings.length > 0 ? (

@@ -1,0 +1,262 @@
+Add an AI-powered "Generate Finding" feature to the Resources → Findings section.
+
+GOAL
+Create a button called:
+
+✨ Generate Finding
+
+When clicked, the system should generate and populate the Finding form fields:
+
+- Title
+- Content
+
+The finding should be generated using:
+
+1. All available data from previous workflow steps.
+2. The selected Finding Category.
+3. The selected Priority.
+4. The selected Use For options.
+5. Existing project research and intelligence.
+
+The user should be able to review and edit the generated content before saving.
+
+DO NOT automatically create or save the finding.
+
+--------------------------------------------------
+CONTEXT SOURCES
+--------------------------------------------------
+
+The AI should gather and use all available project context, including:
+
+- Research step data
+- Analysis step data
+- Selected Book Title
+- Competitor analysis
+- Audience analysis
+- Book positioning
+- Book concept
+- Research links
+- Research files
+- Existing findings
+- Any generated intelligence already stored in the project
+- Any other available project context
+
+Use as much project context as possible to make the generated finding highly relevant.
+
+--------------------------------------------------
+UI CHANGES
+--------------------------------------------------
+
+Add a button:
+
+✨ Generate Finding
+
+Place it near the Finding form actions.
+
+Example:
+
+[ ✨ Generate Finding ]
+[ Add Finding ]
+
+--------------------------------------------------
+GENERATION INPUTS
+--------------------------------------------------
+
+Use:
+
+- category
+- priority
+- useFor
+- projectContext
+
+--------------------------------------------------
+GENERATION OUTPUT
+--------------------------------------------------
+
+Return:
+
+{
+  title: string,
+  content: string
+}
+
+Populate:
+
+finding.title
+finding.content
+
+without saving.
+
+--------------------------------------------------
+CATEGORY-SPECIFIC GENERATION
+--------------------------------------------------
+
+Academic Paper:
+- research summary
+- key findings
+- implications
+- evidence-based insights
+
+Book:
+- core concepts
+- major lessons
+- useful frameworks
+- relevant ideas
+
+Government Report:
+- statistics
+- trends
+- population insights
+- policy findings
+
+Research Study:
+- methodology summary
+- findings
+- implications
+- practical application
+
+Competitor Book:
+- positioning analysis
+- strengths
+- weaknesses
+- market opportunities
+
+Case Study:
+- situation
+- actions
+- outcomes
+- lessons learned
+
+Statistics Source:
+- key metrics
+- trends
+- quantitative findings
+- recommended usage
+
+Interview / Transcript:
+- notable insights
+- recurring themes
+- useful observations
+- memorable quotes when appropriate
+
+Blog / Article:
+- key arguments
+- useful ideas
+- supporting evidence
+- notable observations
+
+Writing Style Reference:
+- tone observations
+- voice characteristics
+- structure patterns
+- writing techniques
+
+Note / Finding:
+- useful research insights
+- idea expansion
+- concept clarification
+
+Other:
+- generate the most useful finding possible for the book.
+
+--------------------------------------------------
+PRIORITY RULES
+--------------------------------------------------
+
+High Priority:
+- highly detailed
+- highly actionable
+- intended for direct manuscript use
+- deeper analysis
+
+Medium Priority:
+- moderate detail
+- supporting research
+- useful context
+
+Low Priority:
+- supplemental notes
+- optional supporting information
+
+--------------------------------------------------
+USE FOR RULES
+--------------------------------------------------
+
+Entire Book:
+- broadly useful across the manuscript
+
+Outline Only:
+- chapter ideas
+- structure insights
+- organization guidance
+
+Writing Style:
+- voice, tone, flow, readability insights
+
+Statistics:
+- data-focused findings
+- metrics, trends, and evidence
+
+--------------------------------------------------
+CONTENT REQUIREMENTS
+--------------------------------------------------
+
+Generated content should:
+
+- be directly related to the current book project
+- feel like professional nonfiction research notes
+- avoid generic AI filler
+- be useful for writing and outlining
+- include actionable insights
+- be unique on every generation
+- leverage available project context
+- be structured and easy to scan
+
+Target length:
+
+300–800 words
+
+--------------------------------------------------
+AUTOFILL BEHAVIOR
+--------------------------------------------------
+
+After generation:
+
+title field = generated title
+content field = generated content
+
+Do NOT save.
+Do NOT create the finding automatically.
+Allow the user to edit before clicking "Add Finding".
+
+--------------------------------------------------
+LOADING STATE
+--------------------------------------------------
+
+While generating:
+
+- disable Generate Finding button
+- show spinner
+- show text:
+
+Generating finding...
+
+--------------------------------------------------
+ERROR HANDLING
+--------------------------------------------------
+
+If generation fails:
+
+Show:
+
+Unable to generate finding. Please try again.
+
+Do not clear existing form values.
+
+--------------------------------------------------
+IMPLEMENTATION REQUIREMENT
+--------------------------------------------------
+
+Create a dedicated AI action that generates a single finding based on the currently selected Category, Priority, Use For values and the complete project context.
+
+The generated result should be significantly more intelligent than a generic prompt completion and should use the full book project knowledge available in the application.

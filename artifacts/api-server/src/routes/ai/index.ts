@@ -8,6 +8,7 @@ import {
   coverCriticPrompt,
   coverVariantsPrompt,
   descriptionPrompt,
+  generateFindingPrompt,
   generateResourcePrompt,
   improvementPrompt,
   extractResourcePrompt,
@@ -435,6 +436,25 @@ router.post("/regenerate-title", async (req, res) => {
     );
     const data = extractJSON(text);
     return res.json({ title: data.title || currentTitle, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/generate-finding", async (req, res) => {
+  try {
+    const { bookContext, category, priority, useFor, existingFindings, competitorBooks } = req.body || {};
+    const prompt = generateFindingPrompt({ bookContext, category, priority, useFor, existingFindings, competitorBooks });
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
+    const data = extractJSON(text);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "AI returned unparseable finding data." });
+    }
+    return res.json({
+      title:   typeof data.title   === "string" ? data.title.trim()   : "",
+      content: typeof data.content === "string" ? data.content.trim() : "",
+      _provider: usedProvider
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
