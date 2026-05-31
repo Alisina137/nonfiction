@@ -2,7 +2,7 @@
  * amazonResearch.js
  *
  * Client-side helpers for Amazon book research data.
- * The actual API calls go through /api/analysis/* which uses SerpApi server-side.
+ * The actual API calls go through /api/analysis/* which uses Apify server-side.
  */
 
 import { extractAsinFromAmazonUrl } from "@/lib/analysis/asin";

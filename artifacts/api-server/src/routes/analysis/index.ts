@@ -1,10 +1,10 @@
 /**
- * Analysis routes — Amazon book research powered by SerpApi.
+ * Analysis routes — Amazon book research powered by Apify.
  *
  * POST /api/analysis/amazon-search  — search Amazon Books for a topic
  * POST /api/analysis/amazon-product — fetch expanded product detail for an ASIN
  *
- * Both endpoints return { needsApiKey: true } when SERPAPI_API_KEY is not set,
+ * Both endpoints return { needsApiKey: true } when APIFY_API_KEY is not set,
  * allowing the UI to degrade gracefully (manual URL entry still works).
  */
 
@@ -37,7 +37,7 @@ function parseAsinFromBody(body: any): string | null {
 // ─── POST /amazon-search ──────────────────────────────────────────────────
 
 router.post("/amazon-search", async (req, res) => {
-  const apiKey = process.env.SERPAPI_API_KEY;
+  const apiKey = process.env.APIFY_API_KEY;
   const { query, amazonDomain } = req.body || {};
   const q = typeof query === "string" ? query.trim() : "";
 
@@ -48,7 +48,7 @@ router.post("/amazon-search", async (req, res) => {
     return res.json({
       needsApiKey: true,
       books: [],
-      message: "Live Amazon search is disabled. Add SERPAPI_API_KEY to enable search. You can still add reference URLs manually."
+      message: "Live Amazon search is disabled. Add APIFY_API_KEY to enable search. You can still add reference URLs manually."
     });
   }
 
@@ -88,7 +88,7 @@ router.post("/amazon-search", async (req, res) => {
 // ─── POST /amazon-product ─────────────────────────────────────────────────
 
 router.post("/amazon-product", async (req, res) => {
-  const apiKey = process.env.SERPAPI_API_KEY;
+  const apiKey = process.env.APIFY_API_KEY;
   const { amazonDomain } = req.body || {};
   const asin = parseAsinFromBody(req.body);
 
@@ -99,7 +99,7 @@ router.post("/amazon-product", async (req, res) => {
     return res.json({
       needsApiKey: true,
       details: null,
-      message: "Add SERPAPI_API_KEY to load ratings and bestseller rank from Amazon."
+      message: "Add APIFY_API_KEY to load ratings and bestseller rank from Amazon."
     });
   }
 

@@ -65,7 +65,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Search failed.");
-      if (data.needsApiKey) { setLocalMsg(data.message || "Configure SERPAPI_API_KEY on the server."); return; }
+      if (data.needsApiKey) { setLocalMsg(data.message || "Configure APIFY_API_KEY on the server."); return; }
 
       const rows = Array.isArray(data.books) ? data.books : [];
       updateAnalysis((prev) => {
@@ -106,7 +106,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not load product details.");
-      if (data.needsApiKey) { setLocalMsg(data.message || "Add RAINFOREST_API_KEY to load details."); return; }
+      if (data.needsApiKey) { setLocalMsg(data.message || "Add APIFY_API_KEY to load details."); return; }
       const d = data.details || {};
       patchBook(book.id, {
         title:               d.title              || book.title,
@@ -231,7 +231,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
           </button>
           <p className="w-full text-xs text-slate-500">
             Replace swaps Amazon results but keeps manuals. Append merges without duplicating. Requires optional{" "}
-            <span className="font-mono">RAINFOREST_API_KEY</span>.
+            <span className="font-mono">APIFY_API_KEY</span>.
           </p>
         </div>
       </div>
