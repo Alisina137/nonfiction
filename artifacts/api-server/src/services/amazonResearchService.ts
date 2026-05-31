@@ -237,13 +237,14 @@ export async function amazonResearchService(
 
   console.log(`[amazonResearchService] Searching: "${query}" → ${searchUrl}`);
 
-  // junglee~Amazon-crawler: crawls Amazon search result pages
+  // junglee~Amazon-crawler: crawls Amazon search/category/product pages
+  // Required field is categoryOrProductUrls (confirmed from API validation error)
   const items: ApifyAmazonSearchItem[] = await apifyRun(
     apiKey,
     "junglee~Amazon-crawler",
     {
-      startUrls: [{ url: searchUrl }],
-      maxItems: Math.max(maxResults, 24),
+      categoryOrProductUrls: [{ url: searchUrl }],
+      maxItemsPerStartUrl: Math.max(maxResults, 24),
     }
   );
 
@@ -285,10 +286,11 @@ export async function amazonProductDetail(
   const productUrl = `https://www.${domain}/dp/${asin.toUpperCase()}`;
 
   // junglee~free-amazon-product-scraper: scrapes individual product pages
+  // Uses categoryOrProductUrls to match the same pattern as the search actor
   const items: ApifyAmazonProductItem[] = await apifyRun(
     apiKey,
     "junglee~free-amazon-product-scraper",
-    { startUrls: [{ url: productUrl }] }
+    { categoryOrProductUrls: [{ url: productUrl }] }
   );
 
   const p = items[0];
