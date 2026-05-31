@@ -949,11 +949,13 @@ CONTENT REQUIREMENTS:
 - Unique — do not repeat existing findings
 - Target length: 300–800 words for the content field
 
-Return ONLY valid JSON:
-{
-  "title": "<concise, specific finding title — like a published research headline>",
-  "content": "<full finding content — structured, actionable, book-ready research notes>"
-}`;
+OUTPUT FORMAT — use exactly this structure, nothing before or after:
+
+TITLE: <concise, specific finding title — like a published research headline>
+CONTENT:
+<full finding content — structured, actionable, book-ready research notes>
+
+Do NOT wrap in JSON, markdown fences, or any other formatting. Start with "TITLE:" on the first line.`;
 }
 
 export function generateResourcePrompt({ bookContext, category, priority, useFor, existingResources, competitorBooks }: any) {

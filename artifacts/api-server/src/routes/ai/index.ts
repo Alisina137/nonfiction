@@ -446,15 +446,20 @@ router.post("/generate-finding", async (req, res) => {
     const { bookContext, category, priority, useFor, existingFindings, competitorBooks } = req.body || {};
     const prompt = generateFindingPrompt({ bookContext, category, priority, useFor, existingFindings, competitorBooks });
     const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
-    const data = extractJSON(text);
-    if (!data || typeof data !== "object") {
+
+    // Parse delimiter format: "TITLE: ...\nCONTENT:\n..."
+    const titleMatch   = text.match(/TITLE:\s*(.+?)(?:\r?\n|$)/i);
+    const contentMatch = text.match(/CONTENT:\s*\r?\n([\s\S]+)/i);
+
+    const title   = titleMatch?.[1]?.trim()   || "";
+    const content = contentMatch?.[1]?.trim() || "";
+
+    if (!title && !content) {
+      console.error("[generate-finding] Could not parse delimiter output. Raw:", text.slice(0, 400));
       return res.status(500).json({ error: "AI returned unparseable finding data." });
     }
-    return res.json({
-      title:   typeof data.title   === "string" ? data.title.trim()   : "",
-      content: typeof data.content === "string" ? data.content.trim() : "",
-      _provider: usedProvider
-    });
+
+    return res.json({ title, content, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
