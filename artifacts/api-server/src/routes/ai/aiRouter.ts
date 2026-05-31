@@ -188,8 +188,14 @@ function isQuotaExhausted(msg: string, status?: number): boolean {
   return /quota.?exceed|daily.?limit|rate.?limit.?reached|insufficient.?credit|out.?of.?credit|credit.?exhaust|free.?tier.?exhaust|daily.?quota|resource.?exhaust|RESOURCE_EXHAUSTED/i.test(msg || "");
 }
 
+function isInvalidKey(msg: string, status?: number): boolean {
+  if (status !== 400 && status !== 401) return false;
+  return /incorrect.?api.?key|invalid.?api.?key|invalid.?key|api.?key.?invalid|authentication.?fail|unauthorized|no.?api.?key|api_key_invalid/i.test(msg || "");
+}
+
 function isHardUnavailable(msg: string, status?: number): boolean {
   if (status === 404 || status === 403) return true;
+  if (isInvalidKey(msg, status)) return true;
   return /no.?endpoint|endpoint.?not.?found|temporarily.?disabled|model.*unavailable|doesn.*exist|not.*available|no.?credits|no.?license/i.test(msg || "");
 }
 
@@ -472,7 +478,10 @@ async function runChain(
         disableProvider(provider.id, msg, "credit");
         exhaustedProviders.push(provider.id);
       } else if (isHardUnavailable(msg, httpStatus)) {
-        console.log(`[AI] ${provider.id} hard unavailable (${httpStatus}) — disabled 60min`);
+        const keyMsg = isInvalidKey(msg, httpStatus)
+          ? `[AI] ⚠ ${provider.id} INVALID API KEY (HTTP ${httpStatus}) — check your ${provider.id.toUpperCase()}_API_KEY secret. Disabled 60min.`
+          : `[AI] ${provider.id} hard unavailable (${httpStatus}) — disabled 60min`;
+        console.log(keyMsg);
         disableProvider(provider.id, msg, "hard");
       } else if (isTransientError(msg, httpStatus)) {
         console.log(`[AI] ${provider.id} transient error — disabled 10min`);
