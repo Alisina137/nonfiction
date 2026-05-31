@@ -4,52 +4,58 @@
  * Amazon book research powered by Apify actors.
  *
  * Apify request flow (search):
- *   1. Build query: append " books" to topic for relevance
- *   2. POST https://api.apify.com/v2/acts/junglee~amazon-search-results-scraper/run-sync-get-dataset-items
- *      Body: { queries, countryCode, maxItemsPerQuery }
+ *   1. Build Amazon search URL: https://www.amazon.com/s?k=<topic+books>&i=stripbooks
+ *   2. POST https://api.apify.com/v2/acts/junglee~Amazon-crawler/run-sync-get-dataset-items
+ *      Body: { startUrls: [{ url }], maxItems }
  *   3. Response is a JSON array of raw result items
- *   4. Normalize each item to NormalizedBook
+ *   4. Normalize each item → NormalizedBook
  *   5. Sort: bestseller first → highest reviewCount → highest rating
  *   6. Return top maxResults entries
  *
  * Apify request flow (product detail):
- *   POST https://api.apify.com/v2/acts/apify~amazon-crawler/run-sync-get-dataset-items
+ *   POST https://api.apify.com/v2/acts/junglee~free-amazon-product-scraper/run-sync-get-dataset-items
  *   Body: { startUrls: [{ url: "https://www.amazon.com/dp/<ASIN>" }] }
  */
 
 // ─── Interfaces ────────────────────────────────────────────────────────────
 
-/** Raw item returned by Apify junglee/amazon-search-results-scraper */
+/** Raw item returned by Apify junglee/Amazon-crawler */
 export interface ApifyAmazonSearchItem {
   title?: string;
   url?: string;
   asin?: string;
   stars?: number;
+  rating?: number;
+  reviewsCount?: number;
   numberOfReviews?: number;
-  price?: string;
+  price?: string | { value?: number; currency?: string };
   thumbnailImage?: string;
+  image?: string;
   isBestSeller?: boolean;
   isAmazonChoice?: boolean;
-  isPrime?: boolean;
-  description?: string;
+  author?: string;
+  authors?: string | string[];
 }
 
-/** Raw item returned by Apify apify/amazon-crawler (product page) */
+/** Raw item returned by Apify junglee/free-amazon-product-scraper */
 export interface ApifyAmazonProductItem {
   title?: string;
   url?: string;
   asin?: string;
   stars?: number;
+  rating?: number;
+  reviewsCount?: number;
   numberOfReviews?: number;
-  price?: string;
-  thumbnails?: string[];
+  price?: string | { value?: number; currency?: string };
   thumbnailImage?: string;
-  authors?: Array<string | { name?: string }>;
+  images?: string[];
   author?: string;
+  authors?: string | Array<string | { name?: string }>;
   subtitle?: string;
   publicationDate?: string;
   bestsellersRank?: Array<{ category?: string; rank?: number; url?: string }>;
   categoryRank?: string;
+  categoryName?: string;
 }
 
 /** Normalized book result — canonical shape used throughout the app */
@@ -86,21 +92,21 @@ const APIFY_BASE = "https://api.apify.com/v2/acts";
 
 /**
  * Run an Apify actor synchronously and return the dataset items array.
- * Uses run-sync-get-dataset-items which blocks until the actor finishes.
  *
- * Error handling:
+ * Error handling covers:
+ *  - Network failures
  *  - 401/403 → invalid API key
  *  - 429     → rate limit
- *  - network → wrapped with code NETWORK_FAILURE
- *  - other   → wrapped with code API_FAILURE
+ *  - 404     → actor not found
+ *  - Other HTTP errors
  */
 async function apifyRun(
   apiKey: string,
   actorId: string,
   input: Record<string, any>,
-  timeoutSecs = 60
+  timeoutSecs = 120
 ): Promise<any[]> {
-  const url = `${APIFY_BASE}/${actorId}/run-sync-get-dataset-items?token=${apiKey}&timeout=${timeoutSecs}`;
+  const url = `${APIFY_BASE}/${actorId}/run-sync-get-dataset-items?token=${apiKey}&timeout=${timeoutSecs}&memory=512`;
 
   let res: Response;
   try {
@@ -120,64 +126,80 @@ async function apifyRun(
   let data: any;
   try { data = JSON.parse(raw); } catch { data = null; }
 
-  // Invalid API key
   if (res.status === 401 || res.status === 403) {
     throw Object.assign(
       new Error("Invalid APIFY_API_KEY — check your Replit secret"),
       { code: "INVALID_KEY", httpStatus: res.status }
     );
   }
-
-  // Rate limit
   if (res.status === 429) {
     throw Object.assign(
       new Error("Apify rate limit reached — try again later"),
       { code: "RATE_LIMIT", httpStatus: 429 }
     );
   }
-
-  // Other HTTP error
   if (!res.ok) {
     const msg =
       data?.error?.message || data?.message || `Apify request failed (HTTP ${res.status})`;
     throw Object.assign(new Error(msg), { code: "API_FAILURE", httpStatus: res.status });
   }
 
-  // Apify returns the dataset as a JSON array directly
   if (!Array.isArray(data)) {
-    throw Object.assign(
-      new Error("Unexpected Apify response format"),
-      { code: "API_FAILURE" }
-    );
+    console.warn(`[Apify] Unexpected response type for actor ${actorId}:`, typeof data);
+    return [];
   }
 
   return data;
 }
 
-// ─── Mapping logic ─────────────────────────────────────────────────────────
+// ─── Mapping helpers ────────────────────────────────────────────────────────
+
+function extractPrice(raw: any): string | null {
+  if (typeof raw === "string") return raw;
+  if (raw && typeof raw === "object" && raw.value != null) {
+    return `$${raw.value}`;
+  }
+  return null;
+}
+
+function extractAsin(item: any): string | null {
+  if (typeof item.asin === "string") return item.asin.toUpperCase();
+  const url: string = item.url || item.link || "";
+  const m = url.match(/\/dp\/([A-Z0-9]{10})/i);
+  return m ? m[1].toUpperCase() : null;
+}
 
 /**
  * Mapping logic: convert a raw Apify search item to NormalizedBook.
  */
 function normalizeSearchItem(raw: ApifyAmazonSearchItem, rank: number): NormalizedBook {
-  // Extract ASIN from url if not provided directly
-  const asinFromUrl = raw.url
-    ? (raw.url.match(/\/dp\/([A-Z0-9]{10})/i)?.[1]?.toUpperCase() ?? null)
-    : null;
-  const asin = raw.asin ? raw.asin.toUpperCase() : asinFromUrl;
+  const asin = extractAsin(raw);
   const amazonUrl = asin
     ? `https://www.amazon.com/dp/${asin}`
     : (raw.url || "");
 
+  const rating = typeof raw.stars === "number" ? raw.stars
+    : typeof raw.rating === "number" ? raw.rating
+    : null;
+
+  const reviewCount = typeof raw.reviewsCount === "number" ? raw.reviewsCount
+    : typeof raw.numberOfReviews === "number" ? raw.numberOfReviews
+    : null;
+
+  const thumbnail = raw.thumbnailImage || raw.image || null;
+
   return {
     asin,
     title: raw.title || "Unknown title",
-    author: null,
-    rating: typeof raw.stars === "number" ? raw.stars : null,
-    reviewCount: typeof raw.numberOfReviews === "number" ? raw.numberOfReviews : null,
-    price: raw.price ?? null,
+    author: typeof raw.author === "string" ? raw.author
+      : Array.isArray(raw.authors) ? (raw.authors as string[]).join(", ")
+      : typeof raw.authors === "string" ? raw.authors
+      : null,
+    rating,
+    reviewCount,
+    price: extractPrice(raw.price),
     amazonUrl,
-    thumbnail: raw.thumbnailImage ?? null,
+    thumbnail,
     bestsellerBadge: raw.isBestSeller === true,
     rank,
   };
@@ -199,27 +221,29 @@ export interface AmazonResearchOptions {
  */
 export async function amazonResearchService(
   apiKey: string,
-  { topic, maxResults = 20 }: AmazonResearchOptions
+  { topic, maxResults = 20, amazonDomain = "amazon.com" }: AmazonResearchOptions
 ): Promise<NormalizedBook[]> {
   if (!topic || !topic.trim()) {
     throw Object.assign(new Error("Search topic is required"), { code: "BAD_INPUT" });
   }
 
-  // Append "books" to improve relevance
+  // Build Amazon search URL restricted to Books (i=stripbooks)
   const query = topic.trim().toLowerCase().endsWith("books")
     ? topic.trim()
     : `${topic.trim()} books`;
 
-  console.log(`[amazonResearchService] Searching: "${query}" (max=${maxResults})`);
+  const domain = amazonDomain.replace(/^www\./, "");
+  const searchUrl = `https://www.${domain}/s?k=${encodeURIComponent(query)}&i=stripbooks`;
 
-  // Run Apify amazon-search-results-scraper actor
+  console.log(`[amazonResearchService] Searching: "${query}" → ${searchUrl}`);
+
+  // junglee~Amazon-crawler: crawls Amazon search result pages
   const items: ApifyAmazonSearchItem[] = await apifyRun(
     apiKey,
-    "junglee~amazon-search-results-scraper",
+    "junglee~Amazon-crawler",
     {
-      queries: query,
-      countryCode: "US",
-      maxItemsPerQuery: Math.max(maxResults, 24),
+      startUrls: [{ url: searchUrl }],
+      maxItems: Math.max(maxResults, 24),
     }
   );
 
@@ -248,7 +272,7 @@ export async function amazonResearchService(
 // ─── Public: Amazon product detail ────────────────────────────────────────
 
 /**
- * Fetch expanded product detail for a single ASIN via Apify amazon-crawler.
+ * Fetch expanded product detail for a single ASIN via Apify.
  * Maps to the same shape the "Expand details" UI panel expects.
  */
 export async function amazonProductDetail(
@@ -257,11 +281,13 @@ export async function amazonProductDetail(
 ): Promise<NormalizedProductDetail> {
   console.log(`[amazonResearchService] Fetching product detail for ASIN ${asin}`);
 
-  const productUrl = `https://www.${amazonDomain.replace(/^www\./, "")}/dp/${asin.toUpperCase()}`;
+  const domain = amazonDomain.replace(/^www\./, "");
+  const productUrl = `https://www.${domain}/dp/${asin.toUpperCase()}`;
 
+  // junglee~free-amazon-product-scraper: scrapes individual product pages
   const items: ApifyAmazonProductItem[] = await apifyRun(
     apiKey,
-    "apify~amazon-crawler",
+    "junglee~free-amazon-product-scraper",
     { startUrls: [{ url: productUrl }] }
   );
 
@@ -273,13 +299,15 @@ export async function amazonProductDetail(
     );
   }
 
-  // Authors — normalize string | object array
+  // Authors — normalize string | object[] | string[]
   let authors: string | null = null;
   if (typeof p.author === "string" && p.author) {
     authors = p.author;
+  } else if (typeof p.authors === "string" && p.authors) {
+    authors = p.authors;
   } else if (Array.isArray(p.authors) && p.authors.length) {
-    authors = p.authors
-      .map((a) => (typeof a === "string" ? a : a?.name ?? ""))
+    authors = (p.authors as any[])
+      .map((a: any) => (typeof a === "string" ? a : a?.name ?? ""))
       .filter(Boolean)
       .join(", ") || null;
   }
@@ -299,17 +327,25 @@ export async function amazonProductDetail(
     bestsellersRankFlat = p.categoryRank;
   }
 
-  const thumbnail = Array.isArray(p.thumbnails) && p.thumbnails.length
-    ? p.thumbnails[0]
-    : (p.thumbnailImage ?? null);
+  const thumbnail =
+    Array.isArray(p.images) && p.images.length ? p.images[0]
+    : p.thumbnailImage ?? null;
+
+  const rating = typeof p.stars === "number" ? p.stars
+    : typeof p.rating === "number" ? p.rating
+    : null;
+
+  const ratingsTotal = typeof p.reviewsCount === "number" ? p.reviewsCount
+    : typeof p.numberOfReviews === "number" ? p.numberOfReviews
+    : null;
 
   return {
     title:               p.title ?? null,
     subtitle:            p.subtitle ?? null,
     authors,
     thumbnail,
-    rating:              typeof p.stars === "number" ? p.stars : null,
-    ratingsTotal:        typeof p.numberOfReviews === "number" ? p.numberOfReviews : null,
+    rating,
+    ratingsTotal,
     bestsellersRankFlat,
     bestsellersRanks,
     publicationDate:     p.publicationDate ?? null,
