@@ -29,7 +29,14 @@ async function rainforestApiGet(apiKey: string, paramsObject: Record<string, any
   });
   url.searchParams.set("api_key", apiKey);
   const res = await fetch(url.toString(), { method: "GET" });
-  return res.json();
+  const data = await res.json();
+  if (data?.request_info?.success === false) {
+    const msg = data.request_info?.message || data.request_info?.credits_used != null
+      ? `Rainforest API error: ${data.request_info?.message || "request failed"}`
+      : "Rainforest API request failed";
+    throw Object.assign(new Error(msg), { rainforestError: true });
+  }
+  return data;
 }
 
 router.post("/amazon-search", async (req, res) => {
@@ -56,10 +63,6 @@ router.post("/amazon-search", async (req, res) => {
       number_of_results: 24,
       exclude_sponsored: true
     });
-
-    if (data.request_info && data.request_info.success === false) {
-      return res.status(502).json({ error: data.error?.message || data.error || "Amazon search failed." });
-    }
 
     const results = Array.isArray(data.search_results) ? data.search_results : [];
     const books = results
@@ -112,10 +115,6 @@ router.post("/amazon-product", async (req, res) => {
       amazon_domain: amazonDomain || "amazon.com",
       asin: asin.toUpperCase()
     });
-
-    if (data.request_info && data.request_info.success === false) {
-      return res.status(502).json({ error: data.error?.message || data.error || "Product lookup failed." });
-    }
 
     const p = data?.product || data;
     if (!p) return res.status(502).json({ error: "Unexpected product response." });
