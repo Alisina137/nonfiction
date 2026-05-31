@@ -65,7 +65,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Search failed.");
-      if (data.needsApiKey) { setLocalMsg(data.message || "Configure RAINFOREST_API_KEY on the server."); return; }
+      if (data.needsApiKey) { setLocalMsg(data.message || "Configure SERPAPI_API_KEY on the server."); return; }
 
       const rows = Array.isArray(data.books) ? data.books : [];
       updateAnalysis((prev) => {
