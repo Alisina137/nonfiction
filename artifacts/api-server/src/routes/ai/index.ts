@@ -156,6 +156,9 @@ router.post("/suggest-subtitles", async (req, res) => {
           .filter(Boolean);
       }
     }
+    if (!subtitles.length) {
+      return res.status(500).json({ error: "No subtitles returned. Try again." });
+    }
     res.json({ subtitles, usedProvider });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ error: e.message });

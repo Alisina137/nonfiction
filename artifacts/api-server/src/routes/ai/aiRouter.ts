@@ -103,13 +103,13 @@ export const MODEL_BY_PROVIDER = Object.fromEntries(
 // ─── Token budgets ─────────────────────────────────────────────────────────
 
 export const TOKEN_LIMITS: Record<string, number> = {
-  title:               200,
-  subtitle:            300,
-  regenTitle:          120,
+  title:               500,
+  subtitle:            700,
+  regenTitle:          250,
   outline:            1200,
   lesson:             1400,
   improve:             900,
-  description:         300,
+  description:         500,
   cover:               600,
   analysis:            500,
   architecturePreview: 500,
@@ -267,7 +267,11 @@ async function callGemini(
 
   const body = {
     contents,
-    generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 }
+    generationConfig: {
+      maxOutputTokens: maxTokens,
+      temperature: 0.7
+    },
+    thinkingConfig: { thinkingBudget: 0 }
   };
 
   const res     = await fetch(url, {
