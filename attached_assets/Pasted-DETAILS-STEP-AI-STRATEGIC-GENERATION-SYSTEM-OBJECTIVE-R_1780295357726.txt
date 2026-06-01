@@ -1,0 +1,399 @@
+DETAILS STEP — AI STRATEGIC GENERATION SYSTEM
+
+OBJECTIVE
+
+Redesign the Details step so that all strategic fields are AI-generated.
+
+Remove restrictive dropdown/select inputs.
+
+Replace them with intelligent AI suggestions.
+
+When the user clicks "Generate Details", the AI should generate:
+
+* Complete strategic positioning
+* Book foundation
+* Reader psychology
+* Content strategy
+
+using all available data from previous steps.
+
+---
+
+## DATA SOURCES
+
+Use all available project information:
+
+* Research
+* Analysis
+* Book Title
+* Resources
+* Author Persona
+* Proposed Book
+
+The AI should heavily rely on previous steps when generating details.
+
+---
+
+## UI CHANGES
+
+Replace these SELECT elements:
+
+* Genre
+* Structure
+* Tone
+* Audience
+* Research Intensity
+
+with intelligent suggestion fields.
+
+Instead of a dropdown:
+
+Display 3 AI-generated recommendations.
+
+Example:
+
+Genre
+
+( ) Entrepreneurship
+( ) Business & Startups
+( ) Personal Finance
+
+User can:
+
+* Click a suggestion
+* Edit manually
+* Create their own value
+
+---
+
+## AI SUGGESTION REQUIREMENTS
+
+For the following fields generate 3 recommendations:
+
+Genre
+
+Example:
+
+[
+"Entrepreneurship",
+"Business & Startups",
+"Personal Finance"
+]
+
+---
+
+Structure
+
+Example:
+
+[
+"Transformation-Based",
+"Framework-Driven",
+"Thematic"
+]
+
+---
+
+Tone
+
+Example:
+
+[
+"Direct & Practical",
+"Inspirational & Motivational",
+"Mentor-Like & Conversational"
+]
+
+---
+
+Audience
+
+Example:
+
+[
+"Students",
+"Young Professionals",
+"Aspiring Entrepreneurs"
+]
+
+---
+
+Research Intensity
+
+Example:
+
+[
+"Light",
+"Moderate",
+"Heavy"
+]
+
+---
+
+## GENERATE CONTENT FOR ALL OTHER FIELDS
+
+Generate:
+
+Positioning Statement
+
+Generate 3 alternatives.
+
+---
+
+Core Promise
+
+Generate 3 alternatives.
+
+---
+
+Core Thesis
+
+Generate 3 alternatives.
+
+---
+
+Unique Mechanism
+
+Generate 3 alternatives.
+
+Each mechanism should include:
+
+* Name
+* Short explanation
+
+Example:
+
+The Wealth Accelerator Framework
+
+A step-by-step system that helps students identify profitable opportunities, leverage AI, and scale online income streams.
+
+---
+
+Reader Transformation
+
+Generate:
+
+Before State
+
+3 alternatives
+
+After State
+
+3 alternatives
+
+---
+
+Reader Objections
+
+Generate 5-10 likely objections.
+
+---
+
+Desired Emotional Outcome
+
+Generate 3 alternatives.
+
+---
+
+Unique Selling Proposition
+
+Generate 3 alternatives.
+
+---
+
+Focus Topics
+
+Generate 10-20 strategic topics.
+
+---
+
+## API ENDPOINT
+
+Create:
+
+POST /api/generate-details
+
+Request:
+
+{
+research,
+analysis,
+bookTitle,
+resources,
+authorPersona,
+proposedBook
+}
+
+---
+
+## RESPONSE FORMAT
+
+Return valid JSON only.
+
+{
+"genreSuggestions": [],
+"structureSuggestions": [],
+"toneSuggestions": [],
+"audienceSuggestions": [],
+"researchIntensitySuggestions": [],
+
+"positioningStatementSuggestions": [],
+"corePromiseSuggestions": [],
+"coreThesisSuggestions": [],
+
+"uniqueMechanismSuggestions": [
+{
+"name": "",
+"description": ""
+}
+],
+
+"beforeStateSuggestions": [],
+"afterStateSuggestions": [],
+
+"readerObjections": [],
+
+"desiredEmotionalOutcomeSuggestions": [],
+
+"uspSuggestions": [],
+
+"focusTopics": []
+}
+
+---
+
+## AI PROMPT
+
+You are an elite nonfiction publishing strategist.
+
+Analyze:
+
+* Research
+* Analysis
+* Book Title
+* Resources
+* Author Persona
+* Proposed Book
+
+Your task is to create a complete strategic Details profile for the book.
+
+Requirements:
+
+* Commercially viable
+* Professionally positioned
+* Reader-centric
+* Market aware
+* Consistent with author persona
+* Consistent with promised transformation
+
+For every major field:
+
+Generate 3 strong alternatives.
+
+The alternatives should represent different strategic directions while remaining relevant to the project.
+
+Avoid generic recommendations.
+
+Recommendations should feel like they were created by a senior publishing consultant.
+
+Return JSON only.
+
+---
+
+## AUTO-FILL BEHAVIOR
+
+After generation:
+
+Populate every field.
+
+Display suggestions beneath each field.
+
+Example:
+
+Genre
+
+Selected:
+Entrepreneurship
+
+Suggestions:
+
+[Entrepreneurship]
+[Business & Startups]
+[Personal Finance]
+
+User can:
+
+* Click suggestion
+* Replace selected value
+* Edit manually
+
+Apply this behavior to every strategic field.
+
+---
+
+## 404 ERROR FIX
+
+Current issue:
+
+Request failed (404)
+
+Investigate and fix.
+
+Verify:
+
+Frontend:
+
+fetch("/api/generate-details")
+
+Backend:
+
+app.post("/api/generate-details")
+
+Requirements:
+
+1. Endpoint exists.
+2. Endpoint registered.
+3. Route imported.
+4. Route path matches exactly.
+5. Server restarted.
+6. Backend logging enabled.
+
+Add:
+
+console.log("Generate Details endpoint called");
+
+to verify execution.
+
+---
+
+## LOADING EXPERIENCE
+
+While generating:
+
+* Disable button
+* Show spinner
+* Show progress message
+
+"Analyzing project and generating strategic book details..."
+
+---
+
+## SUCCESS MESSAGE
+
+Show:
+
+"Strategic Details Generated Successfully"
+
+---
+
+## SUCCESS CRITERIA
+
+One click should:
+
+1. Analyze all previous project data.
+2. Generate strategic recommendations.
+3. Generate 3 alternatives for major fields.
+4. Populate all fields automatically.
+5. Allow user selection and editing.
+6. Improve overall book quality and positioning.
+7. Never return a 404 error.

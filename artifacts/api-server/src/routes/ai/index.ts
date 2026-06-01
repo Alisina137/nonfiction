@@ -512,14 +512,10 @@ router.post("/generate-details", async (req, res) => {
     const prompt = generateDetailsPrompt(project);
     const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "default");
 
-    // ── Parsers ────────────────────────────────────────────────────────────
-    function field(name: string): string {
-      const m = text.match(new RegExp(`^${name}:\\s*(.+)$`, "m"));
-      return m ? m[1].trim() : "";
-    }
-    function block(name: string): string {
-      const m = text.match(new RegExp(`===\\s*${name}\\s*===\\n([\\s\\S]*?)(?:===|$)`, "i"));
-      return m ? m[1].trim() : "";
+    const data = extractJSON(text);
+    if (!data || typeof data !== "object") {
+      console.error("[generate-details] Could not parse JSON. Raw snippet:", text.slice(0, 600));
+      return res.status(500).json({ error: "AI returned unparseable details data." });
     }
 
     const GENRE_OPTIONS     = ["Business","Self-help","Productivity","Personal finance","Entrepreneurship","Leadership","Investing","Marketing","Career development","Philosophy / ideas","Health & wellness","Cookbooks & food writing","Spirituality","Parenting & family","Technology","Memoir / narrative nonfiction","Other"];
@@ -529,46 +525,75 @@ router.post("/generate-details", async (req, res) => {
     const WC_OPTIONS        = ["10k–15k","15k–20k","20k–25k","25k–30k","30k–35k","35k–40k","40k–50k","50k–70k","70k–90k","90k–120k"];
     const RI_OPTIONS        = ["Light","Moderate","Heavy"];
 
-    function validate(val: string, list: string[]): string {
-      if (!val) return "";
-      const exact = list.find((o) => o.toLowerCase() === val.toLowerCase());
-      if (exact) return exact;
-      return list.find((o) => o.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(o.toLowerCase())) || "";
+    function strArr(v: any): string[] {
+      return Array.isArray(v) ? v.filter((x: any) => typeof x === "string" && x.trim()) : [];
+    }
+    function validateList(arr: string[], list: string[]): string[] {
+      return strArr(arr).map((val) => {
+        const exact = list.find((o) => o.toLowerCase() === val.toLowerCase());
+        if (exact) return exact;
+        return list.find((o) => o.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(o.toLowerCase())) || val;
+      }).filter(Boolean);
     }
 
-    const rawChapters = parseInt(field("CHAPTERS"), 10);
+    const genreSuggestions     = validateList(data.genreSuggestions, GENRE_OPTIONS).slice(0, 3);
+    const structureSuggestions = validateList(data.structureSuggestions, STRUCTURE_OPTIONS).slice(0, 3);
+    const structureReasons     = strArr(data.structureReasons).slice(0, 3);
+    const toneSuggestions      = validateList(data.toneSuggestions, TONE_OPTIONS).slice(0, 3);
+    const audienceSuggestions  = validateList(data.audienceSuggestions, AUDIENCE_OPTIONS).slice(0, 3);
+    const riSuggestions        = validateList(data.researchIntensitySuggestions, RI_OPTIONS).slice(0, 3);
+
+    const rawChapters = parseInt(String(data.chapterCount ?? ""), 10);
     const chapters    = !isNaN(rawChapters) && rawChapters >= 5 && rawChapters <= 15 ? rawChapters : null;
+    const wordCount   = WC_OPTIONS.find((o) => o === data.wordCountRange) || WC_OPTIONS.find((o) => String(data.wordCountRange || "").includes(o.split("–")[0])) || "";
 
-    // Positioning statement — strip the template label if present
-    let positioningStatement = field("POSITIONING_STATEMENT");
-    if (!positioningStatement) {
-      const m = text.match(/POSITIONING_STATEMENT:\s*([\s\S]*?)(?:\n[A-Z_]+:|===|$)/);
-      if (m) positioningStatement = m[1].trim();
-    }
+    const mechArr = Array.isArray(data.uniqueMechanismSuggestions)
+      ? data.uniqueMechanismSuggestions.filter((m: any) => m && typeof m === "object" && m.name).slice(0, 3)
+      : [];
+    const mechFirst = mechArr[0] ? `${mechArr[0].name}\n\n${mechArr[0].description}` : "";
 
     return res.json({
-      genre:                    validate(field("GENRE"),            GENRE_OPTIONS),
-      structure:                validate(field("STRUCTURE"),         STRUCTURE_OPTIONS),
-      structureReason:          field("STRUCTURE_REASON"),
-      tone:                     validate(field("TONE"),              TONE_OPTIONS),
-      audience:                 validate(field("AUDIENCE"),          AUDIENCE_OPTIONS),
+      // ── Suggestions arrays (new) ──────────────────────────────────────────
+      genreSuggestions,
+      structureSuggestions,
+      structureReasons,
+      toneSuggestions,
+      audienceSuggestions,
+      researchIntensitySuggestions: riSuggestions,
+      positioningStatementSuggestions: strArr(data.positioningStatementSuggestions).slice(0, 3),
+      corePromiseSuggestions:          strArr(data.corePromiseSuggestions).slice(0, 3),
+      coreThesisSuggestions:           strArr(data.coreThesisSuggestions).slice(0, 3),
+      uniqueMechanismSuggestions:      mechArr,
+      beforeStateSuggestions:          strArr(data.beforeStateSuggestions).slice(0, 3),
+      afterStateSuggestions:           strArr(data.afterStateSuggestions).slice(0, 3),
+      desiredEmotionalOutcomeSuggestions: strArr(data.desiredEmotionalOutcomeSuggestions).slice(0, 3),
+      uspSuggestions:                  strArr(data.uspSuggestions).slice(0, 3),
+      focusTopicsList:                 strArr(data.focusTopics),
+      readerObjectionsList:            strArr(data.readerObjections),
+
+      // ── Single-value auto-fills (first suggestion chosen) ─────────────────
+      genre:                    genreSuggestions[0] || "",
+      structure:                structureSuggestions[0] || "",
+      structureReason:          structureReasons[0] || "",
+      tone:                     toneSuggestions[0] || "",
+      audience:                 audienceSuggestions[0] || "",
+      researchIntensity:        riSuggestions[0] || "",
       chapterCount:             chapters,
-      chapterCountReason:       field("CHAPTERS_REASON"),
-      wordCountRange:           validate(field("WORD_COUNT"),        WC_OPTIONS),
-      wordCountReason:          field("WORD_COUNT_REASON"),
-      researchIntensity:        validate(field("RESEARCH_INTENSITY"), RI_OPTIONS),
-      positioningStatement,
-      desiredEmotionalOutcome:  field("DESIRED_EMOTIONAL_OUTCOME"),
-      uniqueSellingProposition: block("USP"),
-      readerPainPoints:         block("PAIN_POINTS"),
-      subtitle:                 block("SUBTITLE"),
-      corePromise:              block("CORE_PROMISE"),
-      coreThesis:               block("CORE_THESIS"),
-      uniqueMechanism:          block("UNIQUE_MECHANISM"),
-      readerTransformationBefore: block("TRANSFORMATION_BEFORE"),
-      readerTransformationAfter:  block("TRANSFORMATION_AFTER"),
-      readerObjections:           block("READER_OBJECTIONS"),
-      focusTopics:                block("FOCUS_TOPICS"),
+      chapterCountReason:       typeof data.chapterCountReason === "string" ? data.chapterCountReason : "",
+      wordCountRange:           wordCount,
+      wordCountReason:          typeof data.wordCountReason === "string" ? data.wordCountReason : "",
+      positioningStatement:     strArr(data.positioningStatementSuggestions)[0] || "",
+      desiredEmotionalOutcome:  strArr(data.desiredEmotionalOutcomeSuggestions)[0] || "",
+      uniqueSellingProposition: strArr(data.uspSuggestions)[0] || "",
+      readerPainPoints:         typeof data.readerPainPoints === "string" ? data.readerPainPoints : "",
+      subtitle:                 typeof data.subtitle === "string" ? data.subtitle : "",
+      corePromise:              strArr(data.corePromiseSuggestions)[0] || "",
+      coreThesis:               strArr(data.coreThesisSuggestions)[0] || "",
+      uniqueMechanism:          mechFirst,
+      readerTransformationBefore: strArr(data.beforeStateSuggestions)[0] || "",
+      readerTransformationAfter:  strArr(data.afterStateSuggestions)[0] || "",
+      readerObjections:           strArr(data.readerObjections).join("\n"),
+      focusTopics:                strArr(data.focusTopics).join(", "),
       _provider:                  usedProvider
     });
   } catch (error: any) {

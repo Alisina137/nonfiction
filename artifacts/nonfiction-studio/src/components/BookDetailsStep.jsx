@@ -218,23 +218,6 @@ function SuggestionBanner({ suggestion, onAccept, onDismiss, onRegen }) {
   );
 }
 
-function DropdownSuggestion({ suggestion, onAccept, onDismiss }) {
-  if (!suggestion || suggestion.status !== "pending") return null;
-  const cs = confidenceStyle(suggestion.confidence);
-  return (
-    <div className={`mt-2 rounded-lg border ${cs.border} ${cs.bg} flex items-center gap-2 px-3 py-2 text-xs`}>
-      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cs.badge}`}>{cs.label}</span>
-      <span className={`font-medium truncate ${cs.text}`}>{suggestion.value}</span>
-      <span className={`shrink-0 text-[11px] ${cs.text} opacity-60`}>from {suggestion.source}</span>
-      <div className="ml-auto flex shrink-0 gap-2">
-        <button type="button" onClick={onAccept} className="font-semibold text-emerald-700 hover:underline">Apply</button>
-        <span className="text-slate-300">·</span>
-        <button type="button" onClick={onDismiss} className="text-slate-400 hover:text-slate-600">Dismiss</button>
-      </div>
-    </div>
-  );
-}
-
 function SectionTitle({ children }) {
   return <p className="mt-8 mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">{children}</p>;
 }
@@ -244,26 +227,6 @@ function AiGeneratedBadge() {
     <span className="ml-2 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">
       ✦ AI Generated
     </span>
-  );
-}
-
-function StructureIntelligenceCard({ structure, reason, onAccept, onOverride }) {
-  if (!structure || !reason) return null;
-  return (
-    <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm">✦</div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-violet-500">Recommended Structure</p>
-          <p className="mt-0.5 text-sm font-bold text-violet-900">{structure}</p>
-          <p className="mt-1 text-xs leading-relaxed text-violet-800">{reason}</p>
-        </div>
-        <div className="flex shrink-0 flex-col gap-1.5 mt-0.5">
-          <button type="button" onClick={onAccept} className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-violet-700 shadow-sm hover:bg-violet-50 transition">Apply ✓</button>
-          <button type="button" onClick={onOverride} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-50 transition">Override</button>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -287,6 +250,153 @@ function SmartRecommendationCard({ icon, label, value, reason, onApply, onDismis
   );
 }
 
+// ─── AI Suggestion Chips (radio-style) ────────────────────────────────────────
+
+function SuggestionChips({ suggestions, value, onChange, reasons }) {
+  if (!suggestions || suggestions.length === 0) return null;
+  return (
+    <div className="mt-2 space-y-2">
+      {suggestions.map((opt, i) => {
+        const selected = value === opt;
+        const reason = reasons?.[i];
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            className={`flex w-full items-start gap-3 rounded-xl border px-3.5 py-2.5 text-left transition ${
+              selected
+                ? "border-violet-400 bg-violet-50 shadow-sm"
+                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+            }`}
+          >
+            <span className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 transition ${
+              selected ? "border-violet-500 bg-violet-500" : "border-slate-300 bg-white"
+            }`}>
+              {selected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className={`text-sm font-semibold ${selected ? "text-violet-900" : "text-slate-700"}`}>{opt}</span>
+              {reason && <span className={`ml-2 text-xs ${selected ? "text-violet-600" : "text-slate-400"}`}>{reason}</span>}
+            </span>
+            {selected && <span className="flex-shrink-0 text-[10px] font-bold text-violet-500 uppercase tracking-wider mt-0.5">Selected</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Alt Suggestions for text fields ─────────────────────────────────────────
+
+function AltSuggestions({ suggestions, value, onSelect }) {
+  if (!suggestions || suggestions.length === 0) return null;
+  return (
+    <div className="mt-3">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-violet-500">✦ AI Alternatives — click to use</p>
+      <div className="space-y-2">
+        {suggestions.map((s, i) => {
+          const active = value === s;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onSelect(s)}
+              className={`w-full rounded-lg border px-3 py-2.5 text-left text-xs leading-relaxed transition ${
+                active
+                  ? "border-violet-300 bg-violet-50 text-violet-900 shadow-sm"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <span className="whitespace-pre-wrap">{s}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Mechanism Suggestions ────────────────────────────────────────────────────
+
+function MechanismSuggestions({ suggestions, value, onSelect }) {
+  if (!suggestions || suggestions.length === 0) return null;
+  return (
+    <div className="mt-3">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-violet-500">✦ AI Framework Alternatives — click to use</p>
+      <div className="space-y-2">
+        {suggestions.map((m, i) => {
+          const formatted = `${m.name}\n\n${m.description}`;
+          const active = value === formatted;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onSelect(formatted)}
+              className={`w-full rounded-lg border px-3 py-2.5 text-left transition ${
+                active
+                  ? "border-violet-300 bg-violet-50 shadow-sm"
+                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <p className={`text-sm font-bold ${active ? "text-violet-800" : "text-slate-700"}`}>{m.name}</p>
+              <p className={`mt-1 text-xs leading-relaxed ${active ? "text-violet-700" : "text-slate-500"}`}>{m.description}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Chips + Custom input (for dropdowns) ─────────────────────────────────────
+
+function ChipsWithCustom({ suggestions, value, onChange, reasons, options, placeholder }) {
+  const [showCustom, setShowCustom] = useState(false);
+  const isCustom = value && !suggestions.includes(value);
+
+  return (
+    <div>
+      {suggestions.length > 0 ? (
+        <SuggestionChips suggestions={suggestions} value={value} onChange={onChange} reasons={reasons} />
+      ) : null}
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {suggestions.length === 0 && options && options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+              value === opt
+                ? "border-slate-800 bg-slate-800 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setShowCustom((v) => !v)}
+          className="text-[11px] text-slate-400 hover:text-slate-600 underline"
+        >
+          {isCustom ? `Custom: "${value}"` : "Enter custom…"}
+        </button>
+      </div>
+
+      {(showCustom || isCustom) && (
+        <input
+          className="input-light mt-2 text-sm"
+          placeholder={placeholder || "Type custom value…"}
+          value={isCustom ? value : ""}
+          onChange={(e) => { onChange(e.target.value); if (!e.target.value) setShowCustom(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function BookDetailsStep({ bookDetails, setBookDetails, fullProject, currentStep, detailsStepIndex }) {
@@ -296,11 +406,12 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
 
   const [aiGenerating, setAiGenerating]   = useState(false);
   const [aiError, setAiError]             = useState("");
-  const [structureRec, setStructureRec]   = useState(null);
-  const [wordCountRec, setWordCountRec]   = useState(null);
-  const [chapterCountRec, setChapterCountRec] = useState(null);
   const [aiGenFields, setAiGenFields]     = useState(new Set());
   const [aiGenPhase, setAiGenPhase]       = useState("");
+  const [aiSuggestions, setAiSuggestions] = useState({});
+
+  const [wordCountRec, setWordCountRec]   = useState(null);
+  const [chapterCountRec, setChapterCountRec] = useState(null);
 
   const [exporting, setExporting]         = useState(false);
   const [exportError, setExportError]     = useState("");
@@ -365,7 +476,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
     setAiGenerating(true);
     setAiError("");
     setAiGenFields(new Set());
-    setStructureRec(null);
+    setAiSuggestions({});
     setWordCountRec(null);
     setChapterCountRec(null);
 
@@ -374,6 +485,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
       "Analyzing competitor data…",
       "Reviewing author persona…",
       "Building book strategy…",
+      "Generating alternatives…",
       "Finalizing recommendations…"
     ];
     let phaseIdx = 0;
@@ -390,6 +502,27 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         { noCache: true }
       );
 
+      // ── Populate suggestion chip arrays ──────────────────────────────────
+      setAiSuggestions({
+        genreSuggestions:               data.genreSuggestions               || [],
+        structureSuggestions:           data.structureSuggestions           || [],
+        structureReasons:               data.structureReasons               || [],
+        toneSuggestions:                data.toneSuggestions                || [],
+        audienceSuggestions:            data.audienceSuggestions            || [],
+        researchIntensitySuggestions:   data.researchIntensitySuggestions   || [],
+        positioningStatementSuggestions: data.positioningStatementSuggestions || [],
+        corePromiseSuggestions:          data.corePromiseSuggestions         || [],
+        coreThesisSuggestions:           data.coreThesisSuggestions          || [],
+        uniqueMechanismSuggestions:      data.uniqueMechanismSuggestions     || [],
+        beforeStateSuggestions:          data.beforeStateSuggestions         || [],
+        afterStateSuggestions:           data.afterStateSuggestions          || [],
+        desiredEmotionalOutcomeSuggestions: data.desiredEmotionalOutcomeSuggestions || [],
+        uspSuggestions:                  data.uspSuggestions                 || [],
+        focusTopicsList:                 data.focusTopicsList                || [],
+        readerObjectionsList:            data.readerObjectionsList           || [],
+      });
+
+      // ── Auto-fill single values ──────────────────────────────────────────
       const updates = {};
       const filled = new Set();
 
@@ -397,6 +530,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         genre:                    data.genre,
         tone:                     data.tone,
         audience:                 data.audience,
+        researchIntensity:        data.researchIntensity,
         uniqueSellingProposition: data.uniqueSellingProposition,
         readerPainPoints:         data.readerPainPoints,
         focusTopics:              data.focusTopics,
@@ -409,7 +543,6 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         readerObjections:           data.readerObjections,
         desiredEmotionalOutcome:    data.desiredEmotionalOutcome,
         positioningStatement:       data.positioningStatement,
-        researchIntensity:          data.researchIntensity,
       };
 
       for (const [key, val] of Object.entries(textFields)) {
@@ -427,13 +560,9 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         updates.wordCountRange = data.wordCountRange;
         filled.add("wordCountRange");
       }
-
       if (data.structure && BOOK_STRUCTURE_OPTIONS.includes(data.structure)) {
         updates.structure = data.structure;
         filled.add("structure");
-      }
-      if (data.structureReason && data.structure) {
-        setStructureRec({ structure: data.structure, reason: data.structureReason });
       }
 
       if (data.wordCountRange && data.wordCountReason) {
@@ -502,30 +631,13 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
 
   // ── Dynamic option lists ──────────────────────────────────────────────────
 
-  const genreOptions = useMemo(() => {
-    const set = new Set(GENRE_OPTIONS);
-    const g = (bd.genre || "").trim();
-    return g && !set.has(g) ? [g, ...GENRE_OPTIONS] : [...GENRE_OPTIONS];
-  }, [bd.genre]);
-
-  const toneOptions = useMemo(() => {
-    const set = new Set(AUTHOR_TONE_OPTIONS);
-    const t = (bd.tone || "").trim();
-    return t && !set.has(t) ? [t, ...AUTHOR_TONE_OPTIONS] : [...AUTHOR_TONE_OPTIONS];
-  }, [bd.tone]);
-
-  const audienceOptions = useMemo(() => {
-    const set = new Set(GENERAL_AUDIENCE_OPTIONS);
-    const a = (bd.audience || "").trim();
-    return a && !set.has(a) ? [a, ...GENERAL_AUDIENCE_OPTIONS] : [...GENERAL_AUDIENCE_OPTIONS];
-  }, [bd.audience]);
-
   const suggestedWordCount = suggestions.wordCountRange?.status === "pending" ? suggestions.wordCountRange.value : null;
   const suggestedChapters  = suggestions.chapterCount?.status  === "pending" ? suggestions.chapterCount.value  : null;
 
-  // Persona display
   const activePersona = getActivePersona(fullProject);
   const personaNotes = buildPersonaNotes(fullProject?.authorPersona);
+
+  const hasAiSuggestions = aiGenFields.size > 0;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -535,7 +647,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <p className="text-xs font-semibold uppercase tracking-wider text-sky-700/90">Step 7 — Book details</p>
         <h2 className="mt-1 font-serif text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Strategic blueprint</h2>
         <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-          Your complete book strategy in one place. Use <strong>✦ Generate Details</strong> at the bottom to have AI fill everything from your project data, or accept the suggestions below manually.
+          Your complete book strategy in one place. Use <strong>✦ Generate Details</strong> below to have AI fill everything with 3 alternatives per field, or accept the suggestions below manually.
         </p>
       </header>
 
@@ -707,87 +819,142 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <SectionTitle>Positioning</SectionTitle>
 
         {/* ── Genre + Structure ── */}
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2">
+
+          {/* Genre */}
           <div>
             <FieldLabel hint="Market category — inherited from your Research niche.">
               Genre
               {aiGenFields.has("genre") && <AiGeneratedBadge />}
             </FieldLabel>
-            <select className="input-light mt-1.5" value={bd.genre ?? ""} onChange={(e) => patch({ genre: e.target.value })}>
-              <option value="">Select genre</option>
-              {genreOptions.map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
-            {isActive("genre") && (
-              <DropdownSuggestion
-                suggestion={suggestions.genre}
-                onAccept={() => accept("genre", suggestions.genre.value)}
-                onDismiss={() => dismiss("genre")}
+            {aiSuggestions.genreSuggestions?.length > 0 ? (
+              <ChipsWithCustom
+                suggestions={aiSuggestions.genreSuggestions}
+                value={bd.genre ?? ""}
+                onChange={(v) => { patch({ genre: v }); setSuggestions((p) => ({ ...p, genre: { ...(p.genre || {}), status: "accepted" } })); }}
+                placeholder="Custom genre…"
               />
+            ) : (
+              <>
+                <select className="input-light mt-1.5" value={bd.genre ?? ""} onChange={(e) => patch({ genre: e.target.value })}>
+                  <option value="">Select genre</option>
+                  {GENRE_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+                {isActive("genre") && (
+                  <div className={`mt-2 rounded-lg border border-sky-200 bg-sky-50 flex items-center gap-2 px-3 py-2 text-xs`}>
+                    <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-sky-700">AI Suggested</span>
+                    <span className="font-medium truncate text-sky-900">{suggestions.genre?.value}</span>
+                    <div className="ml-auto flex shrink-0 gap-2">
+                      <button type="button" onClick={() => accept("genre", suggestions.genre.value)} className="font-semibold text-emerald-700 hover:underline">Apply</button>
+                      <span className="text-slate-300">·</span>
+                      <button type="button" onClick={() => dismiss("genre")} className="text-slate-400 hover:text-slate-600">Dismiss</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
+          {/* Structure */}
           <div>
             <FieldLabel hint="Architectural blueprint — AI analyzes your concept to recommend the best fit.">
               Structure
               {aiGenFields.has("structure") && <AiGeneratedBadge />}
             </FieldLabel>
-            <select className="input-light mt-1.5" value={bd.structure ?? ""} onChange={(e) => {
-              patch({ structure: e.target.value });
-              if (structureRec && e.target.value !== structureRec.structure) setStructureRec(null);
-            }}>
-              <option value="">Select structure</option>
-              {BOOK_STRUCTURE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            {structureRec && (
-              <StructureIntelligenceCard
-                structure={structureRec.structure}
-                reason={structureRec.reason}
-                onAccept={() => { patch({ structure: structureRec.structure }); setStructureRec(null); }}
-                onOverride={() => setStructureRec(null)}
+            {aiSuggestions.structureSuggestions?.length > 0 ? (
+              <ChipsWithCustom
+                suggestions={aiSuggestions.structureSuggestions}
+                value={bd.structure ?? ""}
+                onChange={(v) => { patch({ structure: v }); setSuggestions((p) => ({ ...p, structure: { ...(p.structure || {}), status: "accepted" } })); }}
+                reasons={aiSuggestions.structureReasons}
+                placeholder="Custom structure…"
               />
-            )}
-            {!structureRec && isActive("structure") && (
-              <DropdownSuggestion
-                suggestion={suggestions.structure}
-                onAccept={() => accept("structure", suggestions.structure.value)}
-                onDismiss={() => dismiss("structure")}
-              />
+            ) : (
+              <>
+                <select className="input-light mt-1.5" value={bd.structure ?? ""} onChange={(e) => patch({ structure: e.target.value })}>
+                  <option value="">Select structure</option>
+                  {BOOK_STRUCTURE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {isActive("structure") && (
+                  <div className={`mt-2 rounded-lg border border-sky-200 bg-sky-50 flex items-center gap-2 px-3 py-2 text-xs`}>
+                    <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-sky-700">Suggested</span>
+                    <span className="font-medium truncate text-sky-900">{suggestions.structure?.value}</span>
+                    <div className="ml-auto flex shrink-0 gap-2">
+                      <button type="button" onClick={() => accept("structure", suggestions.structure.value)} className="font-semibold text-emerald-700 hover:underline">Apply</button>
+                      <span className="text-slate-300">·</span>
+                      <button type="button" onClick={() => dismiss("structure")} className="text-slate-400 hover:text-slate-600">Dismiss</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
+          {/* Tone */}
           <div>
             <FieldLabel hint="Dominant tonal register — inherited from Author Persona or Research.">
               Tone
               {aiGenFields.has("tone") && <AiGeneratedBadge />}
             </FieldLabel>
-            <select className="input-light mt-1.5" value={bd.tone ?? ""} onChange={(e) => patch({ tone: e.target.value })}>
-              <option value="">Select tone</option>
-              {toneOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            {isActive("tone") && (
-              <DropdownSuggestion
-                suggestion={suggestions.tone}
-                onAccept={() => accept("tone", suggestions.tone.value)}
-                onDismiss={() => dismiss("tone")}
+            {aiSuggestions.toneSuggestions?.length > 0 ? (
+              <ChipsWithCustom
+                suggestions={aiSuggestions.toneSuggestions}
+                value={bd.tone ?? ""}
+                onChange={(v) => { patch({ tone: v }); setSuggestions((p) => ({ ...p, tone: { ...(p.tone || {}), status: "accepted" } })); }}
+                placeholder="Custom tone…"
               />
+            ) : (
+              <>
+                <select className="input-light mt-1.5" value={bd.tone ?? ""} onChange={(e) => patch({ tone: e.target.value })}>
+                  <option value="">Select tone</option>
+                  {AUTHOR_TONE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                {isActive("tone") && (
+                  <div className={`mt-2 rounded-lg border border-sky-200 bg-sky-50 flex items-center gap-2 px-3 py-2 text-xs`}>
+                    <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-sky-700">Suggested</span>
+                    <span className="font-medium truncate text-sky-900">{suggestions.tone?.value}</span>
+                    <div className="ml-auto flex shrink-0 gap-2">
+                      <button type="button" onClick={() => accept("tone", suggestions.tone.value)} className="font-semibold text-emerald-700 hover:underline">Apply</button>
+                      <span className="text-slate-300">·</span>
+                      <button type="button" onClick={() => dismiss("tone")} className="text-slate-400 hover:text-slate-600">Dismiss</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
+          {/* Audience */}
           <div>
             <FieldLabel hint="Primary reader demographic.">
               Audience
               {aiGenFields.has("audience") && <AiGeneratedBadge />}
             </FieldLabel>
-            <select className="input-light mt-1.5" value={bd.audience ?? ""} onChange={(e) => patch({ audience: e.target.value })}>
-              <option value="">Select audience</option>
-              {audienceOptions.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-            {isActive("audience") && (
-              <DropdownSuggestion
-                suggestion={suggestions.audience}
-                onAccept={() => accept("audience", suggestions.audience.value)}
-                onDismiss={() => dismiss("audience")}
+            {aiSuggestions.audienceSuggestions?.length > 0 ? (
+              <ChipsWithCustom
+                suggestions={aiSuggestions.audienceSuggestions}
+                value={bd.audience ?? ""}
+                onChange={(v) => { patch({ audience: v }); setSuggestions((p) => ({ ...p, audience: { ...(p.audience || {}), status: "accepted" } })); }}
+                placeholder="Custom audience…"
               />
+            ) : (
+              <>
+                <select className="input-light mt-1.5" value={bd.audience ?? ""} onChange={(e) => patch({ audience: e.target.value })}>
+                  <option value="">Select audience</option>
+                  {GENERAL_AUDIENCE_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+                {isActive("audience") && (
+                  <div className={`mt-2 rounded-lg border border-sky-200 bg-sky-50 flex items-center gap-2 px-3 py-2 text-xs`}>
+                    <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-sky-700">Suggested</span>
+                    <span className="font-medium truncate text-sky-900">{suggestions.audience?.value}</span>
+                    <div className="ml-auto flex shrink-0 gap-2">
+                      <button type="button" onClick={() => accept("audience", suggestions.audience.value)} className="font-semibold text-emerald-700 hover:underline">Apply</button>
+                      <span className="text-slate-300">·</span>
+                      <button type="button" onClick={() => dismiss("audience")} className="text-slate-400 hover:text-slate-600">Dismiss</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -803,6 +970,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             value={bd.positioningStatement ?? ""}
             placeholder="This book helps adults with ADHD achieve reliable productivity without relying on willpower."
             onChange={(e) => patch({ positioningStatement: e.target.value })}
+          />
+          <AltSuggestions
+            suggestions={aiSuggestions.positioningStatementSuggestions}
+            value={bd.positioningStatement}
+            onSelect={(v) => patch({ positioningStatement: v })}
           />
         </div>
 
@@ -820,6 +992,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             placeholder="e.g. Build an ADHD-friendly productivity system that consistently turns intentions into completed work."
             onChange={(e) => patch({ corePromise: e.target.value })}
           />
+          <AltSuggestions
+            suggestions={aiSuggestions.corePromiseSuggestions}
+            value={bd.corePromise}
+            onSelect={(v) => patch({ corePromise: v })}
+          />
         </div>
 
         {/* ── Core Thesis ── */}
@@ -834,6 +1011,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             placeholder="e.g. Adults with ADHD become more productive when they rely on systems rather than motivation."
             onChange={(e) => patch({ coreThesis: e.target.value })}
           />
+          <AltSuggestions
+            suggestions={aiSuggestions.coreThesisSuggestions}
+            value={bd.coreThesis}
+            onSelect={(v) => patch({ coreThesis: v })}
+          />
         </div>
 
         {/* ── Unique Mechanism ── */}
@@ -845,8 +1027,13 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           <textarea
             className="input-light mt-1.5 min-h-[90px] resize-y"
             value={bd.uniqueMechanism ?? ""}
-            placeholder={"e.g. The Momentum Loop Framework\n\nA three-phase system designed to break task paralysis by building on micro-completions. Each loop creates dopamine reinforcement that makes the next action easier to start."}
+            placeholder={"e.g. The Momentum Loop Framework\n\nA three-phase system designed to break task paralysis by building on micro-completions."}
             onChange={(e) => patch({ uniqueMechanism: e.target.value })}
+          />
+          <MechanismSuggestions
+            suggestions={aiSuggestions.uniqueMechanismSuggestions}
+            value={bd.uniqueMechanism}
+            onSelect={(v) => patch({ uniqueMechanism: v })}
           />
         </div>
 
@@ -867,6 +1054,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
                 placeholder={"Overwhelmed\nInconsistent\nMissing deadlines\nDisorganized"}
                 onChange={(e) => patch({ readerTransformationBefore: e.target.value })}
               />
+              <AltSuggestions
+                suggestions={aiSuggestions.beforeStateSuggestions}
+                value={bd.readerTransformationBefore}
+                onSelect={(v) => patch({ readerTransformationBefore: v })}
+              />
             </div>
             <div>
               <p className="mb-1.5 text-xs font-semibold text-emerald-600 uppercase tracking-wider">After reading</p>
@@ -875,6 +1067,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
                 value={bd.readerTransformationAfter ?? ""}
                 placeholder={"Focused\nOrganized\nProductive\nIn control"}
                 onChange={(e) => patch({ readerTransformationAfter: e.target.value })}
+              />
+              <AltSuggestions
+                suggestions={aiSuggestions.afterStateSuggestions}
+                value={bd.readerTransformationAfter}
+                onSelect={(v) => patch({ readerTransformationAfter: v })}
               />
             </div>
           </div>
@@ -892,6 +1089,17 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             placeholder={"Nothing works for my ADHD\nI've already tried productivity systems\nI lack discipline\nI'm too scattered to build habits"}
             onChange={(e) => patch({ readerObjections: e.target.value })}
           />
+          {aiSuggestions.readerObjectionsList?.length > 0 && !bd.readerObjections?.trim() && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => patch({ readerObjections: aiSuggestions.readerObjectionsList.join("\n") })}
+                className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 underline"
+              >
+                ✦ Use {aiSuggestions.readerObjectionsList.length} AI-generated objections
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Desired Emotional Outcome ── */}
@@ -905,6 +1113,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             value={bd.desiredEmotionalOutcome ?? ""}
             placeholder="e.g. Empowered, Hopeful, Confident, In control"
             onChange={(e) => patch({ desiredEmotionalOutcome: e.target.value })}
+          />
+          <AltSuggestions
+            suggestions={aiSuggestions.desiredEmotionalOutcomeSuggestions}
+            value={bd.desiredEmotionalOutcome}
+            onSelect={(v) => patch({ desiredEmotionalOutcome: v })}
           />
         </div>
 
@@ -922,7 +1135,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             placeholder="What makes this book uniquely valuable to the reader — the commercial hook that wins the sale."
             onChange={(e) => patch({ uniqueSellingProposition: e.target.value })}
           />
-          {isActive("uniqueSellingProposition") && (
+          {!hasAiSuggestions && isActive("uniqueSellingProposition") && (
             <SuggestionBanner
               suggestion={suggestions.uniqueSellingProposition}
               onAccept={() => accept("uniqueSellingProposition", suggestions.uniqueSellingProposition.value)}
@@ -930,6 +1143,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
               onRegen={() => regen("uniqueSellingProposition")}
             />
           )}
+          <AltSuggestions
+            suggestions={aiSuggestions.uspSuggestions}
+            value={bd.uniqueSellingProposition}
+            onSelect={(v) => patch({ uniqueSellingProposition: v })}
+          />
         </div>
 
         {/* ── Reader Pain Points ── */}
@@ -944,7 +1162,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             placeholder="The real-world failures and frustrations that drive your reader to seek this book."
             onChange={(e) => patch({ readerPainPoints: e.target.value })}
           />
-          {isActive("readerPainPoints") && (
+          {!hasAiSuggestions && isActive("readerPainPoints") && (
             <SuggestionBanner
               suggestion={suggestions.readerPainPoints}
               onAccept={() => accept("readerPainPoints", suggestions.readerPainPoints.value)}
@@ -966,7 +1184,18 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             placeholder={"Executive Function Systems, Time Blindness Solutions, Task Initiation Methods, Dopamine Motivation, Focus Recovery Protocols"}
             onChange={(e) => patch({ focusTopics: e.target.value })}
           />
-          {isActive("focusTopics") && (
+          {aiSuggestions.focusTopicsList?.length > 0 && !bd.focusTopics?.trim() && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => patch({ focusTopics: aiSuggestions.focusTopicsList.join(", ") })}
+                className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 underline"
+              >
+                ✦ Use {aiSuggestions.focusTopicsList.length} AI-suggested focus topics
+              </button>
+            </div>
+          )}
+          {!hasAiSuggestions && isActive("focusTopics") && (
             <SuggestionBanner
               suggestion={suggestions.focusTopics}
               onAccept={() => accept("focusTopics", suggestions.focusTopics.value)}
@@ -982,27 +1211,61 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             Research intensity
             {aiGenFields.has("researchIntensity") && <AiGeneratedBadge />}
           </FieldLabel>
-          <div className="mt-2 flex gap-3">
-            {RESEARCH_INTENSITY_OPTIONS.map((opt) => {
-              const on = bd.researchIntensity === opt;
-              const desc = { Light: "Minimal citations, anecdote-driven", Moderate: "Mix of evidence and narrative", Heavy: "Data-heavy, academic rigor" }[opt];
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => patch({ researchIntensity: opt })}
-                  className={`flex-1 rounded-xl border px-3 py-2.5 text-center transition ${
-                    on
-                      ? "border-violet-500 bg-violet-50 text-violet-800 shadow-sm"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                  }`}
-                >
-                  <p className="text-sm font-semibold">{opt}</p>
-                  <p className="mt-0.5 text-[10px] text-slate-500 leading-tight">{desc}</p>
-                </button>
-              );
-            })}
-          </div>
+
+          {aiSuggestions.researchIntensitySuggestions?.length > 0 ? (
+            <div className="mt-2 space-y-2">
+              {aiSuggestions.researchIntensitySuggestions.map((opt) => {
+                const on = bd.researchIntensity === opt;
+                const desc = { Light: "Minimal citations, anecdote-driven", Moderate: "Mix of evidence and narrative", Heavy: "Data-heavy, academic rigor" }[opt] || "";
+                const aiFirst = aiSuggestions.researchIntensitySuggestions[0] === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => patch({ researchIntensity: opt })}
+                    className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                      on
+                        ? "border-violet-400 bg-violet-50 shadow-sm"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <span className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 ${
+                      on ? "border-violet-500 bg-violet-500" : "border-slate-300 bg-white"
+                    }`}>
+                      {on && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                    </span>
+                    <span className="flex-1">
+                      <span className={`text-sm font-semibold ${on ? "text-violet-900" : "text-slate-700"}`}>{opt}</span>
+                      {aiFirst && <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">✦ Recommended</span>}
+                      <span className={`ml-2 text-xs ${on ? "text-violet-600" : "text-slate-400"}`}>{desc}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-2 flex gap-3">
+              {RESEARCH_INTENSITY_OPTIONS.map((opt) => {
+                const on = bd.researchIntensity === opt;
+                const desc = { Light: "Minimal citations, anecdote-driven", Moderate: "Mix of evidence and narrative", Heavy: "Data-heavy, academic rigor" }[opt];
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => patch({ researchIntensity: opt })}
+                    className={`flex-1 rounded-xl border px-3 py-2.5 text-center transition ${
+                      on
+                        ? "border-violet-500 bg-violet-50 text-violet-800 shadow-sm"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold">{opt}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-500 leading-tight">{desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <SectionTitle>Author Voice</SectionTitle>
@@ -1032,15 +1295,18 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
 
       {/* ── AI Generation success banner ── */}
       {!aiGenerating && aiGenFields.size > 0 && (
-        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 flex items-center gap-2">
-          <span className="text-emerald-600 text-base">✓</span>
-          <div>
-            <p className="text-xs font-semibold text-emerald-800">
-              {aiGenFields.size} field{aiGenFields.size !== 1 ? "s" : ""} generated
-            </p>
-            <p className="text-[11px] text-emerald-700">
-              {[...aiGenFields].map((k) => FIELD_LABELS[k] || k).filter(Boolean).join(", ")}
-            </p>
+        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="flex items-start gap-3">
+            <span className="text-emerald-500 text-lg">✦</span>
+            <div>
+              <p className="text-sm font-bold text-emerald-800">Strategic Details Generated Successfully</p>
+              <p className="mt-0.5 text-xs text-emerald-700">
+                {aiGenFields.size} field{aiGenFields.size !== 1 ? "s" : ""} filled with AI recommendations. Each field with 3 alternatives was populated with the best-fit suggestion — click any chip above to switch.
+              </p>
+              <p className="mt-1 text-[11px] text-emerald-600">
+                {[...aiGenFields].map((k) => FIELD_LABELS[k] || k).filter(Boolean).join(" · ")}
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -1073,8 +1339,8 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           ) : (
             <>
               <span>✦</span>
-              <span>Generate Details</span>
-              <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">Uses all project data</span>
+              <span>{hasAiSuggestions ? "Regenerate Details" : "Generate Details"}</span>
+              <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">3 alternatives per field</span>
             </>
           )}
         </button>

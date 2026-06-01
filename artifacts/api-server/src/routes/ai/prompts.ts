@@ -1161,9 +1161,10 @@ export function generateDetailsPrompt(project: any): string {
     bd.coreThesis?.trim()               && `Core thesis already set: ${bd.coreThesis.slice(0, 120)}`
   ].filter(Boolean).join("\n");
 
-  return `You are a professional publishing consultant and Amazon KDP book strategist.
+  return `You are an elite nonfiction publishing strategist and senior publishing consultant.
 
-Analyze ALL project data below and generate a complete strategic book blueprint.
+Analyze ALL project data below and generate a complete strategic Details profile for this book.
+Return ONLY valid JSON — no prose, no markdown, no code fences.
 
 ═══════════════════════════
 PROJECT DATA
@@ -1182,7 +1183,7 @@ TARGET AUDIENCE (research): ${r.targetAudience || "(not set)"}
 AUTHOR TONES: ${Array.isArray(r.authorTones) ? r.authorTones.join(", ") : "(not set)"}
 
 COMPETITIVE INTELLIGENCE:
-  Audience (analysis): ${intel.targetAudience || "(not set)"}
+  Audience: ${intel.targetAudience || "(not set)"}
   Reader Pain Profile: ${intel.readerPainProfile || "(not set)"}
   Transformation Promise: ${intel.transformationPromise || "(not set)"}
   Market Gap: ${intel.marketGapAnalysis || "(not set)"}
@@ -1208,67 +1209,76 @@ ${resourcesBlock}
 COMPETITOR BOOKS:
 ${competitorBlock}
 
-EXISTING DETAILS (preserve strong values):
+EXISTING DETAILS (preserve strong values where present):
 ${existingFields || "(none yet)"}
 
 ═══════════════════════════
-VALID OPTIONS (use exactly)
+VALID OPTION LISTS
 ═══════════════════════════
 
-GENRE: Business | Self-help | Productivity | Personal finance | Entrepreneurship | Leadership | Investing | Marketing | Career development | Philosophy / ideas | Health & wellness | Cookbooks & food writing | Spirituality | Parenting & family | Technology | Memoir / narrative nonfiction | Other
-STRUCTURE: Chronological | Comparative | How-to | List-based | Modular | Problem-solution | Workbook | Question and answer | Thematic | Hybrid / mixed | Other
-TONE: Conversational | Academic | Neutral | Reflective | Authoritative | Witty | Narrative | Persuasive | Minimalist | Direct & practical
-AUDIENCE: Adult | Young adult | Child | Teen | Senior
-WORD COUNT: 10k–15k | 15k–20k | 20k–25k | 25k–30k | 30k–35k | 35k–40k | 40k–50k | 50k–70k | 70k–90k | 90k–120k
-CHAPTERS: 5–15
-RESEARCH INTENSITY: Light | Moderate | Heavy
+GENRE options: Business | Self-help | Productivity | Personal finance | Entrepreneurship | Leadership | Investing | Marketing | Career development | Philosophy / ideas | Health & wellness | Cookbooks & food writing | Spirituality | Parenting & family | Technology | Memoir / narrative nonfiction | Other
+STRUCTURE options: Chronological | Comparative | How-to | List-based | Modular | Problem-solution | Workbook | Question and answer | Thematic | Hybrid / mixed | Other
+TONE options: Conversational | Academic | Neutral | Reflective | Authoritative | Witty | Narrative | Persuasive | Minimalist | Direct & practical
+AUDIENCE options: Adult | Young adult | Child | Teen | Senior
+WORD COUNT options: 10k–15k | 15k–20k | 20k–25k | 25k–30k | 30k–35k | 35k–40k | 40k–50k | 50k–70k | 70k–90k | 90k–120k
+RESEARCH INTENSITY options: Light | Moderate | Heavy
 
 ═══════════════════════════
 INSTRUCTIONS
 ═══════════════════════════
 
-Every field must be SPECIFIC to THIS book. No generic content.
-Structure: pick the best fit and give a clear reason.
-Word count and chapter recommendations: base on genre, audience, research intensity, and book concept.
-Unique Mechanism: invent a marketable proprietary framework name (e.g. "The Momentum Loop Framework") and explain it in 2-3 sentences.
-Reader Transformation: list 4-6 concrete states BEFORE and AFTER reading.
-Reader Objections: list 5-8 specific objections this audience has.
-Focus Topics: 10-15 highly specific topic areas that should guide chapter generation.
-Positioning Statement: complete the template exactly: "This book helps [audience] achieve [outcome] without [obstacle]."
+- Every recommendation must be SPECIFIC to THIS book. No generic boilerplate.
+- Recommendations should feel like they came from a senior publishing consultant.
+- Each suggestions array must have EXACTLY 3 items representing different strategic directions.
+- genreSuggestions, structureSuggestions, toneSuggestions, audienceSuggestions: pick from the VALID OPTION LISTS above.
+- researchIntensitySuggestions: always exactly ["Light","Moderate","Heavy"] ordered by what fits best first.
+- uniqueMechanismSuggestions: invent 3 distinct marketable proprietary framework names with explanations.
+- Positioning Statement template: "This book helps [audience] achieve [outcome] without [obstacle]."
+- focusTopics: 10–20 highly specific strategic topic areas.
+- readerObjections: 5–10 realistic objections this specific audience would have.
+- beforeStateSuggestions / afterStateSuggestions: 3 multi-line alternatives (4–6 states per alternative, one state per line).
+- chapterCount: integer 5–15. wordCountRange: pick from WORD COUNT options.
 
-OUTPUT FORMAT — follow exactly:
+OUTPUT — return only this JSON object:
 
-GENRE: <value>
-STRUCTURE: <value>
-STRUCTURE_REASON: <1-2 sentences>
-TONE: <value>
-AUDIENCE: <value>
-CHAPTERS: <5-15>
-CHAPTERS_REASON: <1 sentence on why this count fits>
-WORD_COUNT: <value>
-WORD_COUNT_REASON: <1 sentence on why this range fits>
-RESEARCH_INTENSITY: <Light|Moderate|Heavy>
-POSITIONING_STATEMENT: This book helps <audience> achieve <outcome> without <obstacle>.
-DESIRED_EMOTIONAL_OUTCOME: <comma-separated emotions, e.g. Empowered, Hopeful, Confident>
-===USP===
-<2-3 sentences: core commercial hook>
-===PAIN_POINTS===
-<2-3 sentences: reader's core frustrations before picking up this book>
-===SUBTITLE===
-<subtitle — blank if existing is strong>
-===CORE_PROMISE===
-<1-2 sentences: the specific, measurable outcome the book promises>
-===CORE_THESIS===
-<1-2 sentences: the central argument or conviction the book makes>
-===UNIQUE_MECHANISM===
-<Framework name on first line, then 2-3 sentence explanation>
-===TRANSFORMATION_BEFORE===
-<4-6 states, one per line, e.g. "Overwhelmed by competing priorities">
-===TRANSFORMATION_AFTER===
-<4-6 states, one per line, e.g. "Clear on daily priorities">
-===READER_OBJECTIONS===
-<5-8 objections, one per line, e.g. "I've tried systems before and they never stick">
-===FOCUS_TOPICS===
-<10-15 topic areas, comma-separated, e.g. "Executive Function Systems, Time Blindness Solutions">
-===END===`;
+{
+  "genreSuggestions": ["<genre1>", "<genre2>", "<genre3>"],
+  "structureSuggestions": ["<struct1>", "<struct2>", "<struct3>"],
+  "structureReasons": ["<reason for struct1>", "<reason for struct2>", "<reason for struct3>"],
+  "toneSuggestions": ["<tone1>", "<tone2>", "<tone3>"],
+  "audienceSuggestions": ["<audience1>", "<audience2>", "<audience3>"],
+  "researchIntensitySuggestions": ["<best fit first>", "<second>", "<third>"],
+  "chapterCount": <5-15>,
+  "chapterCountReason": "<1 sentence>",
+  "wordCountRange": "<value from list>",
+  "wordCountReason": "<1 sentence>",
+  "positioningStatementSuggestions": [
+    "This book helps <audience> achieve <outcome1> without <obstacle1>.",
+    "This book helps <audience> achieve <outcome2> without <obstacle2>.",
+    "This book helps <audience> achieve <outcome3> without <obstacle3>."
+  ],
+  "corePromiseSuggestions": ["<promise1>", "<promise2>", "<promise3>"],
+  "coreThesisSuggestions": ["<thesis1>", "<thesis2>", "<thesis3>"],
+  "uniqueMechanismSuggestions": [
+    { "name": "<Framework Name 1>", "description": "<2-3 sentence explanation>" },
+    { "name": "<Framework Name 2>", "description": "<2-3 sentence explanation>" },
+    { "name": "<Framework Name 3>", "description": "<2-3 sentence explanation>" }
+  ],
+  "beforeStateSuggestions": [
+    "<state1a>\\n<state1b>\\n<state1c>\\n<state1d>",
+    "<state2a>\\n<state2b>\\n<state2c>\\n<state2d>",
+    "<state3a>\\n<state3b>\\n<state3c>\\n<state3d>"
+  ],
+  "afterStateSuggestions": [
+    "<state1a>\\n<state1b>\\n<state1c>\\n<state1d>",
+    "<state2a>\\n<state2b>\\n<state2c>\\n<state2d>",
+    "<state3a>\\n<state3b>\\n<state3c>\\n<state3d>"
+  ],
+  "readerObjections": ["<objection1>", "<objection2>", "<objection3>", "<objection4>", "<objection5>"],
+  "desiredEmotionalOutcomeSuggestions": ["<outcome1>", "<outcome2>", "<outcome3>"],
+  "uspSuggestions": ["<usp1>", "<usp2>", "<usp3>"],
+  "focusTopics": ["<topic1>", "<topic2>", "<topic3>", "<topic4>", "<topic5>", "<topic6>", "<topic7>", "<topic8>", "<topic9>", "<topic10>"],
+  "subtitle": "<subtitle or empty string if existing subtitle is strong>",
+  "readerPainPoints": "<2-3 sentences: reader's core frustrations before picking up this book>"
+}`;
 }
