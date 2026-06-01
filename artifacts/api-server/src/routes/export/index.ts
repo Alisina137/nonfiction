@@ -16,6 +16,8 @@ import {
   XmlComponent,
   XmlAttributeComponent
 } from "docx";
+import { generateContent, extractJSON } from "../ai/aiRouter.js";
+import { chapterArchitecturePrompt } from "../ai/prompts.js";
 
 const router = Router();
 
@@ -1407,7 +1409,40 @@ function bpDivider(): Paragraph {
   });
 }
 
-async function buildBlueprintDocx(project: any): Promise<Buffer> {
+interface ChapterArchitecture {
+  chapters: Array<{
+    number: number;
+    title: string;
+    sections: string[];
+  }>;
+}
+
+async function generateChapterArchitecture(project: any): Promise<ChapterArchitecture> {
+  const prompt = chapterArchitecturePrompt(project);
+  const chapterCount = project?.bookDetails?.chapterCount || 10;
+
+  console.log(`[Export] Generating chapter architecture — ${chapterCount} chapters via AI…`);
+  const result = await generateContent(prompt, undefined, { maxTokens: 3000 });
+  const raw = extractJSON(result.text);
+
+  if (!raw || !Array.isArray(raw.chapters) || raw.chapters.length === 0) {
+    throw new Error("AI did not return a valid chapter architecture.");
+  }
+
+  // Normalise: ensure each chapter has exactly 5 sections
+  const chapters = raw.chapters.map((ch: any, i: number) => ({
+    number: ch.number || i + 1,
+    title: String(ch.title || `Chapter ${i + 1}`).trim(),
+    sections: Array.isArray(ch.sections)
+      ? ch.sections.slice(0, 5).map((s: any) => String(s).trim()).filter(Boolean)
+      : []
+  }));
+
+  console.log(`[Export] Architecture generated — ${chapters.length} chapters, provider: ${result.usedProvider}`);
+  return { chapters };
+}
+
+async function buildBlueprintDocx(project: any, architecture: ChapterArchitecture): Promise<Buffer> {
   const bd   = project?.bookDetails   || {};
   const r    = project?.research      || {};
   const intel = project?.analysis?.intelligence || {};
@@ -1444,7 +1479,7 @@ async function buildBlueprintDocx(project: any): Promise<Buffer> {
     new Paragraph({
       children: [new TextRun({ text: bookTitle, bold: true, size: 56 })],
       alignment: AlignmentType.CENTER,
-      spacing: { before: 1440, after: 200 }
+      spacing: { before: 1440, after: 240 }
     }),
     ...(subtitle ? [new Paragraph({
       children: [new TextRun({ text: subtitle, size: 32, italics: true, color: "475569" })],
@@ -1452,7 +1487,7 @@ async function buildBlueprintDocx(project: any): Promise<Buffer> {
       spacing: { after: 480 }
     })] : []),
     new Paragraph({
-      children: [new TextRun({ text: "PROJECT BLUEPRINT", bold: true, size: 24, color: "64748B", allCaps: true })],
+      children: [new TextRun({ text: "CHAPTER ARCHITECTURE BLUEPRINT", bold: true, size: 24, color: "64748B", allCaps: true })],
       alignment: AlignmentType.CENTER,
       spacing: { after: 200 }
     }),
@@ -1464,155 +1499,137 @@ async function buildBlueprintDocx(project: any): Promise<Buffer> {
     new Paragraph({
       children: [new TextRun({ text: `Generated: ${dateStr}`, size: 20, color: "94A3B8" })],
       alignment: AlignmentType.CENTER,
+      spacing: { after: 160 }
+    }),
+    new Paragraph({
+      children: [new TextRun({
+        text: `${architecture.chapters.length} Chapters  ·  5 Sections per Chapter  ·  ${bd.structure || ""}`,
+        size: 18, color: "94A3B8", italics: true
+      })],
+      alignment: AlignmentType.CENTER,
       spacing: { after: 1440 }
     })
   );
 
-  // ── SECTION 1: PROJECT OVERVIEW ────────────────────────────────────────────
+  // ── BOOK FOUNDATION ────────────────────────────────────────────────────────
+  children.push(bpHeading1("Book Foundation"));
+
+  // Core identifiers
   children.push(
-    bpHeading1("Section 1 — Project Overview"),
-    bpKV("Title",          bookTitle),
-    bpKV("Subtitle",       subtitle),
-    bpKV("Genre",          bd.genre || ""),
-    bpKV("Structure",      bd.structure || ""),
-    bpKV("Tone",           bd.tone || ""),
-    bpKV("Audience",       bd.audience || ""),
-    bpKV("Target Word Count", bd.wordCountRange || ""),
-    bpKV("Chapter Count",  bd.chapterCount ? String(bd.chapterCount) : ""),
-    bpKV("Research Intensity", bd.researchIntensity || "")
+    bpKV("Title",              bookTitle),
+    bpKV("Subtitle",           subtitle),
+    bpKV("Genre",              bd.genre || ""),
+    bpKV("Structure",          bd.structure || ""),
+    bpKV("Tone",               bd.tone || ""),
+    bpKV("Target Audience",    bd.audience || ""),
+    bpKV("Chapter Count",      bd.chapterCount ? String(bd.chapterCount) : ""),
+    bpKV("Target Word Count",  bd.wordCountRange || ""),
+    bpKV("Research Intensity", bd.researchIntensity || ""),
+    bpKV("Book Topic",         r.bookTopic || pb.bookTopic || ""),
+    bpKV("Author Stance",      r.stanceOnTopic || ""),
+    bpKV("Standout Angle",     r.standout || "")
   );
 
-  // ── SECTION 2: MARKET ANALYSIS ─────────────────────────────────────────────
-  children.push(bpHeading1("Section 2 — Market Analysis"));
-
-  if (intel.targetAudience) { children.push(bpLabel("Target Audience"), bpBody(intel.targetAudience)); }
-  if (intel.marketGapAnalysis) { children.push(bpLabel("Market Gap"), bpBody(intel.marketGapAnalysis)); }
-  if (intel.positioningStrategy) { children.push(bpLabel("Positioning Strategy"), bpBody(intel.positioningStrategy)); }
-  if (intel.transformationPromise) { children.push(bpLabel("Transformation Promise"), bpBody(intel.transformationPromise)); }
-  if (intel.readerPainProfile) { children.push(bpLabel("Reader Pain Profile"), bpBody(intel.readerPainProfile)); }
-  if (Array.isArray(intel.emotionalTriggers) && intel.emotionalTriggers.length) {
-    children.push(bpLabel("Emotional Triggers"), ...bpBullets(intel.emotionalTriggers.join("\n")));
+  if (bd.positioningStatement || bd.corePromise || bd.coreThesis || bd.uniqueMechanism) {
+    children.push(bpDivider());
+    if (bd.positioningStatement) children.push(bpLabel("Positioning Statement"), bpBody(bd.positioningStatement));
+    if (bd.corePromise)          children.push(bpLabel("Core Promise"),           bpBody(bd.corePromise));
+    if (bd.coreThesis)           children.push(bpLabel("Core Thesis"),            bpBody(bd.coreThesis));
+    if (bd.uniqueMechanism)      children.push(bpLabel("Unique Mechanism"),       bpBody(bd.uniqueMechanism));
   }
-
-  // Competitor books
-  const competitorBooks = Array.isArray(project?.analysis?.books) ? project.analysis.books : [];
-  if (competitorBooks.length) {
-    children.push(bpDivider(), bpHeading2("Competitor Books"));
-    competitorBooks.slice(0, 8).forEach((b: any) => {
-      if (b.title) {
-        children.push(new Paragraph({
-          children: [
-            new TextRun({ text: `"${sanitize(b.title)}"`, bold: true, size: 22 }),
-            new TextRun({ text: b.author ? ` by ${sanitize(b.author)}` : "", size: 22, color: "64748B" })
-          ],
-          spacing: { before: 120, after: 60 }
-        }));
-        if (b.description) children.push(bpBody(String(b.description).slice(0, 200)));
-      }
-    });
-  }
-
-  // ── SECTION 3: RESEARCH ────────────────────────────────────────────────────
-  children.push(bpHeading1("Section 3 — Research"));
-  children.push(bpKV("Main Niche",    r.mainNicheLabel || ""));
-  children.push(bpKV("Sub-Niche",     r.subNicheLabel  || ""));
-  children.push(bpKV("Deep Niche",    r.deepNicheLabel || ""));
-  children.push(bpKV("Book Topic",    r.bookTopic || pb.bookTopic || ""));
-  children.push(bpKV("Publishing Goal", r.publishingGoal || ""));
-  children.push(bpKV("Author Stance", r.stanceOnTopic || ""));
-  children.push(bpKV("Standout Angle", r.standout || ""));
-
-  // Research findings
-  const findings = project?.findings && typeof project.findings === "object" ? Object.values(project.findings) as any[] : [];
-  if (findings.length) {
-    children.push(bpDivider(), bpHeading2("Research Findings"));
-    findings.slice(0, 8).forEach((f: any) => {
-      if (f.title) children.push(bpLabel(f.title));
-      if (f.content) children.push(bpBody(String(f.content).slice(0, 400)));
-    });
-  }
-
-  // Resources
-  const links = Array.isArray(project?.resources?.links) ? project.resources.links : [];
-  if (links.length) {
-    children.push(bpDivider(), bpHeading2("Resources & References"));
-    links.forEach((l: any) => {
-      const label = l.label || l.url || "link";
-      children.push(new Paragraph({
-        children: [
-          new TextRun({ text: "• " + sanitize(label), bold: true, size: 22 }),
-          ...(l.url && l.url !== label ? [new TextRun({ text: " — " + sanitize(l.url), size: 20, color: "94A3B8" })] : [])
-        ],
-        spacing: { after: 60 },
-        indent: { left: 360 }
-      }));
-      if (l.note) children.push(new Paragraph({
-        children: [new TextRun({ text: sanitize(l.note), size: 20, color: "475569" })],
-        spacing: { after: 80 },
-        indent: { left: 720 }
-      }));
-    });
-  }
-
-  // ── SECTION 4: AUTHOR PERSONA ──────────────────────────────────────────────
-  children.push(bpHeading1("Section 4 — Author Persona"));
-  children.push(bpKV("Author Name", authorName));
-
-  if (persona) {
-    const g = persona.generated;
-    if (g?.summary)                         children.push(bpLabel("Summary"), bpBody(g.summary));
-    if (g?.voice?.tone)                     children.push(bpKV("Voice Tone", g.voice.tone));
-    if (g?.voice?.mood)                     children.push(bpKV("Voice Mood", g.voice.mood));
-    if (g?.style?.pacing)                   children.push(bpKV("Pacing", g.style.pacing));
-    if (g?.style?.sentenceStructure)        children.push(bpKV("Sentence Structure", g.style.sentenceStructure));
-    if (persona.authorDescription?.trim())  children.push(bpLabel("Author Description"), bpBody(persona.authorDescription));
-    if (persona.expertise?.trim())          children.push(bpLabel("Expertise"), bpBody(persona.expertise));
-  }
-  if (project?.authorBio?.bio) children.push(bpLabel("Author Bio"), bpBody(project.authorBio.bio));
-
-  // ── SECTION 5: BOOK STRATEGY ───────────────────────────────────────────────
-  children.push(bpHeading1("Section 5 — Book Strategy"));
-
-  if (bd.positioningStatement) { children.push(bpLabel("Positioning Statement"), bpBody(bd.positioningStatement)); }
-  if (bd.corePromise)  { children.push(bpLabel("Core Promise"), bpBody(bd.corePromise)); }
-  if (bd.coreThesis)   { children.push(bpLabel("Core Thesis"), bpBody(bd.coreThesis)); }
-  if (bd.uniqueMechanism) { children.push(bpLabel("Unique Mechanism"), bpBody(bd.uniqueMechanism)); }
 
   if (bd.readerTransformationBefore || bd.readerTransformationAfter) {
-    children.push(bpLabel("Reader Transformation"));
-    if (bd.readerTransformationBefore) {
-      children.push(bpBody("Before reading:"), ...bpBullets(bd.readerTransformationBefore));
-    }
-    if (bd.readerTransformationAfter) {
-      children.push(bpBody("After reading:"), ...bpBullets(bd.readerTransformationAfter));
+    children.push(bpDivider(), bpLabel("Reader Transformation"));
+    if (bd.readerTransformationBefore) children.push(bpBody("Before: " + bd.readerTransformationBefore));
+    if (bd.readerTransformationAfter)  children.push(bpBody("After: "  + bd.readerTransformationAfter));
+  }
+
+  if (bd.uniqueSellingProposition) children.push(bpDivider(), bpLabel("Unique Selling Proposition"), bpBody(bd.uniqueSellingProposition));
+  if (bd.readerPainPoints || intel.readerPainProfile) {
+    children.push(bpLabel("Reader Pain Points"), bpBody(bd.readerPainPoints || intel.readerPainProfile));
+  }
+  if (bd.desiredEmotionalOutcome) children.push(bpLabel("Desired Emotional Outcome"), bpBody(bd.desiredEmotionalOutcome));
+  if (bd.readerObjections)        children.push(bpLabel("Reader Objections"), ...bpBullets(bd.readerObjections));
+  if (bd.focusTopics)             children.push(bpLabel("Focus Topics"), ...bpBullets(bd.focusTopics));
+
+  // Author persona
+  if (persona) {
+    const g = persona.generated;
+    children.push(bpDivider());
+    children.push(bpKV("Author Name", authorName));
+    if (g?.summary)              children.push(bpLabel("Author Summary"), bpBody(g.summary));
+    if (g?.voice?.tone)          children.push(bpKV("Voice Tone", g.voice.tone));
+    if (g?.style?.pacing)        children.push(bpKV("Pacing", g.style.pacing));
+    if (persona.expertise?.trim()) children.push(bpLabel("Expertise"), bpBody(persona.expertise));
+  }
+
+  // Market intelligence
+  if (intel.marketGapAnalysis || intel.positioningStrategy || intel.transformationPromise) {
+    children.push(bpDivider(), bpHeading2("Market Intelligence"));
+    if (intel.marketGapAnalysis)     children.push(bpLabel("Market Gap"),            bpBody(intel.marketGapAnalysis));
+    if (intel.positioningStrategy)   children.push(bpLabel("Positioning Strategy"),  bpBody(intel.positioningStrategy));
+    if (intel.transformationPromise) children.push(bpLabel("Transformation Promise"), bpBody(intel.transformationPromise));
+    if (Array.isArray(intel.emotionalTriggers) && intel.emotionalTriggers.length) {
+      children.push(bpLabel("Emotional Triggers"), ...bpBullets(intel.emotionalTriggers.join("\n")));
     }
   }
 
-  if (bd.readerObjections) { children.push(bpLabel("Reader Objections"), ...bpBullets(bd.readerObjections)); }
-  if (bd.desiredEmotionalOutcome) { children.push(bpLabel("Desired Emotional Outcome"), bpBody(bd.desiredEmotionalOutcome)); }
-
-  // ── SECTION 6: CONTENT FOUNDATION ─────────────────────────────────────────
-  children.push(bpHeading1("Section 6 — Content Foundation"));
-  if (bd.uniqueSellingProposition) { children.push(bpLabel("Unique Selling Proposition"), bpBody(bd.uniqueSellingProposition)); }
-  if (bd.readerPainPoints)         { children.push(bpLabel("Reader Pain Points"), bpBody(bd.readerPainPoints)); }
-  if (bd.focusTopics)              { children.push(bpLabel("Focus Topics"), ...bpBullets(bd.focusTopics)); }
-  if (bd.researchIntensity)        { children.push(bpKV("Research Intensity", bd.researchIntensity)); }
-
-  // ── SECTION 7: PROJECT METADATA ───────────────────────────────────────────
-  children.push(bpHeading1("Section 7 — Project Metadata"));
-  children.push(bpKV("Generated On",       dateStr));
-  children.push(bpKV("Project Title",      bookTitle));
-  if (bd.chapterCount)    children.push(bpKV("Chapter Count",      String(bd.chapterCount)));
-  if (bd.wordCountRange)  children.push(bpKV("Target Word Count",  bd.wordCountRange));
-  if (bd.structure)       children.push(bpKV("Book Structure",     bd.structure));
-  if (bd.researchIntensity) children.push(bpKV("Research Intensity", bd.researchIntensity));
+  // ── CHAPTER ARCHITECTURE ───────────────────────────────────────────────────
+  children.push(bpHeading1("Chapter Architecture"));
+  children.push(bpBody(
+    `This architecture was generated by AI following the "${bd.structure || "selected"}" structure. ` +
+    `Each chapter contains 5 sections that build progressively toward the book's core promise.`
+  ));
   children.push(bpDivider());
-  children.push(bpBody("This document was generated by Nonfiction AI Studio and contains the complete strategic blueprint for this book project."));
+
+  for (const ch of architecture.chapters) {
+    // Chapter heading (page break before each chapter)
+    children.push(new Paragraph({
+      children: [new TextRun({ text: `Chapter ${ch.number}`, size: 20, color: "64748B", bold: true })],
+      spacing: { before: 560, after: 60 },
+      pageBreakBefore: ch.number > 1
+    }));
+    children.push(new Paragraph({
+      children: [new TextRun({ text: sanitize(ch.title), bold: true, size: 32, color: "0F172A" })],
+      spacing: { before: 0, after: 160 }
+    }));
+
+    // Decorative rule
+    children.push(new Paragraph({
+      border: { bottom: { style: "single" as any, size: 4, color: "E2E8F0", space: 1 } },
+      spacing: { before: 0, after: 200 }
+    }));
+
+    // Sections — numbered list style
+    ch.sections.forEach((secTitle, si) => {
+      children.push(new Paragraph({
+        children: [
+          new TextRun({ text: `${si + 1}.  `, bold: true, size: 22, color: "64748B" }),
+          new TextRun({ text: sanitize(secTitle), size: 22, color: "1E293B" })
+        ],
+        spacing: { before: 80, after: 80 },
+        indent: { left: 360 }
+      }));
+    });
+  }
+
+  // Footer note
+  children.push(
+    bpDivider(),
+    new Paragraph({
+      children: [new TextRun({
+        text: `Generated by Nonfiction AI Studio  ·  ${dateStr}  ·  ${architecture.chapters.length} chapters`,
+        size: 18, color: "94A3B8", italics: true
+      })],
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 200, after: 200 }
+    })
+  );
 
   const doc = new Document({
     creator: "Nonfiction AI Studio",
-    description: `Project Blueprint: ${bookTitle}`,
-    title: `${bookTitle} — Project Blueprint`,
+    description: `Chapter Architecture Blueprint: ${bookTitle}`,
+    title: `${bookTitle} — Chapter Architecture Blueprint`,
     styles: {
       paragraphStyles: [
         {
@@ -1621,7 +1638,7 @@ async function buildBlueprintDocx(project: any): Promise<Buffer> {
           basedOn: "Normal",
           next: "Normal",
           run: { size: 36, bold: true, color: "0F172A" },
-          paragraph: { spacing: { before: 480, after: 160 } }
+          paragraph: { spacing: { before: 480, after: 160 }, pageBreakBefore: true }
         },
         {
           id: "Heading2",
@@ -1636,7 +1653,7 @@ async function buildBlueprintDocx(project: any): Promise<Buffer> {
     sections: [{ children }]
   });
 
-  console.log("[Export] Blueprint DOCX built —", children.length, "paragraphs");
+  console.log("[Export] Blueprint DOCX built —", children.length, "paragraphs,", architecture.chapters.length, "chapters");
   return Packer.toBuffer(doc);
 }
 
@@ -1645,15 +1662,25 @@ router.post("/blueprint", async (req, res) => {
     const { project } = req.body;
     if (!project || typeof project !== "object")
       return res.status(400).json({ error: "Missing project payload" });
-    const buf  = await buildBlueprintDocx(project);
+
+    // Step 1: Generate chapter architecture via AI
+    const architecture = await generateChapterArchitecture(project);
+
+    // Step 2: Build DOCX with architecture
+    const buf = await buildBlueprintDocx(project, architecture);
+
     const slug = (
       project?.bookDetails?.title ||
       project?.bookTitle?.selectedCard?.title ||
       project?.research?.bookTitle ||
       "project"
     ).replace(/[^a-z0-9]/gi, "-").toLowerCase();
+
+    // Return architecture in header so frontend can save it to project state
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    res.setHeader("Content-Disposition", `attachment; filename="${slug}-blueprint.docx"`);
+    res.setHeader("Content-Disposition", `attachment; filename="project-blueprint.docx"`);
+    res.setHeader("Access-Control-Expose-Headers", "X-Chapter-Architecture");
+    res.setHeader("X-Chapter-Architecture", Buffer.from(JSON.stringify(architecture)).toString("base64"));
     return res.status(200).send(buf);
   } catch (error: any) {
     console.error("Blueprint export error:", error);

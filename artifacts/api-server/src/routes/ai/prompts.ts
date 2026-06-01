@@ -1282,3 +1282,142 @@ OUTPUT — return only this JSON object:
   "readerPainPoints": "<2-3 sentences: reader's core frustrations before picking up this book>"
 }`;
 }
+
+// ─── Chapter Architecture (Blueprint export) ───────────────────────────────
+
+export function chapterArchitecturePrompt(project: any): string {
+  const bd    = project?.bookDetails   || {};
+  const r     = project?.research      || {};
+  const intel = project?.analysis?.intelligence || {};
+  const pb    = project?.proposedBook?.content || {};
+  const bt    = project?.bookTitle     || {};
+  const ap    = project?.authorPersona || {};
+
+  const saved   = Array.isArray(ap.savedPersonas) ? ap.savedPersonas : [];
+  const pid     = ap.selectedId;
+  const persona = pid ? saved.find((p: any) => p.id === pid) || saved[0] : saved[0];
+
+  const titleVal     = bt?.selectedCard?.title?.trim() || pb.title?.trim() || r.bookTitle?.trim() || bd.title?.trim() || "(not set)";
+  const chapterCount = bd.chapterCount || 10;
+  const structure    = bd.structure || "How-to";
+
+  const personaBlock = persona
+    ? [
+        persona.generated?.summary,
+        persona.generated?.voice?.tone     && `Voice tone: ${persona.generated.voice.tone}`,
+        persona.generated?.style?.pacing   && `Pacing: ${persona.generated.style.pacing}`,
+      ].filter(Boolean).join("\n")
+    : "(not set)";
+
+  const competitorBlock = (() => {
+    const books = project?.analysis?.books;
+    if (!Array.isArray(books) || !books.length) return "(none)";
+    return books.slice(0, 4).map((b: any) => `• "${b.title}" by ${b.author || "unknown"}`).join("\n");
+  })();
+
+  return `You are an elite nonfiction developmental editor and book architect.
+
+Generate a complete, professional chapter architecture for this book.
+Return ONLY valid JSON — no prose, no markdown, no code fences.
+
+═══════════════════════════
+BOOK DATA
+═══════════════════════════
+
+TITLE: ${titleVal}
+SUBTITLE: ${bd.subtitle?.trim() || "(none)"}
+GENRE: ${bd.genre || "(not set)"}
+STRUCTURE: ${structure}
+TONE: ${bd.tone || "(not set)"}
+AUDIENCE: ${bd.audience || "(not set)"}
+CHAPTER COUNT: ${chapterCount} (generate EXACTLY this many chapters)
+WORD COUNT RANGE: ${bd.wordCountRange || "(not set)"}
+RESEARCH INTENSITY: ${bd.researchIntensity || "(not set)"}
+
+NICHE: ${r.mainNicheLabel || "(not set)"}
+BOOK TOPIC: ${r.bookTopic || pb.bookTopic || "(not set)"}
+AUTHOR STANCE: ${r.stanceOnTopic || "(not set)"}
+STANDOUT ANGLE: ${r.standout || "(not set)"}
+
+STRATEGIC FOUNDATION:
+Positioning Statement: ${bd.positioningStatement || "(not set)"}
+Core Promise: ${bd.corePromise || "(not set)"}
+Core Thesis: ${bd.coreThesis || "(not set)"}
+Unique Mechanism: ${bd.uniqueMechanism || "(not set)"}
+Unique Selling Proposition: ${bd.uniqueSellingProposition || "(not set)"}
+Desired Emotional Outcome: ${bd.desiredEmotionalOutcome || "(not set)"}
+
+READER TRANSFORMATION:
+Before: ${bd.readerTransformationBefore || "(not set)"}
+After: ${bd.readerTransformationAfter || "(not set)"}
+
+READER PAIN POINTS: ${bd.readerPainPoints || intel.readerPainProfile || "(not set)"}
+READER OBJECTIONS: ${bd.readerObjections || "(not set)"}
+FOCUS TOPICS: ${bd.focusTopics || "(not set)"}
+
+AUTHOR PERSONA:
+${personaBlock}
+
+COMPETITOR BOOKS:
+${competitorBlock}
+
+═══════════════════════════
+STRUCTURE RULE
+═══════════════════════════
+
+THE ARCHITECTURE MUST STRICTLY FOLLOW THE SELECTED STRUCTURE: ${structure}
+
+Structure implementation guidelines:
+- How-to: Sequential skill-building — each chapter teaches one concrete capability
+- Problem-solution: Ch1=Problem, Ch2=Root Cause, middle=Solutions, end=Results
+- Thematic: Organize around major themes from the focus topics
+- Transformation-based / Chronological: Reader evolution arc — current state → mastery
+- Framework-driven / Modular: Each chapter covers one stage or module of the unique mechanism
+- List-based / Comparative: Parallel structure, each chapter a distinct item or comparison
+- Workbook: Alternating concept + exercise chapters, practical and action-oriented
+- Narrative: Story arc structure — setup, conflict, rising action, climax, resolution
+
+═══════════════════════════
+CHAPTER QUALITY RULES
+═══════════════════════════
+
+Chapter titles MUST:
+- Sound professionally published and commercially viable
+- Create curiosity and anticipation
+- Be specific to THIS book's topic and audience
+- Avoid generic textbook wording ("Introduction to X", "Understanding Y")
+- Reflect the book's unique mechanism and voice
+- Build logical momentum from chapter to chapter
+
+BAD title: "Chapter 1: Introduction to Productivity"
+GOOD title: "Why Everything You Know About Getting Things Done Is Making You Worse"
+
+Section titles MUST:
+- Directly expand the chapter concept
+- Progress logically (each section builds on the previous)
+- Be specific, actionable, and intriguing
+- NOT repeat or paraphrase the chapter title
+- Prepare the reader for what comes next
+
+═══════════════════════════
+OUTPUT FORMAT
+═══════════════════════════
+
+Return exactly this JSON structure — EXACTLY ${chapterCount} chapters, EXACTLY 5 sections per chapter:
+
+{
+  "chapters": [
+    {
+      "number": 1,
+      "title": "Full chapter title without any 'Chapter N:' prefix",
+      "sections": [
+        "Section 1 title",
+        "Section 2 title",
+        "Section 3 title",
+        "Section 4 title",
+        "Section 5 title"
+      ]
+    }
+  ]
+}`;
+}

@@ -611,17 +611,27 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         const err = await resp.json().catch(() => ({}));
         throw new Error(err.error || `Export failed (${resp.status})`);
       }
+
+      // Save AI-generated architecture to project state (carried in a base64 header)
+      try {
+        const archHeader = resp.headers.get("X-Chapter-Architecture");
+        if (archHeader) {
+          const architecture = JSON.parse(atob(archHeader));
+          if (architecture?.chapters?.length) {
+            patch({ chapterArchitecture: architecture });
+          }
+        }
+      } catch {}
+
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const slug = (bd.title || fullProject?.research?.bookTitle || "project")
-        .replace(/[^a-z0-9]/gi, "-").toLowerCase();
-      a.download = `${slug}-blueprint.docx`;
+      a.download = "project-blueprint.docx";
       a.click();
       URL.revokeObjectURL(url);
       setExportDone(true);
-      setTimeout(() => setExportDone(false), 5000);
+      setTimeout(() => setExportDone(false), 6000);
     } catch (e) {
       setExportError(e?.message || "Export failed. Please try again.");
     } finally {
@@ -1359,7 +1369,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           {exporting ? (
             <>
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
-              <span>Generating blueprint…</span>
+              <span>Generating chapter architecture…</span>
             </>
           ) : exportDone ? (
             <>
@@ -1369,7 +1379,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           ) : (
             <>
               <span>📄</span>
-              <span>Export Project Blueprint</span>
+              <span>Export Chapter Architecture</span>
               <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">DOCX</span>
             </>
           )}

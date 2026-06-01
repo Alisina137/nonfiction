@@ -1,0 +1,453 @@
+EXPORT PROJECT BLUEPRINT — STRUCTURE-AWARE CHAPTER ARCHITECTURE DOCX
+
+REMOVE CURRENT LOGIC
+
+Completely remove the existing "Export Project Blueprint" functionality.
+
+Replace it with an AI-powered Chapter Architecture Generator that creates a professional nonfiction book blueprint.
+
+---
+
+## OBJECTIVE
+
+When the user clicks:
+
+Export Project Blueprint
+
+The system should:
+
+1. Analyze all previous project data.
+2. Analyze all Details step data.
+3. Generate a complete chapter architecture.
+4. Generate section architecture.
+5. Ensure the architecture follows the selected book structure.
+6. Export everything into a professionally formatted DOCX file.
+
+The result should feel like it was created by a senior nonfiction developmental editor.
+
+---
+
+## DATA SOURCES
+
+Use all available project data:
+
+* Research
+* Analysis
+* Book Title
+* Resources
+* Author Persona
+* Proposed Book
+* Details Step
+
+Including:
+
+* Genre
+* Structure
+* Tone
+* Audience
+* Positioning Statement
+* Core Promise
+* Core Thesis
+* Unique Mechanism
+* Reader Transformation
+* Reader Objections
+* Desired Emotional Outcome
+* Unique Selling Proposition
+* Focus Topics
+
+---
+
+## CHAPTER GENERATION
+
+Generate chapter titles only.
+
+Do NOT generate chapter content.
+
+Do NOT generate chapter summaries.
+
+Generate chapter titles that:
+
+* Follow a logical progression
+* Deliver the promised transformation
+* Reflect the unique mechanism
+* Address reader objections
+* Match audience sophistication
+* Match tone
+* Support the core thesis
+* Build momentum from chapter to chapter
+
+The number of chapters generated must exactly match the user-selected chapter count.
+
+---
+
+## CRITICAL REQUIREMENT
+
+THE CHAPTER ARCHITECTURE MUST FOLLOW THE SELECTED STRUCTURE.
+
+The selected structure is not cosmetic.
+
+It must directly influence chapter order, chapter purpose, and chapter progression.
+
+---
+
+## STRUCTURE RULES
+
+IF STRUCTURE = THEMATIC
+
+Organize chapters around major themes.
+
+Example:
+
+Chapter 1:
+Mindset
+
+Chapter 2:
+AI Literacy
+
+Chapter 3:
+Opportunity Discovery
+
+Chapter 4:
+Offer Creation
+
+Chapter 5:
+Scaling
+
+Each chapter explores a major theme.
+
+---
+
+IF STRUCTURE = FRAMEWORK-DRIVEN
+
+Organize chapters around stages of the unique mechanism.
+
+Example:
+
+Chapter 1:
+Stage One
+
+Chapter 2:
+Stage Two
+
+Chapter 3:
+Stage Three
+
+Chapter 4:
+Stage Four
+
+Every chapter advances the framework.
+
+---
+
+IF STRUCTURE = TRANSFORMATION-BASED
+
+Organize chapters around reader evolution.
+
+Example:
+
+Chapter 1:
+Current Reality
+
+Chapter 2:
+Awareness
+
+Chapter 3:
+Skill Development
+
+Chapter 4:
+Application
+
+Chapter 5:
+Mastery
+
+Each chapter represents a transformation stage.
+
+---
+
+IF STRUCTURE = PROBLEM-SOLUTION
+
+Organize chapters around obstacles and solutions.
+
+Example:
+
+Chapter 1:
+Problem
+
+Chapter 2:
+Root Cause
+
+Chapter 3:
+Strategy
+
+Chapter 4:
+Implementation
+
+Chapter 5:
+Results
+
+---
+
+IF STRUCTURE = CASE-STUDY DRIVEN
+
+Organize chapters around situations, lessons, and applications.
+
+---
+
+IF STRUCTURE = STORY-LED
+
+Organize chapters around key stories and the lessons they reveal.
+
+---
+
+The selected structure must shape the entire architecture.
+
+---
+
+## CHAPTER QUALITY RULES
+
+Chapter titles should:
+
+* Sound professionally published
+* Create curiosity
+* Avoid generic wording
+* Avoid textbook language
+* Feel commercially viable
+* Build anticipation for the next chapter
+
+BAD:
+
+Chapter 1:
+Introduction to AI
+
+GOOD:
+
+Chapter 1:
+Why Students Who Learn AI Early Create Unfair Advantages
+
+---
+
+## SECTION GENERATION
+
+For every chapter generate exactly 5 section titles.
+
+Sections must be derived directly from the chapter title.
+
+They must:
+
+* Expand the chapter concept
+* Progress logically
+* Build understanding
+* Avoid repetition
+* Prepare readers for the next section
+
+---
+
+## EXAMPLE
+
+CHAPTER
+
+Building Your First AI-Powered Income Stream
+
+SECTIONS
+
+1. Identifying Opportunities Hidden in Plain Sight
+
+2. Validating Demand Before You Build
+
+3. Designing an Offer People Actually Want
+
+4. Launching Before You Feel Ready
+
+5. Turning Early Revenue into Sustainable Growth
+
+---
+
+## ARCHITECTURE INTELLIGENCE
+
+Before generating chapters:
+
+Analyze:
+
+* Core Promise
+* Core Thesis
+* Unique Mechanism
+* Reader Transformation
+* Audience
+* Positioning
+
+Determine:
+
+* The optimal learning journey
+* The optimal chapter sequence
+* The optimal structure implementation
+
+Then generate architecture.
+
+---
+
+## DOCX CONTENT
+
+Include:
+
+TITLE PAGE
+
+Book Title
+
+Subtitle
+
+Author Persona
+
+---
+
+BOOK FOUNDATION
+
+Genre
+
+Structure
+
+Audience
+
+Tone
+
+Positioning Statement
+
+Core Promise
+
+Core Thesis
+
+Unique Mechanism
+
+Reader Transformation
+
+---
+
+CHAPTER ARCHITECTURE
+
+Chapter 1
+
+[Title]
+
+Sections
+
+* Section 1
+* Section 2
+* Section 3
+* Section 4
+* Section 5
+
+---
+
+Chapter 2
+
+[Title]
+
+Sections
+
+* Section 1
+* Section 2
+* Section 3
+* Section 4
+* Section 5
+
+Continue until all chapters are generated.
+
+---
+
+## AI PROMPT
+
+You are an elite nonfiction developmental editor and publishing strategist.
+
+Your task is to create a complete professional book architecture.
+
+Use:
+
+* Research
+* Analysis
+* Book Title
+* Resources
+* Author Persona
+* Proposed Book
+* Details Step
+
+Requirements:
+
+1. Follow the selected structure.
+2. Follow the unique mechanism.
+3. Follow the promised transformation.
+4. Follow the positioning strategy.
+5. Follow the audience needs.
+6. Follow the book's commercial objective.
+
+Generate:
+
+* Chapter titles
+* Five section titles for each chapter
+
+Do not generate content.
+
+Do not generate summaries.
+
+Do not generate placeholder text.
+
+Only generate architecture.
+
+The resulting blueprint should be strong enough that a professional writer could immediately begin outlining and drafting the book.
+
+---
+
+## DOCX GENERATION
+
+Generate:
+
+project-blueprint.docx
+
+Include:
+
+* Cover Page
+* Strategic Foundation
+* Complete Chapter Architecture
+* Chapter Titles
+* Section Titles
+
+Formatting:
+
+* Professional typography
+* Heading 1 = Chapter Titles
+* Heading 2 = Section Titles
+* Proper spacing
+* Clean publishing layout
+* Table of Contents
+
+---
+
+## EXPORT BUTTON BEHAVIOR
+
+When the user clicks:
+
+Export Project Blueprint
+
+System should:
+
+1. Generate architecture.
+2. Generate DOCX.
+3. Download automatically.
+4. Save architecture to project state.
+
+File name:
+
+project-blueprint.docx
+
+---
+
+## SUCCESS CRITERIA
+
+The exported DOCX must:
+
+* Match the selected structure.
+* Match the selected chapter count.
+* Follow the reader transformation journey.
+* Reflect the unique mechanism.
+* Include exactly 5 sections per chapter.
+* Contain no chapter content.
+* Contain no summaries.
+* Feel like a professionally planned nonfiction bestseller.
