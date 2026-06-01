@@ -68,22 +68,25 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       if (data.needsApiKey) { setLocalMsg(data.message || "Configure RAINFOREST_API_KEY on the server."); return; }
 
       const rows = Array.isArray(data.books) ? data.books : [];
+      const isFallbackSource = data.source === "google_books" || data.source === "open_library";
       updateAnalysis((prev) => {
         const stamped = rows
-          .filter((r) => r.asin)
-          .map((r) => ({ ...r, id: newBookId(), source: "amazon", expandedDetailsLoaded: Boolean(r.expandedDetailsLoaded) }));
+          .filter((r) => r.title)
+          .map((r) => ({ ...r, id: newBookId(), source: isFallbackSource ? (data.source || "open_library") : "amazon", expandedDetailsLoaded: Boolean(r.expandedDetailsLoaded) }));
+        const bookKey = (b) => b.asin || b.googleBooksId || b.url || "";
         let nextBooks;
         if (mode === "replace") {
           const manualsOnly = prev.books.filter((b) => b.source === "manual");
-          const manualAsins = new Set(manualsOnly.map((b) => b.asin).filter(Boolean));
-          nextBooks = [...manualsOnly, ...stamped.filter((s) => !manualAsins.has(s.asin))];
+          const manualKeys = new Set(manualsOnly.map(bookKey).filter(Boolean));
+          nextBooks = [...manualsOnly, ...stamped.filter((s) => !manualKeys.has(bookKey(s)))];
         } else {
-          const existingAsins = new Set(prev.books.map((b) => b.asin).filter(Boolean));
-          nextBooks = [...prev.books, ...stamped.filter((s) => !existingAsins.has(s.asin))];
+          const existingKeys = new Set(prev.books.map(bookKey).filter(Boolean));
+          nextBooks = [...prev.books, ...stamped.filter((s) => !existingKeys.has(bookKey(s)))];
         }
         return { ...prev, books: nextBooks, lastSearchQuery: q };
       });
-      setLocalMsg(`${rows.length} Amazon result(s) loaded.`);
+      const sourceLabel = data.source === "open_library" ? "Open Library" : data.source === "google_books" ? "Google Books" : "Amazon";
+      setLocalMsg(`${rows.length} ${sourceLabel} result(s) loaded.${isFallbackSource ? " Add RAINFOREST_API_KEY or APIFY_API_KEY to search Amazon directly." : ""}`);
     } catch (e) {
       setLocalMsg(e.message || "Something went wrong.");
     } finally {
@@ -266,9 +269,15 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start gap-2">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                      book.source === "manual" ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-slate-700"
+                      book.source === "manual" ? "bg-amber-100 text-amber-900"
+                      : book.source === "open_library" ? "bg-emerald-100 text-emerald-800"
+                      : book.source === "google_books" ? "bg-blue-100 text-blue-800"
+                      : "bg-slate-100 text-slate-700"
                     }`}>
-                      {book.source === "manual" ? "Your reference" : "Amazon niche"}
+                      {book.source === "manual" ? "Your reference"
+                        : book.source === "open_library" ? "Open Library"
+                        : book.source === "google_books" ? "Google Books"
+                        : "Amazon niche"}
                     </span>
                   </div>
                   <p className="mt-1 font-semibold leading-snug text-slate-900">{book.title}</p>
