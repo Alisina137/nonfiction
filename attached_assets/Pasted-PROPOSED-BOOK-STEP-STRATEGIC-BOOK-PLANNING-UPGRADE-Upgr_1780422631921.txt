@@ -1,0 +1,447 @@
+PROPOSED BOOK STEP — STRATEGIC BOOK PLANNING UPGRADE
+
+Upgrade the Proposed Book step into a strategic publishing engine that automatically builds the best book concept before outline generation.
+
+IMPORTANT
+
+Use ALL available project data when generating suggestions:
+
+- Research
+- Analysis
+- Market Analysis
+- Competitor Books
+- Resources
+- Findings
+- Book Title
+- Subtitle
+- Topic
+- Genre
+- Author Persona
+- Writing Sample
+- Target Audience
+- Reader Pain Points
+- Reader Psychology
+- Transformation Promise
+- Market Gap
+- Bestseller DNA
+- Focus Topics
+- Positioning Statement
+- Core Promise
+- Core Thesis
+- Unique Mechanism
+
+Do NOT generate generic outputs.
+
+Every recommendation must be niche-specific and derived from the project's actual data.
+
+================================================
+AUTO GENERATE STRATEGIC BOOK PLAN
+================================================
+
+Add a button at the top of the Proposed Book page:
+
+✨ Generate Strategic Book Plan
+
+When clicked, automatically generate and populate:
+
+1. Recommended Structure
+2. Structure Explanation
+3. Signature Framework
+4. Chapter Blueprint Components
+5. Book Flow Preview
+6. Competitive Differentiation
+7. One-Sentence Book Pitch
+8. Book Concept Score
+
+Store all generated values in project state so downstream steps can use them.
+
+================================================
+FEATURE 1 — AI RECOMMENDED STRUCTURE
+================================================
+
+Add a new section:
+
+Recommended Book Structure
+
+Generate:
+
+- Structure Name
+- Structure Type
+- Confidence Score
+- Reasoning
+
+Example:
+
+Recommended Structure:
+Blueprint-Based How-To
+
+Structure Type:
+Implementation Roadmap
+
+Confidence:
+9.4 / 10
+
+Reasoning:
+Competitor analysis and reader intent indicate that step-by-step implementation books outperform conceptual books in this niche.
+
+Add:
+
+[ Regenerate Structure ]
+
+If the user manually changes the structure dropdown, update this section accordingly.
+
+================================================
+FEATURE 2 — STRUCTURE EXPLANATION
+================================================
+
+Add section:
+
+Why This Structure Works
+
+Generate:
+
+- Why readers prefer this structure
+- Why it fits the target audience
+- Why it supports transformation
+- Why it aligns with bestseller patterns
+- Why it fits competitor gaps
+
+Example:
+
+This audience needs implementation more than theory. A Blueprint-Based How-To structure guides readers from beginner understanding to measurable results through progressive action steps.
+
+Add:
+
+[ Regenerate Explanation ]
+
+================================================
+FEATURE 3 — SIGNATURE FRAMEWORK BUILDER
+================================================
+
+Add section:
+
+Signature Framework
+
+Generate a proprietary framework.
+
+Requirements:
+
+- Unique name
+- Branded framework
+- Relevant to topic
+- Relevant to audience
+- Relevant to transformation promise
+- Relevant to recommended structure
+
+Example:
+
+Campus Affiliate Blueprint™
+
+Stage 1:
+Foundation
+
+Stage 2:
+Niche Selection
+
+Stage 3:
+Content Creation
+
+Stage 4:
+Traffic
+
+Stage 5:
+Conversions
+
+Stage 6:
+Scaling
+
+Add:
+
+[ Generate Framework ]
+
+[ Regenerate Framework ]
+
+Store framework globally.
+
+Framework must later influence:
+
+- Outline
+- Chapter generation
+- Description
+- Blueprint export
+
+================================================
+FEATURE 4 — CHAPTER BLUEPRINT COMPONENTS
+================================================
+
+Add section:
+
+Default Chapter Components
+
+Provide selectable options:
+
+☐ Key Takeaways
+☐ Action Plan
+☐ Checklist
+☐ Exercises
+☐ Reflection Questions
+☐ Templates
+☐ Case Studies
+☐ Examples
+☐ Research Highlights
+☐ Resources
+☐ Summary
+
+AI should recommend components automatically.
+
+Example:
+
+Recommended Components:
+
+✓ Action Plan
+✓ Checklist
+✓ Case Studies
+✓ Key Takeaways
+
+Allow user modification.
+
+Store selections globally.
+
+Future chapter generation must automatically include selected components.
+
+================================================
+FEATURE 5 — BOOK FLOW PREVIEW
+================================================
+
+Add section:
+
+Book Flow Preview
+
+Generate visual roadmap using:
+
+- Structure
+- Framework
+- Focus Topics
+- Reader Transformation
+
+Example:
+
+Part 1
+Mindset
+
+↓
+
+Part 2
+Foundation
+
+↓
+
+Part 3
+Implementation
+
+↓
+
+Part 4
+Optimization
+
+↓
+
+Part 5
+Scaling
+
+Add:
+
+[ Regenerate Flow ]
+
+Store flow globally.
+
+Future outline generation should follow this flow.
+
+================================================
+FEATURE 6 — COMPETITIVE DIFFERENTIATION
+================================================
+
+Add section:
+
+Competitive Differentiation
+
+Analyze competitor books.
+
+Generate:
+
+What makes this book different?
+
+Example:
+
+✓ Student-focused
+✓ Budget-friendly
+✓ Campus-specific examples
+✓ Action-oriented
+✓ Beginner-friendly implementation
+
+Also generate:
+
+Differentiation Score
+
+Example:
+
+8.8 / 10
+
+Add:
+
+[ Regenerate Differentiation ]
+
+Store differentiation summary globally.
+
+================================================
+FEATURE 7 — ONE-SENTENCE BOOK PITCH
+================================================
+
+Add section:
+
+Book Pitch
+
+Generate:
+
+A concise publishing-quality pitch.
+
+Requirements:
+
+- One sentence
+- Clear audience
+- Clear transformation
+- Clear positioning
+
+Example:
+
+A practical guide that teaches college students how to build affiliate income while balancing classes and campus life.
+
+Add:
+
+[ Regenerate Pitch ]
+
+Store pitch globally.
+
+Future use:
+
+- Book description
+- Marketing copy
+- Landing pages
+- Blueprint export
+
+================================================
+FEATURE 8 — BOOK CONCEPT SCORE
+================================================
+
+Add section:
+
+Book Concept Evaluation
+
+Generate:
+
+Overall Concept Score
+
+Example:
+
+94 / 100
+
+Score Breakdown:
+
+Market Demand:
+9.4
+
+Differentiation:
+8.8
+
+Transformation Strength:
+9.6
+
+Reader Clarity:
+9.5
+
+Commercial Potential:
+9.3
+
+Outline Readiness:
+9.7
+
+Generate:
+
+Strengths
+
+Example:
+
+- Strong market demand
+- Clear audience
+- Strong transformation promise
+- Good positioning
+
+Generate:
+
+Improvement Suggestions
+
+Example:
+
+- Increase uniqueness of framework
+- Narrow audience positioning
+- Add stronger proprietary concepts
+
+Add:
+
+[ Recalculate Score ]
+
+================================================
+UI REQUIREMENTS
+================================================
+
+All generated sections should:
+
+- Be editable
+- Save automatically
+- Persist between page refreshes
+- Persist when navigating between steps
+- Be included in project export
+
+Each section must have its own:
+
+[ Regenerate ]
+
+button.
+
+Regeneration should affect ONLY that section.
+
+================================================
+DOWNSTREAM INTEGRATION
+================================================
+
+Generated outputs from Proposed Book must automatically influence:
+
+- Details
+- Author Bio
+- Outline
+- Chapter Generation
+- Writing
+- Description
+- Book Cover Prompt
+- Export Project Blueprint
+- Final Manuscript
+
+Do not regenerate these values later unless explicitly requested.
+
+Treat the Proposed Book step as the master strategic planning layer for the book.
+
+================================================
+SUCCESS CRITERIA
+================================================
+
+After implementation, the Proposed Book step should function like a professional publishing strategist that:
+
+- Determines the best structure
+- Builds a unique framework
+- Creates a reader journey
+- Defines chapter architecture
+- Establishes differentiation
+- Generates positioning assets
+- Evaluates concept strength
+
+before outline generation begins.

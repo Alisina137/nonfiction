@@ -1,3 +1,263 @@
+// ─── Shared project data extractor ───────────────────────────────────────────
+
+function extractProjectData(project: any) {
+  const research  = project?.research  || {};
+  const intel     = project?.analysis?.intelligence || {};
+  const pb        = project?.proposedBook?.content  || {};
+  const bd        = project?.bookDetails || {};
+  const books     = project?.analysis?.books || [];
+  const focus     = Array.isArray(project?.proposedBook?.focusTags) ? project.proposedBook.focusTags : [];
+  const persona   = (() => {
+    const ap = project?.authorPersona || {};
+    const selId = ap.selectedId;
+    if (selId && selId !== "__create_new__") {
+      return (Array.isArray(ap.savedPersonas) ? ap.savedPersonas : []).find((p: any) => p.id === selId) || ap.draft || {};
+    }
+    return ap.draft || {};
+  })();
+
+  const title    = bd.title || research.bookTitle || project?.bookTitle?.selectedCard?.title || "";
+  const subtitle = bd.subtitle || research.bookSubtitle || project?.bookTitle?.selectedCard?.subtitle || "";
+  const topic    = research.bookTopic || "";
+  const niche    = [research.mainNicheLabel, research.subNicheLabel, research.deepNicheLabel].filter(Boolean).join(" › ");
+  const genre    = bd.genre || research.mainNicheLabel || "";
+  const audience = bd.audience || pb.proposedAudience || research.targetAudience || intel.targetAudience || "";
+  const tone     = bd.tone || pb.proposedTone || intel.energyStyle || "";
+  const structure = bd.structure || "";
+
+  const painProfile      = intel.readerPainProfile     || "";
+  const transformation   = intel.transformationPromise || pb.proposedTransformation || "";
+  const marketGap        = intel.marketGapAnalysis     || "";
+  const positioningStrat = intel.positioningStrategy   || "";
+  const corePromise      = bd.corePromise              || "";
+  const uniqueMechanism  = bd.uniqueMechanism          || "";
+  const beforeState      = bd.readerTransformationBefore || "";
+  const afterState       = bd.readerTransformationAfter  || "";
+
+  const authorArchetype   = persona?.authorArchetype   || "";
+  const voiceSummary      = persona?.voiceSummary      || "";
+  const coreAuthorPromise = persona?.coreAuthorPromise || "";
+  const signatureFramework = persona?.signatureFramework || pb.signatureFramework?.name || "";
+
+  const focusLine    = focus.join(", ") || "(none selected)";
+  const competitorBlock = books.slice(0, 6)
+    .map((b: any) => `- "${b.title || ""}"${b.author ? ` by ${b.author}` : ""}`)
+    .filter((s: string) => s.length > 3)
+    .join("\n") || "(none)";
+
+  const existingDiff = pb.differentiation || "";
+  const existingUSP  = pb.uniqueSellingProposition || "";
+
+  return {
+    title, subtitle, topic, niche, genre, audience, tone, structure,
+    painProfile, transformation, marketGap, positioningStrat,
+    corePromise, uniqueMechanism, beforeState, afterState,
+    authorArchetype, voiceSummary, coreAuthorPromise, signatureFramework,
+    focusLine, competitorBlock, existingDiff, existingUSP
+  };
+}
+
+function projectDataBlock(d: ReturnType<typeof extractProjectData>): string {
+  return `BOOK TITLE: ${d.title || "(not set)"}
+SUBTITLE: ${d.subtitle || "(not set)"}
+TOPIC: ${d.topic || "(not set)"}
+NICHE: ${d.niche || "(not set)"}
+GENRE: ${d.genre || "(not set)"}
+STRUCTURE CHOSEN: ${d.structure || "(not set)"}
+
+TARGET AUDIENCE: ${d.audience || "(not set)"}
+READER PAIN PROFILE: ${d.painProfile || "(not set)"}
+READER BEFORE: ${d.beforeState || "(not set)"}
+READER AFTER: ${d.afterState || "(not set)"}
+TRANSFORMATION PROMISE: ${d.transformation || "(not set)"}
+
+MARKET GAP: ${d.marketGap || "(not set)"}
+POSITIONING STRATEGY: ${d.positioningStrat || "(not set)"}
+CORE PROMISE: ${d.corePromise || "(not set)"}
+UNIQUE MECHANISM: ${d.uniqueMechanism || "(not set)"}
+
+AUTHOR ARCHETYPE: ${d.authorArchetype || "(not set)"}
+AUTHOR CORE PROMISE: ${d.coreAuthorPromise || "(not set)"}
+AUTHOR VOICE SUMMARY: ${d.voiceSummary || "(not set)"}
+SIGNATURE FRAMEWORK (author): ${d.signatureFramework || "(not set)"}
+
+FOCUS TOPICS: ${d.focusLine}
+TONE: ${d.tone || "(not set)"}
+
+COMPETITOR BOOKS:
+${d.competitorBlock}`;
+}
+
+// ─── Strategic Book Plan ──────────────────────────────────────────────────────
+
+export function generateStrategicBookPlanPrompt(project: any) {
+  const d = extractProjectData(project);
+
+  return `You are a world-class publishing strategist and book architect.
+
+Analyze ALL project data and generate a complete Strategic Book Plan — 8 components in one JSON response.
+Every output must be NICHE-SPECIFIC. No generic content.
+
+═══ PROJECT DATA ════════════════════════════════
+
+${projectDataBlock(d)}
+
+════════════════════════════════════════════════
+
+Return ONLY valid JSON — no commentary, no markdown fences:
+
+{
+  "recommendedStructure": {
+    "structureName": "Specific structure name e.g. Blueprint-Based How-To",
+    "structureType": "Category e.g. Implementation Roadmap | Transformation Journey | Framework Guide | Conceptual Deep-Dive | Reference Manual",
+    "confidenceScore": 9.4,
+    "reasoning": "2–3 sentences: why this structure wins for this audience vs. competitors."
+  },
+  "structureExplanation": "3–4 sentences: why readers in this niche prefer this structure, why it supports the specific transformation, why it gaps competitors.",
+  "signatureFramework": {
+    "name": "Unique branded framework name with ™ e.g. The Campus Affiliate Blueprint™",
+    "stages": [
+      {"stage": "Stage 1", "label": "Foundation"},
+      {"stage": "Stage 2", "label": "Niche Selection"},
+      {"stage": "Stage 3", "label": "Content Creation"},
+      {"stage": "Stage 4", "label": "Traffic"},
+      {"stage": "Stage 5", "label": "Conversions"},
+      {"stage": "Stage 6", "label": "Scaling"}
+    ]
+  },
+  "chapterComponents": {
+    "recommended": ["4–6 values from: Key Takeaways, Action Plan, Checklist, Exercises, Reflection Questions, Templates, Case Studies, Examples, Research Highlights, Resources, Summary"]
+  },
+  "bookFlowPreview": {
+    "parts": [
+      {"title": "Part 1", "subtitle": "Mindset"},
+      {"title": "Part 2", "subtitle": "Foundation"},
+      {"title": "Part 3", "subtitle": "Implementation"},
+      {"title": "Part 4", "subtitle": "Optimization"},
+      {"title": "Part 5", "subtitle": "Scaling"}
+    ]
+  },
+  "competitiveDifferentiation": {
+    "points": ["5–8 specific differentiators tailored to this book vs. competitor books listed"],
+    "score": 8.8
+  },
+  "bookPitch": "One sentence: clear audience + clear transformation + clear positioning. Publishing-quality.",
+  "bookConceptScore": {
+    "overall": 94,
+    "breakdown": {
+      "marketDemand": 9.4,
+      "differentiation": 8.8,
+      "transformationStrength": 9.6,
+      "readerClarity": 9.5,
+      "commercialPotential": 9.3,
+      "outlineReadiness": 9.7
+    },
+    "strengths": ["3–5 specific strengths of this book concept"],
+    "suggestions": ["2–4 specific improvement suggestions"]
+  }
+}
+
+RULES:
+- confidenceScore, competitiveDifferentiation.score: floats 0–10 (one decimal)
+- bookConceptScore.overall: integer 0–100
+- bookConceptScore.breakdown values: floats 0–10 (one decimal)
+- signatureFramework.stages: 4–8 stages, each with a distinct niche-specific label
+- bookFlowPreview.parts: 3–6 parts matching the recommended structure and focus topics
+- chapterComponents.recommended: 4–6 items from the allowed list only
+- bookPitch: exactly one sentence, no ellipsis
+- Everything must be specific to THIS book's niche, audience, and transformation — not generic`;
+}
+
+// ─── Regenerate single book section ──────────────────────────────────────────
+
+const SECTION_SCHEMAS: Record<string, string> = {
+  recommendedStructure: `{
+  "recommendedStructure": {
+    "structureName": "...",
+    "structureType": "...",
+    "confidenceScore": 9.4,
+    "reasoning": "2–3 sentences"
+  }
+}`,
+  structureExplanation: `{
+  "structureExplanation": "3–4 sentences"
+}`,
+  signatureFramework: `{
+  "signatureFramework": {
+    "name": "Branded name with ™",
+    "stages": [{"stage": "Stage N", "label": "Label"}, ...]
+  }
+}`,
+  chapterComponents: `{
+  "chapterComponents": {
+    "recommended": ["4–6 from: Key Takeaways, Action Plan, Checklist, Exercises, Reflection Questions, Templates, Case Studies, Examples, Research Highlights, Resources, Summary"]
+  }
+}`,
+  bookFlowPreview: `{
+  "bookFlowPreview": {
+    "parts": [{"title": "Part N", "subtitle": "Theme"}, ...]
+  }
+}`,
+  competitiveDifferentiation: `{
+  "competitiveDifferentiation": {
+    "points": ["5–8 specific differentiators"],
+    "score": 8.8
+  }
+}`,
+  bookPitch: `{
+  "bookPitch": "One publishing-quality sentence"
+}`,
+  bookConceptScore: `{
+  "bookConceptScore": {
+    "overall": 94,
+    "breakdown": {
+      "marketDemand": 9.4,
+      "differentiation": 8.8,
+      "transformationStrength": 9.6,
+      "readerClarity": 9.5,
+      "commercialPotential": 9.3,
+      "outlineReadiness": 9.7
+    },
+    "strengths": ["3–5 specific strengths"],
+    "suggestions": ["2–4 specific suggestions"]
+  }
+}`
+};
+
+const SECTION_INSTRUCTIONS: Record<string, string> = {
+  recommendedStructure: "Determine the single best book structure for this niche, audience, and transformation. confidenceScore: float 0–10.",
+  structureExplanation: "Explain in 3–4 sentences why this structure works for this specific niche, audience, transformation, and competitive landscape.",
+  signatureFramework: "Generate a unique, branded proprietary framework for this book. 4–8 stages with niche-specific labels. Use ™.",
+  chapterComponents: "Recommend 4–6 chapter components that best serve this audience and structure. Select from the allowed list only.",
+  bookFlowPreview: "Design the book's reader journey as 3–6 thematic parts that follow the recommended structure and focus topics.",
+  competitiveDifferentiation: "List 5–8 specific differentiators vs. the competitor books listed. score: float 0–10.",
+  bookPitch: "Write exactly one publishing-quality sentence: clear audience + transformation + positioning.",
+  bookConceptScore: "Score this book concept. overall: integer 0–100. breakdown values: floats 0–10. Specific strengths and improvement suggestions."
+};
+
+export function regenerateBookSectionPrompt(section: string, project: any) {
+  const d    = extractProjectData(project);
+  const schema = SECTION_SCHEMAS[section] || "{}";
+  const instr  = SECTION_INSTRUCTIONS[section] || "Regenerate this section.";
+
+  return `You are a world-class publishing strategist.
+
+TASK: Regenerate ONLY the "${section}" section of the Strategic Book Plan.
+${instr}
+
+All output must be NICHE-SPECIFIC to this book. No generic content.
+
+═══ PROJECT DATA ════════════════════════════════
+
+${projectDataBlock(d)}
+
+════════════════════════════════════════════════
+
+Return ONLY valid JSON matching this exact schema — no commentary, no markdown:
+
+${schema}`;
+}
+
 export function generateAuthorPersonaPrompt(project: any) {
   const research  = project?.research  || {};
   const intel     = project?.analysis?.intelligence || {};

@@ -170,6 +170,19 @@ export function buildBookContext(project) {
     keySellingPoints,
     keywords:      cap(bd.keywords, 220),
 
+    // Strategic plan (Proposed Book step)
+    bookPitch:          cap(pb.bookPitch, 200),
+    signatureFramework: cap(pb.signatureFramework?.name, 80),
+    chapterComponents:  Array.isArray(pb.chapterComponents?.selected) && pb.chapterComponents.selected.length
+      ? pb.chapterComponents.selected.slice(0, 8).join(", ")
+      : "",
+    bookFlowSummary:    Array.isArray(pb.bookFlowPreview?.parts) && pb.bookFlowPreview.parts.length
+      ? pb.bookFlowPreview.parts.map(p => p.subtitle || p.title).filter(Boolean).join(" → ").slice(0, 220)
+      : "",
+    competitiveDiff:    Array.isArray(pb.competitiveDifferentiation?.points)
+      ? pb.competitiveDifferentiation.points.slice(0, 5).join("; ")
+      : "",
+
     // Author
     authorName:    cap(bio.authorName || research.authorName, 80),
     authorSummary: buildAuthorSummary(persona, bio),

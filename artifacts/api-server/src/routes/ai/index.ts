@@ -9,6 +9,8 @@ import {
   coverVariantsPrompt,
   descriptionPrompt,
   generateAuthorPersonaPrompt,
+  generateStrategicBookPlanPrompt,
+  regenerateBookSectionPrompt,
   generateDetailsPrompt,
   generateFieldSuggestionPrompt,
   generateFindingPrompt,
@@ -534,6 +536,131 @@ router.post("/generate-author-persona", async (req, res) => {
       writingSample: typeof data.writingSample === "string" ? data.writingSample.trim() : "",
       _provider: usedProvider
     });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+const VALID_BOOK_SECTIONS = new Set([
+  "recommendedStructure", "structureExplanation", "signatureFramework",
+  "chapterComponents", "bookFlowPreview", "competitiveDifferentiation",
+  "bookPitch", "bookConceptScore"
+]);
+
+function clampScore10(v: any, def = 0): number {
+  const n = typeof v === "number" ? v : parseFloat(v);
+  return isFinite(n) ? Math.round(Math.min(10, Math.max(0, n)) * 10) / 10 : def;
+}
+
+function normalizeStrategicPlan(data: any) {
+  const strArr = (v: any) => Array.isArray(v) ? v.filter((x: any) => typeof x === "string" && x.trim()) : [];
+  const clamp100 = (v: any) => {
+    const n = typeof v === "number" ? Math.round(v) : 0;
+    return Math.min(100, Math.max(0, n));
+  };
+
+  const rs  = data.recommendedStructure  || {};
+  const sf  = data.signatureFramework    || {};
+  const cc  = data.chapterComponents     || {};
+  const bfp = data.bookFlowPreview       || {};
+  const cd  = data.competitiveDifferentiation || {};
+  const bcs = data.bookConceptScore      || {};
+  const bd  = bcs.breakdown              || {};
+
+  const stages = Array.isArray(sf.stages)
+    ? sf.stages.filter((s: any) => typeof s?.stage === "string" && typeof s?.label === "string")
+    : [];
+
+  const parts = Array.isArray(bfp.parts)
+    ? bfp.parts.filter((p: any) => typeof p?.title === "string" || typeof p?.subtitle === "string")
+    : [];
+
+  const ALLOWED_COMPONENTS = new Set([
+    "Key Takeaways", "Action Plan", "Checklist", "Exercises",
+    "Reflection Questions", "Templates", "Case Studies", "Examples",
+    "Research Highlights", "Resources", "Summary"
+  ]);
+
+  const recommended = strArr(cc.recommended).filter((x: string) => ALLOWED_COMPONENTS.has(x));
+
+  return {
+    recommendedStructure: {
+      structureName:   typeof rs.structureName  === "string" ? rs.structureName.trim()  : "",
+      structureType:   typeof rs.structureType  === "string" ? rs.structureType.trim()  : "",
+      confidenceScore: clampScore10(rs.confidenceScore),
+      reasoning:       typeof rs.reasoning      === "string" ? rs.reasoning.trim()      : ""
+    },
+    structureExplanation: typeof data.structureExplanation === "string" ? data.structureExplanation.trim() : "",
+    signatureFramework: {
+      name:   typeof sf.name === "string" ? sf.name.trim() : "",
+      stages
+    },
+    chapterComponents: {
+      recommended,
+      selected: recommended.slice()
+    },
+    bookFlowPreview: { parts },
+    competitiveDifferentiation: {
+      points: strArr(cd.points),
+      score:  clampScore10(cd.score)
+    },
+    bookPitch: typeof data.bookPitch === "string" ? data.bookPitch.trim() : "",
+    bookConceptScore: {
+      overall: clamp100(bcs.overall),
+      breakdown: {
+        marketDemand:           clampScore10(bd.marketDemand),
+        differentiation:        clampScore10(bd.differentiation),
+        transformationStrength: clampScore10(bd.transformationStrength),
+        readerClarity:          clampScore10(bd.readerClarity),
+        commercialPotential:    clampScore10(bd.commercialPotential),
+        outlineReadiness:       clampScore10(bd.outlineReadiness)
+      },
+      strengths:   strArr(bcs.strengths),
+      suggestions: strArr(bcs.suggestions)
+    }
+  };
+}
+
+router.post("/generate-strategic-book-plan", async (req, res) => {
+  try {
+    const { project } = req.body || {};
+    if (!project || typeof project !== "object") {
+      return res.status(400).json({ error: "project object is required" });
+    }
+    const prompt = generateStrategicBookPlanPrompt(project);
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "strategicPlan");
+    const raw = extractJSON(text);
+    if (!raw || typeof raw !== "object") {
+      return res.status(500).json({ error: "AI returned unparseable strategic plan data." });
+    }
+    const plan = normalizeStrategicPlan(raw);
+    return res.json({ ...plan, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/regenerate-book-section", async (req, res) => {
+  try {
+    const { project, section } = req.body || {};
+    if (!project || typeof project !== "object") {
+      return res.status(400).json({ error: "project object is required" });
+    }
+    if (!section || !VALID_BOOK_SECTIONS.has(section)) {
+      return res.status(400).json({ error: `Invalid section. Must be one of: ${[...VALID_BOOK_SECTIONS].join(", ")}` });
+    }
+    const prompt = regenerateBookSectionPrompt(section, project);
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "bookSection");
+    const raw = extractJSON(text);
+    if (!raw || typeof raw !== "object") {
+      return res.status(500).json({ error: "AI returned unparseable data for section." });
+    }
+    const full = normalizeStrategicPlan({ ...{
+      recommendedStructure: {}, structureExplanation: "", signatureFramework: {},
+      chapterComponents: {}, bookFlowPreview: {}, competitiveDifferentiation: {},
+      bookPitch: "", bookConceptScore: {}
+    }, ...raw });
+    return res.json({ section, data: (full as any)[section], _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

@@ -116,6 +116,8 @@ export const TOKEN_LIMITS: Record<string, number> = {
   structure:           400,
   details:            2500,
   authorPersona:      2000,
+  strategicPlan:      3500,
+  bookSection:        1500,
   fieldSuggestion:    1200,
   default:             800
 };
