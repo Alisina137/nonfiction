@@ -359,6 +359,34 @@ function MechanismSuggestions({ suggestions, value, onSelect }) {
   );
 }
 
+// ─── Field-level Generate Suggestion button ───────────────────────────────────
+
+function FieldGenerateButton({ fieldName, generating, hasSuggestions, wasGenerated, onGenerate, error }) {
+  if (generating) {
+    return (
+      <div className="mt-2 flex items-center gap-1.5 text-[11px] text-violet-500">
+        <span className="h-3 w-3 animate-spin rounded-full border border-violet-300 border-t-violet-600" />
+        Generating suggestions…
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+      {wasGenerated && !hasSuggestions && (
+        <span className="text-[11px] italic text-slate-400">No suggestions generated.</span>
+      )}
+      <button
+        type="button"
+        onClick={onGenerate}
+        className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 underline decoration-dotted"
+      >
+        {hasSuggestions ? "↺ Regenerate suggestions" : "✦ Generate Suggestion"}
+      </button>
+      {error && <span className="text-[11px] text-red-500">{error}</span>}
+    </div>
+  );
+}
+
 // ─── Chips + Custom input (for dropdowns) ─────────────────────────────────────
 
 function ChipsWithCustom({ suggestions, value, onChange, reasons, options, placeholder }) {
@@ -418,6 +446,8 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
   const [aiError, setAiError]             = useState("");
   const [aiGenPhase, setAiGenPhase]       = useState("");
   const [aiSuggestions, setAiSuggestions] = useState({});
+  const [fieldGenerating, setFieldGenerating] = useState({});
+  const [fieldErrors, setFieldErrors]         = useState({});
 
   const [wordCountRec, setWordCountRec]   = useState(null);
   const [chapterCountRec, setChapterCountRec] = useState(null);
@@ -554,6 +584,43 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
       clearInterval(phaseTimer);
       setAiGenPhase("");
       setAiGenerating(false);
+    }
+  }
+
+  // ── Field-level suggestion generation ─────────────────────────────────────
+
+  async function generateFieldSuggestion(fieldName) {
+    setFieldGenerating((p) => ({ ...p, [fieldName]: true }));
+    setFieldErrors((p) => ({ ...p, [fieldName]: "" }));
+    try {
+      const data = await aiFetch(
+        "/api/ai/generate-field-suggestion",
+        { project: fullProject, fieldName },
+        { noCache: true }
+      );
+      setAiSuggestions((prev) => {
+        const update = {};
+        if (fieldName === "positioningStatement")
+          update.positioningStatementSuggestions = data.recommendations || [];
+        else if (fieldName === "corePromise")
+          update.corePromiseSuggestions = data.recommendations || [];
+        else if (fieldName === "coreThesis")
+          update.coreThesisSuggestions = data.recommendations || [];
+        else if (fieldName === "uniqueMechanism")
+          update.uniqueMechanismSuggestions = data.recommendations || [];
+        else if (fieldName === "readerTransformation") {
+          update.beforeStateSuggestions = data.beforeSuggestions || [];
+          update.afterStateSuggestions  = data.afterSuggestions  || [];
+        } else if (fieldName === "readerObjections")
+          update.readerObjectionsSuggestions = data.recommendations || [];
+        else if (fieldName === "desiredEmotionalOutcome")
+          update.desiredEmotionalOutcomeSuggestions = data.recommendations || [];
+        return { ...prev, ...update };
+      });
+    } catch (e) {
+      setFieldErrors((p) => ({ ...p, [fieldName]: e?.message || "Generation failed. Try again." }));
+    } finally {
+      setFieldGenerating((p) => ({ ...p, [fieldName]: false }));
     }
   }
 
@@ -955,6 +1022,14 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             value={bd.positioningStatement}
             onSelect={(v) => patch({ positioningStatement: v })}
           />
+          <FieldGenerateButton
+            fieldName="positioningStatement"
+            generating={!!fieldGenerating.positioningStatement}
+            hasSuggestions={(aiSuggestions.positioningStatementSuggestions || []).length > 0}
+            wasGenerated={"positioningStatement" in fieldErrors}
+            onGenerate={() => generateFieldSuggestion("positioningStatement")}
+            error={fieldErrors.positioningStatement}
+          />
         </div>
 
         <SectionTitle>Strategic Foundation</SectionTitle>
@@ -976,6 +1051,14 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             value={bd.corePromise}
             onSelect={(v) => patch({ corePromise: v })}
           />
+          <FieldGenerateButton
+            fieldName="corePromise"
+            generating={!!fieldGenerating.corePromise}
+            hasSuggestions={(aiSuggestions.corePromiseSuggestions || []).length > 0}
+            wasGenerated={"corePromise" in fieldErrors}
+            onGenerate={() => generateFieldSuggestion("corePromise")}
+            error={fieldErrors.corePromise}
+          />
         </div>
 
         {/* ── Core Thesis ── */}
@@ -995,6 +1078,14 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             value={bd.coreThesis}
             onSelect={(v) => patch({ coreThesis: v })}
           />
+          <FieldGenerateButton
+            fieldName="coreThesis"
+            generating={!!fieldGenerating.coreThesis}
+            hasSuggestions={(aiSuggestions.coreThesisSuggestions || []).length > 0}
+            wasGenerated={"coreThesis" in fieldErrors}
+            onGenerate={() => generateFieldSuggestion("coreThesis")}
+            error={fieldErrors.coreThesis}
+          />
         </div>
 
         {/* ── Unique Mechanism ── */}
@@ -1013,6 +1104,14 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             suggestions={aiSuggestions.uniqueMechanismSuggestions}
             value={bd.uniqueMechanism}
             onSelect={(v) => patch({ uniqueMechanism: v })}
+          />
+          <FieldGenerateButton
+            fieldName="uniqueMechanism"
+            generating={!!fieldGenerating.uniqueMechanism}
+            hasSuggestions={(aiSuggestions.uniqueMechanismSuggestions || []).length > 0}
+            wasGenerated={"uniqueMechanism" in fieldErrors}
+            onGenerate={() => generateFieldSuggestion("uniqueMechanism")}
+            error={fieldErrors.uniqueMechanism}
           />
         </div>
 
@@ -1054,6 +1153,14 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
               />
             </div>
           </div>
+          <FieldGenerateButton
+            fieldName="readerTransformation"
+            generating={!!fieldGenerating.readerTransformation}
+            hasSuggestions={(aiSuggestions.beforeStateSuggestions || []).length > 0}
+            wasGenerated={"readerTransformation" in fieldErrors}
+            onGenerate={() => generateFieldSuggestion("readerTransformation")}
+            error={fieldErrors.readerTransformation}
+          />
         </div>
 
         {/* ── Reader Objections ── */}
@@ -1073,6 +1180,14 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             value={bd.readerObjections}
             onSelect={(v) => patch({ readerObjections: v })}
           />
+          <FieldGenerateButton
+            fieldName="readerObjections"
+            generating={!!fieldGenerating.readerObjections}
+            hasSuggestions={(aiSuggestions.readerObjectionsSuggestions || []).length > 0}
+            wasGenerated={"readerObjections" in fieldErrors}
+            onGenerate={() => generateFieldSuggestion("readerObjections")}
+            error={fieldErrors.readerObjections}
+          />
         </div>
 
         {/* ── Desired Emotional Outcome ── */}
@@ -1091,6 +1206,14 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             suggestions={aiSuggestions.desiredEmotionalOutcomeSuggestions}
             value={bd.desiredEmotionalOutcome}
             onSelect={(v) => patch({ desiredEmotionalOutcome: v })}
+          />
+          <FieldGenerateButton
+            fieldName="desiredEmotionalOutcome"
+            generating={!!fieldGenerating.desiredEmotionalOutcome}
+            hasSuggestions={(aiSuggestions.desiredEmotionalOutcomeSuggestions || []).length > 0}
+            wasGenerated={"desiredEmotionalOutcome" in fieldErrors}
+            onGenerate={() => generateFieldSuggestion("desiredEmotionalOutcome")}
+            error={fieldErrors.desiredEmotionalOutcome}
           />
         </div>
 

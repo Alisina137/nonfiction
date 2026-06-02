@@ -1292,6 +1292,152 @@ OUTPUT — return only this JSON object:
 }`;
 }
 
+// ─── Generate Field-Level Suggestion ──────────────────────────────────────────
+
+export function generateFieldSuggestionPrompt(fieldName: string, project: any): string {
+  const r     = project?.research               || {};
+  const intel = project?.analysis?.intelligence || {};
+  const pb    = project?.proposedBook?.content  || {};
+  const bd    = project?.bookDetails            || {};
+  const bt    = project?.bookTitle              || {};
+  const ap    = project?.authorPersona          || {};
+  const saved = Array.isArray(ap.savedPersonas) ? ap.savedPersonas : [];
+  const pid   = ap.selectedId;
+  const persona = pid ? saved.find((p: any) => p.id === pid) || saved[0] : saved[0];
+
+  const titleVal =
+    bt?.selectedCard?.title?.trim() || pb.title?.trim() || r.bookTitle?.trim() || "(not set)";
+
+  const personaBrief = persona
+    ? [persona.generated?.summary].filter(Boolean).join(" ").slice(0, 200)
+    : "(not set)";
+
+  const ctx = `BOOK: "${titleVal}"
+GENRE: ${bd.genre || r.mainNicheLabel || "(not set)"}
+STRUCTURE: ${bd.structure || "(not set)"}
+TONE: ${bd.tone || (Array.isArray(r.authorTones) ? r.authorTones[0] : "(not set)")}
+AUDIENCE: ${bd.audience || r.targetAudience || "(not set)"}
+BOOK TOPIC: ${r.bookTopic || pb.bookTopic || "(not set)"}
+AUTHOR STANCE: ${r.stanceOnTopic || "(not set)"}
+STANDOUT ANGLE: ${r.standout || "(not set)"}
+MARKET GAP: ${intel.marketGapAnalysis || "(not set)"}
+READER PAIN PROFILE: ${intel.readerPainProfile || "(not set)"}
+TRANSFORMATION PROMISE: ${intel.transformationPromise || "(not set)"}
+AUTHOR PERSONA: ${personaBrief}
+
+EXISTING DETAILS (use for cross-field consistency):
+- Positioning Statement: ${bd.positioningStatement || "(not set)"}
+- Core Promise: ${bd.corePromise || "(not set)"}
+- Core Thesis: ${bd.coreThesis || "(not set)"}
+- Unique Mechanism: ${bd.uniqueMechanism || "(not set)"}
+- Desired Emotional Outcome: ${bd.desiredEmotionalOutcome || "(not set)"}
+- USP: ${bd.uniqueSellingProposition || "(not set)"}`;
+
+  const header = `You are an elite nonfiction publishing strategist.
+Generate field-level suggestions ONLY for the field specified below.
+Return ONLY valid JSON — no prose, no markdown, no code fences.
+Every suggestion must be SPECIFIC to this book — absolutely no generic boilerplate.
+
+${ctx}
+
+FIELD TO GENERATE: ${fieldName.toUpperCase()}
+
+`;
+
+  switch (fieldName) {
+    case "positioningStatement":
+      return header + `Generate 4 Positioning Statement alternatives using the exact template: "This book helps [audience] achieve [outcome] without [obstacle]."
+- Index 0 is the single best-fit RECOMMENDED option
+- Indices 1–3 are alternatives with different outcomes, obstacles, or audience framings
+- Every item must be a complete sentence following the template
+
+Return ONLY:
+{ "recommendations": ["<rec0>", "<rec1>", "<rec2>", "<rec3>"] }`;
+
+    case "corePromise":
+      return header + `Generate 4 Core Promise alternatives — the specific, measurable outcome readers will achieve after finishing this book.
+- Index 0 is the RECOMMENDED option (clearest, most compelling)
+- Indices 1–3 are alternatives with different framings or specificity levels
+- 1–2 sentences each, concrete and results-focused
+
+Return ONLY:
+{ "recommendations": ["<rec0>", "<rec1>", "<rec2>", "<rec3>"] }`;
+
+    case "coreThesis":
+      return header + `Generate 4 Core Thesis alternatives — the central argument or conviction that anchors this book.
+- Index 0 is the RECOMMENDED option (strongest, most specific argument)
+- Indices 1–3 use different angles: one contrarian, one research-backed, one paradigm-shift
+- 1–2 sentences each, arguable and specific
+
+Return ONLY:
+{ "recommendations": ["<rec0>", "<rec1>", "<rec2>", "<rec3>"] }`;
+
+    case "uniqueMechanism":
+      return header + `Generate 4 Unique Mechanism alternatives — proprietary frameworks with memorable, publishable names.
+- Index 0 is the RECOMMENDED framework (most marketable name + clearest description)
+- Indices 1–3 are alternatives with different conceptual angles
+- Each must have a distinct, marketable framework name and a 2–3 sentence description
+
+Return ONLY:
+{ "recommendations": [
+    { "name": "<Framework Name 1>", "description": "<2-3 sentences>" },
+    { "name": "<Framework Name 2>", "description": "<2-3 sentences>" },
+    { "name": "<Framework Name 3>", "description": "<2-3 sentences>" },
+    { "name": "<Framework Name 4>", "description": "<2-3 sentences>" }
+  ]
+}`;
+
+    case "readerTransformation":
+      return header + `Generate 3 Reader Transformation sets — concrete before/after states the reader experiences.
+- Each set has 5–8 before-reading struggles AND 5–8 after-reading outcomes
+- Each set is a single string with one state per line (use \\n)
+- Index 0 is the RECOMMENDED transformation arc; indices 1–2 are alternative angles
+
+Return ONLY:
+{
+  "beforeSuggestions": [
+    "<set0: struggle1\\nstruggle2\\nstruggle3\\nstruggle4\\nstruggle5>",
+    "<set1: struggle1\\nstruggle2\\nstruggle3\\nstruggle4\\nstruggle5>",
+    "<set2: struggle1\\nstruggle2\\nstruggle3\\nstruggle4\\nstruggle5>"
+  ],
+  "afterSuggestions": [
+    "<set0: outcome1\\noutcome2\\noutcome3\\noutcome4\\noutcome5>",
+    "<set1: outcome1\\noutcome2\\noutcome3\\noutcome4\\noutcome5>",
+    "<set2: outcome1\\noutcome2\\noutcome3\\noutcome4\\noutcome5>"
+  ]
+}`;
+
+    case "readerObjections":
+      return header + `Generate 3 Reader Objection sets — realistic beliefs that may prevent readers from accepting this book's message.
+- Set 0 (RECOMMENDED): practical/logistical barriers
+- Set 1: emotional/mindset resistance angle
+- Set 2: past-failure skepticism angle
+- Each set: 5–8 objections as a single string, one objection per line (use \\n)
+
+Return ONLY:
+{ "recommendations": [
+    "<set0: obj1\\nobj2\\nobj3\\nobj4\\nobj5>",
+    "<set1: obj1\\nobj2\\nobj3\\nobj4\\nobj5>",
+    "<set2: obj1\\nobj2\\nobj3\\nobj4\\nobj5>"
+  ]
+}`;
+
+    case "desiredEmotionalOutcome":
+      return header + `Generate 4 Desired Emotional Outcome alternatives — how readers will feel after finishing this book.
+- Index 0 is the RECOMMENDED option (most resonant for this audience)
+- Indices 1–3 are alternatives with different emotional registers
+- Each: 3–6 evocative words or a short phrase (e.g. "Empowered, clear, and unstoppable")
+
+Return ONLY:
+{ "recommendations": ["<rec0>", "<rec1>", "<rec2>", "<rec3>"] }`;
+
+    default:
+      return header + `Generate 4 alternatives for the "${fieldName}" field.
+Return ONLY:
+{ "recommendations": ["<rec0>", "<rec1>", "<rec2>", "<rec3>"] }`;
+  }
+}
+
 // ─── Chapter Architecture (Blueprint export) ───────────────────────────────
 
 export function chapterArchitecturePrompt(project: any): string {

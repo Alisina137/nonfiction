@@ -1,0 +1,288 @@
+DETAILS PAGE FALLBACK CONTENT GENERATION SYSTEM
+
+The current problem is that some fields do not receive AI-generated recommendations when the user clicks:
+
+* Generate Details
+* Regenerate Details
+
+Instead of relying entirely on the bulk generation process, implement a fallback generation system.
+
+---
+
+## OBJECTIVE
+
+Every strategic field must be capable of generating its own content independently.
+
+If the main Details generation fails to provide recommendations for a field, the user can click a dedicated button beside that field and generate recommendations only for that field.
+
+---
+
+## FIELDS REQUIRING FIELD-LEVEL GENERATION
+
+Add a dedicated AI Generate button beside each of these fields:
+
+* Positioning Statement
+* Core Promise
+* Core Thesis
+* Unique Mechanism
+* Reader Transformation
+* Reader Objections
+* Desired Emotional Outcome
+
+Example UI:
+
+Positioning Statement
+
+[Generate Suggestion]
+
+Core Promise
+
+[Generate Suggestion]
+
+Core Thesis
+
+[Generate Suggestion]
+
+etc.
+
+---
+
+## REQUIRED BEHAVIOR
+
+When the user clicks a field's Generate Suggestion button:
+
+Generate recommendations ONLY for that field.
+
+Do not regenerate the entire Details page.
+
+Do not modify any other field.
+
+Do not clear any existing content.
+
+---
+
+## CONTEXT USED FOR GENERATION
+
+The generation should use:
+
+* Research
+* Analysis
+* Book Title
+* Resources
+* Author Persona
+* Proposed Book
+* Genre
+* Structure
+* Tone
+* Audience
+
+PLUS
+
+all current values already entered in the Details page.
+
+This ensures consistency.
+
+---
+
+## POSITIONING STATEMENT GENERATOR
+
+When generating Positioning Statement:
+
+Use:
+
+* Audience
+* Book Topic
+* Core Promise
+* Core Thesis
+* Unique Mechanism
+
+Return:
+
+1 Recommended suggestion
+
+3 Alternative suggestions
+
+---
+
+## CORE PROMISE GENERATOR
+
+When generating Core Promise:
+
+Use:
+
+* Audience
+* Positioning Statement
+* Core Thesis
+* Research
+
+Return:
+
+1 Recommended suggestion
+
+3 Alternative suggestions
+
+---
+
+## CORE THESIS GENERATOR
+
+When generating Core Thesis:
+
+Use:
+
+* Audience
+* Book Topic
+* Research
+* Core Promise
+
+Return:
+
+1 Recommended suggestion
+
+3 Alternative suggestions
+
+---
+
+## UNIQUE MECHANISM GENERATOR
+
+When generating Unique Mechanism:
+
+Use:
+
+* Book Topic
+* Core Promise
+* Research
+
+Return:
+
+1 Recommended framework
+
+3 Alternative frameworks
+
+Generate memorable publishable names.
+
+---
+
+## READER TRANSFORMATION GENERATOR
+
+When generating Reader Transformation:
+
+Return:
+
+Before Reading:
+
+* 5–10 struggles
+
+After Reading:
+
+* 5–10 outcomes
+
+Plus:
+
+3 alternative transformation sets.
+
+---
+
+## READER OBJECTIONS GENERATOR
+
+When generating Reader Objections:
+
+Return:
+
+5–10 realistic objections.
+
+Plus:
+
+3 alternative objection sets.
+
+---
+
+## DESIRED EMOTIONAL OUTCOME GENERATOR
+
+When generating Desired Emotional Outcome:
+
+Return:
+
+5–10 emotional outcomes.
+
+Plus:
+
+3 alternative emotional outcome sets.
+
+---
+
+## RECOMMENDATION DISPLAY
+
+Each field should support:
+
+Recommended
+
+Alternative 1
+
+Alternative 2
+
+Alternative 3
+
+The user can click Apply to insert the selected recommendation into the field.
+
+Do not automatically overwrite the field.
+
+---
+
+## FALLBACK LOGIC
+
+After Generate Details or Regenerate Details completes:
+
+Check each required field.
+
+If recommendations are missing for:
+
+* Positioning Statement
+* Core Promise
+* Core Thesis
+* Unique Mechanism
+* Reader Transformation
+* Reader Objections
+* Desired Emotional Outcome
+
+Display:
+
+"No suggestions generated. Click Generate Suggestion."
+
+and show the field-level Generate Suggestion button.
+
+---
+
+## REUSABLE FUNCTION
+
+Create a shared function:
+
+generateFieldSuggestion(fieldName)
+
+Examples:
+
+generateFieldSuggestion("positioningStatement")
+
+generateFieldSuggestion("corePromise")
+
+generateFieldSuggestion("coreThesis")
+
+generateFieldSuggestion("uniqueMechanism")
+
+generateFieldSuggestion("readerTransformation")
+
+generateFieldSuggestion("readerObjections")
+
+generateFieldSuggestion("desiredEmotionalOutcome")
+
+All field-level buttons must use this shared function.
+
+---
+
+## SUCCESS CRITERIA
+
+Even if Generate Details or Regenerate Details fails to generate recommendations for a field, the user can always click Generate Suggestion on that specific field and receive:
+
+* 1 Recommended option
+* 3 Alternatives
+
+without affecting the rest of the Details page.

@@ -9,6 +9,7 @@ import {
   coverVariantsPrompt,
   descriptionPrompt,
   generateDetailsPrompt,
+  generateFieldSuggestionPrompt,
   generateFindingPrompt,
   generateResourcePrompt,
   improvementPrompt,
@@ -585,6 +586,53 @@ router.post("/generate-details", async (req, res) => {
 
       _provider: usedProvider
     });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** POST /api/ai/generate-field-suggestion — generate suggestions for a single Details field */
+router.post("/generate-field-suggestion", async (req, res) => {
+  try {
+    const { project, fieldName } = req.body || {};
+    if (!project || typeof project !== "object") {
+      return res.status(400).json({ error: "project object is required" });
+    }
+    const VALID_FIELDS = [
+      "positioningStatement","corePromise","coreThesis","uniqueMechanism",
+      "readerTransformation","readerObjections","desiredEmotionalOutcome"
+    ];
+    if (!fieldName || !VALID_FIELDS.includes(String(fieldName))) {
+      return res.status(400).json({ error: `fieldName must be one of: ${VALID_FIELDS.join(", ")}` });
+    }
+
+    const prompt = generateFieldSuggestionPrompt(String(fieldName), project);
+    const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "fieldSuggestion");
+
+    const data = extractJSON(text);
+    if (!data || typeof data !== "object") {
+      console.error("[generate-field-suggestion] Could not parse JSON:", text.slice(0, 400));
+      return res.status(500).json({ error: "AI returned unparseable suggestion data." });
+    }
+
+    function strArr(v: any): string[] {
+      return Array.isArray(v) ? v.filter((x: any) => typeof x === "string" && x.trim()) : [];
+    }
+
+    const response: Record<string, any> = { _provider: usedProvider };
+
+    if (fieldName === "readerTransformation") {
+      response.beforeSuggestions = strArr(data.beforeSuggestions).slice(0, 3);
+      response.afterSuggestions  = strArr(data.afterSuggestions).slice(0, 3);
+    } else if (fieldName === "uniqueMechanism") {
+      response.recommendations = Array.isArray(data.recommendations)
+        ? data.recommendations.filter((m: any) => m && typeof m === "object" && m.name).slice(0, 4)
+        : [];
+    } else {
+      response.recommendations = strArr(data.recommendations).slice(0, 4);
+    }
+
+    return res.json(response);
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

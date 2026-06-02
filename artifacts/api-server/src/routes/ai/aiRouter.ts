@@ -115,6 +115,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
   architecturePreview: 500,
   structure:           400,
   details:            2500,
+  fieldSuggestion:    1200,
   default:             800
 };
 
