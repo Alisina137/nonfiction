@@ -409,6 +409,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
   const [aiGenFields, setAiGenFields]     = useState(new Set());
   const [aiGenPhase, setAiGenPhase]       = useState("");
   const [aiSuggestions, setAiSuggestions] = useState({});
+  const [replaceExisting, setReplaceExisting] = useState(false);
 
   const [wordCountRec, setWordCountRec]   = useState(null);
   const [chapterCountRec, setChapterCountRec] = useState(null);
@@ -526,6 +527,9 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
       const updates = {};
       const filled = new Set();
 
+      // When replaceExisting=false, only fill fields currently empty
+      const shouldFill = (key) => replaceExisting || !String(bd[key] ?? "").trim();
+
       const textFields = {
         genre:                    data.genre,
         tone:                     data.tone,
@@ -546,21 +550,21 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
       };
 
       for (const [key, val] of Object.entries(textFields)) {
-        if (val && String(val).trim()) {
+        if (val && String(val).trim() && shouldFill(key)) {
           updates[key] = String(val).trim();
           filled.add(key);
         }
       }
 
-      if (data.chapterCount && Number.isFinite(data.chapterCount)) {
+      if (data.chapterCount && Number.isFinite(data.chapterCount) && shouldFill("chapterCount")) {
         updates.chapterCount = data.chapterCount;
         filled.add("chapterCount");
       }
-      if (data.wordCountRange && BOOK_WORD_COUNT_RANGES.includes(data.wordCountRange)) {
+      if (data.wordCountRange && BOOK_WORD_COUNT_RANGES.includes(data.wordCountRange) && shouldFill("wordCountRange")) {
         updates.wordCountRange = data.wordCountRange;
         filled.add("wordCountRange");
       }
-      if (data.structure && BOOK_STRUCTURE_OPTIONS.includes(data.structure)) {
+      if (data.structure && BOOK_STRUCTURE_OPTIONS.includes(data.structure) && shouldFill("structure")) {
         updates.structure = data.structure;
         filled.add("structure");
       }
@@ -1331,29 +1335,51 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
       <div className="mt-5 space-y-3">
 
         {/* Generate Details */}
-        <button
-          type="button"
-          onClick={handleGenerateDetails}
-          disabled={aiGenerating}
-          className={`w-full flex items-center justify-center gap-2.5 rounded-xl border px-5 py-3.5 text-sm font-semibold shadow-sm transition ${
-            aiGenerating
-              ? "border-violet-200 bg-violet-50 text-violet-400 cursor-not-allowed"
-              : "border-violet-300 bg-white text-violet-700 hover:bg-violet-50 hover:border-violet-400"
-          }`}
-        >
-          {aiGenerating ? (
-            <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-violet-300 border-t-violet-600" />
-              <span>{aiGenPhase || "Generating…"}</span>
-            </>
-          ) : (
-            <>
-              <span>✦</span>
-              <span>{hasAiSuggestions ? "Regenerate Details" : "Generate Details"}</span>
-              <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">3 alternatives per field</span>
-            </>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={handleGenerateDetails}
+            disabled={aiGenerating}
+            className={`w-full flex items-center justify-center gap-2.5 rounded-xl border px-5 py-3.5 text-sm font-semibold shadow-sm transition ${
+              aiGenerating
+                ? "border-violet-200 bg-violet-50 text-violet-400 cursor-not-allowed"
+                : "border-violet-300 bg-white text-violet-700 hover:bg-violet-50 hover:border-violet-400"
+            }`}
+          >
+            {aiGenerating ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-violet-300 border-t-violet-600" />
+                <span>{aiGenPhase || "Generating…"}</span>
+              </>
+            ) : (
+              <>
+                <span>✦</span>
+                <span>{hasAiSuggestions ? "Regenerate Details" : "Generate Details"}</span>
+                <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">3 alternatives per field</span>
+              </>
+            )}
+          </button>
+
+          {hasAiSuggestions && !aiGenerating && (
+            <label className="flex cursor-pointer items-center gap-2 justify-center">
+              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
+                replaceExisting ? "border-amber-400 bg-amber-400" : "border-slate-300 bg-white"
+              }`}>
+                {replaceExisting && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+              </span>
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={replaceExisting}
+                onChange={(e) => setReplaceExisting(e.target.checked)}
+              />
+              <span className={`text-xs font-medium ${replaceExisting ? "text-amber-700" : "text-slate-500"}`}>
+                Replace existing content
+                {!replaceExisting && <span className="ml-1 text-slate-400">(unchecked = only fill empty fields)</span>}
+              </span>
+            </label>
           )}
-        </button>
+        </div>
 
         {/* Export Blueprint */}
         <button

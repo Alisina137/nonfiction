@@ -513,7 +513,7 @@ router.post("/generate-details", async (req, res) => {
     }
 
     const prompt = generateDetailsPrompt(project);
-    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "default");
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "details");
 
     const data = extractJSON(text);
     if (!data || typeof data !== "object") {

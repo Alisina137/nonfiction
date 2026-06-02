@@ -1,0 +1,267 @@
+Paste this into Replit as a single implementation prompt:
+
+---
+
+## FIX DETAILS GENERATION – AUTO-FILL ALL STRATEGIC FIELDS
+
+The current **Generate Details** button only partially populates the Details step.
+
+Update the Details generation system so that **every strategic field receives AI-generated content** based on all previous project data.
+
+### Data Sources Available
+
+When generating Details, the AI must use:
+
+* Research
+* Analysis
+* Book Title
+* Resources
+* Author Persona
+* Proposed Book
+* Selected Genre
+* Selected Structure
+* Selected Tone
+* Selected Audience
+
+The generation should synthesize all available information instead of using generic placeholders.
+
+---
+
+# REQUIRED FIELDS TO AUTO-GENERATE
+
+Generate content for ALL of the following:
+
+### Positioning Statement
+
+Create a strong market-positioning statement.
+
+Format:
+
+"This book helps [target audience] achieve [desired outcome] through [unique approach/mechanism]."
+
+Requirements:
+
+* Specific
+* Marketable
+* Reader-focused
+* Non-generic
+
+---
+
+### Core Promise
+
+Generate a concrete transformation promise.
+
+Requirements:
+
+* Outcome-focused
+* Actionable
+* Measurable where possible
+* Aligned with reader goals
+
+Example:
+
+"Build a sustainable ADHD productivity system that consistently converts intentions into completed work."
+
+Do not use generic promises.
+
+---
+
+### Core Thesis
+
+Generate the central argument of the book.
+
+Requirements:
+
+* One clear idea
+* Defensible
+* Drives the entire manuscript
+
+Example:
+
+"People with ADHD become more productive when they rely on systems rather than motivation."
+
+---
+
+### Unique Mechanism
+
+Generate a branded or memorable framework.
+
+Requirements:
+
+* Unique naming
+* Aligned with book topic
+* Feels publishable
+
+Examples:
+
+* Focus Loop Method
+* Executive Function System
+* Momentum Mapping Framework
+* Strategic Wealth Ladder
+
+Avoid generic names.
+
+---
+
+### Reader Transformation
+
+Generate BOTH:
+
+#### Before Reading
+
+4–8 realistic reader problems.
+
+Examples:
+
+* Overwhelmed
+* Inconsistent
+* Missing deadlines
+* Disorganized
+* Lacking clarity
+
+#### After Reading
+
+4–8 transformed outcomes.
+
+Examples:
+
+* Focused
+* Organized
+* Productive
+* In control
+* Confident
+
+The transformation must directly connect to the book topic.
+
+---
+
+### Reader Objections
+
+Generate 5–10 realistic objections.
+
+Examples:
+
+* "Nothing works for me."
+* "I've tried this before."
+* "I don't have enough time."
+* "I lack discipline."
+
+Requirements:
+
+* Topic-specific
+* Realistic
+* Emotionally accurate
+
+---
+
+### Desired Emotional Outcome
+
+Generate a list of emotional states the reader should experience after finishing the book.
+
+Examples:
+
+* Empowered
+* Hopeful
+* Confident
+* Motivated
+* In control
+* Relieved
+* Optimistic
+
+Must be customized to the topic.
+
+---
+
+# GENERATION QUALITY RULES
+
+Do NOT generate:
+
+* Placeholder text
+* Empty fields
+* Generic templates
+* Repeated content
+* "Lorem ipsum" style responses
+
+Every field must contain meaningful content.
+
+If research data is extensive, use it.
+
+If analysis contains audience insights, use them.
+
+If the proposed book contains a framework, incorporate it.
+
+If resources reveal recurring themes, reflect them.
+
+---
+
+# REGENERATE DETAILS BEHAVIOR
+
+When the user clicks:
+
+### Regenerate Details
+
+The system must regenerate:
+
+* Positioning Statement
+* Core Promise
+* Core Thesis
+* Unique Mechanism
+* Reader Transformation
+* Reader Objections
+* Desired Emotional Outcome
+* Tone suggestions
+* Audience suggestions
+* Structure suggestions
+* Research Intensity suggestions
+
+while preserving manual edits unless the user explicitly chooses:
+
+"Replace Existing Content"
+
+---
+
+# ALTERNATIVE GENERATIONS
+
+For each generated field create:
+
+* 1 Recommended version
+* 3 Alternative versions
+
+Store alternatives in state.
+
+Allow users to switch between alternatives without regenerating.
+
+Fields requiring alternatives:
+
+* Positioning Statement
+* Core Promise
+* Core Thesis
+* Unique Mechanism
+* Reader Transformation
+* Reader Objections
+* Desired Emotional Outcome
+
+---
+
+# COMPLETION REQUIREMENT
+
+The Details step is considered complete only when ALL of these fields contain generated content:
+
+* Positioning Statement
+* Core Promise
+* Core Thesis
+* Unique Mechanism
+* Reader Transformation (Before + After)
+* Reader Objections
+* Desired Emotional Outcome
+* Tone
+* Audience
+* Structure
+* Research Intensity
+
+No field should remain empty after Generate Details runs successfully.
+
+---
+
+This change should make the Details page function as a true strategic book blueprint generator rather than only filling a subset of fields.
