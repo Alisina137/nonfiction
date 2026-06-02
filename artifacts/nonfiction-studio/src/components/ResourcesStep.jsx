@@ -58,6 +58,12 @@ function isProbablyUrl(s) {
   return t.startsWith("http://") || t.startsWith("https://");
 }
 
+function getNextCategory(currentValue) {
+  const index = CATEGORIES.findIndex((c) => c.value === currentValue);
+  if (index === -1 || index === CATEGORIES.length - 1) return currentValue;
+  return CATEGORIES[index + 1].value;
+}
+
 function priorityInfo(value) {
   return PRIORITIES.find((p) => p.value === value) || PRIORITIES[2];
 }
@@ -336,10 +342,19 @@ function AddLinkForm({ onAdd, onRequestGenerate, generating, generatePhase, gene
 
   function submit() {
     if (!canSubmit()) return;
+    const currentCategory = f.category;
+    const currentPriority = f.priority;
     const urlVal   = f.url.trim();
     const titleVal = f.title.trim() || urlVal || "Resource";
     onAdd({ id: safeId(), ...f, url: urlVal, title: titleVal, note: f.note.trim() });
-    setF({ url: "", title: "", category: "blog_article", priority: "medium", useFor: ["entire_book"], isStyleRef: false, note: "" });
+    setF((prev) => ({
+      ...prev,
+      url:      "",
+      title:    "",
+      note:     "",
+      priority: currentPriority,
+      category: getNextCategory(currentCategory),
+    }));
   }
 
   async function handleGenerate() {
@@ -348,9 +363,9 @@ function AddLinkForm({ onAdd, onRequestGenerate, generating, generatePhase, gene
     if (result) {
       setF((prev) => ({
         ...prev,
-        url:   result.url   || "",
-        title: result.label || "",
-        note:  result.note  || ""
+        url:   prev.url.trim()   ? prev.url   : (result.url   || ""),
+        title: prev.title.trim() ? prev.title : (result.label || ""),
+        note:  prev.note.trim()  ? prev.note  : (result.note  || ""),
       }));
     }
   }

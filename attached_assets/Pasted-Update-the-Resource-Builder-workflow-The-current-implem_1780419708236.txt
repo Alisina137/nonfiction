@@ -1,0 +1,178 @@
+Update the Resource Builder workflow.
+
+The current implementation is incorrect.
+
+I DO NOT want Category to automatically advance when I click "Generate Resource".
+
+I ONLY want Category to advance when I click "Add Link".
+
+---
+
+## CORRECT WORKFLOW
+
+Step 1
+
+User selects:
+
+Category = Competitor Book
+Priority = High
+
+---
+
+Step 2
+
+User clicks Generate Resource
+
+Result:
+
+* AI generates content for empty fields
+* Category remains Competitor Book
+* Priority remains High
+* No category change occurs
+* No automatic advancement occurs
+
+---
+
+Step 3
+
+User reviews the generated content
+
+---
+
+Step 4
+
+User clicks Add Link
+
+Result:
+
+* Resource is saved
+* URL is cleared
+* Label is cleared
+* Note for Generation is cleared
+
+THEN:
+
+Category automatically advances to the next option
+
+Competitor Book
+→ Case Study
+
+Priority remains High
+
+---
+
+## DESIRED CATEGORY ADVANCEMENT
+
+Advance ONLY after successful Add Link.
+
+Category sequence:
+
+Academic Paper
+→ Book
+→ Government Report
+→ Research Study
+→ Competitor Book
+→ Case Study
+→ Statistics Source
+→ Interview / Transcript
+→ Blog / Article
+→ Writing Style Reference
+→ Note / Finding
+→ Other
+
+If current category is Other:
+
+Keep Other
+
+Do not wrap back to the beginning.
+
+---
+
+## GENERATE RESOURCE RULES
+
+Generate Resource should:
+
+* Fill empty fields only
+* Never overwrite existing user content
+* Never change Category
+* Never change Priority
+* Never reset the form
+
+Pseudo logic:
+
+const currentCategory = form.category;
+const currentPriority = form.priority;
+
+generateResource();
+
+form.category = currentCategory;
+form.priority = currentPriority;
+
+---
+
+## ADD LINK RULES
+
+Before saving:
+
+const currentCategory = form.category;
+const currentPriority = form.priority;
+
+Save resource.
+
+After save:
+
+form.url = "";
+form.label = "";
+form.generationNote = "";
+
+form.priority = currentPriority;
+
+form.category = getNextCategory(currentCategory);
+
+---
+
+## HELPER FUNCTION
+
+function getNextCategory(category) {
+const categories = [
+"Academic Paper",
+"Book",
+"Government Report",
+"Research Study",
+"Competitor Book",
+"Case Study",
+"Statistics Source",
+"Interview / Transcript",
+"Blog / Article",
+"Writing Style Reference",
+"Note / Finding",
+"Other"
+];
+
+const index = categories.indexOf(category);
+
+if (index === -1) return category;
+if (index === categories.length - 1) return category;
+
+return categories[index + 1];
+}
+
+---
+
+## EXPECTED FINAL BEHAVIOR
+
+Generate Resource:
+
+* Category stays the same
+* Priority stays the same
+
+Add Link:
+
+* Resource is saved
+* URL cleared
+* Label cleared
+* Note cleared
+* Priority preserved
+* Category advances to next option
+
+This category advancement logic must exist ONLY in the Add Link handler and nowhere else.
