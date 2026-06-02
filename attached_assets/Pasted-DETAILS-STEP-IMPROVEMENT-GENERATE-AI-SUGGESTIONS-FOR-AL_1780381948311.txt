@@ -1,0 +1,227 @@
+DETAILS STEP IMPROVEMENT – GENERATE AI SUGGESTIONS FOR ALL FIELDS
+
+The current Details page only generates AI suggestions for some fields.
+
+I want BOTH:
+
+* Generate Details
+* Regenerate Details
+
+to generate AI recommendations for EVERY field in the Details step.
+
+IMPORTANT:
+
+Do NOT automatically overwrite or fill user-entered values.
+
+Instead, generate recommendations/suggestions that appear exactly like the existing recommendation system (Recommended + Alternatives).
+
+The user should be able to review a suggestion and choose whether to apply it.
+
+---
+
+## INVESTIGATE CURRENT IMPLEMENTATION
+
+Find the code used by:
+
+* Generate Details
+* Regenerate Details
+
+Determine:
+
+* how recommendations are currently generated
+* where alternatives are stored
+* how recommended options are displayed
+* how users switch between alternatives
+
+If Generate Details and Regenerate Details use different logic, unify them into a single recommendation-generation pipeline.
+
+---
+
+## FIELDS THAT MUST RECEIVE AI SUGGESTIONS
+
+The following fields currently lack AI-generated recommendations and must be included:
+
+* Positioning Statement
+* Core Promise
+* Core Thesis
+* Unique Mechanism
+* Reader Transformation (Before Reading)
+* Reader Transformation (After Reading)
+* Reader Objections
+* Desired Emotional Outcome
+
+Continue generating suggestions for existing fields:
+
+* Genre
+* Structure
+* Tone
+* Audience
+* Research Intensity
+
+---
+
+## SUGGESTION REQUIREMENTS
+
+For EVERY field generate:
+
+* 1 Recommended option
+* 3 Alternative options
+
+The recommendation system should work consistently across all fields.
+
+Example structure:
+
+{
+recommended: "...",
+alternatives: [
+"...",
+"...",
+"..."
+]
+}
+
+For array-based fields:
+
+Reader Transformation
+Reader Objections
+Desired Emotional Outcome
+
+generate:
+
+{
+recommended: [...],
+alternatives: [
+[...],
+[...],
+[...]
+]
+}
+
+---
+
+## DATA SOURCES
+
+Use all available project context:
+
+* Research
+* Analysis
+* Book Title
+* Resources
+* Author Persona
+* Proposed Book
+* Genre
+* Structure
+* Tone
+* Audience
+
+Never generate generic placeholder content.
+
+Suggestions should be highly relevant to the book topic.
+
+---
+
+## FIELD-SPECIFIC EXPECTATIONS
+
+Positioning Statement
+
+Generate a marketable positioning statement showing:
+
+* audience
+* outcome
+* unique approach
+
+Core Promise
+
+Generate a specific transformation promise.
+
+Core Thesis
+
+Generate the central argument of the book.
+
+Unique Mechanism
+
+Generate a memorable framework or methodology name.
+
+Reader Transformation
+
+Generate:
+
+Before Reading:
+
+* pains
+* frustrations
+* obstacles
+
+After Reading:
+
+* outcomes
+* capabilities
+* transformation
+
+Reader Objections
+
+Generate realistic objections the target reader would have.
+
+Desired Emotional Outcome
+
+Generate emotional states readers should experience after finishing the book.
+
+---
+
+## UI REQUIREMENTS
+
+Each of these fields should display:
+
+* Recommended badge
+* Alternative suggestions
+* Click-to-switch behavior
+
+exactly like the existing Genre / Tone / Audience recommendation system.
+
+Do NOT leave any field without recommendations.
+
+---
+
+## VALIDATION
+
+Generate Details and Regenerate Details should only be considered successful if recommendations exist for ALL fields.
+
+If a recommendation is missing:
+
+* regenerate that field
+* do not return partial results
+
+---
+
+## DEBUGGING
+
+Add logs showing:
+
+* generated prompt
+* raw AI response
+* parsed recommendation data
+* recommendation state before update
+* recommendation state after update
+
+---
+
+## SUCCESS CRITERIA
+
+After implementation:
+
+When the user clicks either:
+
+* Generate Details
+* Regenerate Details
+
+the system generates AI recommendations for ALL Details fields.
+
+No field should be left without a Recommended suggestion and 3 Alternatives.
+
+Provide a report showing:
+
+* files modified
+* functions modified
+* recommendation schema modified
+* prompt modified
+* root cause of the previous issue.

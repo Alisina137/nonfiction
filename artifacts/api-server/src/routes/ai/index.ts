@@ -572,32 +572,18 @@ router.post("/generate-details", async (req, res) => {
       desiredEmotionalOutcomeSuggestions: strArr(data.desiredEmotionalOutcomeSuggestions).slice(0, 3),
       uspSuggestions:                  strArr(data.uspSuggestions).slice(0, 3),
       focusTopicsList:                 strArr(data.focusTopics),
-      readerObjectionsList:            strArr(data.readerObjections),
+      readerObjectionsSuggestions:     strArr(data.readerObjectionsSuggestions).slice(0, 3),
+      readerPainPointsSuggestions:     strArr(data.readerPainPointsSuggestions).slice(0, 3),
+      subtitleSuggestions:             typeof data.subtitle === "string" && data.subtitle.trim()
+                                         ? [data.subtitle.trim()] : [],
 
-      // ── Single-value auto-fills (first suggestion chosen) ─────────────────
-      genre:                    genreSuggestions[0] || "",
-      structure:                structureSuggestions[0] || "",
-      structureReason:          structureReasons[0] || "",
-      tone:                     toneSuggestions[0] || "",
-      audience:                 audienceSuggestions[0] || "",
-      researchIntensity:        riSuggestions[0] || "",
-      chapterCount:             chapters,
-      chapterCountReason:       typeof data.chapterCountReason === "string" ? data.chapterCountReason : "",
-      wordCountRange:           wordCount,
-      wordCountReason:          typeof data.wordCountReason === "string" ? data.wordCountReason : "",
-      positioningStatement:     strArr(data.positioningStatementSuggestions)[0] || "",
-      desiredEmotionalOutcome:  strArr(data.desiredEmotionalOutcomeSuggestions)[0] || "",
-      uniqueSellingProposition: strArr(data.uspSuggestions)[0] || "",
-      readerPainPoints:         typeof data.readerPainPoints === "string" ? data.readerPainPoints : "",
-      subtitle:                 typeof data.subtitle === "string" ? data.subtitle : "",
-      corePromise:              strArr(data.corePromiseSuggestions)[0] || "",
-      coreThesis:               strArr(data.coreThesisSuggestions)[0] || "",
-      uniqueMechanism:          mechFirst,
-      readerTransformationBefore: strArr(data.beforeStateSuggestions)[0] || "",
-      readerTransformationAfter:  strArr(data.afterStateSuggestions)[0] || "",
-      readerObjections:           strArr(data.readerObjections).join("\n"),
-      focusTopics:                strArr(data.focusTopics).join(", "),
-      _provider:                  usedProvider
+      // ── Recommendation card data (click-to-apply, not auto-fill) ──────────
+      chapterCount:       chapters,
+      chapterCountReason: typeof data.chapterCountReason === "string" ? data.chapterCountReason : "",
+      wordCountRange:     wordCount,
+      wordCountReason:    typeof data.wordCountReason === "string" ? data.wordCountReason : "",
+
+      _provider: usedProvider
     });
   } catch (error: any) {
     return aiErrorResponse(res, error);

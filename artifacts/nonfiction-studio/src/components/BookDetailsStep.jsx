@@ -293,10 +293,11 @@ function AltSuggestions({ suggestions, value, onSelect }) {
   if (!suggestions || suggestions.length === 0) return null;
   return (
     <div className="mt-3">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-violet-500">✦ AI Alternatives — click to use</p>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-violet-500">✦ AI Suggestions — click to apply</p>
       <div className="space-y-2">
         {suggestions.map((s, i) => {
           const active = value === s;
+          const isRec = i === 0;
           return (
             <button
               key={i}
@@ -308,6 +309,11 @@ function AltSuggestions({ suggestions, value, onSelect }) {
                   : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
+              {isRec && (
+                <span className="mb-1.5 inline-flex items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600 mr-1">
+                  ✦ Recommended
+                </span>
+              )}
               <span className="whitespace-pre-wrap">{s}</span>
             </button>
           );
@@ -323,11 +329,12 @@ function MechanismSuggestions({ suggestions, value, onSelect }) {
   if (!suggestions || suggestions.length === 0) return null;
   return (
     <div className="mt-3">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-violet-500">✦ AI Framework Alternatives — click to use</p>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-violet-500">✦ AI Framework Suggestions — click to apply</p>
       <div className="space-y-2">
         {suggestions.map((m, i) => {
           const formatted = `${m.name}\n\n${m.description}`;
           const active = value === formatted;
+          const isRec = i === 0;
           return (
             <button
               key={i}
@@ -339,7 +346,10 @@ function MechanismSuggestions({ suggestions, value, onSelect }) {
                   : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
-              <p className={`text-sm font-bold ${active ? "text-violet-800" : "text-slate-700"}`}>{m.name}</p>
+              <div className="flex items-center gap-2 mb-1">
+                {isRec && <span className="inline-flex items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">✦ Recommended</span>}
+                <p className={`text-sm font-bold ${active ? "text-violet-800" : "text-slate-700"}`}>{m.name}</p>
+              </div>
               <p className={`mt-1 text-xs leading-relaxed ${active ? "text-violet-700" : "text-slate-500"}`}>{m.description}</p>
             </button>
           );
@@ -406,10 +416,8 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
 
   const [aiGenerating, setAiGenerating]   = useState(false);
   const [aiError, setAiError]             = useState("");
-  const [aiGenFields, setAiGenFields]     = useState(new Set());
   const [aiGenPhase, setAiGenPhase]       = useState("");
   const [aiSuggestions, setAiSuggestions] = useState({});
-  const [replaceExisting, setReplaceExisting] = useState(false);
 
   const [wordCountRec, setWordCountRec]   = useState(null);
   const [chapterCountRec, setChapterCountRec] = useState(null);
@@ -476,7 +484,6 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
     if (aiGenerating) return;
     setAiGenerating(true);
     setAiError("");
-    setAiGenFields(new Set());
     setAiSuggestions({});
     setWordCountRec(null);
     setChapterCountRec(null);
@@ -503,8 +510,10 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         { noCache: true }
       );
 
-      // ── Populate suggestion chip arrays ──────────────────────────────────
-      setAiSuggestions({
+      console.log("[generate-details] raw response:", JSON.stringify(data).slice(0, 800));
+
+      // ── Store all suggestion arrays — NO auto-fill, user clicks to apply ──
+      const suggestions = {
         genreSuggestions:               data.genreSuggestions               || [],
         structureSuggestions:           data.structureSuggestions           || [],
         structureReasons:               data.structureReasons               || [],
@@ -520,55 +529,18 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         desiredEmotionalOutcomeSuggestions: data.desiredEmotionalOutcomeSuggestions || [],
         uspSuggestions:                  data.uspSuggestions                 || [],
         focusTopicsList:                 data.focusTopicsList                || [],
-        readerObjectionsList:            data.readerObjectionsList           || [],
-      });
-
-      // ── Auto-fill single values ──────────────────────────────────────────
-      const updates = {};
-      const filled = new Set();
-
-      // When replaceExisting=false, only fill fields currently empty
-      const shouldFill = (key) => replaceExisting || !String(bd[key] ?? "").trim();
-
-      const textFields = {
-        genre:                    data.genre,
-        tone:                     data.tone,
-        audience:                 data.audience,
-        researchIntensity:        data.researchIntensity,
-        uniqueSellingProposition: data.uniqueSellingProposition,
-        readerPainPoints:         data.readerPainPoints,
-        focusTopics:              data.focusTopics,
-        subtitle:                 data.subtitle,
-        corePromise:              data.corePromise,
-        coreThesis:               data.coreThesis,
-        uniqueMechanism:          data.uniqueMechanism,
-        readerTransformationBefore: data.readerTransformationBefore,
-        readerTransformationAfter:  data.readerTransformationAfter,
-        readerObjections:           data.readerObjections,
-        desiredEmotionalOutcome:    data.desiredEmotionalOutcome,
-        positioningStatement:       data.positioningStatement,
+        readerObjectionsSuggestions:     data.readerObjectionsSuggestions    || [],
+        readerPainPointsSuggestions:     data.readerPainPointsSuggestions    || [],
+        subtitleSuggestions:             data.subtitleSuggestions            || [],
       };
 
-      for (const [key, val] of Object.entries(textFields)) {
-        if (val && String(val).trim() && shouldFill(key)) {
-          updates[key] = String(val).trim();
-          filled.add(key);
-        }
-      }
+      console.log("[generate-details] suggestion counts:", Object.fromEntries(
+        Object.entries(suggestions).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
+      ));
 
-      if (data.chapterCount && Number.isFinite(data.chapterCount) && shouldFill("chapterCount")) {
-        updates.chapterCount = data.chapterCount;
-        filled.add("chapterCount");
-      }
-      if (data.wordCountRange && BOOK_WORD_COUNT_RANGES.includes(data.wordCountRange) && shouldFill("wordCountRange")) {
-        updates.wordCountRange = data.wordCountRange;
-        filled.add("wordCountRange");
-      }
-      if (data.structure && BOOK_STRUCTURE_OPTIONS.includes(data.structure) && shouldFill("structure")) {
-        updates.structure = data.structure;
-        filled.add("structure");
-      }
+      setAiSuggestions(suggestions);
 
+      // ── Word count / chapter count: show as click-to-apply cards ──────────
       if (data.wordCountRange && data.wordCountReason) {
         setWordCountRec({ range: data.wordCountRange, reason: data.wordCountReason });
       }
@@ -576,18 +548,6 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         setChapterCountRec({ count: data.chapterCount, reason: data.chapterCountReason });
       }
 
-      patch(updates);
-      setAiGenFields(filled);
-
-      if (filled.size > 0) {
-        setSuggestions((prev) => {
-          const next = { ...prev };
-          for (const k of filled) {
-            if (next[k]) next[k] = { ...next[k], status: "accepted" };
-          }
-          return next;
-        });
-      }
     } catch (e) {
       setAiError(e?.message || "Generation failed. Please try again.");
     } finally {
@@ -651,7 +611,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
   const activePersona = getActivePersona(fullProject);
   const personaNotes = buildPersonaNotes(fullProject?.authorPersona);
 
-  const hasAiSuggestions = aiGenFields.size > 0;
+  const hasAiSuggestions = Object.values(aiSuggestions).some((v) => Array.isArray(v) && v.length > 0);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -689,7 +649,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             {suggestedWordCount && (
               <span className="ml-2 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-700">Niche Recommended</span>
             )}
-            {aiGenFields.has("wordCountRange") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
 
           {wordCountRec && (
@@ -710,7 +670,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             {BOOK_WORD_COUNT_RANGES.map((range) => {
               const on  = bd.wordCountRange === range;
               const rec = suggestedWordCount === range;
-              const aiRec = aiGenFields.has("wordCountRange") && bd.wordCountRange === range;
+              const aiRec = false;
               return (
                 <button
                   key={range}
@@ -741,7 +701,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             {suggestedChapters && (
               <span className="ml-2 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-700">Niche Recommended</span>
             )}
-            {aiGenFields.has("chapterCount") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
 
           {chapterCountRec && (
@@ -762,7 +722,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             {BOOK_CHAPTER_OPTIONS.map((n) => {
               const on  = Number(bd.chapterCount) === n;
               const rec = suggestedChapters === n;
-              const aiRec = aiGenFields.has("chapterCount") && Number(bd.chapterCount) === n;
+              const aiRec = false;
               return (
                 <button
                   key={n}
@@ -812,7 +772,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="Clarifies the book's promise — inherited from Research if set.">
             Subtitle <span className="font-normal text-slate-400">(optional)</span>
-            {aiGenFields.has("subtitle") && <AiGeneratedBadge />}
+            {hasAiSuggestions && aiSuggestions.subtitleSuggestions?.length > 0 && <AiGeneratedBadge />}
           </FieldLabel>
           <input
             className="input-light mt-1.5"
@@ -820,7 +780,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             placeholder="e.g. The Entrepreneur's System for Unbreakable Daily Habits"
             onChange={(e) => patch({ subtitle: e.target.value })}
           />
-          {isActive("subtitle") && (
+          {!hasAiSuggestions && isActive("subtitle") && (
             <SuggestionBanner
               suggestion={suggestions.subtitle}
               onAccept={() => accept("subtitle", suggestions.subtitle.value)}
@@ -828,6 +788,11 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
               onRegen={() => regen("subtitle")}
             />
           )}
+          <AltSuggestions
+            suggestions={aiSuggestions.subtitleSuggestions}
+            value={bd.subtitle}
+            onSelect={(v) => patch({ subtitle: v })}
+          />
         </div>
 
         <SectionTitle>Positioning</SectionTitle>
@@ -839,7 +804,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           <div>
             <FieldLabel hint="Market category — inherited from your Research niche.">
               Genre
-              {aiGenFields.has("genre") && <AiGeneratedBadge />}
+              {hasAiSuggestions && <AiGeneratedBadge />}
             </FieldLabel>
             {aiSuggestions.genreSuggestions?.length > 0 ? (
               <ChipsWithCustom
@@ -873,7 +838,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           <div>
             <FieldLabel hint="Architectural blueprint — AI analyzes your concept to recommend the best fit.">
               Structure
-              {aiGenFields.has("structure") && <AiGeneratedBadge />}
+              {hasAiSuggestions && <AiGeneratedBadge />}
             </FieldLabel>
             {aiSuggestions.structureSuggestions?.length > 0 ? (
               <ChipsWithCustom
@@ -908,7 +873,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           <div>
             <FieldLabel hint="Dominant tonal register — inherited from Author Persona or Research.">
               Tone
-              {aiGenFields.has("tone") && <AiGeneratedBadge />}
+              {hasAiSuggestions && <AiGeneratedBadge />}
             </FieldLabel>
             {aiSuggestions.toneSuggestions?.length > 0 ? (
               <ChipsWithCustom
@@ -942,7 +907,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
           <div>
             <FieldLabel hint="Primary reader demographic.">
               Audience
-              {aiGenFields.has("audience") && <AiGeneratedBadge />}
+              {hasAiSuggestions && <AiGeneratedBadge />}
             </FieldLabel>
             {aiSuggestions.audienceSuggestions?.length > 0 ? (
               <ChipsWithCustom
@@ -977,7 +942,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint='Complete the template: "This book helps [audience] achieve [outcome] without [obstacle]."'>
             Positioning statement
-            {aiGenFields.has("positioningStatement") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[70px] resize-y"
@@ -998,7 +963,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="The specific, measurable outcome readers can expect after finishing this book.">
             Core promise
-            {aiGenFields.has("corePromise") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[80px] resize-y"
@@ -1017,7 +982,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="The central argument or conviction that anchors the entire book.">
             Core thesis
-            {aiGenFields.has("coreThesis") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[80px] resize-y"
@@ -1036,7 +1001,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="The proprietary framework or method used throughout the book — give it a marketable name.">
             Unique mechanism
-            {aiGenFields.has("uniqueMechanism") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[90px] resize-y"
@@ -1057,7 +1022,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="Concrete states readers experience before and after reading this book.">
             Reader transformation
-            {(aiGenFields.has("readerTransformationBefore") || aiGenFields.has("readerTransformationAfter")) && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
@@ -1095,7 +1060,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="Beliefs or frustrations that may prevent readers from accepting the book's message. One per line.">
             Reader objections
-            {aiGenFields.has("readerObjections") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[120px] resize-y"
@@ -1103,24 +1068,18 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             placeholder={"Nothing works for my ADHD\nI've already tried productivity systems\nI lack discipline\nI'm too scattered to build habits"}
             onChange={(e) => patch({ readerObjections: e.target.value })}
           />
-          {aiSuggestions.readerObjectionsList?.length > 0 && !bd.readerObjections?.trim() && (
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={() => patch({ readerObjections: aiSuggestions.readerObjectionsList.join("\n") })}
-                className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 underline"
-              >
-                ✦ Use {aiSuggestions.readerObjectionsList.length} AI-generated objections
-              </button>
-            </div>
-          )}
+          <AltSuggestions
+            suggestions={aiSuggestions.readerObjectionsSuggestions}
+            value={bd.readerObjections}
+            onSelect={(v) => patch({ readerObjections: v })}
+          />
         </div>
 
         {/* ── Desired Emotional Outcome ── */}
         <div>
           <FieldLabel hint="How should readers feel after finishing this book?">
             Desired emotional outcome
-            {aiGenFields.has("desiredEmotionalOutcome") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <input
             className="input-light mt-1.5"
@@ -1141,7 +1100,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="The commercial hook — why this book is the best choice in its niche.">
             Unique selling proposition
-            {aiGenFields.has("uniqueSellingProposition") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[100px] resize-y"
@@ -1168,7 +1127,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="The core frustrations your reader has before picking up this book.">
             Reader pain points
-            {aiGenFields.has("readerPainPoints") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[100px] resize-y"
@@ -1184,13 +1143,18 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
               onRegen={() => regen("readerPainPoints")}
             />
           )}
+          <AltSuggestions
+            suggestions={aiSuggestions.readerPainPointsSuggestions}
+            value={bd.readerPainPoints}
+            onSelect={(v) => patch({ readerPainPoints: v })}
+          />
         </div>
 
         {/* ── Focus Topics ── */}
         <div>
           <FieldLabel hint="Key topic areas that will guide outline and chapter generation. Comma-separated or one per line.">
             Focus topics
-            {aiGenFields.has("focusTopics") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
           <textarea
             className="input-light mt-1.5 min-h-[100px] resize-y"
@@ -1198,14 +1162,14 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             placeholder={"Executive Function Systems, Time Blindness Solutions, Task Initiation Methods, Dopamine Motivation, Focus Recovery Protocols"}
             onChange={(e) => patch({ focusTopics: e.target.value })}
           />
-          {aiSuggestions.focusTopicsList?.length > 0 && !bd.focusTopics?.trim() && (
+          {aiSuggestions.focusTopicsList?.length > 0 && (
             <div className="mt-2">
               <button
                 type="button"
                 onClick={() => patch({ focusTopics: aiSuggestions.focusTopicsList.join(", ") })}
                 className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 underline"
               >
-                ✦ Use {aiSuggestions.focusTopicsList.length} AI-suggested focus topics
+                ✦ {bd.focusTopics?.trim() ? "Replace with" : "Use"} {aiSuggestions.focusTopicsList.length} AI-suggested focus topics
               </button>
             </div>
           )}
@@ -1223,7 +1187,7 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         <div>
           <FieldLabel hint="Determines citation density and evidence requirements during chapter generation.">
             Research intensity
-            {aiGenFields.has("researchIntensity") && <AiGeneratedBadge />}
+            {hasAiSuggestions && <AiGeneratedBadge />}
           </FieldLabel>
 
           {aiSuggestions.researchIntensitySuggestions?.length > 0 ? (
@@ -1308,17 +1272,14 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
       </div>
 
       {/* ── AI Generation success banner ── */}
-      {!aiGenerating && aiGenFields.size > 0 && (
+      {!aiGenerating && hasAiSuggestions && (
         <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
           <div className="flex items-start gap-3">
             <span className="text-emerald-500 text-lg">✦</span>
             <div>
-              <p className="text-sm font-bold text-emerald-800">Strategic Details Generated Successfully</p>
+              <p className="text-sm font-bold text-emerald-800">Suggestions Ready for All Fields</p>
               <p className="mt-0.5 text-xs text-emerald-700">
-                {aiGenFields.size} field{aiGenFields.size !== 1 ? "s" : ""} filled with AI recommendations. Each field with 3 alternatives was populated with the best-fit suggestion — click any chip above to switch.
-              </p>
-              <p className="mt-1 text-[11px] text-emerald-600">
-                {[...aiGenFields].map((k) => FIELD_LABELS[k] || k).filter(Boolean).join(" · ")}
+                Every field now has a <strong>✦ Recommended</strong> suggestion plus 2 alternatives. Click any suggestion chip above to apply it — your existing content is never overwritten until you choose.
               </p>
             </div>
           </div>
@@ -1360,25 +1321,6 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             )}
           </button>
 
-          {hasAiSuggestions && !aiGenerating && (
-            <label className="flex cursor-pointer items-center gap-2 justify-center">
-              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
-                replaceExisting ? "border-amber-400 bg-amber-400" : "border-slate-300 bg-white"
-              }`}>
-                {replaceExisting && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
-              </span>
-              <input
-                type="checkbox"
-                className="sr-only"
-                checked={replaceExisting}
-                onChange={(e) => setReplaceExisting(e.target.checked)}
-              />
-              <span className={`text-xs font-medium ${replaceExisting ? "text-amber-700" : "text-slate-500"}`}>
-                Replace existing content
-                {!replaceExisting && <span className="ml-1 text-slate-400">(unchecked = only fill empty fields)</span>}
-              </span>
-            </label>
-          )}
         </div>
 
         {/* Export Blueprint */}

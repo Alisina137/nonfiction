@@ -1235,7 +1235,8 @@ INSTRUCTIONS
 - uniqueMechanismSuggestions: invent 3 distinct marketable proprietary framework names with explanations.
 - Positioning Statement template: "This book helps [audience] achieve [outcome] without [obstacle]."
 - focusTopics: 10–20 highly specific strategic topic areas.
-- readerObjections: 5–10 realistic objections this specific audience would have.
+- readerObjectionsSuggestions: 3 DIFFERENT sets of 5–8 realistic objections. Each set is a single string with one objection per line (use literal \\n). Each set should emphasize different objection angles (e.g., set 1: practical barriers; set 2: emotional/mindset resistance; set 3: past-failure skepticism).
+- readerPainPointsSuggestions: 3 different 2–3 sentence narratives of the reader's core frustrations, from different emotional angles.
 - beforeStateSuggestions / afterStateSuggestions: 3 multi-line alternatives (4–6 states per alternative, one state per line).
 - chapterCount: integer 5–15. wordCountRange: pick from WORD COUNT options.
 
@@ -1274,12 +1275,20 @@ OUTPUT — return only this JSON object:
     "<state2a>\\n<state2b>\\n<state2c>\\n<state2d>",
     "<state3a>\\n<state3b>\\n<state3c>\\n<state3d>"
   ],
-  "readerObjections": ["<objection1>", "<objection2>", "<objection3>", "<objection4>", "<objection5>"],
+  "readerObjectionsSuggestions": [
+    "<objection1>\\n<objection2>\\n<objection3>\\n<objection4>\\n<objection5>",
+    "<alt_b_obj1>\\n<alt_b_obj2>\\n<alt_b_obj3>\\n<alt_b_obj4>\\n<alt_b_obj5>",
+    "<alt_c_obj1>\\n<alt_c_obj2>\\n<alt_c_obj3>\\n<alt_c_obj4>\\n<alt_c_obj5>"
+  ],
+  "readerPainPointsSuggestions": [
+    "<version 1: 2-3 sentence pain narrative from a practical angle>",
+    "<version 2: 2-3 sentence pain narrative from an emotional angle>",
+    "<version 3: 2-3 sentence pain narrative from a missed-potential angle>"
+  ],
   "desiredEmotionalOutcomeSuggestions": ["<outcome1>", "<outcome2>", "<outcome3>"],
   "uspSuggestions": ["<usp1>", "<usp2>", "<usp3>"],
   "focusTopics": ["<topic1>", "<topic2>", "<topic3>", "<topic4>", "<topic5>", "<topic6>", "<topic7>", "<topic8>", "<topic9>", "<topic10>"],
-  "subtitle": "<subtitle or empty string if existing subtitle is strong>",
-  "readerPainPoints": "<2-3 sentences: reader's core frustrations before picking up this book>"
+  "subtitle": "<subtitle or empty string if existing subtitle is strong>"
 }`;
 }
 
