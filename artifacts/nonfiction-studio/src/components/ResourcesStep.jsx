@@ -448,8 +448,16 @@ function AddFindingForm({ onAdd, onRequestGenerate, generating, generateError })
 
   function submit() {
     if (!f.body.trim()) return;
+    const currentCategory = f.category;
+    const currentPriority = f.priority;
     onAdd({ id: safeId(), ...f, label: f.label.trim() || "Finding", body: f.body.trim() });
-    setF({ label: "", body: "", category: "note", priority: "medium", useFor: ["entire_book"], isStyleRef: false });
+    setF((prev) => ({
+      ...prev,
+      label:    "",
+      body:     "",
+      priority: currentPriority,
+      category: getNextCategory(currentCategory),
+    }));
   }
 
   async function handleGenerate() {
@@ -458,8 +466,8 @@ function AddFindingForm({ onAdd, onRequestGenerate, generating, generateError })
     if (result) {
       setF((prev) => ({
         ...prev,
-        label: result.title   || "",
-        body:  result.content || ""
+        label: prev.label.trim() ? prev.label : (result.title   || ""),
+        body:  prev.body.trim()  ? prev.body  : (result.content || ""),
       }));
     }
   }

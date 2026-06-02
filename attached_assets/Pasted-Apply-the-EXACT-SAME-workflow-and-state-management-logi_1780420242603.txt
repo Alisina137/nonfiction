@@ -1,0 +1,206 @@
+Apply the EXACT SAME workflow and state-management logic used for Resources/Links to the Findings section.
+
+CURRENT ISSUE
+
+The Findings form resets after adding a finding.
+
+Category resets to:
+
+* Note / Finding
+
+Priority resets to:
+
+* Medium
+
+This is not desired.
+
+---
+
+## DESIRED FINDINGS WORKFLOW
+
+Example:
+
+Category = Statistics Source
+Priority = High
+
+Click Generate Finding
+
+Result:
+
+* AI fills empty fields only
+* Category remains Statistics Source
+* Priority remains High
+* No category advancement
+* No resets
+
+User reviews content.
+
+Click Add Finding
+
+Result:
+
+* Finding is saved
+* Title/Tag is cleared
+* Content is cleared
+
+THEN:
+
+* Category advances to the next option
+* Priority remains High
+
+---
+
+## IMPORTANT RULE
+
+Generate Finding:
+
+* NEVER advance category
+* NEVER change priority
+* NEVER reset form
+
+Add Finding:
+
+* Save finding
+* Clear finding-specific fields
+* Advance category
+* Preserve priority
+
+---
+
+## CATEGORY ADVANCEMENT
+
+Advance ONLY after successful Add Finding.
+
+Category sequence:
+
+Academic Paper
+→ Book
+→ Government Report
+→ Research Study
+→ Competitor Book
+→ Case Study
+→ Statistics Source
+→ Interview / Transcript
+→ Blog / Article
+→ Writing Style Reference
+→ Note / Finding
+→ Other
+
+If current category is Other:
+
+* Keep Other
+* Do not wrap to the beginning
+
+---
+
+## FIELDS TO CLEAR AFTER ADD FINDING
+
+Clear only:
+
+title = ""
+content = ""
+
+(or equivalent field names)
+
+Do NOT clear:
+
+category
+priority
+useFor selections
+writing style checkbox
+other persistent preferences
+
+---
+
+## STATE MANAGEMENT
+
+Before Add Finding:
+
+const currentCategory = findingForm.category;
+const currentPriority = findingForm.priority;
+
+Save finding.
+
+After Save:
+
+findingForm.title = "";
+findingForm.content = "";
+
+findingForm.priority = currentPriority;
+findingForm.category = getNextCategory(currentCategory);
+
+---
+
+## GENERATE FINDING LOGIC
+
+Before Generate:
+
+const currentCategory = findingForm.category;
+const currentPriority = findingForm.priority;
+
+Generate finding content.
+
+After Generate:
+
+findingForm.category = currentCategory;
+findingForm.priority = currentPriority;
+
+No advancement.
+No reset.
+
+---
+
+## EXPECTED USER EXPERIENCE
+
+Finding #1
+
+Category = Statistics Source
+Priority = High
+
+Generate Finding
+
+Result:
+Category = Statistics Source
+Priority = High
+
+Add Finding
+
+Result:
+Category = Interview / Transcript
+Priority = High
+Title cleared
+Content cleared
+
+Finding #2
+
+Generate Finding
+
+Result:
+Category = Interview / Transcript
+Priority = High
+
+Add Finding
+
+Result:
+Category = Blog / Article
+Priority = High
+
+Continue until user manually changes Category or Priority.
+
+---
+
+## FINAL REQUIREMENT
+
+Both sections must behave identically:
+
+RESOURCES:
+
+* Generate Resource → preserve category and priority
+* Add Link → advance category, preserve priority
+
+FINDINGS:
+
+* Generate Finding → preserve category and priority
+* Add Finding → advance category, preserve priority
+
+No form should ever reset Category to its default value or Priority to Medium unless the user explicitly changes them.
