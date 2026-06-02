@@ -8,6 +8,7 @@ import {
   coverCriticPrompt,
   coverVariantsPrompt,
   descriptionPrompt,
+  generateAuthorPersonaPrompt,
   generateDetailsPrompt,
   generateFieldSuggestionPrompt,
   generateFindingPrompt,
@@ -483,6 +484,54 @@ router.post("/generate-resource", async (req, res) => {
       url:   typeof data.url   === "string" ? data.url.trim()   : "",
       label: typeof data.label === "string" ? data.label.trim() : "",
       note:  typeof data.note  === "string" ? data.note.trim()  : "",
+      _provider: usedProvider
+    });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/generate-author-persona", async (req, res) => {
+  try {
+    const { project } = req.body || {};
+    if (!project || typeof project !== "object") {
+      return res.status(400).json({ error: "project object is required" });
+    }
+    const prompt = generateAuthorPersonaPrompt(project);
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "authorPersona");
+    const data = extractJSON(text);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "AI returned unparseable persona data." });
+    }
+    const clamp = (v: any, def: number) =>
+      typeof v === "number" && isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : def;
+    const strArr = (v: any) => Array.isArray(v) ? v.filter((x: any) => typeof x === "string" && x.trim()) : [];
+
+    const controls = data.writingStyleControls || {};
+    const strength = data.personaStrength      || {};
+
+    return res.json({
+      authorArchetype:        typeof data.authorArchetype    === "string" ? data.authorArchetype.trim()    : "",
+      authorDescription:      typeof data.authorDescription  === "string" ? data.authorDescription.trim()  : "",
+      coreAuthorPromise:      typeof data.coreAuthorPromise  === "string" ? data.coreAuthorPromise.trim()  : "",
+      readerRelationship:     typeof data.readerRelationship === "string" ? data.readerRelationship.trim() : "",
+      signatureTeachingStyle: strArr(data.signatureTeachingStyle),
+      signatureElements:      strArr(data.signatureElements),
+      signatureFramework:     typeof data.signatureFramework === "string" ? data.signatureFramework.trim() : "",
+      voiceSummary:           typeof data.voiceSummary       === "string" ? data.voiceSummary.trim()       : "",
+      writingStyleControls: {
+        tone:         clamp(controls.tone,         30),
+        inspiration:  clamp(controls.inspiration,  50),
+        authority:    clamp(controls.authority,     70),
+        storytelling: clamp(controls.storytelling,  40),
+        complexity:   clamp(controls.complexity,    30)
+      },
+      personaStrength: {
+        score:       clamp(strength.score, 0),
+        strengths:   strArr(strength.strengths),
+        suggestions: strArr(strength.suggestions)
+      },
+      writingSample: typeof data.writingSample === "string" ? data.writingSample.trim() : "",
       _provider: usedProvider
     });
   } catch (error: any) {

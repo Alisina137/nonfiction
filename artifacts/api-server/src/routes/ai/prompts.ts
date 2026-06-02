@@ -1,3 +1,106 @@
+export function generateAuthorPersonaPrompt(project: any) {
+  const research  = project?.research  || {};
+  const intel     = project?.analysis?.intelligence || {};
+  const pb        = project?.proposedBook?.content  || {};
+  const bd        = project?.bookDetails || {};
+  const books     = project?.analysis?.books || [];
+
+  const title     = bd.title || research.bookTitle || project?.bookTitle?.selectedCard?.title || "";
+  const subtitle  = bd.subtitle || "";
+  const topic     = research.bookTopic || "";
+  const niche     = [research.mainNicheLabel, research.subNicheLabel, research.deepNicheLabel].filter(Boolean).join(" › ");
+  const audience  = bd.audience || pb.proposedAudience || research.targetAudience || intel.targetAudience || "";
+  const painProfile       = intel.readerPainProfile      || "";
+  const transformation    = intel.transformationPromise  || pb.proposedTransformation || "";
+  const marketGap         = intel.marketGapAnalysis      || "";
+  const positioningStrat  = intel.positioningStrategy    || "";
+  const corePromise       = bd.corePromise               || "";
+  const uniqueMechanism   = bd.uniqueMechanism           || "";
+  const beforeState       = bd.readerTransformationBefore || "";
+  const afterState        = bd.readerTransformationAfter  || "";
+  const tone              = bd.tone || intel.energyStyle  || "";
+  const structure         = bd.structure                  || "";
+  const genre             = bd.genre || research.mainNicheLabel || "";
+  const competitorBlock   = books.slice(0, 6)
+    .map((b: any) => `- "${b.title || ""}"${b.author ? ` by ${b.author}` : ""}`)
+    .filter((s: string) => s.length > 3)
+    .join("\n") || "(none provided)";
+
+  return `You are an expert author brand strategist and publishing consultant.
+
+Analyze all of the project data below and generate a comprehensive, strategically optimized Author Persona.
+Every field must be specific to THIS book and audience — never generic.
+
+═══ PROJECT DATA ═══════════════════════════════
+
+BOOK TITLE: ${title || "(not set)"}
+SUBTITLE: ${subtitle || "(not set)"}
+TOPIC: ${topic || "(not set)"}
+NICHE: ${niche || "(not set)"}
+
+TARGET AUDIENCE: ${audience || "(not set)"}
+READER PAIN PROFILE: ${painProfile || "(not set)"}
+TRANSFORMATION PROMISE: ${transformation || "(not set)"}
+MARKET GAP: ${marketGap || "(not set)"}
+POSITIONING STRATEGY: ${positioningStrat || "(not set)"}
+
+CORE PROMISE: ${corePromise || "(not set)"}
+UNIQUE MECHANISM: ${uniqueMechanism || "(not set)"}
+READER BEFORE: ${beforeState || "(not set)"}
+READER AFTER: ${afterState || "(not set)"}
+TONE: ${tone || "(not set)"}
+STRUCTURE: ${structure || "(not set)"}
+GENRE: ${genre || "(not set)"}
+
+COMPETITOR BOOKS:
+${competitorBlock}
+
+═══════════════════════════════════════════════
+
+Based on ALL of this data, determine the OPTIMAL author persona that will:
+1. Resonate most powerfully with the specific target audience
+2. Differentiate clearly from competitor approaches
+3. Fill the identified market gap
+4. Deliver the transformation promise credibly
+5. Match niche audience expectations
+
+Return ONLY valid JSON — no commentary before or after:
+
+{
+  "authorArchetype": "ONE of: Trusted Expert | Friendly Mentor | Inspirational Motivator | Academic Researcher | Investigative Journalist | Business Strategist | Transformation Coach | Storytelling Teacher | Practical Practitioner | Thought Leader",
+  "authorDescription": "2–3 sentence author bio in third person, specific to this topic and audience",
+  "coreAuthorPromise": "The single sentence promise this author makes to readers (e.g. I help X achieve Y without Z)",
+  "readerRelationship": "ONE of: Mentor | Coach | Teacher | Guide | Friend | Consultant | Professor",
+  "signatureTeachingStyle": ["2–4 values from: Framework-Based, Step-by-Step, Checklist Driven, Case Study Driven, Story Driven, Research Driven, Exercise Driven, Blueprint Driven, Roadmap Driven"],
+  "signatureElements": ["3–6 values from: Action Plans, Reflection Questions, Worksheets, Templates, Case Studies, Stories, Checklists, Quotes, Research Findings, Chapter Summaries, Key Takeaways"],
+  "signatureFramework": "A proprietary framework name with trademark symbol e.g. The Campus Affiliate Blueprint™",
+  "voiceSummary": "Master AI instruction: Write like a [role] who [method] for [audience]. Maintain [tone]. Use [style]. Avoid [anti-patterns].",
+  "writingStyleControls": {
+    "tone": 30,
+    "inspiration": 50,
+    "authority": 70,
+    "storytelling": 40,
+    "complexity": 30
+  },
+  "personaStrength": {
+    "score": 85,
+    "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
+    "suggestions": ["specific suggestion 1", "specific suggestion 2"]
+  },
+  "writingSample": "2–3 sentence writing sample that demonstrates this author's voice speaking to the target audience about the core topic"
+}
+
+RULES for writingStyleControls (integers 0–100):
+- tone: 0 = fully Conversational, 100 = fully Formal
+- inspiration: 0 = fully Practical, 100 = fully Inspirational
+- authority: 0 = Peer (equal footing), 100 = Expert (authoritative)
+- storytelling: 0 = Minimal (data/logic focused), 100 = Heavy (narrative driven)
+- complexity: 0 = Beginner (simple vocabulary), 100 = Advanced (expert vocabulary)
+
+personaStrength.score: integer 0–100 evaluating clarity, differentiation, audience fit, consistency, and commercial viability.
+voiceSummary will be injected verbatim into every AI generation call — make it a precise, actionable master instruction.`;
+}
+
 export function systemPrompt() {
   return `You are an expert AI Book Architect, Academic Formatter, and Amazon KDP Publishing Specialist.
 

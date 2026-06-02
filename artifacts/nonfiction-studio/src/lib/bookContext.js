@@ -34,6 +34,16 @@ export function getActivePersona(project) {
 // ─── Author summary (compressed persona + bio) ────────────────────────────────
 
 function buildAuthorSummary(persona, bio) {
+  if (persona) {
+    // voiceSummary is the master AI instruction — use it as the primary source
+    const voiceSummary = persona.voiceSummary || persona.generated?.voiceSummary || "";
+    if (voiceSummary) {
+      const framework = persona.signatureFramework || persona.generated?.signatureFramework || "";
+      const suffix = framework ? ` Uses the ${cap(framework, 60)}.` : "";
+      return cap(voiceSummary + suffix, 320);
+    }
+  }
+
   const parts = [];
 
   if (persona) {
@@ -42,6 +52,12 @@ function buildAuthorSummary(persona, bio) {
 
     const inspired = persona.inspiredBy || persona.draft?.inspiredBy || "";
     if (inspired) parts.push(`Inspired by: ${cap(inspired, 60)}`);
+
+    const archetype = persona.authorArchetype || "";
+    if (archetype) parts.push(`Archetype: ${cap(archetype, 40)}`);
+
+    const relationship = persona.readerRelationship || "";
+    if (relationship) parts.push(`Relationship: ${cap(relationship, 30)}`);
 
     const voiceTone = persona.generated?.voice?.tone;
     const voiceMood = persona.generated?.voice?.mood;

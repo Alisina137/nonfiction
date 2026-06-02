@@ -1,0 +1,360 @@
+Add the following advanced Author Persona system to Nonfiction AI Studio.
+
+GOAL
+
+Transform the Author Persona step from a simple profile form into a strategic author voice engine that influences:
+
+* Outline generation
+* Chapter generation
+* Writing style
+* Examples
+* Frameworks
+* Exercises
+* Reader engagement
+* Book positioning
+
+================================================
+NEW FEATURE #1
+AUTO-GENERATE AUTHOR PERSONA
+============================
+
+Add a button at the top of the Author Persona page:
+
+[ ✨ Generate Author Persona ]
+
+When clicked, the AI should analyze ALL previous steps:
+
+* Research
+* Resources
+* Findings
+* Market Analysis
+* Competitor Books
+* Target Audience
+* Reader Pain Profile
+* Transformation Promise
+* Market Gap
+* Positioning Strategy
+* Bestseller DNA
+* Book Title
+* Subtitle
+* Topic
+* Book Structure
+
+Then automatically fill ALL Author Persona fields.
+
+---
+
+## AI INSTRUCTIONS
+
+Determine:
+
+* Most effective author archetype
+* Most effective teaching style
+* Most effective reader relationship
+* Most effective tone
+* Most effective writing style
+* Most effective framework
+* Most effective author promise
+
+based on:
+
+* audience
+* market gap
+* competitor patterns
+* transformation
+* niche expectations
+
+================================================
+NEW FEATURE #2
+AUTHOR ARCHETYPE
+================
+
+Add dropdown:
+
+Author Archetype
+
+Options:
+
+* Trusted Expert
+* Friendly Mentor
+* Inspirational Motivator
+* Academic Researcher
+* Investigative Journalist
+* Business Strategist
+* Transformation Coach
+* Storytelling Teacher
+* Practical Practitioner
+* Thought Leader
+
+Auto-fill recommendation.
+
+Example:
+
+Friendly Mentor
+
+================================================
+NEW FEATURE #3
+CORE AUTHOR PROMISE
+===================
+
+Field:
+
+Core Author Promise
+
+Description:
+
+What is the central promise this author makes?
+
+Example:
+
+"I help college students build affiliate income without sacrificing their education."
+
+This should influence:
+
+* introductions
+* conclusions
+* chapter framing
+* examples
+
+================================================
+NEW FEATURE #4
+READER RELATIONSHIP
+===================
+
+Dropdown:
+
+Reader Relationship
+
+Options:
+
+* Mentor
+* Coach
+* Teacher
+* Guide
+* Friend
+* Consultant
+* Professor
+
+Example:
+
+Mentor
+
+This controls how the AI speaks to readers.
+
+================================================
+NEW FEATURE #5
+SIGNATURE TEACHING STYLE
+========================
+
+Multi-select
+
+Options:
+
+* Framework-Based
+* Step-by-Step
+* Checklist Driven
+* Case Study Driven
+* Story Driven
+* Research Driven
+* Exercise Driven
+* Blueprint Driven
+* Roadmap Driven
+
+Example:
+
+✓ Framework-Based
+✓ Step-by-Step
+✓ Blueprint Driven
+
+This influences:
+
+* chapter organization
+* explanations
+* exercises
+
+================================================
+NEW FEATURE #6
+SIGNATURE ELEMENTS
+==================
+
+Multi-select
+
+What recurring elements should appear throughout the book?
+
+Options:
+
+☐ Action Plans
+☐ Reflection Questions
+☐ Worksheets
+☐ Templates
+☐ Case Studies
+☐ Stories
+☐ Checklists
+☐ Quotes
+☐ Research Findings
+☐ Chapter Summaries
+☐ Key Takeaways
+
+Example:
+
+✓ Action Plans
+✓ Checklists
+✓ Case Studies
+✓ Chapter Summaries
+
+The generator should consistently include these.
+
+================================================
+NEW FEATURE #7
+UNIQUE FRAMEWORK NAME
+=====================
+
+Field:
+
+Signature Framework
+
+AI should generate a proprietary framework.
+
+Examples:
+
+Student-to-Earner System™
+
+Campus Affiliate Blueprint™
+
+First Commission Framework™
+
+This framework should become the foundation of:
+
+* outline generation
+* chapter progression
+* book positioning
+
+================================================
+NEW FEATURE #8
+AI VOICE SUMMARY
+================
+
+Field:
+
+Voice Summary
+
+AI-generated.
+
+Example:
+
+"Write like a supportive mentor who simplifies affiliate marketing for college students using practical frameworks, real-world examples, and action-oriented guidance. Maintain a conversational, encouraging, and trustworthy tone while avoiding hype and unrealistic promises."
+
+This summary becomes a master instruction injected into all generation prompts.
+
+================================================
+NEW FEATURE #9
+WRITING STYLE CONTROLS
+======================
+
+Add sliders.
+
+Tone:
+Conversational ←→ Formal
+
+Inspiration:
+Practical ←→ Inspirational
+
+Authority:
+Peer ←→ Expert
+
+Storytelling:
+Minimal ←→ Heavy
+
+Complexity:
+Beginner ←→ Advanced
+
+Auto-populate recommended values.
+
+================================================
+NEW FEATURE #10
+PERSONA STRENGTH SCORE
+======================
+
+Show:
+
+Persona Strength Score
+
+Example:
+
+92 / 100
+
+AI evaluates:
+
+* clarity
+* positioning
+* differentiation
+* audience fit
+* consistency
+* commercial viability
+
+Then show:
+
+Strengths:
+
+* Strong mentor positioning
+* Clear transformation promise
+
+Suggestions:
+
+* Add proprietary framework
+* Add more distinctive teaching elements
+
+================================================
+AUTO-GENERATION OUTPUT
+======================
+
+When Generate Author Persona is clicked, AI should return:
+
+{
+"authorName": "",
+"authorDescription": "",
+"authorArchetype": "",
+"coreAuthorPromise": "",
+"readerRelationship": "",
+"signatureTeachingStyle": [],
+"signatureElements": [],
+"signatureFramework": "",
+"voiceSummary": "",
+"writingStyleControls": {
+"tone": 0,
+"inspiration": 0,
+"authority": 0,
+"storytelling": 0,
+"complexity": 0
+},
+"personaStrengthScore": 0,
+"writingSample": ""
+}
+
+================================================
+IMPORTANT
+=========
+
+The Author Persona generator must use all previous project data.
+
+It should not generate generic personas.
+
+The generated persona must align with:
+
+* topic
+* audience
+* market gap
+* competitor analysis
+* transformation promise
+* book structure
+
+The resulting persona should directly influence all downstream steps:
+
+* Proposed Book
+* Details
+* Outline
+* Writing
+* Description
+* Book Cover
+* Export Blueprint
+* Final Manuscript

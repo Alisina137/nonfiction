@@ -1192,6 +1192,7 @@ export default function Dashboard() {
                         : { ...(p.authorPersona || emptyAuthorPersona), ...partial }
                   }))
                 }
+                fullProject={project}
               />
               {authorPersonaErrors.form && (
                 <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-red-600">{authorPersonaErrors.form}</p>
