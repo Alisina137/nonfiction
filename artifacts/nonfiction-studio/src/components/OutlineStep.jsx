@@ -249,6 +249,7 @@ export default function OutlineStep({
   const [genStatus, setGenStatus] = useState("");
   const [regenBusy, setRegenBusy]       = useState({});
   const [genSubsBusy, setGenSubsBusy]   = useState({});
+  const [genSecsBusy, setGenSecsBusy]   = useState({});
 
   const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const intro = normalizeIntro(boRaw.introduction);
@@ -394,6 +395,42 @@ export default function OutlineStep({
       else setGenStatus(e.message || "Could not generate outline.");
     } finally {
       setGenBusy(false);
+    }
+  }
+
+  // ─── Generate all sections for a chapter ──────────────────────────────────
+
+  async function generateSections(chId, chapterTitle, sectionCount) {
+    setGenSecsBusy((p) => ({ ...p, [chId]: true }));
+    try {
+      const bd = fullProject?.bookDetails || {};
+      const data = await aiFetch("/api/ai/generate-sections", {
+        bookTitle:      resolveBookTitle(fullProject),
+        chapterTitle,
+        sectionCount:   Math.max(1, sectionCount),
+        corePromise:    bd.corePromise    || "",
+        coreThesis:     bd.coreThesis     || "",
+        chapterPurpose: "",
+        research:       fullProject?.research,
+      });
+      const titles = Array.isArray(data.titles) ? data.titles : [];
+      if (titles.length === 0) return;
+      updateChapterById(chId, (ch) => {
+        const chWords = Number(ch.words) || 1200;
+        const secWords = Math.max(150, Math.round(chWords / Math.max(titles.length, 1)));
+        return normalizeChapter({
+          ...ch,
+          expanded: true,
+          sections: titles.map((title) => normalizeSection({
+            ...newSectionSkeleton(secWords),
+            title,
+          })),
+        });
+      });
+    } catch (e) {
+      console.error("[generate-sections]", e?.message);
+    } finally {
+      setGenSecsBusy((p) => { const n = { ...p }; delete n[chId]; return n; });
     }
   }
 
@@ -573,6 +610,24 @@ export default function OutlineStep({
                       {[0, ...COUNT_OPTS].map((v) => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </label>
+                  {(() => {
+                    const secBusy  = !!genSecsBusy[ch.id];
+                    const secCount = Math.max(1, Math.min(secs.length, 15)) || 3;
+                    return (
+                      <button
+                        type="button"
+                        disabled={secBusy || secCount === 0}
+                        title={`Generate ${secCount} section title${secCount !== 1 ? "s" : ""} for this chapter using the AI engine`}
+                        onClick={() => generateSections(ch.id, ch.title, secCount)}
+                        className="flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[10px] font-semibold text-violet-700 transition hover:bg-violet-100 disabled:opacity-50"
+                      >
+                        {secBusy
+                          ? <><span className="h-2.5 w-2.5 animate-spin rounded-full border border-violet-300 border-t-violet-600" />Gen…</>
+                          : "✦ Sections"
+                        }
+                      </button>
+                    );
+                  })()}
                   <label className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-700">
                     Words
                     <input

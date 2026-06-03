@@ -1657,6 +1657,193 @@ OUTPUT — return only this JSON object:
 
 // ─── Subsection Generation Engine ──────────────────────────────────────────────
 
+export function sectionGenerationPrompt(
+  bookTitle: string,
+  chapterTitle: string,
+  sectionCount: number,
+  research?: any,
+  corePromise?: string,
+  coreThesis?: string,
+  chapterPurpose?: string
+): string {
+  const niche    = research?.mainNicheLabel || "";
+  const subNiche = research?.subNicheLabel  || "";
+  const audience = research?.targetAudience || "";
+  const topic    = research?.bookTopic      || "";
+
+  const purposeLine = chapterPurpose?.trim()
+    ? `Chapter Purpose:\n${chapterPurpose.trim()}`
+    : `Chapter Purpose:\nDeliver the full promise of this chapter: "${chapterTitle}"`;
+
+  const contextBlock = [
+    topic    ? `Book Topic: ${topic}` : "",
+    niche    ? `Niche: ${niche}${subNiche ? ` › ${subNiche}` : ""}` : "",
+    audience ? `Target Audience: ${audience}` : ""
+  ].filter(Boolean).join("\n");
+
+  return `You are an elite nonfiction book architect, developmental editor, and bestselling book strategist.
+
+Your task is to generate ALL section titles for a chapter at the same time.
+
+BOOK STRUCTURE
+Book
+└─ Chapter
+   └─ Section
+      └─ Subsection
+
+INPUTS
+
+Book Title: ${bookTitle || "(not set)"}
+
+Book Core Promise: ${corePromise?.trim() || "Provide meaningful, actionable value to the target audience."}
+
+Book Core Thesis: ${coreThesis?.trim() || "Help readers achieve the transformation this book promises."}
+
+Chapter Title: ${chapterTitle}
+
+${purposeLine}
+
+Desired Number of Sections: ${sectionCount}${contextBlock ? `\n\n${contextBlock}` : ""}
+
+====================================================
+
+PRIMARY OBJECTIVE
+
+Generate section titles that fully expand and deliver the promise of the chapter.
+
+Each section should represent a major pillar of the chapter.
+
+When combined, all section titles should create a complete learning journey for the reader.
+
+====================================================
+
+RULE 1 — CHAPTER EXPANSION
+
+Every section must directly support and expand the chapter title.
+
+Ask: "Does this section help the reader better understand, apply, or benefit from the chapter?"
+
+If not, reject it. Never generate sections unrelated to the chapter.
+
+====================================================
+
+RULE 2 — NO DUPLICATES
+
+Every section title must be unique.
+
+Forbidden:
+❌ Exact duplicates
+❌ Similar wording
+❌ Same concept phrased differently
+❌ Multiple sections teaching the same lesson
+
+Before returning results, compare every section title against every other section title.
+
+If overlap exists: Regenerate.
+
+====================================================
+
+RULE 3 — DIFFERENT LEARNING ANGLES
+
+Each section must explore a different major aspect of the chapter.
+
+Possible angles: Foundations, Causes, Psychology, Science, Frameworks, Strategies, Systems, Habits, Mistakes, Obstacles, Case Studies, Real Examples, Implementation, Advanced Techniques, Long-Term Application.
+
+Do not repeat the same angle.
+
+====================================================
+
+RULE 4 — COMPLETE COVERAGE
+
+The combined sections should fully cover the chapter topic.
+
+A reader should feel: "This chapter explored the topic from every important angle."
+
+Avoid gaps. Avoid redundancy.
+
+====================================================
+
+RULE 5 — LOGICAL PROGRESSION
+
+Arrange sections in a logical sequence.
+
+Recommended flow:
+1. Understanding
+2. Why It Happens
+3. Consequences
+4. Solutions
+5. Systems
+6. Implementation
+7. Long-Term Success
+
+====================================================
+
+RULE 6 — BOOK ALIGNMENT
+
+Every section must support: Book Title, Core Promise, Core Thesis, Chapter Purpose.
+
+Do not create sections that contradict the overall book positioning.
+
+====================================================
+
+RULE 7 — SECTION QUALITY
+
+Avoid generic titles.
+
+Forbidden:
+❌ Introduction
+❌ Overview
+❌ Key Concepts
+❌ Main Ideas
+❌ Summary
+❌ Final Thoughts
+
+Create professional, compelling, commercially valuable section titles.
+
+Each title should feel like it belongs in a bestselling nonfiction book.
+
+====================================================
+
+RULE 8 — SELF-AUDIT
+
+Before returning results, check every section title:
+1. Is it directly related to the chapter?
+2. Is it unique?
+3. Does it teach something different from every other section?
+4. Does it help fulfill the chapter promise?
+5. Would a professional editor approve it?
+
+If any answer is NO: Regenerate.
+
+====================================================
+
+RULE 9 — CHAPTER COMPLETENESS TEST
+
+After generating all sections, ask:
+
+"If these were the only sections in the chapter, would the reader fully understand and be able to apply the chapter's main lesson?"
+
+If NO: Regenerate.
+
+====================================================
+
+RULE 10 — ANTI-REPETITION VALIDATION
+
+Count unique section titles. If unique titles < ${sectionCount}: REGENERATE.
+
+Never return duplicates.
+
+====================================================
+
+OUTPUT FORMAT
+
+Return ONLY a valid JSON array of exactly ${sectionCount} string(s).
+
+No markdown. No explanations. No comments. Only the JSON array.
+
+["Section Title 1", "Section Title 2", ...]`;
+}
+
 export function subsectionGenerationPrompt(
   chapterTitle: string,
   sectionTitle: string,

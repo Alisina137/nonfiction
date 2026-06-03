@@ -13,6 +13,7 @@ import {
   regenerateBookSectionPrompt,
   generateDetailsPrompt,
   generateFieldSuggestionPrompt,
+  sectionGenerationPrompt,
   subsectionGenerationPrompt,
   generateFindingPrompt,
   generateResourcePrompt,
@@ -763,6 +764,38 @@ router.post("/generate-details", async (req, res) => {
 
       _provider: usedProvider
     });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** POST /api/ai/generate-sections — generate all section titles for a chapter at once */
+router.post("/generate-sections", async (req, res) => {
+  try {
+    const { bookTitle, chapterTitle, sectionCount, research, corePromise, coreThesis, chapterPurpose } = req.body || {};
+    if (!chapterTitle) {
+      return res.status(400).json({ error: "chapterTitle is required" });
+    }
+    const count = Math.min(15, Math.max(1, Number(sectionCount) || 3));
+    const prompt = sectionGenerationPrompt(
+      String(bookTitle || ""),
+      String(chapterTitle),
+      count,
+      research,
+      corePromise ? String(corePromise) : undefined,
+      coreThesis  ? String(coreThesis)  : undefined,
+      chapterPurpose ? String(chapterPurpose) : undefined
+    );
+    const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "sectionGen");
+    const data = extractJSON(text);
+    if (!Array.isArray(data)) {
+      return res.status(500).json({ error: "AI returned unparseable section data." });
+    }
+    const titles = data
+      .filter((t: any) => typeof t === "string" && t.trim())
+      .map((t: any) => String(t).trim())
+      .slice(0, count);
+    return res.json({ titles, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
