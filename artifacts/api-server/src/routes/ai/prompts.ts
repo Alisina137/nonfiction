@@ -1655,6 +1655,77 @@ OUTPUT — return only this JSON object:
 }`;
 }
 
+// ─── Subsection Generation Engine ──────────────────────────────────────────────
+
+export function subsectionGenerationPrompt(
+  chapterTitle: string,
+  sectionTitle: string,
+  subsectionCount: number,
+  research?: any
+): string {
+  const niche    = research?.mainNicheLabel || "";
+  const subNiche = research?.subNicheLabel  || "";
+  const audience = research?.targetAudience || "";
+  const topic    = research?.bookTopic      || "";
+
+  return `You are an elite nonfiction book architect.
+Your task is to generate ALL subsection titles for a section at the same time.
+
+BOOK STRUCTURE
+Chapter
+└─ Section
+   └─ Subsections
+
+INPUTS
+Chapter Title: ${chapterTitle}
+Section Title: ${sectionTitle}
+Desired Number of Subsections: ${subsectionCount}${topic ? `\nBook Topic: ${topic}` : ""}${niche ? `\nNiche: ${niche}${subNiche ? ` › ${subNiche}` : ""}` : ""}${audience ? `\nTarget Audience: ${audience}` : ""}
+
+RULES (NON-NEGOTIABLE)
+
+RULE 1 — NO DUPLICATE SUBSECTIONS
+Every subsection title MUST be completely unique.
+Forbidden: same title repeated, same idea with slightly different wording, multiple titles covering the same topic.
+Before returning results, compare every subsection against every other and remove duplicates.
+
+RULE 2 — SUBSECTIONS MUST EXPAND THE SECTION
+Each subsection must directly support the parent section.
+Ask: "Does this subsection help explain, teach, prove, explore, or apply the section title?"
+If not, reject it. Never introduce unrelated concepts. Never drift into topics belonging to another section.
+
+RULE 3 — DIFFERENT ANGLES
+Each subsection must cover a different aspect of the section.
+Possible angles: Definition, Root Causes, Psychology, Science, Frameworks, Methods, Challenges, Mistakes, Examples, Real-Life Scenarios, Case Studies, Action Steps, Practical Application.
+Do not use the same angle twice unless absolutely necessary.
+
+RULE 4 — LOGICAL LEARNING FLOW
+Arrange subsections in a natural progression: Understanding → Causes → Effects → Solutions → Application.
+The reader should feel a clear progression from one subsection to the next.
+
+RULE 5 — TITLE QUALITY
+Avoid generic titles.
+Forbidden: "Introduction", "Key Concepts", "Overview", "Summary", "Final Thoughts", "Chapter N", "Section N", "Topic N", "Subsection N".
+Titles must feel professionally published and commercially valuable — specific, emotionally intelligent, niche-relevant.
+
+RULE 6 — SUBSECTION UNIQUENESS TEST
+Before returning output, verify every pair: Are they discussing different ideas? Providing unique value? Would a reader learn something different from each?
+If the answer is NO, regenerate.
+
+RULE 7 — ANTI-REPETITION CHECK
+Count unique subsection titles. If unique titles < ${subsectionCount}: REGENERATE until all are unique.
+Never return duplicate subsection titles.
+
+RULE 8 — SECTION RELEVANCE CHECK
+For every subsection: re-read the section title and score relevance 1–10. If relevance < 8: regenerate that subsection.
+
+RULE 9 — RETURN ONLY FINAL RESULTS
+Output ONLY a valid JSON array — no explanations, no markdown, no code fences, no comments.
+
+Generate exactly ${subsectionCount} subsection title(s).
+
+["<title 1>", "<title 2>", ...]`;
+}
+
 // ─── Generate Field-Level Suggestion ──────────────────────────────────────────
 
 export function generateFieldSuggestionPrompt(fieldName: string, project: any): string {

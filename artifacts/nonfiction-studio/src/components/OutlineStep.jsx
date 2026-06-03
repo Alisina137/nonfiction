@@ -247,7 +247,8 @@ export default function OutlineStep({
 }) {
   const [genBusy, setGenBusy] = useState(false);
   const [genStatus, setGenStatus] = useState("");
-  const [regenBusy, setRegenBusy] = useState({});
+  const [regenBusy, setRegenBusy]       = useState({});
+  const [genSubsBusy, setGenSubsBusy]   = useState({});
 
   const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const intro = normalizeIntro(boRaw.introduction);
@@ -393,6 +394,37 @@ export default function OutlineStep({
       else setGenStatus(e.message || "Could not generate outline.");
     } finally {
       setGenBusy(false);
+    }
+  }
+
+  // ─── Generate all subsections for a section ───────────────────────────────
+
+  async function generateSubsections(chId, secId, chapterTitle, sectionTitle, subsectionCount) {
+    const key = `${chId}::${secId}`;
+    setGenSubsBusy((p) => ({ ...p, [key]: true }));
+    try {
+      const data = await aiFetch("/api/ai/generate-subsections", {
+        chapterTitle,
+        sectionTitle,
+        subsectionCount: Math.max(1, subsectionCount),
+        research: fullProject?.research,
+      });
+      const titles = Array.isArray(data.titles) ? data.titles : [];
+      if (titles.length === 0) return;
+      updateSectionById(chId, secId, (s) => ({
+        ...s,
+        expanded: true,
+        subsections: titles.map((title) => ({
+          id: safeId(),
+          title,
+          words: Math.max(80, Math.round(Number(s.words || 400) / Math.max(titles.length, 1))),
+        })),
+      }));
+    } catch (e) {
+      // silently ignore — subsections stay unchanged
+      console.error("[generate-subsections]", e?.message);
+    } finally {
+      setGenSubsBusy((p) => { const n = { ...p }; delete n[key]; return n; });
     }
   }
 
@@ -614,6 +646,25 @@ export default function OutlineStep({
                                 {[0, ...COUNT_OPTS].map((v) => <option key={v} value={v}>{v}</option>)}
                               </select>
                             </label>
+                            {(() => {
+                              const subKey = `${ch.id}::${sec.id}`;
+                              const busy   = !!genSubsBusy[subKey];
+                              const count  = Math.max(1, Math.min(subs.length, 15)) || 3;
+                              return (
+                                <button
+                                  type="button"
+                                  disabled={busy || count === 0}
+                                  title={`Generate ${count} subsection title${count !== 1 ? "s" : ""} using the AI engine`}
+                                  onClick={() => generateSubsections(ch.id, sec.id, ch.title, sec.title, count)}
+                                  className="flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[10px] font-semibold text-violet-700 transition hover:bg-violet-100 disabled:opacity-50"
+                                >
+                                  {busy
+                                    ? <><span className="h-2.5 w-2.5 animate-spin rounded-full border border-violet-300 border-t-violet-600" />Gen…</>
+                                    : "✦ Gen"
+                                  }
+                                </button>
+                              );
+                            })()}
                             <label className="flex items-center gap-2 whitespace-nowrap text-[11px] font-semibold text-slate-700">
                               Words
                               <input

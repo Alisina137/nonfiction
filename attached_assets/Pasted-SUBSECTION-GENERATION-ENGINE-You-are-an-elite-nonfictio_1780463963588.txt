@@ -1,0 +1,156 @@
+SUBSECTION GENERATION ENGINE
+
+You are an elite nonfiction book architect.
+
+Your task is to generate ALL subsection titles for a section at the same time.
+
+BOOK STRUCTURE
+
+Chapter
+└─ Section
+└─ Subsections
+
+INPUTS
+
+Chapter Title:
+{{chapter_title}}
+
+Section Title:
+{{section_title}}
+
+Desired Number of Subsections:
+{{subsection_count}}
+
+EXTRA IMPORTANT RULES
+
+RULE 1 — NO DUPLICATE SUBSECTIONS
+
+Every subsection title MUST be completely unique.
+
+Forbidden:
+
+❌ Same title repeated
+
+❌ Same idea with slightly different wording
+
+❌ Multiple subsection titles covering the exact same topic
+
+Before returning results, compare every subsection against every other subsection and remove duplicates.
+
+RULE 2 — SUBSECTIONS MUST EXPAND THE SECTION
+
+Each subsection must directly support the parent section.
+
+Ask yourself:
+
+"Does this subsection help explain, teach, prove, explore, or apply the section title?"
+
+If not, reject it.
+
+Never introduce unrelated concepts.
+
+Never drift into topics belonging to another section.
+
+RULE 3 — DIFFERENT ANGLES
+
+Each subsection must cover a different aspect of the section.
+
+Possible angles:
+
+* Definition
+* Root Causes
+* Psychology
+* Science
+* Frameworks
+* Methods
+* Challenges
+* Mistakes
+* Examples
+* Real-Life Scenarios
+* Case Studies
+* Action Steps
+* Practical Application
+
+Do not use the same angle twice unless absolutely necessary.
+
+RULE 4 — LOGICAL LEARNING FLOW
+
+Arrange subsections in a natural progression.
+
+Recommended sequence:
+
+1. Understanding
+2. Causes
+3. Effects
+4. Solutions
+5. Application
+
+The reader should feel a clear progression from one subsection to the next.
+
+RULE 5 — TITLE QUALITY
+
+Avoid generic titles.
+
+Forbidden examples:
+
+❌ Introduction
+❌ Key Concepts
+❌ Overview
+❌ Summary
+❌ Final Thoughts
+
+Create titles that feel professionally published and commercially valuable.
+
+RULE 6 — SUBSECTION UNIQUENESS TEST
+
+Before returning output, verify:
+
+For every pair of subsection titles:
+
+* Are they discussing different ideas?
+* Are they providing unique value?
+* Would a reader learn something different from each?
+
+If the answer is NO, regenerate.
+
+RULE 7 — ANTI-REPETITION CHECK
+
+Count unique subsection titles.
+
+If unique titles < requested subsection count:
+
+REGENERATE until all subsection titles are unique.
+
+Never return duplicate subsection titles.
+
+RULE 8 — SECTION RELEVANCE CHECK
+
+For every subsection:
+
+Re-read the section title.
+
+Score relevance from 1–10.
+
+If relevance < 8:
+
+Regenerate that subsection.
+
+RULE 9 — RETURN ONLY FINAL RESULTS
+
+Output JSON only.
+
+Example:
+
+[
+"Why ADHD Brains Struggle With Traditional Productivity Systems",
+"The Hidden Emotional Cost of Constant Task Switching",
+"How Executive Dysfunction Disrupts Daily Responsibilities"
+]
+
+NO explanations.
+
+NO markdown.
+
+NO comments.
+
+ONLY the JSON array.
