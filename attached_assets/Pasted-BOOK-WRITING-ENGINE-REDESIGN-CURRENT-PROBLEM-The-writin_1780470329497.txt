@@ -1,0 +1,297 @@
+BOOK WRITING ENGINE REDESIGN
+
+CURRENT PROBLEM
+
+The writing engine generates subsection content using the same internal flow regardless of:
+
+* Book Structure
+* Writing Style
+* Tone
+* Genre
+* Reader Level
+
+As a result:
+
+* Every subsection feels identical.
+* Every chapter follows the same pattern.
+* Different book structures produce nearly identical books.
+* Content becomes repetitive and predictable.
+
+====================================================
+
+NEW WRITING SYSTEM
+
+Before writing any subsection, the AI must determine:
+
+1. Book Structure
+2. Book Tone
+3. Book Style
+4. Reader Level
+5. Chapter Purpose
+6. Section Purpose
+7. Subsection Purpose
+
+The writing flow must be generated dynamically based on these inputs.
+
+====================================================
+
+PRIMARY RULE
+
+NEVER use a universal subsection template.
+
+Each subsection must use a writing flow appropriate to the selected book structure.
+
+====================================================
+
+STRUCTURE-AWARE WRITING
+
+IF structure = Step-by-Step Guide
+
+Flow:
+
+* Objective
+* Why It Matters
+* Step Explanation
+* Execution Instructions
+* Common Mistakes
+* Action Task
+
+====================================================
+
+IF structure = Framework Book
+
+Flow:
+
+* Framework Component
+* Concept Explanation
+* Why It Exists
+* How It Connects To Other Components
+* Practical Application
+
+====================================================
+
+IF structure = Blueprint
+
+Flow:
+
+* Desired Outcome
+* System Design
+* Required Components
+* Implementation Process
+* Optimization
+
+====================================================
+
+IF structure = Playbook
+
+Flow:
+
+* Situation
+* Decision Process
+* Tactical Actions
+* Example Scenario
+* Expected Results
+
+====================================================
+
+IF structure = Problem-Solution
+
+Flow:
+
+* Problem
+* Root Cause
+* Consequences
+* Solution
+* Application
+
+====================================================
+
+IF structure = Case Study Driven
+
+Flow:
+
+* Case Study
+* Analysis
+* Lessons
+* Principles
+* Application
+
+====================================================
+
+IF structure = Story-Based
+
+Flow:
+
+* Narrative
+* Conflict
+* Turning Point
+* Insight
+* Lesson
+* Application
+
+====================================================
+
+IF structure = Academic
+
+Flow:
+
+* Definition
+* Theory
+* Research
+* Analysis
+* Implications
+
+====================================================
+
+IF structure = Manifesto
+
+Flow:
+
+* Belief
+* Challenge To Conventional Thinking
+* Evidence
+* New Perspective
+* Call To Action
+
+====================================================
+
+IF structure = Transformation Journey
+
+Flow:
+
+* Starting Point
+* Obstacles
+* Discovery
+* Transformation
+* Outcome
+
+====================================================
+
+TONE-AWARE WRITING
+
+Business
+
+* Strategic
+* Professional
+* Analytical
+
+Self-Help
+
+* Motivational
+* Practical
+* Reader-focused
+
+Memoir
+
+* Personal
+* Reflective
+* Story-driven
+
+Academic
+
+* Evidence-based
+* Formal
+* Precise
+
+Inspirational
+
+* Emotional
+* Encouraging
+* Transformational
+
+Leadership
+
+* Authoritative
+* Strategic
+* Vision-oriented
+
+====================================================
+
+SUBSECTION UNIQUENESS RULE
+
+Every subsection must answer:
+
+"What unique value does this subsection provide that no other subsection provides?"
+
+If the answer overlaps with another subsection:
+
+Regenerate.
+
+====================================================
+
+ANTI-TEMPLATE SYSTEM
+
+Forbidden patterns:
+
+* Every subsection starts with a definition.
+* Every subsection ends with a summary.
+* Every subsection uses the same paragraph structure.
+* Every subsection follows the same rhetorical sequence.
+
+The AI must vary:
+
+* Openings
+* Examples
+* Explanations
+* Teaching methods
+* Narrative style
+
+====================================================
+
+CONTENT PLANNING PHASE
+
+Before writing a subsection:
+
+Generate an internal plan:
+
+{
+purpose,
+key_takeaway,
+writing_flow,
+tone_strategy,
+teaching_strategy,
+reader_outcome
+}
+
+Then write content.
+
+Do not output the plan.
+
+====================================================
+
+CHAPTER COHERENCE RULE
+
+Every subsection must contribute to:
+
+Subsection Goal
+→ Section Goal
+→ Chapter Goal
+→ Book Promise
+
+If content does not support this chain:
+
+Regenerate.
+
+====================================================
+
+QUALITY CHECK
+
+Before returning content verify:
+
+1. Does it follow the selected structure?
+2. Does it match the selected tone?
+3. Does it provide unique value?
+4. Does it avoid repetitive patterns?
+5. Would a reader notice a difference between this structure and other structures?
+
+If any answer is NO:
+
+Regenerate.
+
+====================================================
+
+FINAL GOAL
+
+A Step-by-Step Guide, Blueprint, Framework Book, Story-Based Book, Academic Book, and Manifesto should produce noticeably different subsection content, teaching style, pacing, and reader experience.
+
+The writing engine should feel like a professional author adapting their writing method to the selected structure rather than reusing the same template for every book.

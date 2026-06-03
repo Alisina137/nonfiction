@@ -117,10 +117,20 @@ const emptyBookCover = {
   tagline: "",
   authorLine: "",
   layoutStyle: "typographic",
-  primaryColor: "#0c4a6e",
-  accentColor: "#38bdf8",
+  primaryColor: "#0f1923",
+  accentColor: "#d4961a",
   textColor: "#ffffff",
   designNotes: "",
+  concepts: null,
+  selectedConceptIndex: 0,
+  backDescription: "",
+  backAuthorBio: "",
+  backCoverHook: "",
+  backReviewQuotes: "",
+  backCoverCTA: "",
+  pageCount: 200,
+  paperType: "white",
+  trimSizeIndex: 4,
   generatedAt: null
 };
 

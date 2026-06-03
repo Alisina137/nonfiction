@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   resolveAudience,
   resolveAuthorName,
@@ -7,91 +7,51 @@ import {
   resolveTone,
   resolveUsp
 } from "@/lib/projectMeta";
-import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
+import { aiFetch } from "@/lib/ai/aiFetch";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const GENRE_PRESETS = {
-  business: {
-    label: "Business",
-    primaryColor: "#0f172a", accentColor: "#3b82f6", textColor: "#ffffff",
-    fontPairingIndex: 1, layoutStyle: "bold-stack", styleMode: "typographic"
-  },
-  selfhelp: {
-    label: "Self-Help",
-    primaryColor: "#1e3a5f", accentColor: "#f59e0b", textColor: "#ffffff",
-    fontPairingIndex: 0, layoutStyle: "bold-stack", styleMode: "cinematic"
-  },
-  memoir: {
-    label: "Memoir",
-    primaryColor: "#292524", accentColor: "#e7c9a2", textColor: "#f5f5f4",
-    fontPairingIndex: 3, layoutStyle: "minimal", styleMode: "minimal"
-  },
-  thriller: {
-    label: "Thriller",
-    primaryColor: "#0a0a0a", accentColor: "#dc2626", textColor: "#ffffff",
-    fontPairingIndex: 1, layoutStyle: "bold-stack", styleMode: "cinematic"
-  },
-  fantasy: {
-    label: "Fantasy",
-    primaryColor: "#1e1b4b", accentColor: "#c084fc", textColor: "#f3f0ff",
-    fontPairingIndex: 4, layoutStyle: "split-band", styleMode: "illustrated"
-  },
-  academic: {
-    label: "Academic",
-    primaryColor: "#1e3a5f", accentColor: "#93c5fd", textColor: "#f8fafc",
-    fontPairingIndex: 5, layoutStyle: "typographic", styleMode: "minimal"
-  },
-  inspirational: {
-    label: "Inspirational",
-    primaryColor: "#6b21a8", accentColor: "#fbbf24", textColor: "#ffffff",
-    fontPairingIndex: 6, layoutStyle: "typographic", styleMode: "abstract"
-  }
-};
-
-const FONT_PAIRINGS = [
-  { label: "Executive",  title: "Playfair Display", sub: "Inter",             author: "Inter" },
-  { label: "Impact",     title: "Oswald",            sub: "Open Sans",         author: "Open Sans" },
-  { label: "Editorial",  title: "Merriweather",      sub: "Lato",              author: "Lato" },
-  { label: "Literary",   title: "EB Garamond",       sub: "Crimson Text",      author: "Crimson Text" },
-  { label: "Fantasy",    title: "Cinzel",             sub: "Raleway",           author: "Raleway" },
-  { label: "Academic",   title: "Libre Baskerville", sub: "Lato",              author: "Lato" },
-  { label: "Modern",     title: "Raleway",            sub: "Nunito",            author: "Nunito" }
-];
-
-const STYLE_MODES = [
-  { id: "typographic",  label: "Typographic",  icon: "𝗔" },
-  { id: "cinematic",    label: "Cinematic",    icon: "🎬" },
-  { id: "illustrated",  label: "Illustrated",  icon: "✦" },
-  { id: "minimal",      label: "Minimal",      icon: "◦" },
-  { id: "abstract",     label: "Abstract",     icon: "◈" },
-  { id: "photographic", label: "Photographic", icon: "⬛" }
-];
-
 const KDP_TRIM_SIZES = [
-  { label: '5" × 8"',          w: 5,    h: 8 },
+  { label: '5" × 8"',          w: 5,    h: 8    },
   { label: '5.06" × 7.81"',    w: 5.06, h: 7.81 },
-  { label: '5.25" × 8"',       w: 5.25, h: 8 },
-  { label: '5.5" × 8.5"',      w: 5.5,  h: 8.5 },
-  { label: '6" × 9" — common', w: 6,    h: 9 },
+  { label: '5.25" × 8"',       w: 5.25, h: 8    },
+  { label: '5.5" × 8.5"',      w: 5.5,  h: 8.5  },
+  { label: '6" × 9" — common', w: 6,    h: 9    },
   { label: '6.14" × 9.21"',    w: 6.14, h: 9.21 },
-  { label: '7" × 10"',         w: 7,    h: 10 },
-  { label: '8" × 10"',         w: 8,    h: 10 },
-  { label: '8.5" × 11"',       w: 8.5,  h: 11 }
+  { label: '7" × 10"',         w: 7,    h: 10   },
+  { label: '8" × 10"',         w: 8,    h: 10   },
+  { label: '8.5" × 11"',       w: 8.5,  h: 11   },
 ];
+
+const CONCEPT_TYPES = [
+  { id: "authority", label: "Business Bestseller" },
+  { id: "premium",   label: "Premium Authority"   },
+  { id: "minimal",   label: "Modern Minimalist"   },
+  { id: "metaphor",  label: "Visual Metaphor"     },
+  { id: "dynamic",   label: "Creative AI Concept" },
+];
+
+const CONCEPT_DEFAULTS = {
+  authority: { bg: "#0f1923", accent: "#d4961a", text: "#ffffff", secondary: "#1a2c3d" },
+  premium:   { bg: "#2c2416", accent: "#8b7355", text: "#1a1008", secondary: "#f5f0e8" },
+  minimal:   { bg: "#0052cc", accent: "#ffffff", text: "#ffffff", secondary: "#003d99" },
+  metaphor:  { bg: "#1e1b4b", accent: "#c084fc", text: "#ffffff", secondary: "#312e81" },
+  dynamic:   { bg: "#0c0c0c", accent: "#ff3b3b", text: "#f5f5f5", secondary: "#1a1a1a" },
+};
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 function hexToRgb(hex) {
-  const h = hex.replace("#", "");
-  const n = parseInt(h.length === 3 ? h.split("").map(x => x + x).join("") : h, 16);
+  const h = (hex || "#000").replace("#", "");
+  const full = h.length === 3 ? h.split("").map(x => x + x).join("") : h;
+  const n = parseInt(full, 16) || 0;
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
 function relativeLuminance(r, g, b) {
-  const c = [r, g, b].map(x => {
-    x /= 255;
-    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  const c = [r, g, b].map(v => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
   });
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 }
@@ -110,751 +70,650 @@ function calcSpineInches(pageCount, paperType) {
   return Math.round(pageCount * ppi * 1000) / 1000;
 }
 
-function runComplianceChecks(cover, spineInches) {
-  const issues = [];
-  const pageCount = Number(cover.pageCount) || 0;
-  const ratio = contrastRatio(cover.textColor || "#fff", cover.primaryColor || "#000");
-
-  if (pageCount < 24) issues.push({ level: "error", msg: "Page count must be ≥ 24 for KDP paperback." });
-  if (pageCount > 828) issues.push({ level: "error", msg: "KDP paperback max is 828 pages." });
-  if (ratio < 3) issues.push({ level: "error", msg: `Low contrast: ${ratio.toFixed(1)}:1 — text may be unreadable in print.` });
-  else if (ratio < 4.5) issues.push({ level: "warn", msg: `Contrast ${ratio.toFixed(1)}:1 — WCAG AA requires 4.5:1. May be hard to read.` });
-  if (spineInches < 0.0625) issues.push({ level: "warn", msg: "Spine too narrow — no text or design allowed on spine." });
-  else if (spineInches < 0.25) issues.push({ level: "warn", msg: `Spine ${spineInches.toFixed(3)}" — too narrow for author name on spine.` });
-  if (!cover.subtitle) issues.push({ level: "info", msg: "No subtitle — a subtitle significantly improves discoverability." });
-  if (!cover.tagline) issues.push({ level: "info", msg: "No tagline — taglines help browsers understand the book at a glance." });
-  return issues;
-}
-
-// ─── SVG Export ───────────────────────────────────────────────────────────────
-
-/**
- * Wrap text to fit within maxWidth SVG units for a given fontSize.
- * Uses avg char width ≈ fontSize × 0.55 as an estimate.
- */
-function wrapSvgText(text, fontSize, maxWidth) {
-  const maxChars = Math.max(8, Math.floor(maxWidth / (fontSize * 0.55)));
-  const words = (text || "").split(" ");
-  const lines = [];
-  let current = "";
-  for (const w of words) {
-    const test = current ? current + " " + w : w;
-    if (test.length > maxChars && current) { lines.push(current); current = w; }
-    else current = test;
-  }
-  if (current) lines.push(current);
-  return lines.slice(0, 5);
-}
-
-/**
- * Build a high-resolution SVG that faithfully matches FrontCoverInner.
- *
- * Key design decisions that match the React preview:
- *  - Font sizes are the user's slider values scaled from 220 px preview → 2560 px SVG
- *  - Text alignment (left / center / right) uses SVG text-anchor
- *  - Layout is bottom-up (marginTop: "auto" equivalent) so title floats near
- *    the bottom with author pinned to the very bottom — same as the flex preview
- *  - Every style mode uses the same decorations as FrontCoverInner
- */
-function buildFrontCoverSVG(cover, title) {
-  const W = 1600, H = 2560;
-  const fp    = FONT_PAIRINGS[cover.fontPairingIndex ?? 0];
-  const bg    = cover.primaryColor || "#0c4a6e";
-  const acc   = cover.accentColor  || "#38bdf8";
-  const tc    = cover.textColor    || "#ffffff";
-  const mode  = cover.styleMode    || "typographic";
-  const align = cover.textAlign    || "left";
-
-  // Scale factor: FullWrapPreview renders the front cover at ~220 px tall.
-  // The SVG canvas is 2560 px tall. All CSS-px sizes scale by this ratio.
-  const SCALE = H / 220; // ≈ 11.636
-
-  const tSize  = Math.round((Number(cover.titleSize)    || 22) * SCALE);
-  const sSize  = Math.round((Number(cover.subtitleSize) || 12) * SCALE);
-  const aSize  = Math.round((Number(cover.authorSize)   ||  9) * SCALE);
-  const tagSz  = Math.round((Number(cover.taglineSize)  ||  9) * SCALE);
-
-  // Padding: 8 % horizontal, 6 % vertical — matches React component
-  const PX = Math.round(W * 0.08);
-  const PY = Math.round(H * 0.06);
-
-  // SVG text anchor + x position for the chosen alignment
-  const textX  = align === "center" ? W / 2 : align === "right" ? W - PX : PX;
-  const anchor = align === "center" ? "middle" : align === "right" ? "end" : "start";
-
-  const textCol = mode === "minimal" ? bg : tc;
-  const bgFill  = mode === "minimal" ? "#f8f8f4" : bg;
-
-  // ── Background ────────────────────────────────────────────────────────────
-  let bgEl = `<rect width="${W}" height="${H}" fill="${bgFill}"/>`;
-  let decorations = "";
-
-  if (mode === "cinematic") {
-    bgEl = `<defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${bg}"/>
-      <stop offset="100%" stop-color="#000"/>
-    </linearGradient></defs>
-    <rect width="${W}" height="${H}" fill="url(#cg)"/>`;
-    decorations = `<rect x="0" y="${Math.round(H * 0.6)}" width="${W}" height="4" fill="${acc}" opacity="0.8"/>`;
-
-  } else if (mode === "illustrated") {
-    decorations = `
-      <rect x="60" y="60" width="${W - 120}" height="${H - 120}" fill="none" stroke="${acc}" stroke-width="12"/>
-      <rect x="100" y="100" width="${W - 200}" height="${H - 200}" fill="none" stroke="${acc}" stroke-width="4" opacity="0.5"/>
-      <circle cx="${W / 2}" cy="${Math.round(H * 0.38)}" r="460" fill="${acc}" opacity="0.08"/>`;
-
-  } else if (mode === "abstract") {
-    bgEl = `<defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="${bg}"/>
-      <stop offset="50%" stop-color="${acc}" stop-opacity="0.4"/>
-      <stop offset="100%" stop-color="${bg}"/>
-    </linearGradient></defs>
-    <rect width="${W}" height="${H}" fill="url(#ag)"/>`;
-    decorations = `
-      <ellipse cx="${Math.round(W * 0.8)}" cy="${Math.round(H * 0.2)}" rx="700" ry="400" fill="${acc}" opacity="0.15"/>
-      <ellipse cx="${Math.round(W * 0.2)}" cy="${Math.round(H * 0.8)}" rx="500" ry="300" fill="${acc}" opacity="0.12"/>`;
-
-  } else if (mode === "photographic") {
-    const imgH = Math.round(H * 0.58);
-    decorations = `
-      <rect x="0" y="0" width="${W}" height="${imgH}" fill="#666"/>
-      <text x="${W / 2}" y="${Math.round(imgH * 0.5 + SCALE * 5)}" text-anchor="middle" font-family="sans-serif" font-size="${Math.round(SCALE * 11)}" fill="#cccccc" letter-spacing="${Math.round(SCALE)}">IMAGE AREA</text>`;
-  }
-  // minimal: plain bgFill rect already set above
-
-  // ── Compute vertical layout bottom-up ────────────────────────────────────
-  // This mirrors the flex-column layout with marginTop:"auto" in FrontCoverInner.
-  // Stack (bottom → top): author → [5% gap] → subtitle → [3% gap] → title → [4% gap] → accent line
-  // Tagline is always pinned to the top (PY from top).
-
-  const titleLines = wrapSvgText(title, tSize, W - 2 * PX);
-  const subLines   = cover.subtitle ? wrapSvgText(cover.subtitle, sSize, W - 2 * PX) : [];
-  const titleLineH = Math.round(tSize * 1.08);
-  const subLineH   = Math.round(sSize * 1.35);
-
-  // Author: bottom-pinned
-  const authorY = H - PY;
-
-  let titleTopY, accentY;
-
-  if (mode === "minimal") {
-    // Vertically centered (justifyContent: "center")
-    const blockH = titleLines.length * titleLineH
-                 + (subLines.length > 0 ? subLines.length * subLineH + Math.round(H * 0.03) : 0);
-    titleTopY = Math.round((H - blockH) / 2 - blockH * 0.05);
-    accentY   = titleTopY - Math.round(H * 0.06) - Math.round(SCALE * 2);
-
-  } else if (mode === "photographic") {
-    // Title starts just below the image area (paddingTop: 60% pushes it down)
-    titleTopY = Math.round(H * 0.64);
-    accentY   = titleTopY; // no accent line for photographic
-
-  } else {
-    // Work backwards from author position
-    const gapAuthor = aSize + Math.round(H * 0.05);
-    const subBlock  = subLines.length > 0 ? subLines.length * subLineH + Math.round(H * 0.03) : 0;
-    titleTopY = authorY - gapAuthor - subBlock - titleLines.length * titleLineH;
-    accentY   = titleTopY - Math.round(H * 0.04) - Math.round(SCALE * 4);
-  }
-
-  // ── Accent decoration (above title, matching mode) ────────────────────────
-  let accentSvg = "";
-  const accentH4 = Math.round(SCALE * 4);
-  const accentH3 = Math.round(SCALE * 3);
-  const accentH2 = Math.round(SCALE * 2);
-
-  if (mode === "typographic" || mode === "abstract" || mode === "default") {
-    const lw = Math.round(W * 0.175); // ~28px at preview scale (280/1600)
-    const lx = align === "center" ? W / 2 - lw / 2 : align === "right" ? W - PX - lw : PX;
-    accentSvg = `<rect x="${lx}" y="${accentY}" width="${lw}" height="${accentH4}" fill="${acc}" rx="4"/>`;
-  } else if (mode === "cinematic") {
-    const lw = Math.round(W * 0.4);
-    const lx = align === "center" ? W / 2 - lw / 2 : align === "right" ? W - PX - lw : PX;
-    accentSvg = `<rect x="${lx}" y="${accentY}" width="${lw}" height="${accentH3}" fill="${acc}"/>`;
-  } else if (mode === "minimal") {
-    const lw = Math.round(W * 0.3);
-    const lx = align === "center" ? W / 2 - lw / 2 : PX;
-    accentSvg = `<rect x="${lx}" y="${accentY}" width="${lw}" height="${accentH2}" fill="${textCol}" opacity="0.5"/>`;
-  }
-  // illustrated: no accent line (matches React: mode !== "illustrated" guard)
-
-  // ── Tagline ───────────────────────────────────────────────────────────────
-  const tagSvg = cover.tagline
-    ? `<text x="${textX}" y="${PY + tagSz}" text-anchor="${anchor}" font-family="${escSvg(fp?.sub || "sans-serif")}" font-size="${tagSz}" font-weight="700" fill="${acc}" letter-spacing="${Math.round(SCALE * 3)}">${escSvg(cover.tagline.toUpperCase())}</text>`
-    : "";
-
-  // ── Title ─────────────────────────────────────────────────────────────────
-  const titleSvg = titleLines.map((line, i) =>
-    `<text x="${textX}" y="${titleTopY + i * titleLineH + tSize}" text-anchor="${anchor}" font-family="${escSvg(fp?.title || "serif")}" font-size="${tSize}" font-weight="800" fill="${textCol}" letter-spacing="-2">${escSvg(line)}</text>`
-  ).join("\n  ");
-
-  // ── Subtitle ──────────────────────────────────────────────────────────────
-  const subStartY = titleTopY + titleLines.length * titleLineH + Math.round(H * 0.03);
-  const subtitleSvg = subLines.map((line, i) =>
-    `<text x="${textX}" y="${subStartY + i * subLineH + sSize}" text-anchor="${anchor}" font-family="${escSvg(fp?.sub || "sans-serif")}" font-size="${sSize}" font-weight="500" fill="${textCol}" opacity="0.9">${escSvg(line)}</text>`
-  ).join("\n  ");
-
-  // ── Author ────────────────────────────────────────────────────────────────
-  const authorSvg = `<text x="${textX}" y="${authorY}" text-anchor="${anchor}" font-family="${escSvg(fp?.author || "sans-serif")}" font-size="${aSize}" font-weight="600" fill="${textCol}" opacity="0.85" letter-spacing="${Math.round(SCALE * 2)}">${escSvg((cover.authorLine || "Author Name").toUpperCase())}</text>`;
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  ${bgEl}
-  ${decorations}
-  ${accentSvg}
-  ${tagSvg}
-  ${titleSvg}
-  ${subtitleSvg}
-  ${authorSvg}
-</svg>`;
-}
-
 function escSvg(s) {
   return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function downloadSVG(svgString, filename) {
-  const blob = new Blob([svgString], { type: "image/svg+xml" });
+function wrapText(text, fontSize, maxWidth) {
+  const maxChars = Math.max(5, Math.floor(maxWidth / (fontSize * 0.54)));
+  const words = (text || "").split(" ");
+  const lines = [];
+  let cur = "";
+  for (const w of words) {
+    const test = cur ? `${cur} ${w}` : w;
+    if (test.length > maxChars && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines.slice(0, 6);
+}
+
+function downloadSVG(svgStr, filename) {
+  const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = filename;
-  a.click();
+  a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
-// ─── Cover Preview ────────────────────────────────────────────────────────────
-
-function FrontCoverInner({ cover, title, scale = 1, thumb = false }) {
-  const fp = FONT_PAIRINGS[cover.fontPairingIndex ?? 0];
-  const bg = cover.primaryColor || "#0c4a6e";
-  const acc = cover.accentColor || "#38bdf8";
-  const tc = cover.textColor || "#ffffff";
-  const mode = cover.styleMode || "typographic";
-  const titleFont = fp?.title || "serif";
-  const subFont = fp?.sub || "sans-serif";
-  const authorFont = fp?.author || "sans-serif";
-  const align = cover.textAlign || "left";
-  const titleSz = thumb ? 10 : (cover.titleSize || 22);
-  const subSz = thumb ? 5 : (cover.subtitleSize || 12);
-  const authorSz = thumb ? 4 : (cover.authorSize || 9);
-  const taglineSz = thumb ? 3.5 : (cover.taglineSize || 9);
-
-  const minimalBg = mode === "minimal" ? "#f8f8f4" : bg;
-  const textCol = mode === "minimal" ? bg : tc;
-
-  const wrapStyle = {
-    background: minimalBg,
-    color: textCol,
-    fontFamily: titleFont,
-    position: "relative",
-    overflow: "hidden",
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column"
+function downloadPNG(svgStr, filename) {
+  const W = 1600, H = 2560;
+  const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    canvas.getContext("2d").drawImage(img, 0, 0, W, H);
+    canvas.toBlob((pngBlob) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(pngBlob);
+      a.download = filename; a.click();
+    }, "image/png");
+    URL.revokeObjectURL(url);
   };
+  img.onerror = () => { downloadSVG(svgStr, filename.replace(".png", ".svg")); URL.revokeObjectURL(url); };
+  img.src = url;
+}
 
+// ─── Single Source of Truth ───────────────────────────────────────────────────
+// Both the React preview and SVG export consume this object — zero drift.
+
+function buildCoverData(conceptArg, cover, title) {
+  const type = typeof conceptArg === "string"
+    ? conceptArg
+    : (conceptArg?.type || conceptArg?.id || "authority");
+  const def = CONCEPT_DEFAULTS[type] || CONCEPT_DEFAULTS.authority;
+  const c = (typeof conceptArg === "object" && conceptArg) ? conceptArg : {};
+  return {
+    type,
+    title:       String(title || "Book Title"),
+    subtitle:    String(cover?.subtitle   || ""),
+    author:      String(cover?.authorLine || "Author Name"),
+    tagline:     String(c.tagline || cover?.tagline || ""),
+    bg:          c.bg        || def.bg,
+    accent:      c.accent    || def.accent,
+    text:        c.text      || def.text,
+    secondary:   c.secondary || def.secondary,
+    designNotes: c.designNotes || "",
+  };
+}
+
+// ─── SVG Builders ─────────────────────────────────────────────────────────────
+// 1600 × 2560 px (5:8 KDP ratio). Each produces a completely different visual.
+
+const SW = 1600, SH = 2560;
+
+function buildAuthoritySVG(cd) {
+  const { bg, accent, text, title, subtitle, author, tagline } = cd;
+  const PX = 128, PY = 128;
+  const tSz = 190, sSz = 88, aSz = 68, tgSz = 54;
+  const bandY = Math.round(SH * 0.62);
+  const bandH = Math.round(SH * 0.028);
+  const tLines = wrapText(title.toUpperCase(), tSz, SW - PX * 2);
+  const tLH = Math.round(tSz * 0.93);
+  const tBot = bandY - Math.round(SH * 0.035);
+  const tTop = tBot - tLines.length * tLH;
+  const sLines = subtitle ? wrapText(subtitle, sSz, SW - PX * 2) : [];
+  const sY0 = bandY + bandH + Math.round(SH * 0.028);
+  const tgEl = tagline
+    ? `<text x="${PX}" y="${PY + tgSz}" font-family="Impact,'Arial Black',sans-serif" font-size="${tgSz}" font-weight="700" fill="${accent}" letter-spacing="6" text-anchor="start">${escSvg(tagline.toUpperCase())}</text>`
+    : "";
+  const titleEl = tLines.map((l, i) =>
+    `<text x="${PX}" y="${tTop + i * tLH + tSz}" font-family="Impact,'Arial Black',sans-serif" font-size="${tSz}" font-weight="900" fill="${text}" letter-spacing="-2" text-anchor="start">${escSvg(l)}</text>`
+  ).join("\n  ");
+  const subEl = sLines.map((l, i) =>
+    `<text x="${PX}" y="${sY0 + i * Math.round(sSz * 1.35) + sSz}" font-family="Arial,sans-serif" font-size="${sSz}" fill="${text}" opacity="0.82" text-anchor="start">${escSvg(l)}</text>`
+  ).join("\n  ");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${SW}" height="${SH}" viewBox="0 0 ${SW} ${SH}">
+  <rect width="${SW}" height="${SH}" fill="${bg}"/>
+  <pattern id="diag" width="40" height="40" patternUnits="userSpaceOnUse"><line x1="0" y1="40" x2="40" y2="0" stroke="${text}" stroke-width="1" opacity="0.03"/></pattern>
+  <rect width="${SW}" height="${SH}" fill="url(#diag)"/>
+  ${tgEl}
+  ${titleEl}
+  <rect x="0" y="${bandY}" width="${SW}" height="${bandH}" fill="${accent}"/>
+  ${subEl}
+  <text x="${PX}" y="${SH - PY}" font-family="Impact,'Arial Black',sans-serif" font-size="${aSz}" font-weight="700" fill="${accent}" letter-spacing="8" text-anchor="start">${escSvg(author.toUpperCase())}</text>
+</svg>`;
+}
+
+function buildPremiumSVG(cd) {
+  const { accent, text, secondary, title, subtitle, author, tagline } = cd;
+  const bgCol = secondary || "#f5f0e8";
+  const PX = 192;
+  const tSz = 155, sSz = 78, aSz = 62, tgSz = 48;
+  const ruleW = SW - PX * 2;
+  const tLines = wrapText(title, tSz, ruleW);
+  const tLH = Math.round(tSz * 1.15);
+  const tBlockH = tLines.length * tLH;
+  const centerY = Math.round(SH * 0.44);
+  const tTop = centerY - tBlockH / 2;
+  const gap = Math.round(SH * 0.042);
+  const topRuleY = tTop - gap;
+  const botRuleY = tTop + tBlockH + gap;
+  const sLines = subtitle ? wrapText(subtitle, sSz, ruleW) : [];
+  const sY0 = botRuleY + Math.round(SH * 0.03);
+  const tgEl = tagline
+    ? `<text x="${SW / 2}" y="${topRuleY - Math.round(SH * 0.025)}" font-family="Georgia,'Times New Roman',serif" font-size="${tgSz}" fill="${accent}" letter-spacing="5" text-anchor="middle" font-style="italic">${escSvg(tagline)}</text>`
+    : "";
+  const titleEl = tLines.map((l, i) =>
+    `<text x="${SW / 2}" y="${tTop + i * tLH + tSz}" font-family="Georgia,'Times New Roman',serif" font-size="${tSz}" font-weight="700" fill="${text}" letter-spacing="-1" text-anchor="middle">${escSvg(l)}</text>`
+  ).join("\n  ");
+  const subEl = sLines.map((l, i) =>
+    `<text x="${SW / 2}" y="${sY0 + i * Math.round(sSz * 1.4) + sSz}" font-family="Georgia,serif" font-size="${sSz}" fill="${text}" opacity="0.7" text-anchor="middle" font-style="italic">${escSvg(l)}</text>`
+  ).join("\n  ");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${SW}" height="${SH}" viewBox="0 0 ${SW} ${SH}">
+  <rect width="${SW}" height="${SH}" fill="${bgCol}"/>
+  ${tgEl}
+  <line x1="${PX}" y1="${topRuleY}" x2="${SW - PX}" y2="${topRuleY}" stroke="${accent}" stroke-width="2" opacity="0.7"/>
+  ${titleEl}
+  <line x1="${PX}" y1="${botRuleY}" x2="${SW - PX}" y2="${botRuleY}" stroke="${accent}" stroke-width="2" opacity="0.7"/>
+  ${subEl}
+  <text x="${SW / 2}" y="${SH - Math.round(SH * 0.048)}" font-family="Georgia,serif" font-size="${aSz}" font-weight="700" fill="${text}" letter-spacing="6" opacity="0.55" text-anchor="middle">${escSvg(author.toUpperCase())}</text>
+</svg>`;
+}
+
+function buildMinimalSVG(cd) {
+  const { bg, accent, text, title, author, tagline } = cd;
+  const PX = 144;
+  const tSz = 175, aSz = 60, tgSz = 50;
+  const cR = Math.round(SW * 0.52);
+  const cX = Math.round(SW * 0.92);
+  const cY = Math.round(SH * 0.29);
+  const tLines = wrapText(title, tSz, SW * 0.76);
+  const tLH = Math.round(tSz * 0.98);
+  const tBot = Math.round(SH * 0.74);
+  const tTop = tBot - tLines.length * tLH;
+  const tgEl = tagline
+    ? `<text x="${PX}" y="${Math.round(SH * 0.06) + tgSz}" font-family="Arial,Helvetica,sans-serif" font-size="${tgSz}" fill="${text}" opacity="0.45" letter-spacing="5" text-anchor="start">${escSvg(tagline.toUpperCase())}</text>`
+    : "";
+  const titleEl = tLines.map((l, i) =>
+    `<text x="${PX}" y="${tTop + i * tLH + tSz}" font-family="'Arial Black',Impact,sans-serif" font-size="${tSz}" font-weight="900" fill="${text}" letter-spacing="-3" text-anchor="start">${escSvg(l)}</text>`
+  ).join("\n  ");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${SW}" height="${SH}" viewBox="0 0 ${SW} ${SH}">
+  <rect width="${SW}" height="${SH}" fill="${bg}"/>
+  <circle cx="${cX}" cy="${cY}" r="${cR}" fill="${accent}" opacity="0.17"/>
+  <circle cx="${cX}" cy="${cY}" r="${Math.round(cR * 0.68)}" fill="${accent}" opacity="0.14"/>
+  ${tgEl}
+  ${titleEl}
+  <rect x="${PX}" y="${tBot + Math.round(SH * 0.018)}" width="${Math.round(SW * 0.22)}" height="${Math.round(SH * 0.007)}" fill="${accent}"/>
+  <text x="${PX}" y="${SH - Math.round(SH * 0.048)}" font-family="Arial,Helvetica,sans-serif" font-size="${aSz}" fill="${text}" opacity="0.7" text-anchor="start">${escSvg(author)}</text>
+</svg>`;
+}
+
+function diamondPts(cx, cy, r) {
+  return `${cx},${cy - r} ${cx + r},${cy} ${cx},${cy + r} ${cx - r},${cy}`;
+}
+
+function buildMetaphorSVG(cd) {
+  const { bg, accent, text, secondary, title, subtitle, author, tagline } = cd;
+  const PX = 128;
+  const tSz = 145, sSz = 72, aSz = 60, tgSz = 52;
+  const sCX = SW / 2, sCY = Math.round(SH * 0.5), sR = Math.round(SW * 0.33);
+  const tLines = wrapText(title, tSz, SW - PX * 2);
+  const tLH = Math.round(tSz * 1.12);
+  const tBot = sCY - sR - Math.round(SH * 0.04);
+  const tTop = tBot - tLines.length * tLH;
+  const sLines = subtitle ? wrapText(subtitle, sSz, SW - PX * 2) : [];
+  const sY0 = sCY + sR + Math.round(SH * 0.025);
+  const tgEl = tagline
+    ? `<text x="${PX}" y="${Math.round(SH * 0.054)}" font-family="Arial,Helvetica,sans-serif" font-size="${tgSz}" fill="${accent}" letter-spacing="5" text-anchor="start">${escSvg(tagline.toUpperCase())}</text>`
+    : "";
+  const titleEl = tLines.map((l, i) =>
+    `<text x="${SW / 2}" y="${tTop + i * tLH + tSz}" font-family="Georgia,'Times New Roman',serif" font-size="${tSz}" font-weight="700" fill="${text}" letter-spacing="-1" text-anchor="middle">${escSvg(l)}</text>`
+  ).join("\n  ");
+  const subEl = sLines.map((l, i) =>
+    `<text x="${SW / 2}" y="${sY0 + i * Math.round(sSz * 1.4) + sSz}" font-family="Georgia,serif" font-size="${sSz}" fill="${text}" opacity="0.75" text-anchor="middle">${escSvg(l)}</text>`
+  ).join("\n  ");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${SW}" height="${SH}" viewBox="0 0 ${SW} ${SH}">
+  <defs>
+    <linearGradient id="mg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${bg}"/>
+      <stop offset="48%" stop-color="${bg}"/>
+      <stop offset="100%" stop-color="${secondary}"/>
+    </linearGradient>
+  </defs>
+  <rect width="${SW}" height="${SH}" fill="url(#mg)"/>
+  <polygon points="${diamondPts(sCX, sCY, sR)}" fill="${accent}" opacity="0.14"/>
+  <polygon points="${diamondPts(sCX, sCY, Math.round(sR * 0.74))}" fill="${accent}" opacity="0.2"/>
+  <polygon points="${diamondPts(sCX, sCY, Math.round(sR * 0.44))}" fill="${accent}" opacity="0.55"/>
+  ${tgEl}
+  ${titleEl}
+  ${subEl}
+  <text x="${SW / 2}" y="${SH - Math.round(SH * 0.04)}" font-family="Arial,Helvetica,sans-serif" font-size="${aSz}" fill="${text}" opacity="0.6" letter-spacing="5" text-anchor="middle">${escSvg(author.toUpperCase())}</text>
+</svg>`;
+}
+
+function buildDynamicSVG(cd) {
+  const { bg, accent, text, title, subtitle, author, tagline } = cd;
+  const PX = 110;
+  const tSz = 185, sSz = 78, aSz = 65, tgSz = 50;
+  const band = [
+    `0,${Math.round(SH * 0.1)}`,
+    `${Math.round(SW * 0.78)},0`,
+    `${SW},${Math.round(SH * 0.075)}`,
+    `${Math.round(SW * 0.22)},${Math.round(SH * 0.2)}`,
+  ].join(" ");
+  const tLines = wrapText(title.toUpperCase(), tSz, SW * 0.84);
+  const tLH = Math.round(tSz * 0.91);
+  const tTop = Math.round(SH * 0.25);
+  const sLines = subtitle ? wrapText(subtitle, sSz, SW * 0.75) : [];
+  const sY0 = tTop + tLines.length * tLH + Math.round(SH * 0.028);
+  const lineX = Math.round(SW * 0.87);
+  const tgEl = tagline
+    ? `<text x="${PX}" y="${Math.round(SH * 0.078)}" font-family="'Arial Black',Impact,sans-serif" font-size="${tgSz}" fill="${text}" opacity="0.45" letter-spacing="4" text-anchor="start">${escSvg(tagline.toUpperCase())}</text>`
+    : "";
+  const titleEl = tLines.map((l, i) =>
+    `<text x="${PX}" y="${tTop + i * tLH + tSz}" font-family="Impact,'Arial Black',sans-serif" font-size="${tSz}" font-weight="900" fill="${text}" letter-spacing="-3" text-anchor="start">${escSvg(l)}</text>`
+  ).join("\n  ");
+  const subEl = sLines.map((l, i) =>
+    `<text x="${PX}" y="${sY0 + i * Math.round(sSz * 1.3) + sSz}" font-family="Arial,sans-serif" font-size="${sSz}" fill="${text}" opacity="0.68" text-anchor="start">${escSvg(l)}</text>`
+  ).join("\n  ");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${SW}" height="${SH}" viewBox="0 0 ${SW} ${SH}">
+  <rect width="${SW}" height="${SH}" fill="${bg}"/>
+  <polygon points="${band}" fill="${accent}" opacity="0.95"/>
+  <line x1="${lineX}" y1="${Math.round(SH * 0.24)}" x2="${lineX}" y2="${Math.round(SH * 0.86)}" stroke="${accent}" stroke-width="4" opacity="0.28"/>
+  ${tgEl}
+  ${titleEl}
+  ${subEl}
+  <text x="${PX}" y="${SH - Math.round(SH * 0.048)}" font-family="Impact,'Arial Black',sans-serif" font-size="${aSz}" font-weight="700" fill="${accent}" letter-spacing="8" text-anchor="start">${escSvg(author.toUpperCase())}</text>
+</svg>`;
+}
+
+function buildConceptSVG(cd) {
+  switch (cd.type) {
+    case "authority": return buildAuthoritySVG(cd);
+    case "premium":   return buildPremiumSVG(cd);
+    case "minimal":   return buildMinimalSVG(cd);
+    case "metaphor":  return buildMetaphorSVG(cd);
+    case "dynamic":   return buildDynamicSVG(cd);
+    default:          return buildAuthoritySVG(cd);
+  }
+}
+
+// ─── React Renderers ──────────────────────────────────────────────────────────
+// Each mirrors its SVG builder's visual logic using div/CSS.
+// thumb=true uses smaller font sizes for the concept grid thumbnails.
+
+function AuthorityRenderer({ cd, thumb }) {
+  const { bg, accent, text, title, subtitle, author, tagline } = cd;
+  const TS = thumb ? 8.5 : 27, SS = thumb ? 4 : 11.5, AS = thumb ? 3 : 9, TGS = thumb ? 2.5 : 7.5;
   return (
-    <div style={wrapStyle}>
-      {mode === "cinematic" && (
-        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, ${bg} 0%, #000 100%)` }} />
-      )}
-      {mode === "abstract" && (
-        <>
-          <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${bg} 0%, ${acc}33 60%, ${bg} 100%)` }} />
-          <div style={{ position: "absolute", top: "-20%", right: "-15%", width: "70%", height: "70%", borderRadius: "50%", background: acc, opacity: 0.12 }} />
-          <div style={{ position: "absolute", bottom: "-10%", left: "-10%", width: "50%", height: "50%", borderRadius: "50%", background: acc, opacity: 0.1 }} />
-        </>
-      )}
-      {mode === "illustrated" && (
-        <>
-          <div style={{ position: "absolute", inset: thumb ? 3 : 8, border: `${thumb ? 1 : 3}px solid ${acc}`, opacity: 0.7 }} />
-          <div style={{ position: "absolute", inset: thumb ? 5 : 14, border: `${thumb ? 0.5 : 1}px solid ${acc}`, opacity: 0.35 }} />
-          <div style={{ position: "absolute", top: "25%", left: "50%", transform: "translate(-50%,-50%)", width: thumb ? "50%" : "65%", paddingBottom: thumb ? "50%" : "65%", borderRadius: "50%", background: acc, opacity: 0.07 }} />
-        </>
-      )}
-      {mode === "photographic" && (
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "58%", background: "linear-gradient(180deg, #888 0%, #555 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: thumb ? 6 : 11, color: "#ccc", fontFamily: "sans-serif", letterSpacing: 1 }}>IMAGE AREA</span>
+    <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,0.025) 10px,rgba(255,255,255,0.025) 11px)", pointerEvents: "none" }} />
+      <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: thumb ? "5% 7% 3%" : "6% 8% 3.5%" }}>
+        {tagline && (
+          <div style={{ fontSize: TGS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 700, color: accent, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", marginBottom: thumb ? 1.5 : "2.5%" }}>
+            {tagline}
+          </div>
+        )}
+        <div style={{ fontSize: TS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 900, lineHeight: 0.95, letterSpacing: -0.5, textTransform: "uppercase", color: text }}>
+          {title}
         </div>
-      )}
-
-      <div style={{ position: "relative", display: "flex", flexDirection: "column", flex: 1, padding: thumb ? "5% 7%" : "6% 8%", textAlign: align }}>
-        {cover.tagline && (
-          <div style={{
-            fontSize: taglineSz, fontFamily: subFont, fontWeight: 700,
-            letterSpacing: thumb ? 1 : 3, textTransform: "uppercase",
-            color: acc, marginBottom: thumb ? 3 : "5%", opacity: 0.95
-          }}>
-            {cover.tagline}
+      </div>
+      <div style={{ background: accent, flexShrink: 0, height: thumb ? 2.5 : 7 }} />
+      <div style={{ flexShrink: 0, padding: thumb ? "2% 7% 5%" : "2.5% 8% 5.5%" }}>
+        {subtitle && (
+          <div style={{ fontSize: SS, fontFamily: "Arial,sans-serif", fontWeight: 400, lineHeight: 1.4, color: text, opacity: 0.82, marginBottom: thumb ? 1.5 : "3%" }}>
+            {subtitle}
           </div>
         )}
-
-        {mode === "photographic" ? (
-          <div style={{ marginTop: "auto", paddingTop: "60%" }}>
-            <div style={{ fontSize: titleSz, fontFamily: titleFont, fontWeight: 800, lineHeight: 1.1, letterSpacing: -0.5, color: textCol, marginBottom: thumb ? 2 : "3%" }}>
-              {title}
-            </div>
-          </div>
-        ) : mode === "cinematic" ? (
-          <div style={{ marginTop: "auto" }}>
-            <div style={{ position: "relative" }}>
-              <div style={{ height: thumb ? 1 : 3, background: acc, marginBottom: thumb ? 3 : "4%", width: "40%" }} />
-              <div style={{ fontSize: titleSz, fontFamily: titleFont, fontWeight: 800, lineHeight: 1.05, color: textCol, marginBottom: thumb ? 1 : "2%" }}>
-                {title}
-              </div>
-            </div>
-          </div>
-        ) : mode === "minimal" ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: align === "center" ? "center" : "flex-start" }}>
-            <div style={{ height: thumb ? 1 : 2, background: bg, marginBottom: thumb ? 4 : "6%", width: "30%", opacity: 0.5 }} />
-            <div style={{ fontSize: titleSz * 0.9, fontFamily: titleFont, fontWeight: 700, lineHeight: 1.15, color: bg, letterSpacing: -0.3 }}>
-              {title}
-            </div>
-          </div>
-        ) : (
-          <div style={{ marginTop: "auto" }}>
-            {mode !== "illustrated" && <div style={{ width: thumb ? 12 : 28, height: thumb ? 1.5 : 4, background: acc, borderRadius: 2, marginBottom: thumb ? 3 : "4%" }} />}
-            <div style={{ fontSize: titleSz, fontFamily: titleFont, fontWeight: 800, lineHeight: 1.08, color: textCol, letterSpacing: -0.3 }}>
-              {title}
-            </div>
-          </div>
-        )}
-
-        {cover.subtitle && (
-          <div style={{ fontSize: subSz, fontFamily: subFont, lineHeight: 1.35, color: textCol, opacity: 0.9, marginTop: thumb ? 2 : "3%", fontWeight: 500 }}>
-            {cover.subtitle}
-          </div>
-        )}
-
-        <div style={{ marginTop: "auto", paddingTop: thumb ? 3 : "5%", fontSize: authorSz, fontFamily: authorFont, letterSpacing: thumb ? 0.5 : 2, textTransform: "uppercase", opacity: 0.85, color: textCol, fontWeight: 600 }}>
-          {cover.authorLine || "Author Name"}
+        <div style={{ fontSize: AS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 600, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", color: accent }}>
+          {author}
         </div>
       </div>
     </div>
   );
 }
 
-function SpinePreview({ cover, title, spineInches, trimHeight }) {
-  const fp = FONT_PAIRINGS[cover.fontPairingIndex ?? 0];
-  const bg = cover.primaryColor || "#0c4a6e";
-  const acc = cover.accentColor || "#38bdf8";
-  const tc = cover.textColor || "#ffffff";
-  const hasText = spineInches >= 0.25;
-  const spineRatioOfHeight = spineInches / trimHeight;
-  const previewWidth = Math.max(8, Math.round(spineRatioOfHeight * 220 * (trimHeight / 9)));
-
+function PremiumRenderer({ cd, thumb }) {
+  const { accent, text, secondary, title, subtitle, author, tagline } = cd;
+  const bgCol = secondary || "#f5f0e8";
+  const TS = thumb ? 8 : 25, SS = thumb ? 3.5 : 10, AS = thumb ? 2.8 : 8, TGS = thumb ? 2.2 : 6.5;
   return (
-    <div style={{
-      width: previewWidth,
-      background: acc,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-      position: "relative",
-      overflow: "hidden"
-    }}>
-      {hasText && (
-        <div style={{
-          writingMode: "vertical-rl",
-          textOrientation: "mixed",
-          transform: "rotate(180deg)",
-          fontSize: 7,
-          fontFamily: fp?.title || "serif",
-          fontWeight: 700,
-          color: bg,
-          letterSpacing: 1,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          maxHeight: "90%",
-          padding: "4px 0"
-        }}>
-          {title} {cover.authorLine ? `• ${cover.authorLine}` : ""}
+    <div style={{ background: bgCol, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ width: "76%", textAlign: "center" }}>
+        {tagline && (
+          <div style={{ fontSize: TGS, fontFamily: "Georgia,serif", fontStyle: "italic", color: accent, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase", marginBottom: thumb ? 2 : "5%", opacity: 0.9 }}>
+            {tagline}
+          </div>
+        )}
+        <div style={{ height: thumb ? 0.5 : 1, background: accent, opacity: 0.65, marginBottom: thumb ? 2.5 : "5%" }} />
+        <div style={{ fontSize: TS, fontFamily: "Georgia,'Times New Roman',serif", fontWeight: 700, lineHeight: 1.15, letterSpacing: -0.3, color: text }}>
+          {title}
         </div>
-      )}
+        <div style={{ height: thumb ? 0.5 : 1, background: accent, opacity: 0.65, marginTop: thumb ? 2.5 : "5%", marginBottom: thumb ? 2 : "4%" }} />
+        {subtitle && (
+          <div style={{ fontSize: SS, fontFamily: "Georgia,serif", fontStyle: "italic", lineHeight: 1.4, color: text, opacity: 0.72 }}>
+            {subtitle}
+          </div>
+        )}
+      </div>
+      <div style={{ position: "absolute", bottom: thumb ? "4%" : "5.5%", textAlign: "center", fontSize: AS, fontFamily: "Georgia,serif", fontWeight: 700, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", color: text, opacity: 0.55 }}>
+        {author}
+      </div>
     </div>
   );
 }
 
-function BackCoverPreview({ cover }) {
-  const fp = FONT_PAIRINGS[cover.fontPairingIndex ?? 0];
-  const bg = cover.primaryColor || "#0c4a6e";
-  const acc = cover.accentColor || "#38bdf8";
-  const tc = cover.textColor || "#ffffff";
-  const subFont = fp?.sub || "sans-serif";
-
+function MinimalRenderer({ cd, thumb }) {
+  const { bg, accent, text, title, author, tagline } = cd;
+  const TS = thumb ? 9 : 27, AS = thumb ? 3 : 8, TGS = thumb ? 2 : 6.5;
   return (
-    <div style={{ background: bg, color: tc, width: "100%", height: "100%", display: "flex", flexDirection: "column", padding: "8%", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: acc }} />
-      {cover.backCoverHook && (
-        <div style={{ fontSize: 9, fontFamily: fp?.title || "serif", fontWeight: 700, lineHeight: 1.4, marginBottom: "6%", color: tc }}>
+    <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: thumb ? "-14%" : "-12%", right: thumb ? "-30%" : "-25%", width: "88%", paddingBottom: "88%", borderRadius: "50%", background: accent, opacity: 0.17, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: "4%", right: thumb ? "-13%" : "-10%", width: "60%", paddingBottom: "60%", borderRadius: "50%", background: accent, opacity: 0.13, pointerEvents: "none" }} />
+      <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: thumb ? "5% 7% 5%" : "7% 9% 5.5%" }}>
+        {tagline && (
+          <div style={{ fontSize: TGS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.45, letterSpacing: thumb ? 0.5 : 3.5, textTransform: "uppercase", marginBottom: thumb ? 1 : "2%" }}>
+            {tagline}
+          </div>
+        )}
+        <div style={{ fontSize: TS, fontFamily: "'Arial Black',Impact,sans-serif", fontWeight: 900, lineHeight: 0.97, letterSpacing: -1, color: text }}>
+          {title}
+        </div>
+        <div style={{ height: thumb ? 1.5 : 4, background: accent, width: thumb ? "18%" : "22%", marginTop: thumb ? 1.5 : "3.5%", marginBottom: thumb ? 1.5 : "3.5%" }} />
+        <div style={{ fontSize: AS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.7 }}>
+          {author}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetaphorRenderer({ cd, thumb }) {
+  const { bg, accent, text, secondary, title, subtitle, author, tagline } = cd;
+  const TS = thumb ? 7.5 : 22, SS = thumb ? 3.5 : 9.5, AS = thumb ? 2.8 : 7.5, TGS = thumb ? 2 : 6.5;
+  const hex = "polygon(50% 0%,95% 25%,95% 75%,50% 100%,5% 75%,5% 25%)";
+  return (
+    <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", background: secondary, opacity: 0.3 }} />
+      {[["58%", 0.15], ["43%", 0.2], ["24%", 0.55]].map(([size, op], i) => (
+        <div key={i} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: size, paddingBottom: size, clipPath: hex, background: accent, opacity: op }} />
+      ))}
+      <div style={{ position: "relative", flex: "0 0 42%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: thumb ? "5% 8%" : "5% 10%" }}>
+        {tagline && (
+          <div style={{ fontSize: TGS, fontFamily: "Arial,sans-serif", color: accent, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase", marginBottom: thumb ? 1 : "2%", opacity: 0.9 }}>
+            {tagline}
+          </div>
+        )}
+        <div style={{ fontSize: TS, fontFamily: "Georgia,'Times New Roman',serif", fontWeight: 700, lineHeight: 1.1, color: text }}>
+          {title}
+        </div>
+      </div>
+      <div style={{ position: "relative", flex: "0 0 18%", display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", textAlign: "center", padding: thumb ? "0 8% 5%" : "0 10% 6%" }}>
+        {subtitle && (
+          <div style={{ fontSize: SS, fontFamily: "Georgia,serif", fontStyle: "italic", color: text, opacity: 0.75, marginBottom: thumb ? 1 : "2.5%" }}>
+            {subtitle}
+          </div>
+        )}
+        <div style={{ fontSize: AS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.6, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase" }}>
+          {author}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DynamicRenderer({ cd, thumb }) {
+  const { bg, accent, text, title, subtitle, author, tagline } = cd;
+  const TS = thumb ? 8.5 : 24, SS = thumb ? 3.5 : 9, AS = thumb ? 2.8 : 7.5, TGS = thumb ? 2 : 6.5;
+  return (
+    <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: 0, left: 0, right: "-20%", height: thumb ? "19%" : "18%", background: accent, transform: `skewY(${thumb ? -5 : -4}deg)`, transformOrigin: "top left" }} />
+      <div style={{ position: "absolute", top: "22%", bottom: "15%", right: thumb ? "8%" : "9%", width: thumb ? 0.5 : 1.5, background: accent, opacity: 0.28 }} />
+      <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: thumb ? "21% 7% 5%" : "22% 8% 5.5%" }}>
+        {tagline && (
+          <div style={{ fontSize: TGS, fontFamily: "'Arial Black',Impact,sans-serif", color: text, opacity: 0.42, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase", marginBottom: thumb ? 1 : "2%" }}>
+            {tagline}
+          </div>
+        )}
+        <div style={{ fontSize: TS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 900, lineHeight: 0.95, letterSpacing: -0.5, textTransform: "uppercase", color: text }}>
+          {title}
+        </div>
+        {subtitle && (
+          <div style={{ fontSize: SS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.65, lineHeight: 1.4, marginTop: thumb ? 1.5 : "3%", paddingRight: thumb ? "14%" : "13%" }}>
+            {subtitle}
+          </div>
+        )}
+      </div>
+      <div style={{ position: "relative", padding: thumb ? "0 7% 5%" : "0 8% 5.5%" }}>
+        <div style={{ fontSize: AS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 700, color: accent, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase" }}>
+          {author}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConceptRenderer({ cd, thumb }) {
+  if (!cd) return null;
+  switch (cd.type) {
+    case "authority": return <AuthorityRenderer cd={cd} thumb={thumb} />;
+    case "premium":   return <PremiumRenderer   cd={cd} thumb={thumb} />;
+    case "minimal":   return <MinimalRenderer   cd={cd} thumb={thumb} />;
+    case "metaphor":  return <MetaphorRenderer  cd={cd} thumb={thumb} />;
+    case "dynamic":   return <DynamicRenderer   cd={cd} thumb={thumb} />;
+    default:          return <AuthorityRenderer cd={cd} thumb={thumb} />;
+  }
+}
+
+// ─── Back Cover / Spine ───────────────────────────────────────────────────────
+
+function BackCoverPreview({ cd, cover }) {
+  return (
+    <div style={{ background: cd.bg, color: cd.text, width: "100%", height: "100%", display: "flex", flexDirection: "column", padding: "8%", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: cd.accent }} />
+      {cover?.backCoverHook && (
+        <div style={{ fontSize: 8, fontFamily: "Georgia,serif", fontWeight: 700, lineHeight: 1.4, marginBottom: "5%", color: cd.text }}>
           {cover.backCoverHook}
         </div>
       )}
-      {cover.backDescription && (
-        <div style={{ fontSize: 7, fontFamily: subFont, lineHeight: 1.6, opacity: 0.88, marginBottom: "4%", flex: 1 }}>
+      {cover?.backDescription && (
+        <div style={{ fontSize: 6, fontFamily: "Arial,sans-serif", lineHeight: 1.6, opacity: 0.84, flex: 1 }}>
           {cover.backDescription.slice(0, 280)}{cover.backDescription.length > 280 ? "…" : ""}
         </div>
       )}
-      {cover.backReviewQuotes && (
-        <div style={{ fontSize: 6.5, fontFamily: subFont, fontStyle: "italic", opacity: 0.75, marginBottom: "4%", borderLeft: `2px solid ${acc}`, paddingLeft: "4%" }}>
-          {cover.backReviewQuotes.slice(0, 120)}{cover.backReviewQuotes.length > 120 ? "…" : ""}
+      {cover?.backReviewQuotes && (
+        <div style={{ fontSize: 5.5, fontFamily: "Georgia,serif", fontStyle: "italic", opacity: 0.7, marginBottom: "3%", borderLeft: `2px solid ${cd.accent}`, paddingLeft: "4%" }}>
+          {cover.backReviewQuotes.slice(0, 100)}{cover.backReviewQuotes.length > 100 ? "…" : ""}
         </div>
       )}
       <div style={{ marginTop: "auto" }}>
-        {cover.backAuthorBio && (
-          <div style={{ fontSize: 6, fontFamily: subFont, opacity: 0.7, marginBottom: "4%" }}>
-            {cover.backAuthorBio.slice(0, 100)}{cover.backAuthorBio.length > 100 ? "…" : ""}
+        {cover?.backAuthorBio && (
+          <div style={{ fontSize: 5.5, fontFamily: "Arial,sans-serif", opacity: 0.65, marginBottom: "4%" }}>
+            {cover.backAuthorBio.slice(0, 120)}{cover.backAuthorBio.length > 120 ? "…" : ""}
           </div>
         )}
-        <div style={{
-          width: "32%", height: "12%", border: `1px solid ${tc}`, opacity: 0.3,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 5, fontFamily: "monospace", color: tc
-        }}>
+        <div style={{ width: "34%", height: "11%", border: `1px solid ${cd.text}`, opacity: 0.28, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 4.5, fontFamily: "monospace", color: cd.text }}>
           BARCODE
         </div>
-        <div style={{ fontSize: 5, fontFamily: subFont, opacity: 0.4, marginTop: "2%" }}>
-          KDP SAFE ZONE ≥ 0.125" bleed required
+      </div>
+    </div>
+  );
+}
+
+function SpinePreview({ cd, spineInches, trimHeight, previewH }) {
+  const w = Math.max(8, Math.round((spineInches / trimHeight) * previewH * (trimHeight / 9)));
+  const hasText = spineInches >= 0.25;
+  return (
+    <div style={{ width: w, flexShrink: 0, background: cd.accent, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      {hasText && (
+        <div style={{ writingMode: "vertical-rl", textOrientation: "mixed", transform: "rotate(180deg)", fontSize: 7, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 700, color: cd.bg, letterSpacing: 1, whiteSpace: "nowrap", overflow: "hidden", maxHeight: "90%", padding: "4px 0" }}>
+          {cd.title} {cd.author ? `· ${cd.author}` : ""}
         </div>
-      </div>
+      )}
     </div>
   );
 }
-
-function FullWrapPreview({ cover, title }) {
-  const trimSize = KDP_TRIM_SIZES[cover.trimSizeIndex ?? 4];
-  const pageCount = Number(cover.pageCount) || 200;
-  const spineInches = calcSpineInches(pageCount, cover.paperType || "white");
-  const trimH = trimSize.h;
-  const PREVIEW_H = 220;
-  const frontW = Math.round((trimSize.w / trimH) * PREVIEW_H);
-
-  return (
-    <div>
-      <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500">Full Wrap Preview</p>
-      <div className="flex justify-center">
-        <div style={{ display: "flex", height: PREVIEW_H, boxShadow: "0 4px 24px rgba(0,0,0,0.25)" }}>
-          <div style={{ width: frontW, flexShrink: 0 }}>
-            <BackCoverPreview cover={cover} />
-          </div>
-          <SpinePreview cover={cover} title={title} spineInches={spineInches} trimHeight={trimH} />
-          <div style={{ width: frontW, flexShrink: 0 }}>
-            <FrontCoverInner cover={cover} title={title} />
-          </div>
-        </div>
-      </div>
-      <p className="mt-2 text-center text-[9px] text-slate-400">
-        {trimSize.label} · Spine: {spineInches.toFixed(3)}" ({pageCount} pages, {cover.paperType || "white"} paper)
-      </p>
-    </div>
-  );
-}
-
-function ThumbnailPreview({ cover, title }) {
-  const ratio = contrastRatio(cover.textColor || "#fff", cover.primaryColor || "#000");
-  const poor = ratio < 3;
-  const warn = ratio >= 3 && ratio < 4.5;
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Amazon Thumbnail</p>
-      <div style={{ position: "relative", display: "inline-block" }}>
-        <div style={{ width: 72, height: 108, borderRadius: 4, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
-          <FrontCoverInner cover={cover} title={title} thumb />
-        </div>
-        {(poor || warn) && (
-          <div style={{ position: "absolute", top: -6, right: -6, width: 16, height: 16, borderRadius: "50%", background: poor ? "#ef4444" : "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#fff", fontWeight: 700 }}>
-            !
-          </div>
-        )}
-      </div>
-      <div className={`text-[10px] font-semibold ${poor ? "text-red-600" : warn ? "text-amber-600" : "text-emerald-600"}`}>
-        {poor ? "Poor contrast" : warn ? "Marginal contrast" : "Good contrast"} {ratio.toFixed(1)}:1
-      </div>
-    </div>
-  );
-}
-
-// ─── Score Ring ───────────────────────────────────────────────────────────────
-
-function ScoreRing({ label, value }) {
-  const pct = (value / 10) * 100;
-  const color = value >= 8 ? "#22c55e" : value >= 6 ? "#f59e0b" : "#ef4444";
-  const r = 16, circ = 2 * Math.PI * r;
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <svg width="44" height="44" viewBox="0 0 44 44">
-        <circle cx="22" cy="22" r={r} fill="none" stroke="#e2e8f0" strokeWidth="4" />
-        <circle cx="22" cy="22" r={r} fill="none" stroke={color} strokeWidth="4"
-          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct / 100)}
-          strokeLinecap="round" transform="rotate(-90 22 22)" />
-        <text x="22" y="26" textAnchor="middle" fontSize="11" fontWeight="700" fill={color}>{value}</text>
-      </svg>
-      <span className="text-[9px] font-semibold text-slate-600 text-center leading-tight">{label}</span>
-    </div>
-  );
-}
-
-// ─── Field Label ──────────────────────────────────────────────────────────────
-
-function FL({ children, hint }) {
-  return (
-    <label className="flex items-center gap-1.5 text-xs font-semibold tracking-tight text-slate-800">
-      {children}
-      {hint && <span className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-300 bg-white text-[9px] font-bold text-sky-600" title={hint}>i</span>}
-    </label>
-  );
-}
-
-// ─── Tab Nav ──────────────────────────────────────────────────────────────────
-
-const TABS = [
-  { id: "style",      label: "Style" },
-  { id: "type",       label: "Typography" },
-  { id: "colors",     label: "Colors" },
-  { id: "copy",       label: "Copy" },
-  { id: "kdp",        label: "KDP Setup" },
-  { id: "back",       label: "Back Cover" },
-  { id: "ai",         label: "AI Tools" }
-];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function BookCoverStep({ bookCover, setBookCover, fullProject, description, errors }) {
-  const [tab, setTab] = useState("style");
-  const [briefBusy, setBriefBusy] = useState(false);
-  const [criticBusy, setCriticBusy] = useState(false);
-  const [variantsBusy, setVariantsBusy] = useState(false);
+const TABS = [
+  { id: "concepts", label: "Concepts"   },
+  { id: "text",     label: "Cover Text" },
+  { id: "kdp",      label: "KDP Setup"  },
+  { id: "back",     label: "Back Cover" },
+  { id: "export",   label: "Export"     },
+];
+
+export default function BookCoverStep({ bookCover, setBookCover, fullProject, errors }) {
+  const [generating, setGenerating] = useState(false);
   const [status, setStatus] = useState("");
+  const [tab, setTab] = useState("concepts");
   const visitRef = useRef(false);
 
-  const cover = bookCover && typeof bookCover === "object" ? bookCover : {};
+  const cover = (bookCover && typeof bookCover === "object") ? bookCover : {};
   const title = resolveBookTitle(fullProject);
-  const fp = FONT_PAIRINGS[cover.fontPairingIndex ?? 0];
   const trimSize = KDP_TRIM_SIZES[cover.trimSizeIndex ?? 4];
   const spineInches = calcSpineInches(Number(cover.pageCount) || 200, cover.paperType || "white");
-  const compliance = runComplianceChecks(cover, spineInches);
-  const variants = Array.isArray(cover.variants) ? cover.variants : [];
-  const activeIdx = cover.activeVariant ?? 0;
-  const critic = cover.critic || null;
 
-  // Seed defaults
+  const rawConcepts = Array.isArray(cover.concepts) && cover.concepts.length >= 5
+    ? cover.concepts
+    : CONCEPT_TYPES.map(ct => ({ ...CONCEPT_DEFAULTS[ct.id], type: ct.id, label: ct.label, tagline: cover.tagline || "" }));
+
+  const selectedIdx = cover.selectedConceptIndex ?? 0;
+  const selectedConcept = rawConcepts[selectedIdx] || rawConcepts[0];
+  const selectedCD = buildCoverData(selectedConcept, cover, title);
+
   useEffect(() => {
     if (visitRef.current) return;
     visitRef.current = true;
     const author = resolveAuthorName(fullProject);
-    setBookCover((prev) => {
-      const p = prev && typeof prev === "object" ? prev : {};
+    setBookCover(prev => {
+      const p = (prev && typeof prev === "object") ? prev : {};
+      const def = CONCEPT_DEFAULTS.authority;
       return {
-        subtitle: p.subtitle || "",
-        tagline: p.tagline || "",
-        authorLine: p.authorLine || author,
-        layoutStyle: p.layoutStyle || "typographic",
-        styleMode: p.styleMode || "typographic",
-        primaryColor: p.primaryColor || "#0c4a6e",
-        accentColor: p.accentColor || "#38bdf8",
-        textColor: p.textColor || "#ffffff",
-        genrePreset: p.genrePreset || "",
-        fontPairingIndex: p.fontPairingIndex ?? 0,
-        titleSize: p.titleSize ?? 22,
-        subtitleSize: p.subtitleSize ?? 12,
-        authorSize: p.authorSize ?? 9,
-        textAlign: p.textAlign || "left",
-        trimSizeIndex: p.trimSizeIndex ?? 4,
-        pageCount: p.pageCount ?? 200,
-        paperType: p.paperType || "white",
-        backDescription: p.backDescription || "",
-        backAuthorBio: p.backAuthorBio || "",
-        backReviewQuotes: p.backReviewQuotes || "",
-        backCoverHook: p.backCoverHook || "",
-        backCoverCTA: p.backCoverCTA || "",
-        designNotes: p.designNotes || "",
-        mood: p.mood || "",
-        typographyDirection: p.typographyDirection || "",
-        imagerySuggestions: p.imagerySuggestions || "",
-        colorPsychology: p.colorPsychology || "",
-        audienceTargeting: p.audienceTargeting || "",
-        compositionGuidance: p.compositionGuidance || "",
-        variants: p.variants || null,
-        activeVariant: p.activeVariant ?? 0,
-        critic: p.critic || null,
-        generatedAt: p.generatedAt || null
+        subtitle:             p.subtitle             ?? "",
+        tagline:              p.tagline              ?? "",
+        authorLine:           p.authorLine           || author,
+        primaryColor:         p.primaryColor         || def.bg,
+        accentColor:          p.accentColor          || def.accent,
+        textColor:            p.textColor            || def.text,
+        designNotes:          p.designNotes          ?? "",
+        trimSizeIndex:        p.trimSizeIndex        ?? 4,
+        pageCount:            p.pageCount            ?? 200,
+        paperType:            p.paperType            || "white",
+        backDescription:      p.backDescription      ?? "",
+        backAuthorBio:        p.backAuthorBio        ?? "",
+        backCoverHook:        p.backCoverHook        ?? "",
+        backReviewQuotes:     p.backReviewQuotes     ?? "",
+        backCoverCTA:         p.backCoverCTA         ?? "",
+        selectedConceptIndex: p.selectedConceptIndex ?? 0,
+        concepts:             p.concepts             ?? null,
+        generatedAt:          p.generatedAt          ?? null,
       };
     });
   }, [fullProject, setBookCover]);
 
   function patch(partial) {
-    setBookCover((prev) => ({ ...(prev && typeof prev === "object" ? prev : {}), ...partial }));
+    setBookCover(prev => ({ ...(prev && typeof prev === "object" ? prev : {}), ...partial }));
   }
 
-  function applyPreset(id) {
-    const p = GENRE_PRESETS[id];
-    if (!p) return;
-    patch({ genrePreset: id, primaryColor: p.primaryColor, accentColor: p.accentColor, textColor: p.textColor, fontPairingIndex: p.fontPairingIndex, layoutStyle: p.layoutStyle, styleMode: p.styleMode });
-  }
-
-  function applyVariant(idx) {
-    const v = variants[idx];
-    if (!v) return;
+  function selectConcept(idx) {
+    const c = rawConcepts[idx];
+    if (!c) return;
     patch({
-      activeVariant: idx,
-      primaryColor: v.primaryColor || cover.primaryColor,
-      accentColor: v.accentColor || cover.accentColor,
-      textColor: v.textColor || cover.textColor,
-      layoutStyle: v.layoutStyle || cover.layoutStyle,
-      styleMode: v.styleMode || cover.styleMode,
-      fontPairingIndex: typeof v.fontPairingIndex === "number" ? v.fontPairingIndex : cover.fontPairingIndex,
-      tagline: v.tagline || cover.tagline
+      selectedConceptIndex: idx,
+      primaryColor: c.bg     || CONCEPT_DEFAULTS[c.type || "authority"].bg,
+      accentColor:  c.accent || CONCEPT_DEFAULTS[c.type || "authority"].accent,
+      textColor:    c.text   || CONCEPT_DEFAULTS[c.type || "authority"].text,
     });
   }
 
-  async function onGenerateBrief() {
-    setBriefBusy(true);
-    setStatus("");
+  function patchConcept(idx, fields) {
+    const updated = rawConcepts.map((c, i) => i === idx ? { ...c, ...fields } : c);
+    const sync = { concepts: updated };
+    if (idx === selectedIdx) {
+      if (fields.bg)     sync.primaryColor = fields.bg;
+      if (fields.accent) sync.accentColor  = fields.accent;
+      if (fields.text)   sync.textColor    = fields.text;
+    }
+    patch(sync);
+  }
+
+  async function generateConcepts() {
+    setGenerating(true); setStatus("");
     try {
-      const data = await aiFetch("/api/ai/cover", {
+      const bd = fullProject?.bookDetails || {};
+      const data = await aiFetch("/api/ai/cover-concepts", {
         title,
-        subtitle: cover.subtitle || "",
-        audience: resolveAudience(fullProject),
-        tone: resolveTone(fullProject),
-        genre: resolveGenre(fullProject),
-        usp: resolveUsp(fullProject),
-        authorName: resolveAuthorName(fullProject),
-        description: description || "",
-        genrePreset: cover.genrePreset || "",
-        styleMode: cover.styleMode || "typographic"
+        subtitle:    cover.subtitle || bd.subtitle   || "",
+        genre:       resolveGenre(fullProject),
+        audience:    resolveAudience(fullProject),
+        tone:        resolveTone(fullProject),
+        corePromise: bd.corePromise || "",
+        coreThesis:  bd.coreThesis  || "",
+        authorName:  resolveAuthorName(fullProject),
+        positioning: resolveUsp(fullProject),
       });
-      patch({
-        subtitle: data.subtitle || cover.subtitle,
-        tagline: data.tagline || cover.tagline,
-        authorLine: data.authorLine || cover.authorLine,
-        layoutStyle: data.layoutStyle || cover.layoutStyle,
-        primaryColor: data.primaryColor || cover.primaryColor,
-        accentColor: data.accentColor || cover.accentColor,
-        textColor: data.textColor || cover.textColor,
-        designNotes: data.designNotes || cover.designNotes,
-        mood: data.mood || "",
-        typographyDirection: data.typographyDirection || "",
-        imagerySuggestions: data.imagerySuggestions || "",
-        colorPsychology: data.colorPsychology || "",
-        audienceTargeting: data.audienceTargeting || "",
-        compositionGuidance: data.compositionGuidance || "",
-        backCoverHook: data.backCoverHook || cover.backCoverHook,
-        backCoverCTA: data.backCoverCTA || cover.backCoverCTA,
-        generatedAt: new Date().toISOString()
-      });
-      setStatus("Cover brief generated — refine details below.");
+      if (Array.isArray(data.concepts) && data.concepts.length > 0) {
+        const merged = CONCEPT_TYPES.map((ct, i) => {
+          const match = data.concepts.find(c => c.type === ct.id) || data.concepts[i] || {};
+          return { ...CONCEPT_DEFAULTS[ct.id], type: ct.id, label: ct.label, ...match };
+        });
+        const first = merged[0];
+        patch({ concepts: merged, selectedConceptIndex: 0, primaryColor: first.bg, accentColor: first.accent, textColor: first.text, generatedAt: new Date().toISOString() });
+        setStatus("5 cover concepts generated — click any concept to select and customize it.");
+      } else {
+        setStatus("Generation returned no data — try again.");
+      }
     } catch (e) {
       setStatus(e.message || "Generation failed.");
-    } finally {
-      setBriefBusy(false);
-    }
+    } finally { setGenerating(false); }
   }
 
-  async function onCritic() {
-    setCriticBusy(true);
-    setStatus("");
-    try {
-      const data = await aiFetch("/api/ai/cover-critic", {
-        title,
-        ...cover,
-        fontPairingLabel: fp?.label || "default",
-        genre: resolveGenre(fullProject)
-      });
-      patch({ critic: data });
-      setStatus("AI cover critique complete.");
-    } catch (e) {
-      if (e instanceof GenerationCanceledError) setStatus("Critique canceled — Grok approval declined.");
-      else setStatus(e.message || "Critique failed.");
-    } finally {
-      setCriticBusy(false);
-    }
-  }
-
-  async function onVariants() {
-    setVariantsBusy(true);
-    setStatus("");
-    try {
-      const data = await aiFetch("/api/ai/cover-variants", {
-        title,
-        subtitle: cover.subtitle,
-        audience: resolveAudience(fullProject),
-        genre: resolveGenre(fullProject),
-        tone: resolveTone(fullProject),
-        usp: resolveUsp(fullProject)
-      });
-      const newVariants = Array.isArray(data.variants) ? data.variants : [];
-      patch({ variants: newVariants, activeVariant: 0 });
-      if (newVariants[0]) applyVariant(0);
-      setStatus(`${newVariants.length} cover concepts generated — select A, B, or C below.`);
-    } catch (e) {
-      if (e instanceof GenerationCanceledError) setStatus("Variants canceled — Grok approval declined.");
-      else setStatus(e.message || "Variants failed.");
-    } finally {
-      setVariantsBusy(false);
-    }
-  }
-
-  function onExportSVG() {
-    const svg = buildFrontCoverSVG(cover, title);
-    const slug = title.slice(0, 30).replace(/[^a-z0-9]/gi, "-").toLowerCase();
-    downloadSVG(svg, `${slug}-front-cover.svg`);
-  }
-
-  function onExportEbookSVG() {
-    const svg = buildFrontCoverSVG({ ...cover, subtitle: "" }, title);
-    const slug = title.slice(0, 30).replace(/[^a-z0-9]/gi, "-").toLowerCase();
-    downloadSVG(svg, `${slug}-ebook-cover.svg`);
-  }
+  const slug = title.slice(0, 30).replace(/[^a-z0-9]/gi, "-").toLowerCase();
 
   function copyKDPSpec() {
+    const ct = CONCEPT_TYPES.find(t => t.id === selectedConcept?.type) || CONCEPT_TYPES[0];
     const lines = [
       `KDP COVER SPEC — ${title}`,
+      `Concept: ${ct.label}`,
       `Trim size: ${trimSize.label}`,
       `Page count: ${Number(cover.pageCount) || 200}`,
       `Paper: ${cover.paperType || "white"}`,
       `Spine width: ${spineInches.toFixed(3)}"`,
-      `Front + spine + back (wrap): ${(trimSize.w * 2 + spineInches + 0.25).toFixed(3)}" × ${(trimSize.h + 0.25).toFixed(3)}"`,
+      `Full wrap: ${(trimSize.w * 2 + spineInches + 0.25).toFixed(3)}" × ${(trimSize.h + 0.25).toFixed(3)}"`,
       "",
-      `Style mode: ${cover.styleMode || "typographic"}`,
-      `Layout: ${cover.layoutStyle || "typographic"}`,
-      `Font pairing: ${fp?.label} (Title: ${fp?.title} / Sub: ${fp?.sub} / Author: ${fp?.author})`,
-      `Primary color: ${cover.primaryColor}`,
-      `Accent color: ${cover.accentColor}`,
-      `Text color: ${cover.textColor}`,
+      `Background: ${selectedCD.bg}`,
+      `Accent: ${selectedCD.accent}`,
+      `Text: ${selectedCD.text}`,
       "",
-      `Mood: ${cover.mood || "(not generated)"}`,
-      `Typography direction: ${cover.typographyDirection || "(not generated)"}`,
-      `Imagery suggestions: ${cover.imagerySuggestions || "(not generated)"}`,
-      `Color psychology: ${cover.colorPsychology || "(not generated)"}`,
-      `Composition guidance: ${cover.compositionGuidance || "(not generated)"}`,
+      `Design notes: ${selectedConcept?.designNotes || "(none)"}`,
       "",
-      `Design notes: ${cover.designNotes || "(none)"}`,
-      "",
-      `KDP bleed requirement: 0.125" on all sides`,
-      `Resolution: 300 DPI for print`,
-      `Color mode: RGB for digital, CMYK for print`
+      "KDP bleed: 0.125\" on all sides",
+      "Resolution: 300 DPI minimum",
+      "Color: RGB for digital, CMYK for print-ready PDF",
     ];
-    navigator.clipboard.writeText(lines.join("\n")).then(() => setStatus("KDP spec copied to clipboard!")).catch(() => setStatus("Copy failed — try manually."));
+    navigator.clipboard.writeText(lines.join("\n"))
+      .then(() => setStatus("KDP spec copied to clipboard!"))
+      .catch(() => setStatus("Copy failed — try manually."));
   }
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
-
-  const ip = "input-light mt-1 text-sm";
+  // Preview geometry
+  const PREV_H = 300;
+  const frontW = Math.round((trimSize.w / trimSize.h) * PREV_H);
+  const WRAP_H = Math.round(PREV_H * 0.72);
+  const wrapFW = Math.round(frontW * 0.72);
 
   return (
     <section className="mx-auto max-w-7xl">
-      {status && <p className="mb-4 rounded-lg bg-indigo-50 px-4 py-2.5 text-center text-sm font-medium text-indigo-800">{status}</p>}
+      {status && (
+        <p className="mb-4 rounded-lg bg-indigo-50 px-4 py-2.5 text-center text-sm font-medium text-indigo-800">{status}</p>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
 
-        {/* ── LEFT: Controls ── */}
+        {/* ── Left: Controls ── */}
         <div>
-          {/* Tab bar */}
           <div className="mb-4 flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
-            {TABS.map((t) => (
+            {TABS.map(t => (
               <button key={t.id} type="button" onClick={() => setTab(t.id)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${tab === t.id ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
                 {t.label}
@@ -862,144 +721,111 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, de
             ))}
           </div>
 
-          <div className="book-panel space-y-5 p-5">
+          <div className="book-panel p-5">
 
-            {/* ── Style Tab ── */}
-            {tab === "style" && (
-              <div className="space-y-5">
-                <div>
-                  <FL hint="Sets a genre-matched color palette, font, and layout.">Genre Preset</FL>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {Object.entries(GENRE_PRESETS).map(([id, p]) => (
-                      <button key={id} type="button" onClick={() => applyPreset(id)}
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${cover.genrePreset === id ? "border-indigo-500 bg-indigo-500 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300"}`}>
-                        {p.label}
-                      </button>
+            {/* CONCEPTS ─────────────────────────────────────────────────────── */}
+            {tab === "concepts" && (
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-slate-900">5 Unique Cover Directions</h3>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">AI generates five completely different visual concepts for your book. Click any thumbnail to select it, then customize colors below.</p>
+                  </div>
+                  <button type="button" onClick={generateConcepts} disabled={generating}
+                    className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-indigo-700 disabled:opacity-60 whitespace-nowrap">
+                    {generating ? "Generating…" : "✦ Generate Concepts"}
+                  </button>
+                </div>
+
+                {/* 5-up thumbnail grid */}
+                <div className="grid grid-cols-5 gap-3">
+                  {rawConcepts.map((concept, idx) => {
+                    const cd = buildCoverData(concept, cover, title);
+                    const ct = CONCEPT_TYPES[idx] || CONCEPT_TYPES[0];
+                    const isSel = idx === selectedIdx;
+                    return (
+                      <div key={idx} className="flex flex-col gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => selectConcept(idx)}
+                          style={{ aspectRatio: "5/8", display: "block", width: "100%", position: "relative", overflow: "hidden", borderRadius: 8 }}
+                          className={`transition-all ${isSel ? "ring-2 ring-indigo-500 ring-offset-2 shadow-lg scale-[1.02]" : "ring-1 ring-slate-200 hover:ring-indigo-300 hover:shadow-md"}`}>
+                          <div style={{ position: "absolute", inset: 0 }}>
+                            <ConceptRenderer cd={cd} thumb />
+                          </div>
+                        </button>
+                        <div className={`text-center text-[9px] font-semibold leading-tight ${isSel ? "text-indigo-600" : "text-slate-500"}`}>
+                          {ct.label}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Design notes for selected concept */}
+                {selectedConcept?.designNotes && (
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+                    <div className="text-xs font-bold text-indigo-800 mb-1">
+                      {CONCEPT_TYPES.find(t => t.id === selectedConcept.type)?.label || "Selected Concept"}
+                    </div>
+                    <p className="text-xs text-indigo-700 leading-relaxed">{selectedConcept.designNotes}</p>
+                  </div>
+                )}
+
+                {/* Color customization for selected */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-800">Customize Colors</h4>
+                    <span className="text-[10px] text-slate-400">
+                      Editing: {CONCEPT_TYPES.find(t => t.id === selectedConcept?.type)?.label || "—"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { key: "bg",     label: "Background" },
+                      { key: "accent", label: "Accent"     },
+                      { key: "text",   label: "Text"       },
+                    ].map(({ key, label }) => (
+                      <div key={key}>
+                        <div className="text-[11px] font-semibold text-slate-700 mb-1">{label}</div>
+                        <div className="flex items-center gap-1.5">
+                          <input type="color"
+                            className="h-8 w-10 cursor-pointer rounded border border-slate-200 p-0.5"
+                            value={selectedCD[key] || "#000000"}
+                            onChange={e => patchConcept(selectedIdx, { [key]: e.target.value })}
+                          />
+                          <input
+                            className="input-light flex-1 text-[11px] font-mono py-1.5"
+                            value={selectedCD[key] || ""}
+                            onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) patchConcept(selectedIdx, { [key]: e.target.value }); }}
+                          />
+                        </div>
+                      </div>
                     ))}
                   </div>
-                </div>
-
-                <div>
-                  <FL hint="Controls the visual treatment of the cover layout.">Cover Style Mode</FL>
-                  <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
-                    {STYLE_MODES.map((m) => (
-                      <button key={m.id} type="button" onClick={() => patch({ styleMode: m.id })}
-                        className={`flex flex-col items-center gap-1 rounded-xl border py-3 text-center transition ${cover.styleMode === m.id ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}>
-                        <span className="text-lg leading-none">{m.icon}</span>
-                        <span className="text-[10px] font-semibold leading-tight">{m.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <FL hint="Curated title + subtitle + author font combinations.">Font Pairing</FL>
-                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                    {FONT_PAIRINGS.map((pair, idx) => (
-                      <button key={idx} type="button" onClick={() => patch({ fontPairingIndex: idx })}
-                        className={`rounded-xl border px-3 py-2.5 text-left transition ${cover.fontPairingIndex === idx ? "border-indigo-400 bg-indigo-50" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-                        <div className="text-[11px] font-bold text-slate-800" style={{ fontFamily: pair.title }}>{pair.label}</div>
-                        <div className="text-[9px] text-slate-500 mt-0.5">{pair.title}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Typography Tab ── */}
-            {tab === "type" && (
-              <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div>
-                    <FL>Title Size (px-equiv)</FL>
-                    <input type="range" min={14} max={36} step={1} className="mt-2 w-full"
-                      value={Number(cover.titleSize) || 22}
-                      onChange={(e) => patch({ titleSize: Number(e.target.value) })} />
-                    <div className="text-[10px] text-slate-500 mt-0.5">{cover.titleSize || 22}px</div>
-                  </div>
-                  <div>
-                    <FL>Subtitle Size</FL>
-                    <input type="range" min={8} max={18} step={1} className="mt-2 w-full"
-                      value={Number(cover.subtitleSize) || 12}
-                      onChange={(e) => patch({ subtitleSize: Number(e.target.value) })} />
-                    <div className="text-[10px] text-slate-500 mt-0.5">{cover.subtitleSize || 12}px</div>
-                  </div>
-                  <div>
-                    <FL>Author Size</FL>
-                    <input type="range" min={6} max={14} step={1} className="mt-2 w-full"
-                      value={Number(cover.authorSize) || 9}
-                      onChange={(e) => patch({ authorSize: Number(e.target.value) })} />
-                    <div className="text-[10px] text-slate-500 mt-0.5">{cover.authorSize || 9}px</div>
-                  </div>
-                </div>
-
-                <div>
-                  <FL>Text Alignment</FL>
-                  <div className="mt-2 flex gap-2">
-                    {["left", "center", "right"].map((a) => (
-                      <button key={a} type="button" onClick={() => patch({ textAlign: a })}
-                        className={`flex-1 rounded-lg border py-2 text-xs font-semibold capitalize transition ${cover.textAlign === a ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}>
-                        {a}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                  <div className="text-xs font-semibold text-slate-700 mb-2">Current Pairing: {fp?.label}</div>
-                  <div className="space-y-1 text-xs text-slate-600">
-                    <div>Title: <span className="font-medium text-slate-800" style={{ fontFamily: fp?.title }}>{fp?.title}</span></div>
-                    <div>Subtitle: <span className="font-medium text-slate-800" style={{ fontFamily: fp?.sub }}>{fp?.sub}</span></div>
-                    <div>Author: <span className="font-medium text-slate-800" style={{ fontFamily: fp?.author }}>{fp?.author}</span></div>
-                  </div>
-                </div>
-
-                <div>
-                  <FL hint="Controls the overall content layout order.">Layout Style</FL>
-                  <select className={ip} value={cover.layoutStyle || "typographic"} onChange={(e) => patch({ layoutStyle: e.target.value })}>
-                    {["typographic", "split-band", "minimal", "bold-stack"].map((l) => (
-                      <option key={l} value={l}>{l.replace("-", " ")}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {/* ── Colors Tab ── */}
-            {tab === "colors" && (
-              <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {[
-                    { key: "primaryColor", label: "Primary Background", hint: "Dominant cover background color." },
-                    { key: "accentColor", label: "Accent / Highlight", hint: "Used for decorative elements, spine, accents." },
-                    { key: "textColor", label: "Text Color", hint: "Main title and body text color — ensure strong contrast." }
-                  ].map(({ key, label, hint }) => (
-                    <div key={key}>
-                      <FL hint={hint}>{label}</FL>
-                      <div className="mt-2 flex items-center gap-2">
-                        <input type="color" className="h-10 w-14 cursor-pointer rounded-lg border border-slate-200"
-                          value={cover[key] || "#000000"} onChange={(e) => patch({ [key]: e.target.value })} />
-                        <input className="input-light flex-1 text-xs font-mono"
-                          value={cover[key] || ""}
-                          onChange={(e) => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && patch({ [key]: e.target.value })} />
+                  {selectedConcept?.type === "premium" && (
+                    <div>
+                      <div className="text-[11px] font-semibold text-slate-700 mb-1">Page Color (light background)</div>
+                      <div className="flex items-center gap-1.5">
+                        <input type="color"
+                          className="h-8 w-10 cursor-pointer rounded border border-slate-200 p-0.5"
+                          value={selectedCD.secondary || "#f5f0e8"}
+                          onChange={e => patchConcept(selectedIdx, { secondary: e.target.value })}
+                        />
+                        <input
+                          className="input-light flex-1 text-[11px] font-mono py-1.5"
+                          value={selectedCD.secondary || ""}
+                          onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) patchConcept(selectedIdx, { secondary: e.target.value }); }}
+                        />
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                  <div className="text-xs font-semibold text-slate-700 mb-2">Contrast Check</div>
+                  )}
                   {(() => {
-                    const ratio = contrastRatio(cover.textColor || "#fff", cover.primaryColor || "#000");
-                    const color = ratio >= 4.5 ? "text-emerald-700" : ratio >= 3 ? "text-amber-700" : "text-red-700";
-                    const bg = ratio >= 4.5 ? "bg-emerald-50" : ratio >= 3 ? "bg-amber-50" : "bg-red-50";
+                    const ratio = contrastRatio(selectedCD.text, selectedCD.bg);
+                    const ok = ratio >= 4.5, warn = ratio >= 3;
                     return (
-                      <div className={`rounded-lg px-3 py-2 ${bg}`}>
-                        <span className={`text-sm font-bold ${color}`}>{ratio.toFixed(1)}:1</span>
-                        <span className={`ml-2 text-xs ${color}`}>
-                          {ratio >= 4.5 ? "WCAG AA ✓ — good for print and screen" : ratio >= 3 ? "Marginal — may look faded in print" : "Poor — text likely unreadable"}
-                        </span>
+                      <div className={`rounded-lg px-3 py-2 text-xs font-medium ${ok ? "bg-emerald-50 text-emerald-700" : warn ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                        Contrast {ratio.toFixed(1)}:1 — {ok ? "WCAG AA ✓ — good for print" : warn ? "Marginal — may look faded in print" : "Poor — text will be unreadable"}
                       </div>
                     );
                   })()}
@@ -1007,250 +833,273 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, de
               </div>
             )}
 
-            {/* ── Copy Tab ── */}
-            {tab === "copy" && (
+            {/* TEXT ─────────────────────────────────────────────────────────── */}
+            {tab === "text" && (
               <div className="space-y-4">
                 <div>
-                  <FL hint="Appears directly under the main title on the front cover.">Subtitle</FL>
-                  <input className={ip} value={cover.subtitle || ""} onChange={(e) => patch({ subtitle: e.target.value })} placeholder="A practical guide to…" />
+                  <label className="text-xs font-semibold text-slate-800">Subtitle</label>
+                  <p className="text-[11px] text-slate-400 mt-0.5 mb-1">Appears below the main title — describes the book's core promise</p>
+                  <input className="input-light mt-0.5 text-sm" value={cover.subtitle || ""} onChange={e => patch({ subtitle: e.target.value })} placeholder="A practical guide to…" />
                 </div>
                 <div>
-                  <FL hint="Short punchy hook — appears at the very top of the cover, usually in the accent color.">Tagline</FL>
-                  <input className={ip} value={cover.tagline || ""} onChange={(e) => patch({ tagline: e.target.value })} placeholder="Systems that compound" />
-                  <div className="mt-2 flex items-center gap-3">
-                    <span className="text-[10px] text-slate-500 w-20 shrink-0">Tagline size</span>
-                    <input type="range" min={6} max={18} step={0.5} className="flex-1"
-                      value={Number(cover.taglineSize) || 9}
-                      onChange={(e) => patch({ taglineSize: Number(e.target.value) })} />
-                    <span className="text-[10px] font-mono text-slate-600 w-8 text-right">{cover.taglineSize || 9}px</span>
-                  </div>
+                  <label className="text-xs font-semibold text-slate-800">Tagline</label>
+                  <p className="text-[11px] text-slate-400 mt-0.5 mb-1">Short punchy hook — 4–8 words, appears at the top of the cover</p>
+                  <input className="input-light text-sm" value={cover.tagline || ""}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const updated = rawConcepts.map(c => ({ ...c, tagline: (c.tagline === cover.tagline || !c.tagline) ? val : c.tagline }));
+                      patch({ tagline: val, concepts: updated });
+                    }}
+                    placeholder="The system that changes everything"
+                  />
                 </div>
                 <div>
-                  <FL hint="Exactly as it should appear on the cover.">Author Line</FL>
-                  <input className={ip} value={cover.authorLine || ""} onChange={(e) => patch({ authorLine: e.target.value })} />
+                  <label className="text-xs font-semibold text-slate-800">Author Line</label>
+                  <p className="text-[11px] text-slate-400 mt-0.5 mb-1">Exactly as it should appear on the cover</p>
+                  <input className="input-light mt-0.5 text-sm" value={cover.authorLine || ""} onChange={e => patch({ authorLine: e.target.value })} />
                 </div>
                 <div>
-                  <FL hint="Notes for you or a cover designer — mood, references, elements to avoid.">Design Notes</FL>
-                  <textarea className="input-light mt-1 min-h-[90px] resize-y text-sm" value={cover.designNotes || ""} onChange={(e) => patch({ designNotes: e.target.value })} placeholder="Typography mood, imagery references, hierarchy notes…" />
+                  <label className="text-xs font-semibold text-slate-800">Design Notes</label>
+                  <p className="text-[11px] text-slate-400 mt-0.5 mb-1">Optional notes for yourself or a professional cover designer</p>
+                  <textarea className="input-light mt-0.5 min-h-[80px] resize-y text-sm" value={cover.designNotes || ""} onChange={e => patch({ designNotes: e.target.value })} placeholder="Typography mood, visual references, elements to emphasize…" />
                 </div>
-                {cover.mood && (
-                  <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 space-y-2 text-xs text-indigo-900">
-                    <div><span className="font-bold">Mood:</span> {cover.mood}</div>
-                    {cover.typographyDirection && <div><span className="font-bold">Typography:</span> {cover.typographyDirection}</div>}
-                    {cover.colorPsychology && <div><span className="font-bold">Color psychology:</span> {cover.colorPsychology}</div>}
-                    {cover.compositionGuidance && <div><span className="font-bold">Composition:</span> {cover.compositionGuidance}</div>}
-                    {cover.audienceTargeting && <div><span className="font-bold">Audience signal:</span> {cover.audienceTargeting}</div>}
-                    {cover.imagerySuggestions && <div><span className="font-bold">Imagery:</span> {cover.imagerySuggestions}</div>}
-                  </div>
-                )}
               </div>
             )}
 
-            {/* ── KDP Setup Tab ── */}
+            {/* KDP ──────────────────────────────────────────────────────────── */}
             {tab === "kdp" && (
               <div className="space-y-5">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <FL hint="Standard KDP paperback trim sizes.">Trim Size</FL>
-                    <select className={ip} value={cover.trimSizeIndex ?? 4} onChange={(e) => patch({ trimSizeIndex: Number(e.target.value) })}>
+                    <label className="text-xs font-semibold text-slate-800">Trim Size</label>
+                    <select className="input-light mt-1 text-sm" value={cover.trimSizeIndex ?? 4} onChange={e => patch({ trimSizeIndex: Number(e.target.value) })}>
                       {KDP_TRIM_SIZES.map((s, i) => <option key={i} value={i}>{s.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <FL hint="KDP paperback: 24–828 pages.">Page Count</FL>
-                    <input type="number" min={24} max={828} className={ip} value={Number(cover.pageCount) || 200} onChange={(e) => patch({ pageCount: Number(e.target.value) })} />
+                    <label className="text-xs font-semibold text-slate-800">Page Count</label>
+                    <input type="number" min={24} max={828} className="input-light mt-1 text-sm"
+                      value={Number(cover.pageCount) || 200}
+                      onChange={e => patch({ pageCount: Number(e.target.value) })} />
                   </div>
                 </div>
-
                 <div>
-                  <FL hint="Cream paper is slightly thicker; produces a wider spine.">Paper Type</FL>
+                  <label className="text-xs font-semibold text-slate-800">Paper Type</label>
                   <div className="mt-1 flex gap-2">
-                    {["white", "cream"].map((p) => (
+                    {["white", "cream"].map(p => (
                       <button key={p} type="button" onClick={() => patch({ paperType: p })}
-                        className={`flex-1 rounded-lg border py-2 text-xs font-semibold capitalize transition ${cover.paperType === p ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}>
+                        className={`flex-1 rounded-lg border py-2 text-xs font-semibold capitalize transition ${(cover.paperType || "white") === p ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}>
                         {p}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                <div className="rounded-xl border border-sky-100 bg-sky-50 p-4">
-                  <div className="text-xs font-semibold text-sky-800 mb-2">Calculated Spine Width</div>
-                  <div className="text-2xl font-bold text-sky-900">{spineInches.toFixed(3)}"</div>
-                  <div className="text-xs text-sky-700 mt-1">
-                    Full wrap width: {(trimSize.w * 2 + spineInches + 0.25).toFixed(3)}" × {(trimSize.h + 0.25).toFixed(3)}" (incl. 0.125" bleed)
+                <div className="rounded-xl border border-sky-100 bg-sky-50 p-4 space-y-2">
+                  <div className="text-xs font-bold text-sky-800">Calculated Dimensions</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-sky-900">
+                    <div>Spine width: <strong>{spineInches.toFixed(3)}"</strong></div>
+                    <div>Spine text: <strong>{spineInches >= 0.25 ? "Yes ✓" : "Too narrow"}</strong></div>
+                    <div>Full wrap W: <strong>{(trimSize.w * 2 + spineInches + 0.25).toFixed(3)}"</strong></div>
+                    <div>Full wrap H: <strong>{(trimSize.h + 0.25).toFixed(3)}"</strong></div>
                   </div>
-                  {spineInches < 0.25 && <div className="mt-2 text-xs font-semibold text-amber-700">⚠ Spine too narrow for text — increase page count or leave spine blank.</div>}
-                  {spineInches >= 0.25 && <div className="mt-2 text-xs text-sky-700">✓ Wide enough for author name and title on spine.</div>}
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-slate-700 mb-2">KDP Compliance</div>
-                  {compliance.length === 0 ? (
-                    <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">✓ All checks passed</div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {compliance.map((c, i) => (
-                        <div key={i} className={`rounded-lg px-3 py-2 text-xs ${c.level === "error" ? "bg-red-50 text-red-700" : c.level === "warn" ? "bg-amber-50 text-amber-700" : "bg-slate-50 text-slate-600"}`}>
-                          {c.level === "error" ? "✗" : c.level === "warn" ? "⚠" : "ℹ"} {c.msg}
-                        </div>
-                      ))}
-                    </div>
+                  {spineInches < 0.25 && (
+                    <div className="text-xs font-semibold text-amber-700">⚠ Spine too narrow for text — increase page count above ~100 pages.</div>
                   )}
                 </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-xs text-slate-600 space-y-1.5">
+                  <div className="font-semibold text-slate-800 mb-0.5">KDP Print Requirements</div>
+                  <div>· Bleed: 0.125" on all sides (add to all dimensions above)</div>
+                  <div>· Resolution: 300 DPI minimum for sharp print quality</div>
+                  <div>· Color: RGB for digital preview, CMYK for print-ready PDF</div>
+                  <div>· Barcode safe zone: bottom-right of back cover, ≥ 2" × 1.2"</div>
+                </div>
+                <button type="button" onClick={copyKDPSpec}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  📋 Copy Full KDP Spec to Clipboard
+                </button>
               </div>
             )}
 
-            {/* ── Back Cover Tab ── */}
+            {/* BACK COVER ───────────────────────────────────────────────────── */}
             {tab === "back" && (
               <div className="space-y-4">
-                <p className="text-xs text-slate-500">All fields are optional. The back cover preview updates in real time in the right panel.</p>
+                <p className="text-xs text-slate-500">The full wrap preview updates live as you type. All fields are optional.</p>
                 <div>
-                  <FL hint="Opening hook — the first thing a browser reads when flipping the book over.">Back Cover Hook</FL>
-                  <textarea className="input-light mt-1 min-h-[60px] resize-y text-sm" value={cover.backCoverHook || ""} onChange={(e) => patch({ backCoverHook: e.target.value })} placeholder="What if everything you thought you knew about X was wrong?" />
+                  <label className="text-xs font-semibold text-slate-800">Back Cover Hook</label>
+                  <p className="text-[11px] text-slate-400 mt-0.5 mb-1">Opening line that grabs the browser's attention</p>
+                  <textarea className="input-light mt-0.5 min-h-[60px] resize-y text-sm" value={cover.backCoverHook || ""} onChange={e => patch({ backCoverHook: e.target.value })} placeholder="What if everything you believed about X was wrong?" />
                 </div>
                 <div>
-                  <FL hint="200–300 word book description for the back cover.">Back Cover Description</FL>
-                  <textarea className="input-light mt-1 min-h-[120px] resize-y text-sm" value={cover.backDescription || ""} onChange={(e) => patch({ backDescription: e.target.value })} placeholder="In this book, you'll discover…" />
+                  <label className="text-xs font-semibold text-slate-800">Back Cover Description</label>
+                  <textarea className="input-light mt-1 min-h-[110px] resize-y text-sm" value={cover.backDescription || ""} onChange={e => patch({ backDescription: e.target.value })} placeholder="In this book, you'll discover…" />
                 </div>
                 <div>
-                  <FL hint="1–3 short review quotes from readers, experts, or early reviewers.">Review Quotes</FL>
-                  <textarea className="input-light mt-1 min-h-[80px] resize-y text-sm" value={cover.backReviewQuotes || ""} onChange={(e) => patch({ backReviewQuotes: e.target.value })} placeholder={`"A must-read." — Name, Title`} />
+                  <label className="text-xs font-semibold text-slate-800">Review Quotes</label>
+                  <textarea className="input-light mt-1 min-h-[70px] resize-y text-sm" value={cover.backReviewQuotes || ""} onChange={e => patch({ backReviewQuotes: e.target.value })} placeholder={`"A must-read." — Name, Title`} />
                 </div>
                 <div>
-                  <FL hint="Short 2–3 sentence author bio for the back cover.">Author Bio (short)</FL>
-                  <textarea className="input-light mt-1 min-h-[80px] resize-y text-sm" value={cover.backAuthorBio || ""} onChange={(e) => patch({ backAuthorBio: e.target.value })} placeholder="About the author…" />
+                  <label className="text-xs font-semibold text-slate-800">Author Bio (short version)</label>
+                  <textarea className="input-light mt-1 min-h-[70px] resize-y text-sm" value={cover.backAuthorBio || ""} onChange={e => patch({ backAuthorBio: e.target.value })} placeholder="2–3 sentence bio for the back cover…" />
                 </div>
                 <div>
-                  <FL hint="Final call to action — what should the reader do after reading the back cover?">Back Cover CTA</FL>
-                  <input className={ip} value={cover.backCoverCTA || ""} onChange={(e) => patch({ backCoverCTA: e.target.value })} placeholder="Start reading today and transform your…" />
+                  <label className="text-xs font-semibold text-slate-800">Call to Action</label>
+                  <input className="input-light mt-1 text-sm" value={cover.backCoverCTA || ""} onChange={e => patch({ backCoverCTA: e.target.value })} placeholder="Start reading today and transform your…" />
                 </div>
                 <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  ⬛ Barcode safe area (bottom-right, ≥ 2" × 1.2") is reserved automatically. Leave the bottom-right of your back cover design clear.
+                  ⬛ Barcode area (bottom-right corner of back cover) is reserved — leave that zone clear in your final print-ready design.
                 </div>
               </div>
             )}
 
-            {/* ── AI Tools Tab ── */}
-            {tab === "ai" && (
-              <div className="space-y-6">
-                <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-sky-50 p-5">
-                  <div className="text-sm font-bold text-indigo-900 mb-1">AI Cover Brief Generator</div>
-                  <p className="text-xs text-indigo-700 mb-4">Generates a complete design brief: mood, typography direction, color psychology, imagery suggestions, composition guidance, and back cover copy.</p>
-                  <button type="button" disabled={briefBusy} onClick={onGenerateBrief}
-                    className="rounded-full bg-gradient-to-r from-indigo-600 to-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-50">
-                    {briefBusy ? "Generating brief…" : "Generate cover brief"}
+            {/* EXPORT ───────────────────────────────────────────────────────── */}
+            {tab === "export" && (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 mb-1">Export Selected Concept</h3>
+                  <p className="text-xs text-slate-500">All exports use the identical cover data as the preview — no differences between what you see and what you get.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Front Cover</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => downloadSVG(buildConceptSVG(selectedCD), `${slug}-${selectedCD.type}.svg`)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                      ↓ SVG (vector)
+                    </button>
+                    <button type="button" onClick={() => downloadPNG(buildConceptSVG(selectedCD), `${slug}-${selectedCD.type}.png`)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                      ↓ PNG (1600 × 2560)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Ebook Cover (no subtitle)</div>
+                  <button type="button" onClick={() => downloadSVG(buildConceptSVG({ ...selectedCD, subtitle: "" }), `${slug}-${selectedCD.type}-ebook.svg`)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                    ↓ Ebook SVG (subtitle stripped)
                   </button>
                 </div>
 
-                <div className="rounded-xl border border-violet-100 bg-gradient-to-br from-violet-50 to-purple-50 p-5">
-                  <div className="text-sm font-bold text-violet-900 mb-1">AI Cover Critic</div>
-                  <p className="text-xs text-violet-700 mb-4">AI reviews your current cover design for hierarchy, readability, contrast, KDP compliance, and bestseller potential — with scores and specific recommendations.</p>
-                  <button type="button" disabled={criticBusy} onClick={onCritic}
-                    className="rounded-full bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-50">
-                    {criticBusy ? "Analyzing…" : "Critique my cover"}
-                  </button>
-                  {critic && (
-                    <div className="mt-5 space-y-4">
-                      <div className="flex gap-3 flex-wrap">
-                        {Object.entries(critic.scores || {}).map(([k, v]) => (
-                          <ScoreRing key={k} label={k.replace(/([A-Z])/g, " $1").trim()} value={v} />
-                        ))}
-                        {typeof critic.overall === "number" && <ScoreRing label="Overall" value={critic.overall} />}
-                      </div>
-                      {critic.topIssue && <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800"><span className="font-bold">Top issue:</span> {critic.topIssue}</div>}
-                      {critic.topRecommendation && <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800"><span className="font-bold">Top recommendation:</span> {critic.topRecommendation}</div>}
-                      {critic.feedback && (
-                        <div className="space-y-1.5">
-                          {Object.entries(critic.feedback).map(([k, v]) => (
-                            <div key={k} className="text-xs text-slate-600">
-                              <span className="font-semibold text-slate-800 capitalize">{k.replace(/([A-Z])/g, " $1")}:</span> {String(v)}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">All 5 Concepts</div>
+                  <div className="grid grid-cols-5 gap-2">
+                    {rawConcepts.map((concept, idx) => {
+                      const cd = buildCoverData(concept, cover, title);
+                      const ct = CONCEPT_TYPES[idx];
+                      return (
+                        <button key={idx} type="button"
+                          title={`Download ${ct?.label} SVG`}
+                          onClick={() => downloadSVG(buildConceptSVG(cd), `${slug}-${cd.type}.svg`)}
+                          className="rounded-lg border border-slate-200 bg-white py-1.5 px-1 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:border-slate-300 truncate">
+                          {ct?.label.split(" ")[0]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-slate-400">Click each button to download that concept's SVG</p>
                 </div>
 
-                <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 p-5">
-                  <div className="text-sm font-bold text-emerald-900 mb-1">Generate A/B/C Variants</div>
-                  <p className="text-xs text-emerald-700 mb-4">Creates 3 distinctly different cover concepts: A (safe commercial), B (bold distinctive), C (avant-garde). Click a variant chip to apply it to the preview.</p>
-                  <button type="button" disabled={variantsBusy} onClick={onVariants}
-                    className="rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-50">
-                    {variantsBusy ? "Generating variants…" : "Generate A / B / C variants"}
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">KDP Specification</div>
+                  <button type="button" onClick={copyKDPSpec}
+                    className="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100">
+                    📋 Copy KDP Spec to Clipboard
                   </button>
-                  {variants.length > 0 && (
-                    <div className="mt-4 space-y-3">
-                      <div className="flex gap-2">
-                        {variants.map((v, idx) => (
-                          <button key={idx} type="button" onClick={() => applyVariant(idx)}
-                            className={`flex-1 rounded-xl border py-2 text-xs font-bold transition ${activeIdx === idx ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300"}`}>
-                            {v.variantLabel}
-                          </button>
-                        ))}
-                      </div>
-                      {variants[activeIdx]?.concept && (
-                        <div className="rounded-lg bg-white border border-emerald-100 px-3 py-2 text-xs text-slate-700">
-                          <span className="font-bold text-emerald-700">Variant {variants[activeIdx].variantLabel}:</span> {variants[activeIdx].concept}
-                          {variants[activeIdx].designNotes && <div className="mt-1 text-slate-500">{variants[activeIdx].designNotes}</div>}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                </div>
+
+                <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-800 space-y-1">
+                  <div><strong>SVG:</strong> Scalable vector, 1600 × 2560 native. Open in Illustrator, Affinity Designer, or Inkscape for 300 DPI PDF.</div>
+                  <div><strong>PNG:</strong> 1600 × 2560 px rasterized. System fonts — may differ slightly from screen preview with web fonts.</div>
+                  <div><strong>KDP submit:</strong> Requires PDF with 0.125" bleed. SVG → professional app → PDF for final submission.</div>
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Export buttons */}
-          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-xs font-semibold text-slate-700 mb-3">Export</div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={onExportSVG}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                ↓ Front Cover SVG
-              </button>
-              <button type="button" onClick={onExportEbookSVG}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                ↓ Ebook Cover SVG
-              </button>
-              <button type="button" onClick={copyKDPSpec}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                📋 Copy KDP Spec
-              </button>
-            </div>
-            <p className="mt-2 text-[10px] text-slate-400">SVG files are scalable vector — open in Illustrator, Affinity Designer, or Inkscape for print-ready 300 DPI export. KDP requires RGB PNG or PDF with 0.125" bleed.</p>
           </div>
         </div>
 
-        {/* ── RIGHT: Preview panel ── */}
+        {/* ── Right: Preview ── */}
         <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
-          <FullWrapPreview cover={cover} title={title} />
-          <ThumbnailPreview cover={cover} title={title} />
 
-          {/* Compliance summary */}
-          {compliance.filter(c => c.level !== "info").length > 0 && (
-            <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 space-y-1.5">
-              <div className="text-xs font-bold text-amber-800">KDP Compliance Issues</div>
-              {compliance.filter(c => c.level !== "info").map((c, i) => (
-                <div key={i} className={`text-[11px] ${c.level === "error" ? "text-red-700" : "text-amber-700"}`}>
-                  {c.level === "error" ? "✗" : "⚠"} {c.msg}
-                </div>
-              ))}
+          {/* Large front cover preview */}
+          <div>
+            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              {CONCEPT_TYPES.find(t => t.id === selectedConcept?.type)?.label || "Cover"} Preview
+            </p>
+            <div className="mx-auto overflow-hidden rounded-lg shadow-xl" style={{ width: frontW, height: PREV_H }}>
+              <ConceptRenderer cd={selectedCD} />
             </div>
-          )}
+            <div className="mt-2 flex justify-center gap-2">
+              <button type="button" onClick={() => downloadSVG(buildConceptSVG(selectedCD), `${slug}-${selectedCD.type}.svg`)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition">
+                ↓ SVG
+              </button>
+              <button type="button" onClick={() => downloadPNG(buildConceptSVG(selectedCD), `${slug}-${selectedCD.type}.png`)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition">
+                ↓ PNG
+              </button>
+            </div>
+          </div>
 
-          {/* Quick stats */}
+          {/* Full wrap preview */}
+          <div>
+            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500">Full Wrap</p>
+            <div className="flex justify-center overflow-x-auto">
+              <div style={{ display: "flex", height: WRAP_H, boxShadow: "0 4px 20px rgba(0,0,0,0.2)", flexShrink: 0 }}>
+                <div style={{ width: wrapFW, flexShrink: 0 }}>
+                  <BackCoverPreview cd={selectedCD} cover={cover} />
+                </div>
+                <SpinePreview cd={selectedCD} spineInches={spineInches} trimHeight={trimSize.h} previewH={WRAP_H} />
+                <div style={{ width: wrapFW, flexShrink: 0 }}>
+                  <ConceptRenderer cd={selectedCD} />
+                </div>
+              </div>
+            </div>
+            <p className="mt-1 text-center text-[9px] text-slate-400">
+              {trimSize.label} · Spine {spineInches.toFixed(3)}" · {Number(cover.pageCount) || 200} pages
+            </p>
+          </div>
+
+          {/* Amazon thumbnail + compliance badges */}
+          <div className="flex items-start gap-4">
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Thumbnail</p>
+              <div style={{ width: 72, height: 115, borderRadius: 3, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+                <ConceptRenderer cd={selectedCD} thumb />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              {(() => {
+                const ratio = contrastRatio(selectedCD.text, selectedCD.bg);
+                const pc = Number(cover.pageCount) || 200;
+                const items = [];
+                if      (ratio < 3)   items.push({ cls: "bg-red-50 text-red-700",       msg: `Contrast ${ratio.toFixed(1)}:1 — too low for print` });
+                else if (ratio < 4.5) items.push({ cls: "bg-amber-50 text-amber-700",   msg: `Contrast ${ratio.toFixed(1)}:1 — marginal` });
+                else                  items.push({ cls: "bg-emerald-50 text-emerald-700", msg: `Contrast ${ratio.toFixed(1)}:1 — WCAG AA ✓` });
+                if (pc < 24)  items.push({ cls: "bg-red-50 text-red-700",     msg: "Page count < 24 (KDP minimum)" });
+                if (pc > 828) items.push({ cls: "bg-red-50 text-red-700",     msg: "Page count > 828 (KDP maximum)" });
+                if (spineInches < 0.25) items.push({ cls: "bg-amber-50 text-amber-700", msg: "Spine too narrow for text" });
+                return items.map((it, i) => (
+                  <div key={i} className={`rounded px-2 py-1 text-[11px] font-medium ${it.cls}`}>{it.msg}</div>
+                ));
+              })()}
+            </div>
+          </div>
+
+          {/* Summary card */}
           <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs space-y-1.5 text-slate-600">
-            <div className="font-semibold text-slate-800 mb-2">Cover Summary</div>
-            <div>Style: <span className="font-medium text-slate-800 capitalize">{cover.styleMode || "typographic"}</span></div>
-            <div>Font: <span className="font-medium text-slate-800">{fp?.label}</span></div>
+            <div className="font-semibold text-slate-800 mb-1">Cover Summary</div>
+            <div>Concept: <span className="font-medium text-slate-800">{CONCEPT_TYPES.find(t => t.id === selectedConcept?.type)?.label || "—"}</span></div>
             <div>Trim: <span className="font-medium text-slate-800">{trimSize.label}</span></div>
             <div>Spine: <span className="font-medium text-slate-800">{spineInches.toFixed(3)}"</span></div>
-            <div>Contrast: <span className={`font-medium ${contrastRatio(cover.textColor || "#fff", cover.primaryColor || "#000") >= 4.5 ? "text-emerald-700" : "text-amber-700"}`}>{contrastRatio(cover.textColor || "#fff", cover.primaryColor || "#000").toFixed(1)}:1</span></div>
-            {variants.length > 0 && <div>Variant: <span className="font-medium text-slate-800">{variants[activeIdx]?.variantLabel || "—"}</span></div>}
+            <div>Primary: <span className="font-medium text-slate-800 font-mono">{selectedCD.bg}</span></div>
+            <div>Accent: <span className="font-medium text-slate-800 font-mono">{selectedCD.accent}</span></div>
+            {cover.generatedAt && (
+              <div>Generated: <span className="font-medium text-slate-800">{new Date(cover.generatedAt).toLocaleDateString()}</span></div>
+            )}
           </div>
+
         </div>
       </div>
     </section>

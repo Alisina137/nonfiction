@@ -4,6 +4,7 @@ import {
   architecturePreviewPrompt,
   competitiveIntelligencePrompt,
   contextualBookTitlesPrompt,
+  coverConceptsPrompt,
   coverBriefPrompt,
   coverCriticPrompt,
   coverVariantsPrompt,
@@ -271,6 +272,16 @@ router.post("/cover-variants", async (req, res) => {
     const { text, usedProvider } = await runLong(coverVariantsPrompt(req.body), systemPrompt(), req, res, "cover");
     const data = extractJSON(text);
     return res.json({ variants: data.variants || [], _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/cover-concepts", async (req, res) => {
+  try {
+    const { text, usedProvider } = await runLong(coverConceptsPrompt(req.body), systemPrompt(), req, res, "conceptGen");
+    const data = extractJSON(text);
+    return res.json({ concepts: Array.isArray(data.concepts) ? data.concepts : [], _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

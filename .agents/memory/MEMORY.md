@@ -1,0 +1,1 @@
+- [Book Cover System Architecture](book-cover-system.md) — 5-concept cover system with buildCoverData() source of truth; SVG builders match React renderers exactly.

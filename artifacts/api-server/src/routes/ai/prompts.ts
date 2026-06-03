@@ -563,6 +563,71 @@ MANUSCRIPT SAMPLE: ${sample}
 Return JSON: {"description":"120-200 word description","shortHook":"one sentence hook under 18 words","keywords":"7 comma-separated Amazon keywords"}`;
 }
 
+export function coverConceptsPrompt({ title, subtitle, genre, audience, tone, corePromise, coreThesis, authorName, positioning }: any) {
+  return `You are a world-class book cover art director who has designed hundreds of Amazon bestsellers across every genre.
+
+Generate 5 COMPLETELY DIFFERENT cover concept briefs for this book. Each concept must feel like a different design agency's take — different color psychology, typography strategy, and visual hierarchy.
+
+BOOK DETAILS:
+Title: ${title}
+Subtitle: ${subtitle || "(none yet)"}
+Genre: ${genre || "Nonfiction"}
+Audience: ${audience || ""}
+Tone: ${tone || ""}
+Core Promise: ${corePromise || ""}
+Core Thesis: ${coreThesis || ""}
+Author: ${authorName || ""}
+Market Positioning: ${positioning || ""}
+
+THE 5 FIXED CONCEPT TYPES — provide one brief per type, in this exact order:
+
+1. type "authority" — BUSINESS BESTSELLER: Bold, structured, corporate authority. Dark background (navy, charcoal, dark slate). Heavy condensed sans-serif typography. Full-width accent bar or band as structural element. Proven, commercial, safe. Think $100M Offers, Atomic Habits, 12 Rules for Life.
+
+2. type "premium" — PREMIUM AUTHORITY: Elegant, editorial, prestigious. MUST use a LIGHT background (cream, ivory, pale warm white — provide as "secondary" field). Dark text on light background. Thin horizontal rules framing the title. Lots of whitespace. Understated. Think The Psychology of Money, Stillness Is the Key, Man's Search for Meaning.
+
+3. type "minimal" — MODERN MINIMALIST: Maximum impact from minimum elements. Bold solid color background. Single large geometric circle element as the dominant visual. Very few words visible. Strong use of negative space. Think The ONE Thing, Start With Why, Essentialism.
+
+4. type "metaphor" — VISUAL METAPHOR: Concept-driven visual. Gradient or two-tone background transitioning between "bg" and "secondary". Large central hexagonal/diamond geometric symbol representing the book's core idea. Title and symbol work together. Think Thinking Fast and Slow, The Lean Startup, Zero to One.
+
+5. type "dynamic" — CREATIVE AI CONCEPT: Unexpected, energetic. Dark background with a bold diagonal parallelogram/band in the accent color cutting across the upper portion. Title overlaid dramatically. Something a traditional designer might not immediately try. High-risk, high-reward visual impact.
+
+For EACH concept provide:
+- Colors calibrated to the book's genre, audience, and emotional target
+- A compelling cover tagline (short punchy hook, 4–8 words max)
+- A concise design rationale (1–2 sentences on why this works for THIS book)
+
+CRITICAL: For "premium" concept, "secondary" must be a LIGHT color (cream, ivory, pale white like #f5f0e8 or #faf7f2). For other concepts "secondary" is a darker shade or complementary color.
+
+Return ONLY valid JSON, no markdown:
+{
+  "concepts": [
+    {
+      "type": "authority",
+      "label": "Business Bestseller",
+      "bg": "#hex",
+      "accent": "#hex",
+      "text": "#hex",
+      "secondary": "#hex",
+      "tagline": "4–8 word hook",
+      "designNotes": "1–2 sentences why this works"
+    },
+    {
+      "type": "premium",
+      "label": "Premium Authority",
+      "bg": "#hex",
+      "accent": "#hex",
+      "text": "#hex",
+      "secondary": "#f5f0e8",
+      "tagline": "4–8 word hook",
+      "designNotes": "..."
+    },
+    {"type":"minimal","label":"Modern Minimalist","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."},
+    {"type":"metaphor","label":"Visual Metaphor","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."},
+    {"type":"dynamic","label":"Creative AI Concept","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."}
+  ]
+}`;
+}
+
 export function coverBriefPrompt({ title, subtitle, audience, tone, genre, usp, authorName, description, genrePreset, styleMode }: any) {
   return `You are a world-class Amazon KDP cover designer, brand strategist, and bestseller positioning expert. Generate a complete, professional KDP cover brief.
 

@@ -1,0 +1,244 @@
+BOOK COVER SYSTEM OVERHAUL
+
+The current Book Cover step has major UX and quality issues that must be fixed.
+
+PROBLEMS TO SOLVE
+
+1. Cover designs are too generic and look almost identical.
+2. Most generated covers are only typography variations.
+3. Cover generation does not feel like true AI-powered design.
+4. Downloaded files do not match the preview.
+5. Export buttons do not produce the expected output.
+6. SVG exports contain incorrect dimensions, blank space, or missing elements.
+7. Users cannot generate professional-looking Amazon bestseller covers.
+
+====================================================
+
+NEW AI COVER GENERATION SYSTEM
+
+Replace the current template-based system with a concept-based system.
+
+When the user clicks "Generate Covers", AI should first create a Cover Design Brief using:
+
+* Book Title
+* Subtitle
+* Genre
+* Target Reader
+* Core Promise
+* Core Thesis
+* Author Persona
+* Tone
+* Market Positioning
+
+Generate:
+
+{
+visualTheme,
+coverHook,
+designMood,
+imageryDirection,
+colorPsychology,
+typographyStrategy,
+marketingAngle
+}
+
+====================================================
+
+GENERATE 5 UNIQUE COVER CONCEPTS
+
+Do NOT generate 5 versions of the same cover.
+
+Generate 5 completely different concepts:
+
+1. Business Bestseller
+2. Premium Authority
+3. Modern Minimalist
+4. Visual Metaphor
+5. Creative AI Concept
+
+Each concept must have:
+
+* Different layout
+* Different typography
+* Different color palette
+* Different visual hierarchy
+* Different imagery direction
+* Different design philosophy
+
+The user should instantly see obvious differences.
+
+====================================================
+
+AI COVER DESIGN REQUIREMENTS
+
+Designs should feel comparable to:
+
+* Atomic Habits
+* Deep Work
+* The Psychology of Money
+* $100M Offers
+* Start With Why
+* The 7 Habits of Highly Effective People
+
+Avoid:
+
+* Generic templates
+* Random shapes
+* Empty backgrounds
+* Plain text-only layouts
+* Repetitive designs
+
+====================================================
+
+VISUAL COMPONENT SYSTEM
+
+Allow AI to use:
+
+* Icons
+* Illustrations
+* Abstract Shapes
+* Data Visualizations
+* Symbols
+* Visual Metaphors
+* Geometric Patterns
+* Premium Typography
+* Professional Layout Systems
+
+====================================================
+
+LIVE PREVIEW SYSTEM
+
+Create a single source of truth:
+
+const coverData = {
+title,
+subtitle,
+author,
+colors,
+layout,
+imagery,
+typography,
+spine,
+backCover
+}
+
+The preview must render directly from coverData.
+
+====================================================
+
+EXPORT SYSTEM REDESIGN
+
+REMOVE the current export logic.
+
+All exports must use the exact same coverData used in preview.
+
+Preview and export must always match.
+
+====================================================
+
+NEW EXPORT OPTIONS
+
+Add buttons:
+
+* Download Front Cover PNG
+* Download Front Cover SVG
+* Download Front Cover PDF
+* Download Full Wrap PNG
+* Download Full Wrap SVG
+* Download Full Wrap PDF
+* Download KDP Ready PDF
+
+====================================================
+
+SVG EXPORT FIXES
+
+Ensure:
+
+* Correct width
+* Correct height
+* Correct viewBox
+* No blank canvas
+* No clipping
+* No missing graphics
+* No missing text
+* No misalignment
+
+The exported SVG should look identical to the preview.
+
+====================================================
+
+KDP SUPPORT
+
+Generate proper KDP covers including:
+
+* Front Cover
+* Spine
+* Back Cover
+* Bleed Areas
+* Safe Margins
+* Trim Size
+
+Support:
+
+* 5x8
+* 5.5x8.5
+* 6x9
+* 7x10
+* Custom Sizes
+
+====================================================
+
+AI IMAGE GENERATION MODE
+
+Add optional mode:
+
+"Generate AI Artwork"
+
+AI should create original cover artwork based on the book concept.
+
+Workflow:
+
+Generate Concept
+→ Generate Artwork Prompt
+→ Generate Cover Layout
+→ Build Cover
+
+This should produce covers that feel unique rather than template-driven.
+
+====================================================
+
+QUALITY VALIDATION
+
+Before showing any cover:
+
+Check:
+
+1. Is it visually different from the other concepts?
+2. Does it communicate the book's promise?
+3. Does it look professionally published?
+4. Would it stand out on Amazon?
+5. Is the typography readable as a thumbnail?
+
+If any answer is NO:
+
+Regenerate.
+
+====================================================
+
+THUMBNAIL TEST
+
+Generate Amazon-sized thumbnail previews.
+
+Verify:
+
+* Title remains readable
+* Visual hierarchy remains clear
+* Cover stands out among competitors
+
+====================================================
+
+FINAL GOAL
+
+The Book Cover step should feel like a professional publishing design tool capable of generating unique, marketable, bestseller-quality book covers rather than simple typography templates.
+
+All exports must perfectly match the preview.
