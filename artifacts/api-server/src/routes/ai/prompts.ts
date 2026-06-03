@@ -1006,20 +1006,311 @@ export function bookContextBlock(ctx: any): string {
   return block;
 }
 
-export function lessonPrompt({ subsection, chapterContext, previousConcepts, audience, tone, resources, bookContext }: any) {
+// ─── Structure-Aware Writing Flows ────────────────────────────────────────────
+
+const STRUCTURE_FLOWS: Record<string, { flow: string[]; description: string }> = {
+  "step-by-step": {
+    flow: ["Objective", "Why It Matters", "Step Explanation", "Execution Instructions", "Common Mistakes", "Action Task"],
+    description: "Sequential skill-building — guide the reader through a concrete capability one step at a time."
+  },
+  "framework": {
+    flow: ["Framework Component", "Concept Explanation", "Why It Exists", "How It Connects To Other Components", "Practical Application"],
+    description: "Framework-driven — each subsection teaches one component of the larger system and shows how it connects."
+  },
+  "blueprint": {
+    flow: ["Desired Outcome", "System Design", "Required Components", "Implementation Process", "Optimization"],
+    description: "Blueprint — describe the end-state first, then architect the path to get there with precision."
+  },
+  "playbook": {
+    flow: ["Situation", "Decision Process", "Tactical Actions", "Example Scenario", "Expected Results"],
+    description: "Tactical playbook — give readers clear decision frameworks for real situations they'll face."
+  },
+  "problem-solution": {
+    flow: ["Problem", "Root Cause", "Consequences", "Solution", "Application"],
+    description: "Problem-solution — identify the exact pain point, dig to its root, then deliver the specific fix."
+  },
+  "case-study": {
+    flow: ["Case Study", "Analysis", "Lessons", "Principles", "Application"],
+    description: "Case study driven — lead with a real example, extract the lessons, then generalize the principles."
+  },
+  "story-based": {
+    flow: ["Narrative", "Conflict", "Turning Point", "Insight", "Lesson", "Application"],
+    description: "Story-based — open with a scene, build tension, deliver the turning point, extract the reader's lesson."
+  },
+  "narrative": {
+    flow: ["Narrative", "Conflict", "Turning Point", "Insight", "Lesson", "Application"],
+    description: "Narrative — immerse readers in story, then surface the insight that changes how they see the world."
+  },
+  "academic": {
+    flow: ["Definition", "Theory", "Research", "Analysis", "Implications"],
+    description: "Academic — rigorous definitions, theoretical grounding, research evidence, analytical depth, and implications."
+  },
+  "manifesto": {
+    flow: ["Belief", "Challenge To Conventional Thinking", "Evidence", "New Perspective", "Call To Action"],
+    description: "Manifesto — state a bold belief, challenge the status quo, back it with evidence, reframe the world, and inspire action."
+  },
+  "transformation": {
+    flow: ["Starting Point", "Obstacles", "Discovery", "Transformation", "Outcome"],
+    description: "Transformation journey — trace the reader's evolution from where they are now to who they'll become."
+  },
+  "workbook": {
+    flow: ["Core Concept", "Why It Matters", "Instructions", "Exercise", "Reflection Prompt"],
+    description: "Workbook — teach the concept, then immediately give the reader something to do and reflect on."
+  },
+  "how-to": {
+    flow: ["Objective", "Why It Matters", "Step Explanation", "Execution Instructions", "Common Mistakes", "Action Task"],
+    description: "How-to — practical, sequential, and action-oriented. Every subsection teaches a concrete skill."
+  },
+  "thematic": {
+    flow: ["Theme Introduction", "Core Argument", "Supporting Evidence", "Real-World Illustration", "Reader Takeaway"],
+    description: "Thematic — explore a theme from multiple angles, building a cumulative case for the central argument."
+  }
+};
+
+const TONE_INSTRUCTIONS: Record<string, string> = {
+  "business":      "Write strategically and professionally. Use analytical precision. Be direct and results-oriented. Avoid fluff.",
+  "self-help":     "Write with warmth and encouragement. Be practical and reader-focused. Use 'you' frequently. Make the reader feel capable.",
+  "memoir":        "Write personally and reflectively. Use first-person narrative. Let vulnerability and honesty carry authority.",
+  "academic":      "Write with rigor and precision. Cite evidence. Use formal language. Every claim must be grounded.",
+  "inspirational": "Write with emotional energy. Uplift and motivate. Let transformation feel not just possible but inevitable.",
+  "leadership":    "Write with authority and vision. Challenge readers to think bigger. Model strategic thinking in every sentence.",
+  "conversational": "Write like a smart friend having a real conversation. Use contractions, rhetorical questions, short punchy paragraphs.",
+  "philosophical": "Write with depth and contemplation. Let ideas breathe. Reference principles and invite the reader to think.",
+  "scientific":    "Write evidence-first. Lead with data, support with research, conclude with implications. Be precise about uncertainty."
+};
+
+function resolveStructureFlow(structureRaw: string): { key: string; flow: string[]; description: string } {
+  if (!structureRaw) return { key: "step-by-step", ...STRUCTURE_FLOWS["step-by-step"] };
+  const lower = structureRaw.toLowerCase();
+  for (const [key, val] of Object.entries(STRUCTURE_FLOWS)) {
+    if (lower.includes(key)) return { key, ...val };
+  }
+  if (lower.includes("how") || lower.includes("guide"))  return { key: "how-to",        ...STRUCTURE_FLOWS["how-to"] };
+  if (lower.includes("story") || lower.includes("narr")) return { key: "story-based",   ...STRUCTURE_FLOWS["story-based"] };
+  if (lower.includes("play"))                             return { key: "playbook",      ...STRUCTURE_FLOWS["playbook"] };
+  if (lower.includes("blue"))                             return { key: "blueprint",     ...STRUCTURE_FLOWS["blueprint"] };
+  if (lower.includes("frame") || lower.includes("model")) return { key: "framework",    ...STRUCTURE_FLOWS["framework"] };
+  if (lower.includes("trans"))                            return { key: "transformation", ...STRUCTURE_FLOWS["transformation"] };
+  if (lower.includes("manifest"))                        return { key: "manifesto",     ...STRUCTURE_FLOWS["manifesto"] };
+  if (lower.includes("case"))                            return { key: "case-study",    ...STRUCTURE_FLOWS["case-study"] };
+  if (lower.includes("acad") || lower.includes("research")) return { key: "academic",  ...STRUCTURE_FLOWS["academic"] };
+  if (lower.includes("work"))                            return { key: "workbook",      ...STRUCTURE_FLOWS["workbook"] };
+  if (lower.includes("problem") || lower.includes("solution")) return { key: "problem-solution", ...STRUCTURE_FLOWS["problem-solution"] };
+  return { key: "step-by-step", ...STRUCTURE_FLOWS["step-by-step"] };
+}
+
+function resolveToneInstruction(toneRaw: string): string {
+  if (!toneRaw) return TONE_INSTRUCTIONS["self-help"];
+  const lower = toneRaw.toLowerCase();
+  for (const [key, instr] of Object.entries(TONE_INSTRUCTIONS)) {
+    if (lower.includes(key)) return instr;
+  }
+  return `Write with the following voice and tone: ${toneRaw}. Maintain this tone consistently throughout.`;
+}
+
+// ─── Chapter Writing Strategy ──────────────────────────────────────────────────
+
+export function chapterWritingStrategyPrompt({
+  chapterTitle,
+  chapterNumber,
+  chapterPurpose,
+  sectionTitles,
+  bookContext,
+  bookStructure,
+  bookTone
+}: any): string {
+  const structureInfo = resolveStructureFlow(bookStructure || "");
+  const toneInstr = resolveToneInstruction(bookTone || "");
+
+  const ctx = bookContext || {};
+  const contextLines: string[] = [];
+  if (ctx.title)       contextLines.push(`Book: "${ctx.title}"`);
+  if (ctx.audience)    contextLines.push(`Reader: ${ctx.audience}`);
+  if (ctx.bookTopic)   contextLines.push(`Core Topic: ${ctx.bookTopic}`);
+  if (ctx.corePromise) contextLines.push(`Core Promise: ${ctx.corePromise}`);
+  if (ctx.transformation || ctx.transformationPromise)
+    contextLines.push(`Reader Transformation: ${ctx.transformation || ctx.transformationPromise}`);
+  const contextBlock = contextLines.length ? contextLines.join("\n") : "(not specified)";
+
+  const sectionsBlock = Array.isArray(sectionTitles) && sectionTitles.length
+    ? sectionTitles.map((s: string, i: number) => `  ${i + 1}. ${s}`).join("\n")
+    : "  (not specified)";
+
+  return `You are an elite nonfiction developmental editor and book strategist.
+
+Before this chapter is written, generate a Chapter Writing Strategy that will guide every section and subsection in it.
+
+The strategy must ensure:
+1. Every subsection feels consistent with the book's chosen structure
+2. Every section builds toward this chapter's single purpose
+3. The writing style matches the book's tone
+4. No two subsections repeat concepts or teaching methods
+5. The reader experiences a clear emotional and intellectual arc within this chapter
+
+════════════════════════════════════
+BOOK & CHAPTER CONTEXT
+════════════════════════════════════
+
+${contextBlock}
+
+Book Structure: ${bookStructure || "(not set)"}
+Structure Writing Approach: ${structureInfo.description}
+Writing Flow Pattern: ${structureInfo.flow.join(" → ")}
+
+Tone: ${bookTone || "(not set)"}
+Tone Instruction: ${toneInstr}
+
+Chapter ${chapterNumber || ""}: ${chapterTitle || "(not set)"}
+Chapter Purpose: ${chapterPurpose || "Deliver the full promise of this chapter title"}
+
+Planned Sections:
+${sectionsBlock}
+
+════════════════════════════════════
+STRATEGY OUTPUT
+════════════════════════════════════
+
+Return ONLY valid JSON — no markdown, no commentary:
+
+{
+  "chapterTheme": "The single unifying idea that all sections must reinforce",
+  "chapterArc": "Reader's journey through this chapter: where they start emotionally/intellectually → where they end",
+  "structureType": "${structureInfo.key}",
+  "writingFlow": ${JSON.stringify(structureInfo.flow)},
+  "toneGuidance": "2-sentence instruction on how to apply this chapter's tone — be specific to this topic",
+  "openingStrategy": "How to open this chapter to immediately hook the reader",
+  "closingStrategy": "How to close this chapter to set up the next chapter",
+  "teachingMethods": ["List of 3-5 distinct teaching methods to vary across sections: e.g. anecdote, data, analogy, exercise, case study, direct instruction"],
+  "conceptsToAvoid": ["Concepts that already appeared in prior chapters and must not be repeated"],
+  "uniquenessDirective": "One sentence telling each subsection how to be completely distinct from its siblings",
+  "readerOutcome": "What the reader will be able to think, do, or feel after completing this chapter"
+}`;
+}
+
+// ─── Structure-Aware Lesson Prompt ────────────────────────────────────────────
+
+export function lessonPrompt({
+  subsection,
+  chapterContext,
+  previousConcepts,
+  audience,
+  tone,
+  resources,
+  bookContext,
+  chapterStrategy,
+  bookStructure,
+  sectionTitle,
+  subsectionPurpose
+}: any) {
   const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
   const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
   const prevNote = Array.isArray(previousConcepts) && previousConcepts.length
-    ? `\nConcepts already covered earlier (don't repeat): ${previousConcepts.slice(-8).join("; ")}`
+    ? `\nConcepts already covered (do NOT repeat): ${previousConcepts.slice(-8).join("; ")}`
     : "";
-  return `Write a complete lesson for the subsection: ${JSON.stringify(subsection)}
-Chapter context: ${JSON.stringify(chapterContext)}
-Target Reader: ${audience}
-Voice & Tone: ${tone}${prevNote}${ctxBlock}${resBlock}
 
-Maintain the book's established voice. Build on previous chapters — advance the reader's transformation, introduce new frameworks, and stay consistent with the book's positioning and USP.
+  const rawStructure = bookStructure || bookContext?.structure || chapterStrategy?.structureType || "";
+  const { key: structureKey, flow, description: flowDesc } = resolveStructureFlow(rawStructure);
+  const toneInstr = resolveToneInstruction(tone || bookContext?.tone || "");
 
-Return JSON: {"title":"...","explanation":"...","example":"...","framework":"...","executionSteps":["..."]}`;
+  const strategyBlock = chapterStrategy ? `
+════════════════════════════════════
+CHAPTER WRITING STRATEGY (follow this for every subsection)
+════════════════════════════════════
+Chapter Theme: ${chapterStrategy.chapterTheme || ""}
+Chapter Arc: ${chapterStrategy.chapterArc || ""}
+Tone Guidance: ${chapterStrategy.toneGuidance || ""}
+Teaching Methods Available: ${Array.isArray(chapterStrategy.teachingMethods) ? chapterStrategy.teachingMethods.join(", ") : ""}
+Uniqueness Directive: ${chapterStrategy.uniquenessDirective || ""}
+Reader Outcome for Chapter: ${chapterStrategy.readerOutcome || ""}
+${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAvoid.length ? `Concepts to Avoid (already in prior chapters): ${chapterStrategy.conceptsToAvoid.join("; ")}` : ""}` : "";
+
+  const chapterInfo = chapterContext
+    ? `Chapter: ${typeof chapterContext === "string" ? chapterContext : (chapterContext.title || JSON.stringify(chapterContext))}`
+    : "";
+  const sectionInfo = sectionTitle ? `Section: ${sectionTitle}` : "";
+  const subsectionTitle = typeof subsection === "string"
+    ? subsection
+    : (subsection?.title || JSON.stringify(subsection));
+  const purposeNote = subsectionPurpose
+    ? `\nSubsection Purpose: ${subsectionPurpose}`
+    : "";
+
+  const flowBlock = `
+════════════════════════════════════
+WRITING FLOW — ${structureKey.toUpperCase()} STRUCTURE
+════════════════════════════════════
+Structure: ${rawStructure || structureKey}
+Approach: ${flowDesc}
+
+You MUST write this subsection following this exact internal flow:
+${flow.map((step, i) => `${i + 1}. ${step}`).join("\n")}
+
+This flow determines how you organize and sequence the content.
+Do NOT use a generic introduction → explanation → example → summary template.
+Each section of this flow must be substantively different and add unique value.` ;
+
+  const antiTemplateRules = `
+════════════════════════════════════
+ANTI-TEMPLATE RULES (non-negotiable)
+════════════════════════════════════
+❌ Do NOT open every subsection with a definition
+❌ Do NOT end every subsection with a summary paragraph
+❌ Do NOT use the same paragraph structure as other subsections
+❌ Do NOT use motivational filler, clichés, or vague advice
+❌ Do NOT repeat concepts already covered
+
+✅ Vary your opening (start with a question, a scene, a fact, a provocative claim, a short story)
+✅ Let the structure type shape the pacing, not a universal template
+✅ Make this subsection feel DISTINCTLY different from its siblings`;
+
+  const qualityCheck = `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does the content follow the ${structureKey} writing flow? 
+2. Does the tone match: ${toneInstr.slice(0, 120)}
+3. Does this subsection provide unique value not found in other subsections?
+4. Is the opening varied and engaging (not a definition)?
+5. Would a reader immediately notice this is a ${structureKey} book rather than a generic one?
+
+If any answer is NO — rewrite.`;
+
+  return `You are a professional nonfiction author and developmental editor.
+
+Write a complete, publication-ready subsection for a nonfiction book.
+
+════════════════════════════════════
+LOCATION IN BOOK
+════════════════════════════════════
+${chapterInfo}
+${sectionInfo}
+Subsection: ${subsectionTitle}${purposeNote}
+
+Target Reader: ${audience || "(see book context)"}
+Voice & Tone: ${tone || "(see book context)"}
+Tone Instruction: ${toneInstr}${prevNote}${strategyBlock}${flowBlock}${antiTemplateRules}${qualityCheck}${ctxBlock}${resBlock}
+
+════════════════════════════════════
+SUBSECTION UNIQUENESS TEST
+════════════════════════════════════
+Before writing, answer internally: "What unique value does this subsection provide that no other subsection provides?"
+If the answer overlaps with another subsection — reframe this one's angle until it is genuinely distinct.
+
+════════════════════════════════════
+OUTPUT FORMAT
+════════════════════════════════════
+Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
+
+{
+  "title": "The subsection title (publication-ready, specific, compelling)",
+  "structureUsed": "${structureKey}",
+  "content": "The full subsection prose — multi-paragraph, written according to the ${structureKey} flow above. Minimum 350 words. Use natural paragraph breaks. Do NOT include markdown headers inside the content — write as flowing prose.",
+  "flowSections": [
+    ${flow.map(step => `{"label": "${step}", "text": "2-4 sentences summarizing what this flow section covers in the content"}`).join(",\n    ")}
+  ],
+  "keyTakeaway": "One sentence — the single most important thing the reader learns from this subsection",
+  "teachingMethod": "The primary teaching method used (e.g. anecdote, data-led, analogy, direct instruction, case study, exercise)"
+}`;
 }
 
 export function improvementPrompt({ action, currentText, tone }: any) {

@@ -107,7 +107,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
   subtitle:            700,
   regenTitle:          250,
   outline:            1200,
-  lesson:             1400,
+  lesson:             2000,
   improve:             900,
   description:         500,
   cover:               600,
@@ -122,6 +122,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
   conceptGen:         2000,
   fieldSuggestion:    1200,
   subsectionGen:       900,
+  chapterStrategy:    1200,
   default:             800
 };
 

@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   analyzeBookConceptPrompt,
   architecturePreviewPrompt,
+  chapterWritingStrategyPrompt,
   competitiveIntelligencePrompt,
   contextualBookTitlesPrompt,
   coverConceptsPrompt,
@@ -326,11 +327,42 @@ router.post("/structure", async (req, res) => {
   }
 });
 
+router.post("/chapter-strategy", async (req, res) => {
+  try {
+    const {
+      chapterTitle, chapterNumber, chapterPurpose,
+      sectionTitles, bookContext, bookStructure, bookTone
+    } = req.body || {};
+    if (!chapterTitle) return res.status(400).json({ error: "chapterTitle is required." });
+    const prompt = chapterWritingStrategyPrompt({
+      chapterTitle, chapterNumber, chapterPurpose,
+      sectionTitles, bookContext, bookStructure, bookTone
+    });
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "chapterStrategy");
+    const data = extractJSON(text);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "AI returned unparseable chapter strategy." });
+    }
+    return res.json({ strategy: data, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 router.post("/lesson", async (req, res) => {
   try {
     const compressed = compressLessonBody(req.body);
+    const { chapterStrategy, bookStructure, sectionTitle, subsectionPurpose } = req.body || {};
     const { text, usedProvider } = await runLong(
-      lessonPrompt({ ...compressed, resources: req.body?.resources, bookContext: req.body?.bookContext }),
+      lessonPrompt({
+        ...compressed,
+        resources: req.body?.resources,
+        bookContext: req.body?.bookContext,
+        chapterStrategy,
+        bookStructure,
+        sectionTitle,
+        subsectionPurpose
+      }),
       systemPrompt(),
       req,
       res,

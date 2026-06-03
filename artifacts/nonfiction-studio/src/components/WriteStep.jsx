@@ -46,6 +46,10 @@ function writingAudience(fullProject) {
   return d.audience?.trim() || r.targetAudience?.trim() || fullProject?.audience || "";
 }
 
+function bookStructureVal(fullProject) {
+  return fullProject?.bookDetails?.structure || fullProject?.research?.structure || "";
+}
+
 export default function WriteStep({
   bookOutline,
   lessons,
@@ -60,6 +64,7 @@ export default function WriteStep({
   const [busyId, setBusyId] = useState(null);
   const [batchBusy, setBatchBusy] = useState(false);
   const [status, setStatus] = useState("");
+  const [chapterStrategies, setChapterStrategies] = useState({});
 
   const progress = useMemo(() => countDraftedBlocks(blocks, lessons), [blocks, lessons]);
   const activeBlock = blocks.find((b) => b.id === activeId) || blocks[0] || null;
@@ -93,10 +98,37 @@ export default function WriteStep({
     patchLesson(blockId, { prose });
   }
 
-  async function generateBlock(block, index, lessonsSnapshot = lessons) {
+  async function fetchChapterStrategy(block, strategyCache) {
+    const key = block.chapterKey;
+    if (!key || key === "__intro__" || key === "__conclusion__") return null;
+    if (strategyCache[key]) return strategyCache[key];
+    try {
+      setStatus(`Building writing strategy for "${block.chapterContext?.title}"…`);
+      const data = await aiFetch("/api/ai/chapter-strategy", {
+        chapterTitle: block.chapterContext?.title || "",
+        chapterNumber: block.chapterContext?.number || "",
+        sectionTitles: block.chapterContext?.sectionTitles || [],
+        bookStructure: bookStructureVal(fullProject),
+        bookTone: writingTone(fullProject),
+        bookContext: buildBookContext(fullProject)
+      });
+      const strategy = data.strategy || null;
+      if (strategy) setChapterStrategies((prev) => ({ ...prev, [key]: strategy }));
+      return strategy;
+    } catch {
+      return null;
+    }
+  }
+
+  async function generateBlock(block, index, lessonsSnapshot = lessons, strategyCache = chapterStrategies) {
     setBusyId(block.id);
     setStatus("");
     try {
+      const chapterStrategy = await fetchChapterStrategy(block, strategyCache);
+      const updatedCache = chapterStrategy && block.chapterKey
+        ? { ...strategyCache, [block.chapterKey]: chapterStrategy }
+        : strategyCache;
+
       const data = await aiFetch("/api/ai/lesson", {
         subsection: block.subsection,
         chapterContext: block.chapterContext,
@@ -104,22 +136,22 @@ export default function WriteStep({
         audience: writingAudience(fullProject),
         tone: writingTone(fullProject),
         resources: fullProject?.resources ?? null,
-        bookContext: buildBookContext(fullProject)
+        bookContext: buildBookContext(fullProject),
+        bookStructure: bookStructureVal(fullProject),
+        sectionTitle: block.sectionTitle || null,
+        chapterStrategy: chapterStrategy || null
       });
       const lesson = data.lesson || data;
       const prose = lessonToProse(lesson);
-      const entry = {
-        lesson,
-        prose,
-        generatedAt: new Date().toISOString()
-      };
+      const entry = { lesson, prose, generatedAt: new Date().toISOString() };
       patchLesson(block.id, entry);
-      setStatus(`Drafted “${block.label}”.`);
-      return { ...lessonsSnapshot, [block.id]: { ...entry, updatedAt: new Date().toISOString() } };
+      setStatus(`Drafted "${block.label}".`);
+      const newSnapshot = { ...lessonsSnapshot, [block.id]: { ...entry, updatedAt: new Date().toISOString() } };
+      return { snapshot: newSnapshot, strategyCache: updatedCache };
     } catch (e) {
       if (e instanceof GenerationCanceledError) setStatus("Generation canceled — Grok approval declined.");
       else setStatus(e.message || "Could not generate this section.");
-      return lessonsSnapshot;
+      return { snapshot: lessonsSnapshot, strategyCache };
     } finally {
       setBusyId(null);
     }
@@ -150,12 +182,15 @@ export default function WriteStep({
     setBatchBusy(true);
     setStatus("Generating remaining sections…");
     let snapshot = lessons && typeof lessons === "object" ? { ...lessons } : {};
+    let strategyCache = { ...chapterStrategies };
     try {
       for (let i = 0; i < blocks.length; i += 1) {
         const block = blocks[i];
         if (blockHasContent(snapshot, block.id)) continue;
         setActiveId(block.id);
-        snapshot = (await generateBlock(block, i, snapshot)) || snapshot;
+        const result = await generateBlock(block, i, snapshot, strategyCache);
+        snapshot = result.snapshot || snapshot;
+        strategyCache = result.strategyCache || strategyCache;
       }
       setStatus("Batch generation finished.");
     } finally {
@@ -188,6 +223,8 @@ export default function WriteStep({
 
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
   const isBusy = Boolean(busyId) || batchBusy;
+  const activeKeyTakeaway = activeLesson?.lesson?.keyTakeaway;
+  const activeStructureUsed = activeLesson?.lesson?.structureUsed;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -258,6 +295,11 @@ export default function WriteStep({
                 <h2 className="mt-1 font-serif text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
                   {activeBlock.label}
                 </h2>
+                {activeStructureUsed && (
+                  <p className="mt-1 text-xs text-slate-400">
+                    Written as: <span className="font-medium text-slate-600">{activeStructureUsed}</span>
+                  </p>
+                )}
               </div>
 
               <div>
@@ -269,14 +311,10 @@ export default function WriteStep({
                   placeholder="Generate this section or paste your own draft…"
                   disabled={isBusy && busyId === activeBlock.id}
                 />
-                {activeLesson?.lesson?.framework && (
+                {activeKeyTakeaway && (
                   <p className="mt-2 text-xs text-slate-500">
-                    Framework captured:{" "}
-                    <span className="font-medium text-slate-700">
-                      {typeof activeLesson.lesson.framework === "string"
-                        ? activeLesson.lesson.framework
-                        : JSON.stringify(activeLesson.lesson.framework)}
-                    </span>
+                    Key takeaway:{" "}
+                    <span className="font-medium text-slate-700">{activeKeyTakeaway}</span>
                   </p>
                 )}
               </div>
