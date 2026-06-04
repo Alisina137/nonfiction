@@ -315,7 +315,7 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
             <button
               type="button"
               onClick={onSuggestTitles}
-              disabled={!deepNicheLabel || titlesLoading}
+              disabled={!main || !subSelected || titlesLoading}
               className="whitespace-nowrap rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-sky-500 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {titlesLoading ? "Suggesting…" : "Suggest Titles"}
