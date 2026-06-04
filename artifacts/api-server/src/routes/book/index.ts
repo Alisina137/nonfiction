@@ -96,7 +96,7 @@ router.post("/contextual-titles", async (req, res) => {
 
     if (mode === "kdp-positioning") {
       const prompt = kdpPositioningTitlesPrompt({ research });
-      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 2500 });
+      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 1200 });
       let raw: any[] = [];
       try {
         const parsed = extractJSON(text);

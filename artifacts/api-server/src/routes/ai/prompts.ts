@@ -1498,13 +1498,11 @@ ${deepNiche || "(not provided)"}
 
 IMPORTANT
 
-- Main Niche and Sub-Niche are required inputs.
+- Main Niche and Sub-Niche are always provided.
 - Deep Niche is optional.
-- Generate titles when Main Niche and Sub-Niche are available.
 - If Deep Niche is empty, generate titles using only Main Niche and Sub-Niche.
 - If Deep Niche is provided, use it to improve audience targeting, specificity, positioning, and market differentiation.
-- Never request Deep Niche before generating titles.
-- Never fail because Deep Niche is missing.
+- Never fail or request additional information because Deep Niche is missing.
 
 TASK
 
