@@ -178,6 +178,7 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
       const profileInfer = inferAudienceProfile(nicheForInfer, subSelected?.label || "");
       const data = await aiFetch("/api/book/contextual-titles", {
         mode: "kdp-positioning",
+        noCache: true,
         research: {
           ...research,
           deepNicheLabel,
