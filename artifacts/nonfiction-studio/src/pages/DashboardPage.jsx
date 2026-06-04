@@ -558,7 +558,7 @@ function validateAuthorPersona(authorPersona) {
     return { form: "Select a persona from Your Saved Personas, or generate a new one to continue." };
   }
   const picked = saved.find((p) => p.id === id);
-  if (!picked?.generated) {
+  if (!picked?.voiceSummary) {
     return { form: "This persona isn’t finalized yet — click Generate Persona to produce the tone and style breakdown." };
   }
   return {};

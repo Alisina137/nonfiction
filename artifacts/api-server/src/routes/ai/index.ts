@@ -578,6 +578,9 @@ router.post("/generate-author-persona", async (req, res) => {
         strengths:   strArr(strength.strengths),
         suggestions: strArr(strength.suggestions)
       },
+      dos:               strArr(data.dos),
+      donts:             strArr(data.donts),
+      contentGuidelines: strArr(data.contentGuidelines),
       writingSample: typeof data.writingSample === "string" ? data.writingSample.trim() : "",
       _provider: usedProvider
     });

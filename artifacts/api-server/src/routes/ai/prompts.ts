@@ -344,11 +344,20 @@ Return ONLY valid JSON — no commentary before or after:
   },
   "personaStrength": {
     "score": 85,
-    "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
-    "suggestions": ["specific suggestion 1", "specific suggestion 2"]
+    "strengths": ["specific strength 1 tied to this book and audience", "specific strength 2", "specific strength 3"],
+    "suggestions": ["specific actionable suggestion 1", "specific actionable suggestion 2"]
   },
+  "dos": ["DO specific writing behavior 1 for this author", "DO specific writing behavior 2", "DO specific writing behavior 3", "DO specific writing behavior 4"],
+  "donts": ["DON'T specific anti-pattern 1 for this author/audience", "DON'T specific anti-pattern 2", "DON'T specific anti-pattern 3"],
+  "contentGuidelines": ["Specific content guideline 1 for this niche/audience", "Specific content guideline 2", "Specific content guideline 3", "Specific content guideline 4"],
   "writingSample": "2–3 sentence writing sample that demonstrates this author's voice speaking to the target audience about the core topic"
 }
+
+RULES for dos / donts / contentGuidelines:
+- dos: 3–5 specific, actionable writing behaviors this author SHOULD always do (language, structure, framing).
+- donts: 3–4 specific anti-patterns this author must NEVER do with this audience.
+- contentGuidelines: 3–5 niche-specific content rules that govern what topics, depth levels, and formats are appropriate.
+All must be specific to THIS book, audience, and niche — never generic.
 
 RULES for writingStyleControls (integers 0–100):
 - tone: 0 = fully Conversational, 100 = fully Formal

@@ -1,0 +1,128 @@
+AUTHOR PERSONA BUG FIX
+
+There are two related bugs in the Author Persona step that must be fully investigated and fixed.
+
+BUG #1
+After clicking "Save Persona", the app displays:
+
+"This persona isn't finalized yet — click Generate Persona to produce the tone and style breakdown."
+
+Even after Generate Persona has been clicked.
+
+BUG #2
+After clicking "Generate Persona":
+
+- Persona Strength Score appears
+- Strengths appear
+- Suggestions appear
+
+But the following sections remain empty:
+
+- Writing Style
+- Tone Profile
+- Voice Guide
+- Reader Relationship
+- Do's
+- Don'ts
+- Content Guidelines
+- Any other generated persona fields
+
+This indicates that either:
+1. The AI is not returning these fields.
+2. The backend is not parsing them.
+3. The frontend is not storing them.
+4. The save logic is not recognizing them.
+5. The persona finalized validation is incorrect.
+
+TASKS
+
+1. Trace the complete Author Persona workflow:
+   Frontend → API → AI Provider → Response Parsing → State Management → Database Save → Final Validation
+
+2. Add logging at every stage:
+   - Raw AI response
+   - Parsed response
+   - Persona object before state update
+   - Persona object before save
+   - Persona object after save
+   - Final validation result
+
+3. Verify that the AI response contains ALL required persona fields.
+
+Expected structure:
+
+{
+  "personaName": "",
+  "description": "",
+  "writingStyle": "",
+  "toneProfile": "",
+  "voiceGuide": "",
+  "readerRelationship": "",
+  "strengths": [],
+  "suggestions": [],
+  "dos": [],
+  "donts": [],
+  "contentGuidelines": [],
+  "score": 0
+}
+
+4. Check for field name mismatches such as:
+
+writing_style vs writingStyle
+tone_profile vs toneProfile
+voice_guide vs voiceGuide
+
+and normalize all mappings.
+
+5. Verify that Generate Persona updates ALL fields in React state.
+
+Do not only update:
+- score
+- strengths
+- suggestions
+
+Ensure every generated field is stored.
+
+6. Verify that Save Persona persists ALL persona fields to storage/database.
+
+7. Investigate the "persona finalized" validation.
+
+A persona should be considered finalized when required generated fields exist.
+
+If validation is checking nonexistent fields or outdated fields, fix it.
+
+8. Add defensive handling for:
+   - malformed JSON
+   - missing AI fields
+   - empty strings
+   - partial AI responses
+
+9. Improve the AI prompt so the model MUST return complete persona data.
+
+Use a strict JSON schema and retry generation if required fields are missing.
+
+10. After the fix:
+
+Generate Persona should populate:
+✓ Writing Style
+✓ Tone Profile
+✓ Voice Guide
+✓ Reader Relationship
+✓ Strengths
+✓ Suggestions
+✓ Do's
+✓ Don'ts
+✓ Content Guidelines
+✓ Score
+
+and Save Persona should work without displaying:
+
+"This persona isn't finalized yet"
+
+DELIVERABLES
+
+1. Identify the exact root cause.
+2. Show affected files.
+3. Show code changes.
+4. Implement the fix.
+5. Verify the entire Author Persona workflow works end-to-end.

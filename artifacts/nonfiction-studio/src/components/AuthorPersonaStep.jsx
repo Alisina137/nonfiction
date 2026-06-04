@@ -59,6 +59,9 @@ const DEFAULT_DRAFT = {
   voiceSummary:           "",
   writingStyleControls:   { ...DEFAULT_CONTROLS },
   personaStrength:        null,
+  dos:                    [],
+  donts:                  [],
+  contentGuidelines:      [],
   writingSample:          ""
 };
 
@@ -297,6 +300,9 @@ export default function AuthorPersonaStep({ authorPersona, setAuthorPersona, ful
         voiceSummary:           p.voiceSummary           ?? "",
         writingStyleControls:   p.writingStyleControls   ?? { ...DEFAULT_CONTROLS },
         personaStrength:        p.personaStrength        ?? null,
+        dos:                    p.dos                    ?? [],
+        donts:                  p.donts                  ?? [],
+        contentGuidelines:      p.contentGuidelines      ?? [],
         writingSample:          p.writingSample          ?? ""
       }
     });
@@ -332,12 +338,15 @@ export default function AuthorPersonaStep({ authorPersona, setAuthorPersona, ful
         authorDescription:      data.authorDescription      || draft.authorDescription || "",
         coreAuthorPromise:      data.coreAuthorPromise      || "",
         readerRelationship:     data.readerRelationship     || "",
-        signatureTeachingStyle: data.signatureTeachingStyle || [],
-        signatureElements:      data.signatureElements      || [],
+        signatureTeachingStyle: Array.isArray(data.signatureTeachingStyle) ? data.signatureTeachingStyle : [],
+        signatureElements:      Array.isArray(data.signatureElements)      ? data.signatureElements      : [],
         signatureFramework:     data.signatureFramework     || "",
         voiceSummary:           data.voiceSummary           || "",
         writingStyleControls:   data.writingStyleControls   || { ...DEFAULT_CONTROLS },
         personaStrength:        data.personaStrength        || null,
+        dos:                    Array.isArray(data.dos)               ? data.dos               : [],
+        donts:                  Array.isArray(data.donts)             ? data.donts             : [],
+        contentGuidelines:      Array.isArray(data.contentGuidelines) ? data.contentGuidelines : [],
         writingSample:          data.writingSample          || ""
       });
     } catch (e) {
@@ -371,8 +380,11 @@ export default function AuthorPersonaStep({ authorPersona, setAuthorPersona, ful
       signatureFramework:     draft.signatureFramework,
       voiceSummary:           draft.voiceSummary,
       writingStyleControls:   controls,
-      personaStrength:        draft.personaStrength || null,
-      writingSample:          draft.writingSample   || "",
+      personaStrength:        draft.personaStrength        || null,
+      dos:                    draft.dos                    || [],
+      donts:                  draft.donts                  || [],
+      contentGuidelines:      draft.contentGuidelines      || [],
+      writingSample:          draft.writingSample          || "",
       updatedAt:              new Date().toISOString()
     };
 
@@ -547,6 +559,52 @@ export default function AuthorPersonaStep({ authorPersona, setAuthorPersona, ful
       {/* ── Persona Strength Score (shown after AI generation) ── */}
       {draft.personaStrength?.score > 0 && (
         <PersonaStrengthCard strength={draft.personaStrength} />
+      )}
+
+      {/* ── Do's / Don'ts / Content Guidelines (shown after AI generation) ── */}
+      {(draft.dos?.length > 0 || draft.donts?.length > 0 || draft.contentGuidelines?.length > 0) && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+          <p className="text-sm font-bold text-slate-900">Voice Rules</p>
+
+          {draft.dos?.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600 mb-2">Do's</p>
+              <ul className="space-y-1.5">
+                {draft.dos.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-slate-700">
+                    <span className="mt-0.5 shrink-0 text-emerald-500 font-bold">✓</span>{item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {draft.donts?.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-600 mb-2">Don'ts</p>
+              <ul className="space-y-1.5">
+                {draft.donts.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-slate-700">
+                    <span className="mt-0.5 shrink-0 text-rose-500 font-bold">✕</span>{item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {draft.contentGuidelines?.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-sky-600 mb-2">Content Guidelines</p>
+              <ul className="space-y-1.5">
+                {draft.contentGuidelines.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-slate-700">
+                    <span className="mt-0.5 shrink-0 text-sky-500">◆</span>{item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Author Identity ── */}
