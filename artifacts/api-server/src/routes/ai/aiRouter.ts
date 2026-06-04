@@ -107,7 +107,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
   subtitle:            700,
   regenTitle:          250,
   outline:            1200,
-  lesson:             2000,
+  lesson:             6000,
   improve:             900,
   description:         500,
   cover:               600,
@@ -126,7 +126,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
   default:             800
 };
 
-const MAX_TOKENS_CAP       = 4096;
+const MAX_TOKENS_CAP       = 8000;
 const LOW_COST_TOKEN_CAP   = 1800;
 const MAX_INPUT_CHARS      = 12_000;
 const CHARS_PER_TOKEN      = 4;
@@ -279,8 +279,7 @@ async function callGemini(
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature: 0.7
-    },
-    thinkingConfig: { thinkingBudget: 0 }
+    }
   };
 
   const res     = await fetch(url, {
