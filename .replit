@@ -33,8 +33,8 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=5000 pnpm --filter @workspace/api-server run dev"
-waitForPort = 5000
+args = "PORT=3000 pnpm --filter @workspace/api-server run dev"
+waitForPort = 3000
 
 [[workflows.workflow]]
 name = "Nonfiction Studio"
@@ -45,11 +45,11 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=8080 pnpm --filter @workspace/nonfiction-studio run dev"
-waitForPort = 8080
+args = "PORT=5000 pnpm --filter @workspace/nonfiction-studio run dev"
+waitForPort = 5000
 
 [agent]
-stack = "PNPM_WORKSPACE"
+stack = "BEST_EFFORT_FALLBACK"
 expertMode = true
 
 [postMerge]
@@ -58,11 +58,7 @@ timeoutMs = 20000
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
+externalPort = 80
 
 [[ports]]
 localPort = 8081
@@ -75,5 +71,9 @@ externalPort = 3001
 [[ports]]
 localPort = 21617
 externalPort = 80
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
 
 [nix]
