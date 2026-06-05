@@ -198,7 +198,6 @@ router.post("/amazon-search", async (req, res) => {
         amazon_domain: amazonDomain || "amazon.com",
         q,
         amazon_search_type: "books",
-        sort_by: "featured",
         num: 24
       });
 
