@@ -86,7 +86,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
         return { ...prev, books: nextBooks, lastSearchQuery: q };
       });
       const sourceLabel = data.source === "open_library" ? "Open Library" : data.source === "google_books" ? "Google Books" : "Amazon";
-      setLocalMsg(`${rows.length} ${sourceLabel} result(s) loaded.${isFallbackSource ? " Add RAINFOREST_API_KEY or APIFY_API_KEY to search Amazon directly." : ""}`);
+      setLocalMsg(`${rows.length} ${sourceLabel} result(s) loaded.${isFallbackSource ? " Add RAINFOREST_API_KEY or SCALE_SERP_API_KEY to search Amazon directly." : ""}`);
     } catch (e) {
       setLocalMsg(e.message || "Something went wrong.");
     } finally {

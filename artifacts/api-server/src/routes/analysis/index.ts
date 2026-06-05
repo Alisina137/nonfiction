@@ -46,12 +46,12 @@ async function scaleSerpSearchBooks(
   { query, amazonDomain = "amazon.com", maxResults = 20 }: { query: string; amazonDomain?: string; maxResults?: number }
 ): Promise<any[]> {
   const domain = amazonDomain.replace(/^www\./, "");
-  const q = `${query} books site:${domain}/dp`;
+  const q = `site:${domain} ${query} books`;
 
   const url = new URL("https://api.scaleserp.com/search");
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("q", q);
-  url.searchParams.set("num", String(Math.min(maxResults * 2, 40)));
+  url.searchParams.set("num", "40");
   url.searchParams.set("gl", "us");
   url.searchParams.set("hl", "en");
 
