@@ -87,6 +87,8 @@ router.post("/amazon-search", async (req, res) => {
 
   if (!q) return res.status(400).json({ error: "Search query is required." });
 
+  let fallbackNotice: string | undefined;
+
   if (rainforestKey) {
     try {
       const data = await rainforestApiGet(rainforestKey, {
@@ -99,8 +101,12 @@ router.post("/amazon-search", async (req, res) => {
       });
 
       if (data.request_info && data.request_info.success === false) {
-        console.warn("[amazon-search] Rainforest API rejected request, falling back to Open Library:", data.error);
-        // fall through to Open Library fallback below
+        const msg: string = data.request_info?.message || data.error?.message || data.error || "";
+        console.warn("[amazon-search] Rainforest API rejected request:", msg);
+        fallbackNotice = msg
+          ? `Amazon search unavailable: ${msg} Showing Open Library results instead.`
+          : "Amazon search unavailable (Rainforest API error). Showing Open Library results instead.";
+        // fall through to Open Library below
       } else {
         const results = Array.isArray(data.search_results) ? data.search_results : [];
         const books = results
@@ -128,8 +134,9 @@ router.post("/amazon-search", async (req, res) => {
         return res.json({ books, query: q });
       }
     } catch (e: any) {
-      console.warn("[amazon-search] Rainforest error, falling back to Open Library:", (e as Error).message);
-      // fall through to Open Library fallback below
+      const msg = (e as Error).message || "";
+      console.warn("[amazon-search] Rainforest network error, falling back:", msg);
+      fallbackNotice = "Amazon search temporarily unavailable. Showing Open Library results instead.";
     }
   }
 
@@ -164,12 +171,9 @@ router.post("/amazon-search", async (req, res) => {
 
   try {
     const books = await openLibrarySearch(q, 20);
-    return res.json({
-      books,
-      query: q,
-      source: "open_library",
-      notice: "Results from Open Library. Add RAINFOREST_API_KEY or APIFY_API_KEY to search Amazon directly."
-    });
+    const notice = fallbackNotice
+      || "Results from Open Library. Add RAINFOREST_API_KEY or APIFY_API_KEY to search Amazon directly.";
+    return res.json({ books, query: q, source: "open_library", notice });
   } catch (e: any) {
     return res.status(500).json({ error: e.message || "Book search failed." });
   }
