@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { extractAsinFromAmazonUrl } from "@/lib/analysis/asin";
 
 function newBookId() {
@@ -31,15 +31,17 @@ function IntelTags({ label, values, colorClass = "bg-sky-100 text-sky-800" }) {
 }
 
 export default function AnalysisStep({ research, analysis, errors, updateAnalysis, patchBook, removeBook }) {
-  const [searchQuery, setSearchQuery]         = useState(analysis.lastSearchQuery || "");
-  const [loadingSearch, setLoadingSearch]     = useState(false);
+  const [searchQuery, setSearchQuery]           = useState(analysis.lastSearchQuery || "");
+  const [loadingSearch, setLoadingSearch]       = useState(false);
   const [loadingProductId, setLoadingProductId] = useState(null);
-  const [localMsg, setLocalMsg]               = useState("");
-  const [manualUrl, setManualUrl]             = useState("");
-  const [manualTitle, setManualTitle]         = useState("");
-  const [expandedId, setExpandedId]           = useState(null);
-  const [intelLoading, setIntelLoading]       = useState(false);
-  const [intelError, setIntelError]           = useState("");
+  const [localMsg, setLocalMsg]                 = useState("");
+  const [manualUrl, setManualUrl]               = useState("");
+  const [manualTitle, setManualTitle]           = useState("");
+  const [expandedId, setExpandedId]             = useState(null);
+  const [intelLoading, setIntelLoading]         = useState(false);
+  const [intelError, setIntelError]             = useState("");
+  const [autoExpandCount, setAutoExpandCount]   = useState(0);
+  const autoExpandedIds = useRef(new Set());
 
   const amazonDomain = analysis.amazonDomain || "amazon.com";
   const intelligence = analysis.intelligence  || null;
@@ -51,6 +53,54 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       setSearchQuery(q);
     }
   }, [research.genre, research.bookTopic]);
+
+  // Auto-expand all ASIN books that haven't been enriched yet
+  useEffect(() => {
+    const pending = analysis.books.filter(
+      (b) => b.asin && !b.expandedDetailsLoaded && !autoExpandedIds.current.has(b.id)
+    );
+    if (pending.length === 0) return;
+
+    // Mark all as in-progress immediately so subsequent renders don't re-trigger
+    pending.forEach((b) => autoExpandedIds.current.add(b.id));
+    setAutoExpandCount((n) => n + pending.length);
+
+    const BATCH = 3;
+    async function runBatches() {
+      for (let i = 0; i < pending.length; i += BATCH) {
+        const batch = pending.slice(i, i + BATCH);
+        await Promise.all(
+          batch.map(async (book) => {
+            try {
+              const res = await fetch("/api/analysis/amazon-product", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ asin: book.asin, title: book.title, amazonDomain }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || data.needsApiKey) return;
+              const d = data.details || {};
+              patchBook(book.id, {
+                title:               d.title              || book.title,
+                subtitle:            d.subtitle           ?? book.subtitle,
+                authors:             d.authors            ?? book.authors,
+                thumbnail:           d.thumbnail          || book.thumbnail,
+                rating:              d.rating             ?? book.rating,
+                ratingsTotal:        d.ratingsTotal       ?? book.ratingsTotal,
+                bestsellersRankFlat: d.bestsellersRankFlat ?? book.bestsellersRankFlat,
+                bestsellersRanks:    d.bestsellersRanks   ?? book.bestsellersRanks,
+                publicationDate:     d.publicationDate    ?? book.publicationDate,
+                expandedDetailsLoaded: true,
+              });
+            } catch { /* ignore individual failures */ }
+          })
+        );
+        setAutoExpandCount((n) => Math.max(0, n - batch.length));
+      }
+    }
+
+    runBatches();
+  }, [analysis.books]);
 
   async function runAmazonSearch(mode) {
     const q = searchQuery.trim();
@@ -242,6 +292,12 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       {localMsg && (
         <p className={`mt-4 text-sm ${localMsg.includes("intelligence extracted") ? "font-medium text-emerald-700" : "text-slate-600"}`}>
           {localMsg}
+        </p>
+      )}
+
+      {autoExpandCount > 0 && (
+        <p className="mt-2 text-xs text-sky-600 animate-pulse">
+          ⟳ Fetching ratings for {autoExpandCount} book{autoExpandCount !== 1 ? "s" : ""}…
         </p>
       )}
 

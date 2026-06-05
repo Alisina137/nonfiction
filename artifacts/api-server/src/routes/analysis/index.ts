@@ -122,6 +122,50 @@ async function scaleSerpSearchBooks(
   return merged;
 }
 
+/**
+ * Look up a single book on Open Library by title to get rating, authors, thumbnail.
+ * Returns null on any failure — always safe to call.
+ */
+async function openLibraryLookupByTitle(title: string): Promise<{
+  rating: number | null;
+  ratingsTotal: number | null;
+  authors: string | null;
+  thumbnail: string | null;
+} | null> {
+  try {
+    // Strip subtitles, series notes, edition text for better matching
+    const clean = title
+      .replace(/\s*\(.*?\)\s*/g, "")
+      .replace(/\s*:.*$/, "")
+      .trim()
+      .slice(0, 80);
+    const url = new URL("https://openlibrary.org/search.json");
+    url.searchParams.set("title", clean);
+    url.searchParams.set("fields", "title,author_name,cover_i,ratings_average,ratings_count");
+    url.searchParams.set("limit", "1");
+    url.searchParams.set("language", "eng");
+    const res = await fetch(url.toString(), {
+      headers: { "User-Agent": "NonfictionStudio/1.0" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const doc = data.docs?.[0];
+    if (!doc) return null;
+    return {
+      rating: typeof doc.ratings_average === "number" && doc.ratings_average > 0
+        ? Math.round(doc.ratings_average * 10) / 10 : null,
+      ratingsTotal: typeof doc.ratings_count === "number" ? doc.ratings_count : null,
+      authors: Array.isArray(doc.author_name) && doc.author_name.length
+        ? doc.author_name.join(", ") : null,
+      thumbnail: doc.cover_i
+        ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function openLibrarySearch(query: string, maxResults = 20): Promise<any[]> {
   const url = new URL("https://openlibrary.org/search.json");
   url.searchParams.set("q", query);
@@ -229,11 +273,30 @@ router.post("/amazon-search", async (req, res) => {
   // ── 2. Scale SERP (4 parallel Google queries → Amazon /dp/ ASINs) ────
   if (scaleSerpKey) {
     try {
-      const amazonBooks = await scaleSerpSearchBooks(scaleSerpKey, {
+      const rawAmazonBooks = await scaleSerpSearchBooks(scaleSerpKey, {
         query: q,
         amazonDomain: amazonDomain || "amazon.com",
         maxResults: 20
       });
+
+      // Enrich Amazon books with Open Library ratings/authors in parallel.
+      // Only mark expandedDetailsLoaded:true when we actually got a rating,
+      // so the frontend auto-expand can still retry un-rated books.
+      const amazonBooks = await Promise.all(
+        rawAmazonBooks.map(async (book) => {
+          const details = await openLibraryLookupByTitle(book.title);
+          if (!details) return book;
+          const gotRating = details.rating != null;
+          return {
+            ...book,
+            rating:       book.rating       ?? details.rating,
+            ratingsTotal: book.ratingsTotal  ?? details.ratingsTotal,
+            authors:      book.authors       ?? details.authors,
+            thumbnail:    book.thumbnail     ?? details.thumbnail,
+            expandedDetailsLoaded: gotRating,
+          };
+        })
+      );
 
       const MIN_BOOKS = 12;
       const TARGET = 20;
@@ -247,7 +310,6 @@ router.post("/amazon-search", async (req, res) => {
       let supplement: any[] = [];
       try {
         const libBooks = await openLibrarySearch(q, needed + 5);
-        // Exclude any Open Library books that share a title with an Amazon result
         const amazonTitles = new Set(amazonBooks.map((b) => b.title.toLowerCase().slice(0, 30)));
         supplement = libBooks
           .filter((b) => !amazonTitles.has(b.title.toLowerCase().slice(0, 30)))
@@ -384,11 +446,36 @@ router.post("/amazon-product", async (req, res) => {
     }
   }
 
-  // ── 3. No working key ────────────────────────────────────────────────
+  // ── 3. Open Library fallback — lookup by book title ──────────────────
+  const bookTitle = req.body?.title;
+  if (bookTitle) {
+    try {
+      const details = await openLibraryLookupByTitle(bookTitle);
+      if (details) {
+        return res.json({
+          details: {
+            title: null,
+            subtitle: null,
+            authors: details.authors,
+            thumbnail: details.thumbnail,
+            rating: details.rating,
+            ratingsTotal: details.ratingsTotal,
+            bestsellersRankFlat: null,
+            bestsellersRanks: null,
+            publicationDate: null,
+            expandedDetailsLoaded: true,
+          },
+          asin,
+        });
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ── 4. Nothing worked ─────────────────────────────────────────────────
   return res.json({
     needsApiKey: true,
     details: null,
-    message: "Add a working RAINFOREST_API_KEY to load ratings and bestseller rank from Amazon."
+    message: "Add a working RAINFOREST_API_KEY to load bestseller rank from Amazon.",
   });
 });
 
