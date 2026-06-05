@@ -38,16 +38,13 @@ async function rainforestApiGet(apiKey: string, paramsObject: Record<string, any
 }
 
 /**
- * Scale SERP: search Google for Amazon book pages and extract ASINs.
- * Queries Google with site:amazon.com to get individual book product pages.
+ * Run a single Scale SERP Google query and extract Amazon /dp/ ASINs.
  */
-async function scaleSerpSearchBooks(
+async function scaleSerpOneQuery(
   apiKey: string,
-  { query, amazonDomain = "amazon.com", maxResults = 20 }: { query: string; amazonDomain?: string; maxResults?: number }
+  q: string,
+  domain: string
 ): Promise<any[]> {
-  const domain = amazonDomain.replace(/^www\./, "");
-  const q = `site:${domain} ${query} books`;
-
   const url = new URL("https://api.scaleserp.com/search");
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("q", q);
@@ -56,34 +53,23 @@ async function scaleSerpSearchBooks(
   url.searchParams.set("hl", "en");
 
   const res = await fetch(url.toString(), { method: "GET" });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Scale SERP error ${res.status}: ${text.slice(0, 200)}`);
-  }
-  const data = await res.json();
-
-  if (data.request_info?.success === false) {
-    throw new Error(data.request_info.message || "Scale SERP request failed");
-  }
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => null);
+  if (!data || data.request_info?.success === false) return [];
 
   const organic: any[] = Array.isArray(data.organic_results) ? data.organic_results : [];
   const books: any[] = [];
-
   for (const result of organic) {
     const link: string = result.link || result.url || "";
     const asinMatch = link.match(/\/dp\/([A-Z0-9]{10})/i);
     if (!asinMatch) continue;
     const asin = asinMatch[1].toUpperCase();
     if (books.some((b) => b.asin === asin)) continue;
-
-    const title = result.title || result.displayed_link || "Unknown title";
-    const thumbnail = result.thumbnail || result.image || null;
-
     books.push({
       asin,
-      title,
+      title: result.title || "Unknown title",
       url: `https://www.${domain}/dp/${asin}`,
-      thumbnail,
+      thumbnail: result.thumbnail || result.image || null,
       rating: null,
       ratingsTotal: null,
       recentSales: null,
@@ -96,11 +82,44 @@ async function scaleSerpSearchBooks(
       expandedDetailsLoaded: false,
       source_provider: "scale_serp"
     });
-
-    if (books.length >= maxResults) break;
   }
-
   return books;
+}
+
+/**
+ * Scale SERP: run 4 parallel Google queries targeting site:amazon.com,
+ * merge unique ASINs, return up to maxResults books.
+ */
+async function scaleSerpSearchBooks(
+  apiKey: string,
+  { query, amazonDomain = "amazon.com", maxResults = 20 }: { query: string; amazonDomain?: string; maxResults?: number }
+): Promise<any[]> {
+  const domain = amazonDomain.replace(/^www\./, "");
+  // Four query formulations that each hit different Google result sets
+  const queries = [
+    `site:${domain} ${query} book`,
+    `site:${domain} ${query} books bestseller`,
+    `site:${domain} ${query} books paperback`,
+    `site:${domain} ${query} books top rated review`,
+  ];
+
+  const allResults = await Promise.all(
+    queries.map((q) => scaleSerpOneQuery(apiKey, q, domain).catch(() => []))
+  );
+
+  // Merge, deduplicate by ASIN
+  const seen = new Set<string>();
+  const merged: any[] = [];
+  for (const batch of allResults) {
+    for (const book of batch) {
+      if (!seen.has(book.asin)) {
+        seen.add(book.asin);
+        merged.push(book);
+        if (merged.length >= maxResults) return merged;
+      }
+    }
+  }
+  return merged;
 }
 
 async function openLibrarySearch(query: string, maxResults = 20): Promise<any[]> {
@@ -207,18 +226,39 @@ router.post("/amazon-search", async (req, res) => {
     }
   }
 
-  // ── 2. Scale SERP (Google → Amazon /dp/ links) ───────────────────────
+  // ── 2. Scale SERP (4 parallel Google queries → Amazon /dp/ ASINs) ────
   if (scaleSerpKey) {
     try {
-      const books = await scaleSerpSearchBooks(scaleSerpKey, {
+      const amazonBooks = await scaleSerpSearchBooks(scaleSerpKey, {
         query: q,
         amazonDomain: amazonDomain || "amazon.com",
         maxResults: 20
       });
-      if (books.length > 0) {
-        return res.json({ books, query: q, source: "scale_serp" });
+
+      const MIN_BOOKS = 12;
+      const TARGET = 20;
+
+      if (amazonBooks.length >= MIN_BOOKS) {
+        return res.json({ books: amazonBooks.slice(0, TARGET), query: q, source: "scale_serp" });
       }
-      console.warn("[amazon-search] Scale SERP returned 0 ASIN results, falling through");
+
+      // Not enough Amazon results — top up with Open Library
+      const needed = TARGET - amazonBooks.length;
+      let supplement: any[] = [];
+      try {
+        const libBooks = await openLibrarySearch(q, needed + 5);
+        // Exclude any Open Library books that share a title with an Amazon result
+        const amazonTitles = new Set(amazonBooks.map((b) => b.title.toLowerCase().slice(0, 30)));
+        supplement = libBooks
+          .filter((b) => !amazonTitles.has(b.title.toLowerCase().slice(0, 30)))
+          .slice(0, needed);
+      } catch { /* open library optional */ }
+
+      const combined = [...amazonBooks, ...supplement];
+      if (combined.length > 0) {
+        return res.json({ books: combined.slice(0, TARGET), query: q, source: "scale_serp" });
+      }
+      console.warn("[amazon-search] Scale SERP + Open Library returned 0 results, falling through");
     } catch (e: any) {
       console.warn("[amazon-search] Scale SERP error:", e.message);
     }
