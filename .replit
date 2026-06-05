@@ -45,8 +45,8 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=5000 pnpm --filter @workspace/nonfiction-studio run dev"
-waitForPort = 5000
+args = "PORT=5173 pnpm --filter @workspace/nonfiction-studio run dev"
+waitForPort = 5173
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"

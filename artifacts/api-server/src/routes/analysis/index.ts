@@ -99,36 +99,37 @@ router.post("/amazon-search", async (req, res) => {
       });
 
       if (data.request_info && data.request_info.success === false) {
-        return res.status(502).json({ error: data.error?.message || data.error || "Amazon search failed." });
+        console.warn("[amazon-search] Rainforest API rejected request, falling back to Open Library:", data.error);
+        // fall through to Open Library fallback below
+      } else {
+        const results = Array.isArray(data.search_results) ? data.search_results : [];
+        const books = results
+          .filter((r: any) => r && r.asin && r.title)
+          .map((r: any) => {
+            const asin = String(r.asin).toUpperCase();
+            const domain = data.request_parameters?.amazon_domain || "amazon.com";
+            return {
+              asin,
+              title: r.title,
+              url: `https://www.${domain.replace(/^www\./, "")}/dp/${asin}`,
+              thumbnail: r.image || null,
+              rating: typeof r.rating === "number" ? r.rating : null,
+              ratingsTotal: typeof r.ratings_total === "number" ? r.ratings_total : null,
+              recentSales: r.recent_sales || null,
+              sponsored: Boolean(r.sponsored),
+              bestsellerBadge: r.bestseller || null,
+              subtitle: null,
+              authors: null,
+              bestsellersRankFlat: null,
+              bestsellersRanks: null,
+              expandedDetailsLoaded: false
+            };
+          });
+        return res.json({ books, query: q });
       }
-
-      const results = Array.isArray(data.search_results) ? data.search_results : [];
-      const books = results
-        .filter((r: any) => r && r.asin && r.title)
-        .map((r: any) => {
-          const asin = String(r.asin).toUpperCase();
-          const domain = data.request_parameters?.amazon_domain || "amazon.com";
-          return {
-            asin,
-            title: r.title,
-            url: `https://www.${domain.replace(/^www\./, "")}/dp/${asin}`,
-            thumbnail: r.image || null,
-            rating: typeof r.rating === "number" ? r.rating : null,
-            ratingsTotal: typeof r.ratings_total === "number" ? r.ratings_total : null,
-            recentSales: r.recent_sales || null,
-            sponsored: Boolean(r.sponsored),
-            bestsellerBadge: r.bestseller || null,
-            subtitle: null,
-            authors: null,
-            bestsellersRankFlat: null,
-            bestsellersRanks: null,
-            expandedDetailsLoaded: false
-          };
-        });
-
-      return res.json({ books, query: q });
     } catch (e: any) {
-      return res.status(500).json({ error: e.message || "Amazon search failed." });
+      console.warn("[amazon-search] Rainforest error, falling back to Open Library:", (e as Error).message);
+      // fall through to Open Library fallback below
     }
   }
 
