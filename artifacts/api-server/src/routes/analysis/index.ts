@@ -87,8 +87,6 @@ router.post("/amazon-search", async (req, res) => {
 
   if (!q) return res.status(400).json({ error: "Search query is required." });
 
-  let fallbackNotice: string | undefined;
-
   if (rainforestKey) {
     try {
       const data = await rainforestApiGet(rainforestKey, {
@@ -101,42 +99,36 @@ router.post("/amazon-search", async (req, res) => {
       });
 
       if (data.request_info && data.request_info.success === false) {
-        const msg: string = data.request_info?.message || data.error?.message || data.error || "";
-        console.warn("[amazon-search] Rainforest API rejected request:", msg);
-        fallbackNotice = msg
-          ? `Amazon search unavailable: ${msg} Showing Open Library results instead.`
-          : "Amazon search unavailable (Rainforest API error). Showing Open Library results instead.";
-        // fall through to Open Library below
-      } else {
-        const results = Array.isArray(data.search_results) ? data.search_results : [];
-        const books = results
-          .filter((r: any) => r && r.asin && r.title)
-          .map((r: any) => {
-            const asin = String(r.asin).toUpperCase();
-            const domain = data.request_parameters?.amazon_domain || "amazon.com";
-            return {
-              asin,
-              title: r.title,
-              url: `https://www.${domain.replace(/^www\./, "")}/dp/${asin}`,
-              thumbnail: r.image || null,
-              rating: typeof r.rating === "number" ? r.rating : null,
-              ratingsTotal: typeof r.ratings_total === "number" ? r.ratings_total : null,
-              recentSales: r.recent_sales || null,
-              sponsored: Boolean(r.sponsored),
-              bestsellerBadge: r.bestseller || null,
-              subtitle: null,
-              authors: null,
-              bestsellersRankFlat: null,
-              bestsellersRanks: null,
-              expandedDetailsLoaded: false
-            };
-          });
-        return res.json({ books, query: q });
+        return res.status(502).json({ error: data.error?.message || data.error || "Amazon search failed." });
       }
+
+      const results = Array.isArray(data.search_results) ? data.search_results : [];
+      const books = results
+        .filter((r: any) => r && r.asin && r.title)
+        .map((r: any) => {
+          const asin = String(r.asin).toUpperCase();
+          const domain = data.request_parameters?.amazon_domain || "amazon.com";
+          return {
+            asin,
+            title: r.title,
+            url: `https://www.${domain.replace(/^www\./, "")}/dp/${asin}`,
+            thumbnail: r.image || null,
+            rating: typeof r.rating === "number" ? r.rating : null,
+            ratingsTotal: typeof r.ratings_total === "number" ? r.ratings_total : null,
+            recentSales: r.recent_sales || null,
+            sponsored: Boolean(r.sponsored),
+            bestsellerBadge: r.bestseller || null,
+            subtitle: null,
+            authors: null,
+            bestsellersRankFlat: null,
+            bestsellersRanks: null,
+            expandedDetailsLoaded: false
+          };
+        });
+
+      return res.json({ books, query: q });
     } catch (e: any) {
-      const msg = (e as Error).message || "";
-      console.warn("[amazon-search] Rainforest network error, falling back:", msg);
-      fallbackNotice = "Amazon search temporarily unavailable. Showing Open Library results instead.";
+      return res.status(500).json({ error: e.message || "Amazon search failed." });
     }
   }
 
@@ -171,9 +163,12 @@ router.post("/amazon-search", async (req, res) => {
 
   try {
     const books = await openLibrarySearch(q, 20);
-    const notice = fallbackNotice
-      || "Results from Open Library. Add RAINFOREST_API_KEY or APIFY_API_KEY to search Amazon directly.";
-    return res.json({ books, query: q, source: "open_library", notice });
+    return res.json({
+      books,
+      query: q,
+      source: "open_library",
+      notice: "Results from Open Library. Add RAINFOREST_API_KEY or APIFY_API_KEY to search Amazon directly."
+    });
   } catch (e: any) {
     return res.status(500).json({ error: e.message || "Book search failed." });
   }
