@@ -87,9 +87,12 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
                 thumbnail:           d.thumbnail          || book.thumbnail,
                 rating:              d.rating             ?? book.rating,
                 ratingsTotal:        d.ratingsTotal       ?? book.ratingsTotal,
+                reviewCount:         d.reviewCount        ?? book.reviewCount,
+                price:               d.price              ?? book.price,
                 bestsellersRankFlat: d.bestsellersRankFlat ?? book.bestsellersRankFlat,
                 bestsellersRanks:    d.bestsellersRanks   ?? book.bestsellersRanks,
                 publicationDate:     d.publicationDate    ?? book.publicationDate,
+                dataSource:          d.dataSource         ?? book.dataSource,
                 expandedDetailsLoaded: true,
               });
             } catch { /* ignore individual failures */ }
@@ -155,11 +158,11 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       const res  = await fetch("/api/analysis/amazon-product", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ asin: book.asin, amazonDomain })
+        body: JSON.stringify({ asin: book.asin, title: book.title, amazonDomain })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not load product details.");
-      if (data.needsApiKey) { setLocalMsg(data.message || "Add RAINFOREST_API_KEY to load details."); return; }
+      if (data.needsApiKey) { setLocalMsg(data.message || "Add RAINFOREST_API_KEY to load full details."); return; }
       const d = data.details || {};
       patchBook(book.id, {
         title:               d.title              || book.title,
@@ -168,10 +171,13 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
         thumbnail:           d.thumbnail          || book.thumbnail,
         rating:              d.rating             ?? book.rating,
         ratingsTotal:        d.ratingsTotal       ?? book.ratingsTotal,
+        reviewCount:         d.reviewCount        ?? book.reviewCount,
+        price:               d.price              ?? book.price,
         bestsellersRankFlat: d.bestsellersRankFlat ?? book.bestsellersRankFlat,
         bestsellersRanks:    d.bestsellersRanks   ?? book.bestsellersRanks,
         publicationDate:     d.publicationDate    ?? book.publicationDate,
-        expandedDetailsLoaded: true
+        dataSource:          d.dataSource         ?? book.dataSource,
+        expandedDetailsLoaded: true,
       });
     } catch (e) {
       setLocalMsg(e.message || "Expand failed.");
@@ -309,9 +315,27 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
           </li>
         )}
         {analysis.books.map((book) => {
-          const isOpen        = expandedId === book.id;
-          const ratingLabel   = typeof book.rating       === "number" ? `${book.rating.toFixed(1)} ★` : null;
-          const reviewsLabel  = typeof book.ratingsTotal === "number" ? `${book.ratingsTotal.toLocaleString()} reviews` : null;
+          const isOpen       = expandedId === book.id;
+          const ratingLabel  = typeof book.rating === "number" ? `${book.rating.toFixed(1)} ★` : null;
+          const reviewsLabel = typeof (book.ratingsTotal ?? book.reviewCount) === "number"
+            ? `${(book.ratingsTotal ?? book.reviewCount).toLocaleString()} ratings`
+            : null;
+
+          // Data source badge config
+          const ds = book.source === "manual" ? "manual"
+            : book.dataSource === "rainforest" ? "rainforest"
+            : book.dataSource === "merged" ? "merged"
+            : book.source_provider === "open_library" || book.source === "open_library" ? "open_library"
+            : "scale_serp";
+
+          const dsBadge = {
+            manual:      { label: "Your reference",        cls: "bg-amber-100 text-amber-900" },
+            rainforest:  { label: "✓ Rainforest",          cls: "bg-emerald-100 text-emerald-800" },
+            merged:      { label: "✓ Rainforest + OL",     cls: "bg-sky-100 text-sky-800" },
+            open_library:{ label: "Open Library",          cls: "bg-teal-100 text-teal-800" },
+            scale_serp:  { label: "Scale SERP Fallback",   cls: "bg-slate-100 text-slate-700" },
+          }[ds];
+
           return (
             <li key={book.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex gap-4 p-4">
@@ -323,31 +347,43 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-start gap-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                      book.source === "manual" ? "bg-amber-100 text-amber-900"
-                      : book.source === "open_library" ? "bg-emerald-100 text-emerald-800"
-                      : book.source === "google_books" ? "bg-blue-100 text-blue-800"
-                      : "bg-slate-100 text-slate-700"
-                    }`}>
-                      {book.source === "manual" ? "Your reference"
-                        : book.source === "open_library" ? "Open Library"
-                        : book.source === "google_books" ? "Google Books"
-                        : "Amazon niche"}
+                  {/* Badges row */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${dsBadge.cls}`}>
+                      {dsBadge.label}
                     </span>
+                    {book.price && (
+                      <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-800">
+                        {book.price}
+                      </span>
+                    )}
+                    {book.bestsellerBadge && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                        Bestseller
+                      </span>
+                    )}
                   </div>
+
                   <p className="mt-1 font-semibold leading-snug text-slate-900">{book.title}</p>
-                  {book.authors && <p className="mt-1 text-xs text-slate-600">{book.authors}</p>}
-                  {(ratingLabel || reviewsLabel) && (
-                    <p className="mt-1 text-xs text-slate-600">
-                      {[ratingLabel, reviewsLabel].filter(Boolean).join(" · ")}
-                      {book.bestsellerBadge?.category && <span className="ml-2 text-amber-800">· Bestseller badge</span>}
+                  {book.subtitle && (
+                    <p className="text-[11px] italic text-slate-500 leading-snug">{book.subtitle}</p>
+                  )}
+                  {book.authors && <p className="mt-0.5 text-xs text-slate-600">{book.authors}</p>}
+
+                  {/* Rating + date row */}
+                  {(ratingLabel || reviewsLabel || book.publicationDate) && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {[ratingLabel, reviewsLabel, book.publicationDate && `Published ${book.publicationDate}`]
+                        .filter(Boolean).join(" · ")}
                     </p>
                   )}
-                  <a href={book.url} target="_blank" rel="noreferrer" className="mt-2 inline-block truncate text-xs text-sky-700 hover:underline">
+
+                  <a href={book.url} target="_blank" rel="noreferrer"
+                    className="mt-1.5 inline-block max-w-full truncate text-[11px] text-sky-700 hover:underline">
                     {book.url}
                   </a>
-                  <div className="mt-3 flex flex-wrap gap-2">
+
+                  <div className="mt-2.5 flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => expandBook(book)}
@@ -365,30 +401,74 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
                   </div>
                 </div>
               </div>
+
               {isOpen && (
-                <div className="border-t border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-700">
-                  {book.publicationDate && <p><span className="font-medium text-slate-900">Published:</span> {book.publicationDate}</p>}
-                  {book.subtitle && <p className="mt-1"><span className="font-medium text-slate-900">Subtitle:</span> {book.subtitle}</p>}
-                  <p className="mt-2">
-                    <span className="font-medium text-slate-900">Rating:</span>{" "}
-                    {ratingLabel ? ratingLabel : "—"}{reviewsLabel ? ` (${reviewsLabel})` : ""}
-                  </p>
-                  <p className="mt-2 font-medium text-slate-900">Bestseller rank</p>
-                  {book.bestsellersRankFlat ? (
-                    <p className="text-slate-700">{book.bestsellersRankFlat}</p>
-                  ) : (
-                    <p className="text-slate-500">Expand pulls rank when API key is set.</p>
-                  )}
-                  {Array.isArray(book.bestsellersRanks) && book.bestsellersRanks.length > 0 && (
-                    <ul className="mt-2 space-y-1 text-xs">
-                      {book.bestsellersRanks.map((row, i) => (
-                        <li key={i}>
-                          #{row.rank} in {row.category}
-                          {row.link && <a className="ml-2 text-sky-700 hover:underline" href={row.link} target="_blank" rel="noreferrer">View ranking</a>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-4 space-y-3 text-sm text-slate-700">
+
+                  {/* Data source indicator */}
+                  <div className="flex flex-wrap gap-2 text-[11px]">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold ${
+                      ds === "rainforest" || ds === "merged"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {ds === "rainforest" || ds === "merged" ? "✓" : "○"} Rainforest
+                    </span>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold ${
+                      ds === "scale_serp" || ds === "merged"
+                        ? "bg-sky-50 text-sky-700 border border-sky-200"
+                        : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {ds === "scale_serp" || ds === "merged" ? "✓" : "○"} Scale SERP Fallback
+                    </span>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold ${
+                      ds === "open_library" || ds === "merged"
+                        ? "bg-teal-50 text-teal-700 border border-teal-200"
+                        : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {ds === "open_library" || ds === "merged" ? "✓" : "○"} Open Library
+                    </span>
+                  </div>
+
+                  {/* Detail fields */}
+                  <div className="grid gap-1.5 text-xs sm:grid-cols-2">
+                    <div><span className="font-medium text-slate-800">Rating:</span>{" "}
+                      {ratingLabel ?? <span className="text-slate-400">Unavailable</span>}</div>
+                    <div><span className="font-medium text-slate-800">Ratings:</span>{" "}
+                      {reviewsLabel ?? <span className="text-slate-400">Unavailable</span>}</div>
+                    {book.price && (
+                      <div><span className="font-medium text-slate-800">Price:</span> {book.price}</div>
+                    )}
+                    {book.publicationDate && (
+                      <div><span className="font-medium text-slate-800">Published:</span> {book.publicationDate}</div>
+                    )}
+                  </div>
+
+                  {/* Bestseller rank */}
+                  <div>
+                    <p className="text-xs font-medium text-slate-800 mb-1">Bestseller rank</p>
+                    {book.bestsellersRankFlat ? (
+                      <p className="text-xs text-slate-700">{book.bestsellersRankFlat}</p>
+                    ) : (
+                      <p className="text-xs text-slate-400">
+                        {ds === "rainforest" ? "No rank data returned." : "Requires Rainforest API — add RAINFOREST_API_KEY."}
+                      </p>
+                    )}
+                    {Array.isArray(book.bestsellersRanks) && book.bestsellersRanks.length > 0 && (
+                      <ul className="mt-1.5 space-y-0.5 text-xs">
+                        {book.bestsellersRanks.map((row, i) => (
+                          <li key={i} className="text-slate-700">
+                            <span className="font-semibold">#{row.rank}</span> in {row.category}
+                            {row.link && (
+                              <a className="ml-2 text-sky-600 hover:underline" href={row.link} target="_blank" rel="noreferrer">
+                                View
+                              </a>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               )}
             </li>

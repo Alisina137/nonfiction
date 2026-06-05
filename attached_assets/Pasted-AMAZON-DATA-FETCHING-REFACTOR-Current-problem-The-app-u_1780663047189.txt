@@ -1,0 +1,173 @@
+AMAZON DATA FETCHING REFACTOR
+
+Current problem:
+The app uses Scale SERP to fetch Amazon bestseller/book data, but the returned data is often incomplete, inconsistent, or missing important fields such as:
+
+- Rating count
+- Review count
+- Bestseller rank
+- Category rank
+- Price
+- Cover image
+- Publication date
+- Author
+- Amazon URL
+
+I want to change the data retrieval architecture.
+
+NEW LOGIC:
+
+1. PRIMARY DATA SOURCE = RAINFOREST API
+
+When fetching Amazon books, ALWAYS use Rainforest API first.
+
+Rainforest should be responsible for:
+
+- Search results
+- Product details
+- Rating
+- Ratings total
+- Review count
+- Bestseller rank
+- Category rank
+- Price
+- Cover image
+- Author
+- Publication date
+- ASIN
+- Amazon URL
+
+2. FALLBACK = SCALE SERP
+
+Only if Rainforest:
+
+- fails
+- times out
+- returns empty results
+- returns incomplete results
+
+then automatically query Scale SERP.
+
+3. FIELD MERGING
+
+When both APIs return data:
+
+Use Rainforest as source of truth.
+
+Example:
+
+rating:
+Rainforest -> 4.7
+Scale SERP -> 4.5
+
+Use Rainforest value.
+
+For missing Rainforest fields:
+
+rating_count:
+Rainforest -> null
+Scale SERP -> 12,847
+
+Use Scale SERP value.
+
+Pseudo:
+
+finalField =
+    rainforestField ??
+    scaleSerpField ??
+    null
+
+4. CONFIDENCE PRIORITY
+
+Priority order:
+
+1. Rainforest
+2. Scale SERP
+3. Existing cached value
+
+Never overwrite a valid Rainforest value with Scale SERP.
+
+5. BOOK CARD DISPLAY
+
+Display:
+
+- Star rating
+- Total ratings count
+- Review count
+- Bestseller rank
+- Category rank
+- Price
+- Author
+- Publication date
+
+Show "Data unavailable" only when BOTH APIs fail.
+
+6. API STATUS INDICATOR
+
+Add debugging information:
+
+Data Source:
+✓ Rainforest
+✓ Scale SERP Fallback
+✓ Cached
+
+for each fetched book.
+
+7. ERROR HANDLING
+
+If Rainforest fails:
+
+- log exact error
+- automatically retry once
+- then switch to Scale SERP
+
+Do not stop the workflow.
+
+8. SEARCH BESTSELLERS BUTTON
+
+When user clicks "Search Bestsellers":
+
+Step 1:
+Query Rainforest API
+
+Step 2:
+Normalize results
+
+Step 3:
+Fill missing fields using Scale SERP
+
+Step 4:
+Deduplicate by ASIN
+
+Step 5:
+Render final merged dataset
+
+9. APPEND RESULTS
+
+Current append behavior should remain.
+
+When Append Results is clicked:
+
+- fetch additional books
+- merge with existing list
+- deduplicate by ASIN
+- preserve manually added books
+
+10. IMPLEMENTATION REQUIREMENT
+
+Create a centralized AmazonDataProvider service:
+
+getBooks()
+
+internally:
+
+try Rainforest
+if fail -> Scale SERP
+merge fields
+normalize structure
+return unified object
+
+All UI components should consume ONLY the normalized AmazonDataProvider output.
+
+Goal:
+Rainforest becomes the primary Amazon intelligence source, while Scale SERP acts purely as a resilient fallback layer for missing or failed data retrieval.
