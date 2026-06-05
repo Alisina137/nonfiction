@@ -37,46 +37,70 @@ async function rainforestApiGet(apiKey: string, paramsObject: Record<string, any
   return res.json();
 }
 
-async function scaleSerpApiGet(apiKey: string, paramsObject: Record<string, any>) {
+/**
+ * Scale SERP: search Google for Amazon book pages and extract ASINs.
+ * Queries Google with site:amazon.com to get individual book product pages.
+ */
+async function scaleSerpSearchBooks(
+  apiKey: string,
+  { query, amazonDomain = "amazon.com", maxResults = 20 }: { query: string; amazonDomain?: string; maxResults?: number }
+): Promise<any[]> {
+  const domain = amazonDomain.replace(/^www\./, "");
+  const q = `${query} books site:${domain}/dp`;
+
   const url = new URL("https://api.scaleserp.com/search");
-  Object.entries(paramsObject).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === "") return;
-    url.searchParams.append(k, String(v));
-  });
   url.searchParams.set("api_key", apiKey);
+  url.searchParams.set("q", q);
+  url.searchParams.set("num", String(Math.min(maxResults * 2, 40)));
+  url.searchParams.set("gl", "us");
+  url.searchParams.set("hl", "en");
+
   const res = await fetch(url.toString(), { method: "GET" });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Scale SERP API error ${res.status}: ${text.slice(0, 200)}`);
+    throw new Error(`Scale SERP error ${res.status}: ${text.slice(0, 200)}`);
   }
-  return res.json();
-}
+  const data = await res.json();
 
-function normalizeScaleSerpSearchResults(data: any, amazonDomain: string) {
-  const results: any[] = Array.isArray(data.amazon_results) ? data.amazon_results : [];
-  return results
-    .filter((r: any) => r && r.asin && r.title)
-    .map((r: any) => {
-      const asin = String(r.asin).toUpperCase();
-      const domain = amazonDomain.replace(/^www\./, "");
-      return {
-        asin,
-        title: r.title,
-        url: `https://www.${domain}/dp/${asin}`,
-        thumbnail: r.image || r.thumbnail || null,
-        rating: typeof r.rating === "number" ? r.rating : null,
-        ratingsTotal: typeof r.ratings_total === "number" ? r.ratings_total : null,
-        recentSales: r.recent_sales || null,
-        sponsored: Boolean(r.sponsored),
-        bestsellerBadge: r.bestseller || null,
-        subtitle: null,
-        authors: null,
-        bestsellersRankFlat: null,
-        bestsellersRanks: null,
-        expandedDetailsLoaded: false,
-        source_provider: "scale_serp"
-      };
+  if (data.request_info?.success === false) {
+    throw new Error(data.request_info.message || "Scale SERP request failed");
+  }
+
+  const organic: any[] = Array.isArray(data.organic_results) ? data.organic_results : [];
+  const books: any[] = [];
+
+  for (const result of organic) {
+    const link: string = result.link || result.url || "";
+    const asinMatch = link.match(/\/dp\/([A-Z0-9]{10})/i);
+    if (!asinMatch) continue;
+    const asin = asinMatch[1].toUpperCase();
+    if (books.some((b) => b.asin === asin)) continue;
+
+    const title = result.title || result.displayed_link || "Unknown title";
+    const thumbnail = result.thumbnail || result.image || null;
+
+    books.push({
+      asin,
+      title,
+      url: `https://www.${domain}/dp/${asin}`,
+      thumbnail,
+      rating: null,
+      ratingsTotal: null,
+      recentSales: null,
+      sponsored: false,
+      bestsellerBadge: null,
+      subtitle: null,
+      authors: null,
+      bestsellersRankFlat: null,
+      bestsellersRanks: null,
+      expandedDetailsLoaded: false,
+      source_provider: "scale_serp"
     });
+
+    if (books.length >= maxResults) break;
+  }
+
+  return books;
 }
 
 async function openLibrarySearch(query: string, maxResults = 20): Promise<any[]> {
@@ -136,7 +160,7 @@ router.post("/amazon-search", async (req, res) => {
 
   if (!q) return res.status(400).json({ error: "Search query is required." });
 
-  // ── 1. Rainforest API ──────────────────────────────────────────────────
+  // ── 1. Rainforest API ────────────────────────────────────────────────
   if (rainforestKey) {
     try {
       const data = await rainforestApiGet(rainforestKey, {
@@ -149,23 +173,19 @@ router.post("/amazon-search", async (req, res) => {
       });
 
       if (data.request_info && data.request_info.success === false) {
-        const errMsg = data.error?.message || data.error || "Rainforest API returned an error.";
-        console.error("[amazon-search] Rainforest error:", errMsg);
-        // Fall through to Scale SERP if key is set, otherwise return error
-        if (!scaleSerpKey && !apifyKey) {
-          return res.status(502).json({ error: errMsg });
-        }
+        console.warn("[amazon-search] Rainforest not available:", data.request_info.message?.slice(0, 100));
+        // fall through to next provider
       } else {
         const results = Array.isArray(data.search_results) ? data.search_results : [];
         const books = results
           .filter((r: any) => r && r.asin && r.title)
           .map((r: any) => {
             const asin = String(r.asin).toUpperCase();
-            const domain = data.request_parameters?.amazon_domain || "amazon.com";
+            const domain = (data.request_parameters?.amazon_domain || "amazon.com").replace(/^www\./, "");
             return {
               asin,
               title: r.title,
-              url: `https://www.${domain.replace(/^www\./, "")}/dp/${asin}`,
+              url: `https://www.${domain}/dp/${asin}`,
               thumbnail: r.image || null,
               rating: typeof r.rating === "number" ? r.rating : null,
               ratingsTotal: typeof r.ratings_total === "number" ? r.ratings_total : null,
@@ -183,41 +203,28 @@ router.post("/amazon-search", async (req, res) => {
         return res.json({ books, query: q, source: "rainforest" });
       }
     } catch (e: any) {
-      console.error("[amazon-search] Rainforest fetch error:", e.message);
-      if (!scaleSerpKey && !apifyKey) {
-        return res.status(500).json({ error: e.message || "Amazon search failed." });
-      }
+      console.warn("[amazon-search] Rainforest error:", e.message);
     }
   }
 
-  // ── 2. Scale SERP ─────────────────────────────────────────────────────
+  // ── 2. Scale SERP (Google → Amazon /dp/ links) ───────────────────────
   if (scaleSerpKey) {
     try {
-      const data = await scaleSerpApiGet(scaleSerpKey, {
-        search_type: "amazon",
-        amazon_domain: amazonDomain || "amazon.com",
-        q,
-        amazon_search_type: "books",
-        num: 24
+      const books = await scaleSerpSearchBooks(scaleSerpKey, {
+        query: q,
+        amazonDomain: amazonDomain || "amazon.com",
+        maxResults: 20
       });
-
-      if (data.request_info && data.request_info.success === false) {
-        const errMsg = data.error?.message || data.error || "Scale SERP API returned an error.";
-        console.error("[amazon-search] Scale SERP error:", errMsg);
-        if (!apifyKey) return res.status(502).json({ error: errMsg });
-      } else {
-        const books = normalizeScaleSerpSearchResults(data, amazonDomain || "amazon.com");
+      if (books.length > 0) {
         return res.json({ books, query: q, source: "scale_serp" });
       }
+      console.warn("[amazon-search] Scale SERP returned 0 ASIN results, falling through");
     } catch (e: any) {
-      console.error("[amazon-search] Scale SERP fetch error:", e.message);
-      if (!apifyKey) {
-        return res.status(500).json({ error: e.message || "Amazon search failed." });
-      }
+      console.warn("[amazon-search] Scale SERP error:", e.message);
     }
   }
 
-  // ── 3. Apify ──────────────────────────────────────────────────────────
+  // ── 3. Apify ─────────────────────────────────────────────────────────
   if (apifyKey) {
     try {
       const results = await amazonResearchService(apifyKey, {
@@ -244,18 +251,18 @@ router.post("/amazon-search", async (req, res) => {
       }));
       return res.json({ books, query: q, source: "apify" });
     } catch (e: any) {
-      return res.status(500).json({ error: e.message || "Apify search failed." });
+      console.warn("[amazon-search] Apify error:", e.message);
     }
   }
 
-  // ── 4. Open Library fallback ──────────────────────────────────────────
+  // ── 4. Open Library fallback ─────────────────────────────────────────
   try {
     const books = await openLibrarySearch(q, 20);
     return res.json({
       books,
       query: q,
       source: "open_library",
-      notice: "Results from Open Library. Add RAINFOREST_API_KEY or SCALE_SERP_API_KEY to search Amazon directly."
+      notice: "Showing Open Library results. Add a working RAINFOREST_API_KEY or SCALE_SERP_API_KEY to search Amazon directly."
     });
   } catch (e: any) {
     return res.status(500).json({ error: e.message || "Book search failed." });
@@ -266,14 +273,13 @@ router.post("/amazon-search", async (req, res) => {
 
 router.post("/amazon-product", async (req, res) => {
   const rainforestKey = process.env.RAINFOREST_API_KEY;
-  const scaleSerpKey  = process.env.SCALE_SERP_API_KEY;
   const apifyKey      = process.env.APIFY_API_KEY;
   const { amazonDomain } = req.body || {};
   const asin = parseAsinFromBody(req.body);
 
   if (!asin) return res.status(400).json({ error: "Valid Amazon product URL or ASIN is required." });
 
-  // ── 1. Rainforest API ──────────────────────────────────────────────────
+  // ── 1. Rainforest API ────────────────────────────────────────────────
   if (rainforestKey) {
     try {
       const data = await rainforestApiGet(rainforestKey, {
@@ -283,14 +289,10 @@ router.post("/amazon-product", async (req, res) => {
       });
 
       if (data.request_info && data.request_info.success === false) {
-        const errMsg = data.error?.message || data.error || "Product lookup failed.";
-        console.error("[amazon-product] Rainforest error:", errMsg);
-        if (!scaleSerpKey && !apifyKey) return res.status(502).json({ error: errMsg });
+        console.warn("[amazon-product] Rainforest not available:", data.request_info.message?.slice(0, 100));
       } else {
         const p = data?.product || data;
-        if (!p) {
-          if (!scaleSerpKey && !apifyKey) return res.status(502).json({ error: "Unexpected product response." });
-        } else {
+        if (p) {
           const authors =
             Array.isArray(p.authors) && p.authors.length
               ? p.authors.map((a: any) => (typeof a === "string" ? a : a.name || a.role || "").trim()).filter(Boolean).join(", ")
@@ -310,102 +312,43 @@ router.post("/amazon-product", async (req, res) => {
               .join(" · ");
           }
 
-          const details = {
-            title: typeof p.title === "string" ? p.title : null,
-            subtitle: typeof p.sub_title === "string" ? p.sub_title : null,
-            authors,
-            thumbnail: typeof p.main_image?.link === "string" ? p.main_image.link : null,
-            rating: typeof p.rating === "number" ? p.rating : null,
-            ratingsTotal: typeof p.ratings_total === "number" ? p.ratings_total : null,
-            bestsellersRankFlat,
-            bestsellersRanks,
-            publicationDate: p.publication_date || p.first_available?.raw || null,
-            expandedDetailsLoaded: true
-          };
-          return res.json({ details, asin });
+          return res.json({
+            details: {
+              title: typeof p.title === "string" ? p.title : null,
+              subtitle: typeof p.sub_title === "string" ? p.sub_title : null,
+              authors,
+              thumbnail: typeof p.main_image?.link === "string" ? p.main_image.link : null,
+              rating: typeof p.rating === "number" ? p.rating : null,
+              ratingsTotal: typeof p.ratings_total === "number" ? p.ratings_total : null,
+              bestsellersRankFlat,
+              bestsellersRanks,
+              publicationDate: p.publication_date || p.first_available?.raw || null,
+              expandedDetailsLoaded: true
+            },
+            asin
+          });
         }
       }
     } catch (e: any) {
-      console.error("[amazon-product] Rainforest fetch error:", e.message);
-      if (!scaleSerpKey && !apifyKey) {
-        return res.status(500).json({ error: e.message || "Product lookup failed." });
-      }
+      console.warn("[amazon-product] Rainforest error:", e.message);
     }
   }
 
-  // ── 2. Scale SERP ─────────────────────────────────────────────────────
-  if (scaleSerpKey) {
-    try {
-      const data = await scaleSerpApiGet(scaleSerpKey, {
-        search_type: "amazon_product",
-        amazon_domain: amazonDomain || "amazon.com",
-        asin: asin.toUpperCase()
-      });
-
-      if (data.request_info && data.request_info.success === false) {
-        const errMsg = data.error?.message || data.error || "Scale SERP product lookup failed.";
-        console.error("[amazon-product] Scale SERP error:", errMsg);
-        if (!apifyKey) return res.status(502).json({ error: errMsg });
-      } else {
-        const s = data?.summary || data?.product || {};
-        const authors =
-          typeof s.author === "string" ? s.author :
-          Array.isArray(s.authors) ? s.authors.map((a: any) => (typeof a === "string" ? a : a.name || "")).filter(Boolean).join(", ") :
-          null;
-
-        let bestsellersRanks: any = null;
-        let bestsellersRankFlat: string | null = null;
-        if (Array.isArray(s.bestsellers_rank) && s.bestsellers_rank.length) {
-          bestsellersRanks = s.bestsellers_rank.map((r: any) => ({
-            category: r.category || r.name || "",
-            rank: r.rank,
-            link: r.link || null
-          }));
-          bestsellersRankFlat = bestsellersRanks
-            .map((r: any) => (r.rank != null && r.category ? `#${r.rank} in ${r.category}` : null))
-            .filter(Boolean)
-            .join(" · ") || null;
-        } else if (typeof s.bestsellers_rank_flat === "string") {
-          bestsellersRankFlat = s.bestsellers_rank_flat;
-        }
-
-        const details = {
-          title: s.title || null,
-          subtitle: s.sub_title || s.subtitle || null,
-          authors,
-          thumbnail: s.main_image?.link || s.image || s.thumbnail || null,
-          rating: typeof s.rating === "number" ? s.rating : null,
-          ratingsTotal: typeof s.ratings_total === "number" ? s.ratings_total : null,
-          bestsellersRankFlat,
-          bestsellersRanks,
-          publicationDate: s.publication_date || s.first_available?.raw || null,
-          expandedDetailsLoaded: true
-        };
-        return res.json({ details, asin });
-      }
-    } catch (e: any) {
-      console.error("[amazon-product] Scale SERP fetch error:", e.message);
-      if (!apifyKey) {
-        return res.status(500).json({ error: e.message || "Product lookup failed." });
-      }
-    }
-  }
-
-  // ── 3. Apify ──────────────────────────────────────────────────────────
+  // ── 2. Apify ─────────────────────────────────────────────────────────
   if (apifyKey) {
     try {
       const detail = await amazonProductDetail(apifyKey, { asin, amazonDomain: amazonDomain || "amazon.com" });
       return res.json({ details: detail, asin });
     } catch (e: any) {
-      return res.status(500).json({ error: e.message || "Apify product lookup failed." });
+      console.warn("[amazon-product] Apify error:", e.message);
     }
   }
 
-  // ── 4. No key configured ──────────────────────────────────────────────
+  // ── 3. No working key ────────────────────────────────────────────────
   return res.json({
     needsApiKey: true,
     details: null,
-    message: "Add RAINFOREST_API_KEY or SCALE_SERP_API_KEY to load ratings and bestseller rank from Amazon."
+    message: "Add a working RAINFOREST_API_KEY to load ratings and bestseller rank from Amazon."
   });
 });
 
