@@ -95,7 +95,7 @@ router.post("/contextual-titles", async (req, res) => {
 
     if (mode) {
       const prompt = titleCardsPrompt({ research, competitorSummaries, intelligence, mode });
-      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 1200 });
+      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 3500 });
       const data = extractJSON(text);
       const cards: any[] = Array.isArray(data.cards)
         ? data.cards.filter((c: any) => c?.title).slice(0, 6)
