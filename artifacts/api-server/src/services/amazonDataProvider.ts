@@ -49,6 +49,13 @@ export interface UnifiedProductDetails {
   publicationDate:     string | null;
   expandedDetailsLoaded: true;
   dataSource:          "rainforest" | "open_library" | "merged";
+  // Extended fields (Rainforest only)
+  description:         string | null;
+  pageCount:           number | null;
+  language:            string | null;
+  isbn:                string | null;
+  format:              string | null;
+  publisher:           string | null;
 }
 
 // ─── Rainforest ────────────────────────────────────────────────────────────
@@ -437,6 +444,38 @@ export class AmazonDataProvider {
           const ratingsTotal = typeof p.ratings_total === "number" ? p.ratings_total : null;
           const price       = extractRainforestPrice(p);
 
+          // Extract extended fields
+          const rawDesc = p.description;
+          const description: string | null =
+            typeof rawDesc === "string" ? rawDesc
+            : Array.isArray(rawDesc) ? rawDesc.map((s: any) => (typeof s === "string" ? s : s?.text || "")).join(" ").trim() || null
+            : null;
+
+          const pageCount: number | null =
+            typeof p.page_count === "number" ? p.page_count
+            : typeof p.pages === "number" ? p.pages
+            : null;
+
+          const language: string | null =
+            typeof p.language === "string" ? p.language
+            : Array.isArray(p.languages) && p.languages.length ? p.languages[0]
+            : null;
+
+          const isbn: string | null =
+            typeof p.isbn_13 === "string" ? p.isbn_13
+            : typeof p.isbn_10 === "string" ? p.isbn_10
+            : null;
+
+          const format: string | null =
+            typeof p.format === "string" ? p.format
+            : typeof p.binding === "string" ? p.binding
+            : null;
+
+          const publisher: string | null =
+            typeof p.publisher === "string" ? p.publisher
+            : typeof p.brand === "string" ? p.brand
+            : null;
+
           return {
             title:               typeof p.title === "string" ? p.title : null,
             subtitle:            typeof p.sub_title === "string" ? p.sub_title : null,
@@ -451,6 +490,12 @@ export class AmazonDataProvider {
             publicationDate:     p.publication_date || p.first_available?.raw || null,
             expandedDetailsLoaded: true,
             dataSource:          "rainforest",
+            description,
+            pageCount,
+            language,
+            isbn,
+            format,
+            publisher,
           };
         }
       } catch (e: any) {
