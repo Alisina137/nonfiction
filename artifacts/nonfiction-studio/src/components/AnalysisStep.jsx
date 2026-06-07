@@ -68,7 +68,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       if (data.needsApiKey) { setLocalMsg(data.message || "Configure RAINFOREST_API_KEY on the server."); return; }
 
       const rows = Array.isArray(data.books) ? data.books : [];
-      const isFallbackSource = data.source === "google_books" || data.source === "open_library";
+      const isFallbackSource = data.source === "google_books" || data.source === "open_library" || data.source === "ai_research";
       updateAnalysis((prev) => {
         const stamped = rows
           .filter((r) => r.title)
@@ -85,8 +85,14 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
         }
         return { ...prev, books: nextBooks, lastSearchQuery: q };
       });
-      const sourceLabel = data.source === "open_library" ? "Open Library" : data.source === "google_books" ? "Google Books" : "Amazon";
-      setLocalMsg(`${rows.length} ${sourceLabel} result(s) loaded.${isFallbackSource ? " Add RAINFOREST_API_KEY or APIFY_API_KEY to search Amazon directly." : ""}`);
+      const sourceLabel = data.source === "open_library" ? "Open Library"
+        : data.source === "google_books" ? "Google Books"
+        : data.source === "ai_research" ? "AI Research"
+        : "Amazon";
+      const fallbackNote = data.source === "ai_research"
+        ? " Results are AI-generated — add RAINFOREST_API_KEY for live Amazon data."
+        : isFallbackSource ? " Add RAINFOREST_API_KEY or APIFY_API_KEY to search Amazon directly." : "";
+      setLocalMsg(`${rows.length} ${sourceLabel} result(s) loaded.${fallbackNote}`);
     } catch (e) {
       setLocalMsg(e.message || "Something went wrong.");
     } finally {
@@ -272,12 +278,14 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
                       book.source === "manual" ? "bg-amber-100 text-amber-900"
                       : book.source === "open_library" ? "bg-emerald-100 text-emerald-800"
                       : book.source === "google_books" ? "bg-blue-100 text-blue-800"
+                      : book.source === "ai_research" ? "bg-violet-100 text-violet-800"
                       : "bg-slate-100 text-slate-700"
                     }`}>
                       {book.source === "manual" ? "Your reference"
                         : book.source === "open_library" ? "Open Library"
                         : book.source === "google_books" ? "Google Books"
-                        : "Amazon niche"}
+                        : book.source === "ai_research" ? "AI Research"
+                        : "Amazon"}
                     </span>
                   </div>
                   <p className="mt-1 font-semibold leading-snug text-slate-900">{book.title}</p>
