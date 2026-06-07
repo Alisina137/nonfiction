@@ -350,7 +350,6 @@ router.post("/chapter-strategy", async (req, res) => {
 });
 
 router.post("/lesson", async (req, res) => {
-  let rawText = "";
   try {
     const compressed = compressLessonBody(req.body);
     const { chapterStrategy, bookStructure, sectionTitle, subsectionPurpose } = req.body || {};
@@ -369,12 +368,9 @@ router.post("/lesson", async (req, res) => {
       res,
       "lesson"
     );
-    rawText = text;
     const data = extractJSON(text);
     return res.json({ lesson: data, _provider: usedProvider });
   } catch (error: any) {
-    console.error("[lesson] ERROR:", error?.message);
-    console.error("[lesson] raw text (first 500):", rawText?.slice(0, 500));
     return aiErrorResponse(res, error);
   }
 });

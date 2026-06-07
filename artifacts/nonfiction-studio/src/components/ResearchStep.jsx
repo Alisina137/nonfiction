@@ -169,17 +169,19 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
 
   // ─── Title suggestions ───────────────────────────────────────────────────────
   async function onSuggestTitles() {
-    if (!deepNicheLabel || titlesLoading) return;
+    if (!main || !subSelected || titlesLoading) return;
     setTitlesLoading(true);
     setTitlesError("");
     const prev = suggestedTitles;
     try {
-      const profileInfer = inferAudienceProfile(deepNicheLabel, subSelected?.label || "");
+      const nicheForInfer = deepNicheLabel || subSelected?.label || "";
+      const profileInfer = inferAudienceProfile(nicheForInfer, subSelected?.label || "");
       const data = await aiFetch("/api/book/contextual-titles", {
+        mode: "kdp-positioning",
         research: {
           ...research,
           deepNicheLabel,
-          bookTopic: research.bookTopic?.trim() || deepNicheLabel
+          bookTopic: research.bookTopic?.trim() || deepNicheLabel || subSelected?.label || ""
         },
         analysis: { books: [] },
         audienceCandidates: profileInfer.audiences,
@@ -315,7 +317,7 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
             <button
               type="button"
               onClick={onSuggestTitles}
-              disabled={!deepNicheLabel || titlesLoading}
+              disabled={!main || !subSelected || titlesLoading}
               className="whitespace-nowrap rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-sky-500 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {titlesLoading ? "Suggesting…" : "Suggest Titles"}

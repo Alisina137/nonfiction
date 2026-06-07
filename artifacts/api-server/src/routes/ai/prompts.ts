@@ -1478,6 +1478,130 @@ Valid categories: "Masculine Authority" | "Emotional Transformation" | "Premium 
 Valid patterns: "Transformation for Audience" | "System for Audience" | "Identity Label" | "How to [Outcome]" | "The [Noun] of [Topic]" | "Art/Science of [Topic]"`;
 }
 
+export function kdpPositioningTitlesPrompt({ research }: any) {
+  const mainNiche  = research.mainNicheLabel?.trim() || "";
+  const subNiche   = research.subNicheLabel?.trim()  || "";
+  const deepNiche  = research.deepNicheLabel?.trim()  || "";
+
+  return `You are an elite Amazon KDP publishing strategist, nonfiction book positioning expert, and Amazon marketplace researcher.
+
+INPUTS
+
+Main Niche:
+${mainNiche}
+
+Sub-Niche:
+${subNiche}
+
+Deep Niche (Optional):
+${deepNiche || "(not provided)"}
+
+IMPORTANT
+
+- Main Niche and Sub-Niche are required inputs.
+- Deep Niche is optional.
+- Generate titles when Main Niche and Sub-Niche are available.
+- If Deep Niche is empty, generate titles using only Main Niche and Sub-Niche.
+- If Deep Niche is provided, use it to improve audience targeting, specificity, positioning, and market differentiation.
+- Never request Deep Niche before generating titles.
+- Never fail because Deep Niche is missing.
+
+TASK
+
+Step 1
+
+Analyze the provided niche information and infer:
+
+- Target Audience
+- Primary Problem
+- Desired Outcome
+- Buyer Intent
+- Market Opportunity
+
+Step 2
+
+Apply this positioning framework:
+
+Topic + Audience + Problem + Outcome
+
+Examples:
+
+Affiliate Marketing + College Students + Lack of Income + Build Online Revenue
+
+Productivity + Entrepreneurs + Lack of Focus + Get More Done
+
+Fitness + Women Over 40 + Slow Metabolism + Sustainable Weight Loss
+
+Step 3
+
+Generate exactly 3 commercially attractive nonfiction book title options.
+
+Each option must use a different positioning angle:
+
+Title #1
+Outcome-Focused
+
+Title #2
+Problem-Solution Focused
+
+Title #3
+Audience-Focused
+
+TITLE RULES
+
+- Sound like a real bestselling Amazon nonfiction book.
+- Focus on reader benefits and transformation.
+- Avoid generic wording.
+- Avoid AI-sounding phrases.
+- Avoid clickbait.
+- Avoid vague promises.
+- Prefer specificity over broadness.
+- Make titles memorable and commercially attractive.
+- Optimize for buyer intent and conversion.
+- Differentiate from common competing titles.
+- Use Deep Niche only when it strengthens positioning.
+
+SUBTITLE RULES
+
+- Clarify the promise.
+- Expand on the transformation.
+- Include audience, problem, or outcome when appropriate.
+- Sound professional and publishable.
+
+OUTPUT FORMAT
+
+Return ONLY valid JSON — no markdown fences, no commentary:
+[
+  {
+    "title": "",
+    "subtitle": "",
+    "angle": "Outcome-Focused",
+    "targetAudience": "",
+    "problem": "",
+    "desiredOutcome": "",
+    "reason": ""
+  },
+  {
+    "title": "",
+    "subtitle": "",
+    "angle": "Problem-Solution Focused",
+    "targetAudience": "",
+    "problem": "",
+    "desiredOutcome": "",
+    "reason": ""
+  },
+  {
+    "title": "",
+    "subtitle": "",
+    "angle": "Audience-Focused",
+    "targetAudience": "",
+    "problem": "",
+    "desiredOutcome": "",
+    "reason": ""
+  }
+]`;
+}
+
 export function titleVariationsPrompt({ title, subtitle, research, intelligence }: any) {
   const nicheLine = research?.mainNicheLabel && research?.subNicheLabel
     ? `${research.mainNicheLabel} › ${research.subNicheLabel}`

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 
 const MODES = [
+  { id: "kdp-positioning",     label: "KDP Positioning"    },
   { id: "bestseller",          label: "Bestseller"         },
   { id: "masculine-authority", label: "Masculine Authority"},
   { id: "emotional-transform", label: "Emotional"          },
@@ -13,23 +14,29 @@ const MODES = [
 ];
 
 const CATEGORY_COLORS = {
-  "Masculine Authority":   "bg-slate-100 text-slate-700  border-slate-200",
-  "Emotional Transformation": "bg-rose-50  text-rose-700   border-rose-200",
-  "Premium Minimalist":    "bg-indigo-50 text-indigo-700 border-indigo-200",
-  "Scientific Authority":  "bg-sky-50   text-sky-700    border-sky-200",
-  "Viral Modern":          "bg-amber-50  text-amber-700  border-amber-200",
-  "Philosophical Wisdom":  "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Bold Challenger":       "bg-orange-50 text-orange-700 border-orange-200",
+  "Masculine Authority":      "bg-slate-100  text-slate-700  border-slate-200",
+  "Emotional Transformation": "bg-rose-50    text-rose-700   border-rose-200",
+  "Premium Minimalist":       "bg-indigo-50  text-indigo-700 border-indigo-200",
+  "Scientific Authority":     "bg-sky-50     text-sky-700    border-sky-200",
+  "Viral Modern":             "bg-amber-50   text-amber-700  border-amber-200",
+  "Philosophical Wisdom":     "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Bold Challenger":          "bg-orange-50  text-orange-700 border-orange-200",
+  "Outcome-Focused":          "bg-teal-50    text-teal-700   border-teal-200",
+  "Problem-Solution Focused": "bg-violet-50  text-violet-700 border-violet-200",
+  "Audience-Focused":         "bg-cyan-50    text-cyan-700   border-cyan-200",
 };
 
 const CATEGORY_HEADER_COLORS = {
-  "Masculine Authority":      "border-slate-300  text-slate-600",
-  "Emotional Transformation": "border-rose-300   text-rose-600",
-  "Premium Minimalist":       "border-indigo-300 text-indigo-600",
-  "Scientific Authority":     "border-sky-300    text-sky-600",
-  "Viral Modern":             "border-amber-300  text-amber-600",
+  "Masculine Authority":      "border-slate-300   text-slate-600",
+  "Emotional Transformation": "border-rose-300    text-rose-600",
+  "Premium Minimalist":       "border-indigo-300  text-indigo-600",
+  "Scientific Authority":     "border-sky-300     text-sky-600",
+  "Viral Modern":             "border-amber-300   text-amber-600",
   "Philosophical Wisdom":     "border-emerald-300 text-emerald-600",
-  "Bold Challenger":          "border-orange-300 text-orange-600",
+  "Bold Challenger":          "border-orange-300  text-orange-600",
+  "Outcome-Focused":          "border-teal-300    text-teal-600",
+  "Problem-Solution Focused": "border-violet-300  text-violet-600",
+  "Audience-Focused":         "border-cyan-300    text-cyan-600",
 };
 
 function ScorePill({ label, value, color }) {
