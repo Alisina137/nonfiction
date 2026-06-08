@@ -22,8 +22,8 @@ function IntelTags({ label, values, colorClass = "bg-sky-100 text-sky-800" }) {
     <div>
       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{label}</p>
       <div className="flex flex-wrap gap-1.5">
-        {values.map((v) => (
-          <span key={v} className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClass}`}>{v}</span>
+        {values.map((v, i) => (
+          <span key={`${i}-${v}`} className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClass}`}>{v}</span>
         ))}
       </div>
     </div>
