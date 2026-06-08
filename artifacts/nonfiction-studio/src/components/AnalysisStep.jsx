@@ -131,7 +131,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
     if (!book.asin) { setLocalMsg("Expand details need an Amazon ASIN."); return; }
     if (expandedId === book.id) { setExpandedId(null); return; }
     setExpandedId(book.id);
-    if (book.expandedDetailsLoaded && book.bestsellersRankFlat != null) return;
+    if (book.expandedDetailsLoaded) return;
     setLoadingProductId(book.id);
     setLocalMsg("");
     try {

@@ -4,7 +4,7 @@ import {
   getBookByAsin,
   RainforestError
 } from "../../lib/rainforest";
-import { searchBooksWithScaleSerp, ScaleSerpError } from "../../lib/scaleSerpProvider";
+import { searchBooksWithScaleSerp, getProductDetailWithScaleSerp, ScaleSerpError } from "../../lib/scaleSerpProvider";
 import { generateContent, extractJSON } from "../ai/aiRouter";
 
 const router = Router();
@@ -207,32 +207,54 @@ router.post("/amazon-search", async (req, res) => {
 });
 
 // ─── POST /api/analysis/amazon-product ───────────────────────────────────────
+// Priority: Rainforest → Scale SERP → error
 
 router.post("/amazon-product", async (req, res) => {
   const { amazonDomain } = req.body || {};
   const asin = parseAsinFromBody(req.body);
   if (!asin) return res.status(400).json({ error: "Valid Amazon product URL or ASIN is required." });
 
-  if (!process.env.RAINFOREST_API_KEY) {
+  // ── 1. Rainforest ──────────────────────────────────────────────────────────
+  if (process.env.RAINFOREST_API_KEY) {
+    try {
+      const details = await getBookByAsin(asin, { amazonDomain: amazonDomain || "amazon.com" });
+      console.log("[amazon-product] Provider Used: rainforest | ASIN:", asin);
+      return res.json({ details, asin, source: "rainforest" });
+    } catch (e: any) {
+      console.warn("[amazon-product] Rainforest failed —", e.message);
+      if (e instanceof RainforestError && (e.code === "RATE_LIMIT" || e.code === "ACCOUNT")) {
+        return res.status(429).json({ error: e.message });
+      }
+      // Fall through to Scale SERP
+    }
+  }
+
+  // ── 2. Scale SERP ──────────────────────────────────────────────────────────
+  if (process.env.SCALE_SERP_API_KEY) {
+    try {
+      const details = await getProductDetailWithScaleSerp(asin);
+      console.log("[amazon-product] Provider Used: scale_serp | ASIN:", asin);
+      return res.json({
+        details,
+        asin,
+        source: "scale_serp",
+        notice: "Basic details loaded via Scale SERP. Bestseller ranks require Rainforest API."
+      });
+    } catch (e: any) {
+      console.warn("[amazon-product] Scale SERP failed —", e.message);
+    }
+  }
+
+  // ── No provider available ──────────────────────────────────────────────────
+  if (!process.env.RAINFOREST_API_KEY && !process.env.SCALE_SERP_API_KEY) {
     return res.json({
       needsApiKey: true,
       details: null,
-      message: "Add RAINFOREST_API_KEY to load Amazon ratings and bestseller rank."
+      message: "Add RAINFOREST_API_KEY for full bestseller rank data, or SCALE_SERP_API_KEY for basic details."
     });
   }
 
-  try {
-    const details = await getBookByAsin(asin, { amazonDomain: amazonDomain || "amazon.com" });
-    return res.json({ details, asin });
-  } catch (e: any) {
-    if (e instanceof RainforestError) {
-      const statusCode = e.code === "RATE_LIMIT" ? 429
-        : e.code === "MISSING_KEY" ? 400
-        : 502;
-      return res.status(statusCode).json({ error: e.message });
-    }
-    return res.status(500).json({ error: e.message || "Product lookup failed." });
-  }
+  return res.status(502).json({ error: "Product lookup failed. Both Rainforest and Scale SERP are unavailable." });
 });
 
 export default router;

@@ -212,6 +212,83 @@ function normalizeScaleSerpResults(data: any): RainforestBookRow[] {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
+/**
+ * Fetch basic product detail for a single ASIN via Scale SERP (Google search fallback).
+ * Returns title, thumbnail, rating — no bestseller ranks (Google doesn't surface those).
+ */
+export async function getProductDetailWithScaleSerp(
+  asin: string
+): Promise<Partial<import("./rainforest").RainforestProductDetail>> {
+  const key = process.env.SCALE_SERP_API_KEY;
+  if (!key) throw new ScaleSerpError("SCALE_SERP_API_KEY is not set.", "MISSING_KEY");
+
+  const upperAsin = asin.toUpperCase();
+  const url = new URL("https://api.scaleserp.com/search");
+  url.searchParams.set("api_key", key);
+  url.searchParams.set("q", `site:amazon.com/dp/${upperAsin}`);
+  url.searchParams.set("num", "5");
+  url.searchParams.set("gl", "us");
+  url.searchParams.set("hl", "en");
+
+  console.log("[ScaleSerp] Product lookup for ASIN:", upperAsin);
+
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { method: "GET" });
+  } catch (e: any) {
+    throw new ScaleSerpError(`Scale SERP network error: ${e.message}`, "NETWORK");
+  }
+
+  const raw = await res.text();
+  let data: any;
+  try { data = JSON.parse(raw); } catch { data = null; }
+
+  if (!res.ok || data?.request_info?.success === false) {
+    const msg = data?.request_info?.message || `HTTP ${res.status}`;
+    throw new ScaleSerpError(`Scale SERP error: ${msg}`, "API_ERROR");
+  }
+
+  const organic: any[] = Array.isArray(data.organic_results) ? data.organic_results : [];
+
+  for (const r of organic) {
+    const foundAsin = extractAsin(r.link || "");
+    if (!foundAsin || foundAsin !== upperAsin) continue;
+
+    const title = cleanTitle(r.title || "");
+    if (!title || title.length < 3) continue;
+
+    const ext: Record<string, any> = r.rich_snippet?.top?.detected_extensions || {};
+    const exts: string[] = r.rich_snippet?.top?.extensions || [];
+    const { rating, ratingsTotal } = parseRichSnippetRating(ext, exts);
+
+    let authors: string | null = null;
+    const snippet: string = r.snippet || "";
+    const byMatch =
+      snippet.match(/^[Bb]y\s+([A-Z][^·|\n,]{2,50})/i) ||
+      snippet.match(/[Aa]uthor[:\s]+([^·\n,]{2,50})/);
+    if (byMatch) authors = byMatch[1].trim();
+
+    const thumbnail = buildCoverUrl(upperAsin);
+    console.log("[ScaleSerp] Product found:", title, "| Rating:", rating);
+
+    return {
+      title,
+      subtitle:            null,
+      authors,
+      thumbnail,
+      rating,
+      ratingsTotal,
+      bestsellersRankFlat: null,
+      bestsellersRanks:    null,
+      publicationDate:     null,
+      price:               null,
+      expandedDetailsLoaded: true
+    };
+  }
+
+  throw new ScaleSerpError(`No product page found for ASIN ${upperAsin}`, "NO_RESULTS");
+}
+
 export async function searchBooksWithScaleSerp(
   query: string,
   opts: { maxResults?: number } = {}
