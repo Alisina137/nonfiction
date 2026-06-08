@@ -30,6 +30,31 @@ function IntelTags({ label, values, colorClass = "bg-sky-100 text-sky-800" }) {
   );
 }
 
+/**
+ * Build a short, Amazon-optimised search query from the research niche data.
+ * Priority: deepNicheLabel → subNicheLabel → mainNicheLabel → cleaned bookTopic → genre
+ * Produces 3-6 word phrases optimized for Amazon bestseller discovery.
+ */
+function buildAmazonQuery(research) {
+  // Prefer the most specific niche label — already short and Amazon-friendly
+  const niche = research.deepNicheLabel || research.subNicheLabel || research.mainNicheLabel;
+  if (niche) return niche.toLowerCase().trim();
+
+  // Fall back to first 4 words of bookTopic, stripping filler
+  const topic = (research.bookTopic || "").trim();
+  if (topic) {
+    const words = topic
+      .replace(/\b(for|and|with|the|a|an|to|of|in|on|by|about|how|that|this|are|is)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 5);
+    if (words.length >= 2) return words.join(" ").toLowerCase();
+  }
+
+  return (research.genre || "").toLowerCase().trim();
+}
+
 export default function AnalysisStep({ research, analysis, errors, updateAnalysis, patchBook, removeBook }) {
   const [searchQuery, setSearchQuery]         = useState(analysis.lastSearchQuery || "");
   const [loadingSearch, setLoadingSearch]     = useState(false);
@@ -45,12 +70,10 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
   const intelligence = analysis.intelligence  || null;
 
   useEffect(() => {
-    if (analysis.lastSearchQuery) setSearchQuery(analysis.lastSearchQuery);
-    else if (research.genre || research.bookTopic) {
-      const q = [research.genre, research.bookTopic, "books"].filter(Boolean).join(" ").trim();
-      setSearchQuery(q);
-    }
-  }, [research.genre, research.bookTopic]);
+    if (analysis.lastSearchQuery) { setSearchQuery(analysis.lastSearchQuery); return; }
+    const q = buildAmazonQuery(research);
+    if (q) setSearchQuery(q);
+  }, [research.deepNicheLabel, research.subNicheLabel, research.mainNicheLabel, research.bookTopic, research.genre]);
 
   async function runAmazonSearch(mode) {
     const q = searchQuery.trim();
@@ -89,9 +112,9 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
         : data.source === "google_books" ? "Google Books"
         : data.source === "ai_research" ? "AI Research"
         : "Amazon";
-      const fallbackNote = data.source === "ai_research"
-        ? " Results are AI-generated — add RAINFOREST_API_KEY for live Amazon data."
-        : isFallbackSource ? " Add RAINFOREST_API_KEY or APIFY_API_KEY to search Amazon directly." : "";
+      const fallbackNote = isFallbackSource
+        ? " Add RAINFOREST_API_KEY to your environment secrets for live Amazon data."
+        : "";
       setLocalMsg(`${rows.length} ${sourceLabel} result(s) loaded.${fallbackNote}`);
     } catch (e) {
       setLocalMsg(e.message || "Something went wrong.");

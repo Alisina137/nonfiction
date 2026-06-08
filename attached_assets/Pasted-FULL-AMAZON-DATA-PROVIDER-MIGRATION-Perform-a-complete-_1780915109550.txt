@@ -1,0 +1,287 @@
+FULL AMAZON DATA PROVIDER MIGRATION
+
+Perform a complete project-wide refactor and remove Apify entirely from this application. I want Rainforest API to become the only Amazon data provider used anywhere in the system.
+
+OBJECTIVE
+
+The application currently contains Apify-based logic for Amazon book research and competitor analysis. Search Bestsellers is failing and the Analysis step does not load competitor books correctly.
+
+Replace all Apify functionality with Rainforest API and ensure all Amazon-related features work using Rainforest only.
+
+==================================================
+PHASE 1 — REMOVE APIFY COMPLETELY
+==================================================
+
+Search the entire codebase for:
+
+Apify
+APIFY
+apify
+APIFY_API_KEY
+ApifyClient
+Actor.call
+run-sync-get-dataset-items
+apify.com
+
+Remove:
+
+- All Apify imports
+- All Apify SDK usage
+- All Apify services
+- All Apify utility functions
+- All Apify API routes
+- All Apify fallbacks
+- All Apify environment variables
+- All Apify validation logic
+- All Apify documentation references
+- All Apify UI references
+
+After refactoring there should be ZERO references to Apify anywhere in the project.
+
+Do not leave compatibility layers.
+Do not leave fallback code.
+Do not leave dead code.
+
+==================================================
+PHASE 2 — CREATE CENTRALIZED RAINFOREST SERVICE
+==================================================
+
+Create a dedicated service:
+
+/lib/rainforest.ts
+
+This file should become the single source of truth for Amazon data.
+
+Implement reusable functions such as:
+
+searchAmazonBooks(query)
+
+getBookByAsin(asin)
+
+getCompetitorBooks(query)
+
+getBestsellerBooks(query)
+
+All Amazon-related pages, APIs, and components must use this service.
+
+No component should call Rainforest directly.
+
+==================================================
+PHASE 3 — FIX SEARCH BESTSELLERS
+==================================================
+
+Current behavior:
+
+User clicks Search Bestsellers
+↓
+Error
+
+Required behavior:
+
+User clicks Search Bestsellers
+↓
+Rainforest API executes
+↓
+Books are returned
+↓
+Books appear in Analysis page
+↓
+Competitive Landscape is generated
+
+The button must use the centralized rainforest service.
+
+==================================================
+PHASE 4 — UPDATE ANALYSIS STEP
+==================================================
+
+The Analysis page must load competitor books entirely from Rainforest.
+
+When books are returned, extract and store:
+
+title
+author
+asin
+rating
+ratings_total
+price
+thumbnail
+url
+rank
+publication_date
+category
+
+Display the books immediately after retrieval.
+
+==================================================
+PHASE 5 — UPDATE RESEARCH STEP
+==================================================
+
+Replace every Amazon lookup in:
+
+- Research
+- Analysis
+- Competitive Intelligence
+- Competitor Discovery
+- Bestseller Research
+- Market Validation
+- Book Positioning
+
+with Rainforest API.
+
+All existing Apify code must be removed.
+
+==================================================
+PHASE 6 — UPDATE REFERENCE BOOK IMPORTING
+==================================================
+
+When a user pastes an Amazon URL:
+
+1. Extract ASIN
+2. Query Rainforest
+3. Fetch book details
+4. Display imported book
+
+Do not use Apify.
+
+==================================================
+PHASE 7 — IMPROVE AMAZON QUERY GENERATION
+==================================================
+
+Current generated queries are poor.
+
+Example:
+
+"Self-Help For remote professionals and distributed teams struggling with constant books"
+
+This is not suitable for Amazon search.
+
+Generate short buyer-intent search terms instead.
+
+Examples:
+
+remote work productivity
+productivity for remote workers
+deep work remote teams
+focus while working remotely
+time management remote professionals
+
+Rules:
+
+- 3 to 6 words
+- No AI-style sentences
+- No filler words
+- No long descriptions
+- Optimized for Amazon bestseller discovery
+
+==================================================
+PHASE 8 — ENVIRONMENT VARIABLES
+==================================================
+
+Keep only:
+
+OPENAI_API_KEY=
+RAINFOREST_API_KEY=
+
+Remove:
+
+APIFY_API_KEY=
+
+Update:
+
+- .env
+- .env.example
+- validation
+- startup checks
+- deployment config
+- documentation
+
+==================================================
+PHASE 9 — ERROR HANDLING
+==================================================
+
+Replace generic errors with clear messages.
+
+Missing key:
+
+Rainforest API key is missing.
+
+No books found:
+
+No competitor books found.
+Try a broader search term.
+
+API failure:
+
+Rainforest request failed:
+{actual error}
+
+Rate limit:
+
+Rainforest rate limit reached.
+Please try again later.
+
+Never show blank screens.
+
+==================================================
+PHASE 10 — DEBUG LOGGING
+==================================================
+
+Add logging for:
+
+Amazon Query
+Rainforest URL
+Response Status
+Response Time
+Books Found
+ASIN Count
+
+Examples:
+
+console.log("Amazon Query:", query)
+console.log("Rainforest URL:", url)
+console.log("Rainforest Status:", response.status)
+console.log("Books Found:", books.length)
+
+==================================================
+PHASE 11 — CODE QUALITY
+==================================================
+
+While refactoring:
+
+- Remove duplicated Amazon logic
+- Remove unused services
+- Remove dead code
+- Remove unused imports
+- Remove obsolete APIs
+- Fix TypeScript errors
+- Fix build warnings
+- Fix Search Bestsellers failure
+- Improve maintainability
+
+==================================================
+PHASE 12 — VALIDATION
+==================================================
+
+After completing the migration:
+
+Verify:
+
+✓ Search Bestsellers works
+✓ Analysis step loads competitor books
+✓ Research step works
+✓ Competitive Intelligence works
+✓ Reference book import works
+✓ Rainforest API is used everywhere
+✓ No Apify references remain
+✓ TypeScript compiles successfully
+✓ Build succeeds
+✓ No runtime errors
+
+Finally provide:
+
+1. List of modified files
+2. List of deleted Apify files
+3. Summary of Rainforest migration
+4. Confirmation that Apify has been completely removed from the codebase
+
+Do not stop until the entire migration is completed and verified.
