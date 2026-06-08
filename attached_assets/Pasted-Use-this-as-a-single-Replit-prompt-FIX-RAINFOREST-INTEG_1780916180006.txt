@@ -1,0 +1,244 @@
+Use this as a **single Replit prompt**:
+
+FIX RAINFOREST INTEGRATION + ADD SCALE SERP FALLBACK
+
+I need you to fix the Amazon competitor-book pipeline. The previous Rainforest migration was completed, but there are still major issues.
+
+==================================================
+ISSUE #1 — ONLY ONE BOOK IS RETURNED
+====================================
+
+Current behavior:
+
+Search Bestsellers
+↓
+Only 1 book is returned
+
+This is incorrect.
+
+Required behavior:
+
+* Return at least 10 competitor books by default.
+* If Rainforest returns more than 10 books, display the first 10–20 books.
+* Do not stop after the first result.
+* Parse the entire search results array.
+* Ensure pagination logic is not truncating results.
+* Ensure mapping logic is not using results[0] only.
+* Verify the frontend renders all returned books.
+
+Add debugging:
+
+console.log("Raw Rainforest Results:", results.length)
+console.log("Books After Mapping:", books.length)
+
+==================================================
+ISSUE #2 — BOOK COVERS ARE MISSING
+==================================
+
+Current behavior:
+
+Books appear without cover images.
+
+Required behavior:
+
+Extract and display the cover image from Rainforest.
+
+Use fields such as:
+
+image
+thumbnail
+main_image
+image_link
+
+whichever Rainforest returns.
+
+Book cards should display:
+
+* Cover image
+* Title
+* Author
+* Rating
+* Reviews
+* Amazon link
+
+If an image is unavailable:
+
+Use a placeholder image.
+
+Never render broken images.
+
+Add debugging:
+
+console.log("Book Cover URL:", imageUrl)
+
+==================================================
+ISSUE #3 — APP CLAIMS RAINFOREST KEY IS MISSING
+===============================================
+
+Current behavior:
+
+The UI shows:
+
+"AI Research result(s) loaded. Add RAINFOREST_API_KEY to your environment secrets for live Amazon data."
+
+even though RAINFOREST_API_KEY already exists in Replit Secrets.
+
+This means the environment variable is not being loaded correctly.
+
+Required fixes:
+
+1. Search entire codebase for:
+
+process.env.RAINFOREST_API_KEY
+
+2. Verify every reference uses the exact same key name:
+
+RAINFOREST_API_KEY
+
+3. Remove any hardcoded checks that incorrectly report the key as missing.
+
+4. Verify server-side environment loading.
+
+5. Verify API routes can access the secret.
+
+6. Verify the app is not checking:
+
+NEXT_PUBLIC_RAINFOREST_API_KEY
+
+or any incorrect variation.
+
+7. Add startup logging:
+
+console.log(
+"Rainforest Key Exists:",
+!!process.env.RAINFOREST_API_KEY
+)
+
+8. Remove all messages that incorrectly tell users to add a key when one already exists.
+
+9. If the key exists, immediately use live Rainforest data.
+
+==================================================
+ISSUE #4 — ADD SCALE SERP AS FALLBACK
+=====================================
+
+Create fallback support using:
+
+SCALE_SERP_API_KEY
+
+Priority order:
+
+1. Rainforest
+2. Scale SERP
+
+Flow:
+
+Try Rainforest
+↓
+If Rainforest fails
+OR times out
+OR returns zero books
+OR API key missing
+↓
+Automatically switch to Scale SERP
+↓
+Return books
+
+Users should not need to manually retry.
+
+==================================================
+FALLBACK ARCHITECTURE
+=====================
+
+Create:
+
+/lib/amazonProvider.ts
+
+Example:
+
+getAmazonBooks(query)
+
+Internally:
+
+try Rainforest
+catch fallback to Scale SERP
+
+This becomes the single entry point used by:
+
+* Analysis
+* Research
+* Competitive Intelligence
+* Bestseller Search
+* Market Validation
+* Reference Books
+
+==================================================
+SCALE SERP IMPLEMENTATION
+=========================
+
+Use:
+
+process.env.SCALE_SERP_API_KEY
+
+Verify:
+
+* Key exists
+* Requests succeed
+* Amazon search results are parsed correctly
+
+Extract:
+
+title
+author
+asin
+rating
+reviews
+price
+image
+url
+
+Map Scale SERP data into the same book format used by Rainforest.
+
+==================================================
+IMPROVE LOGGING
+===============
+
+Add logs:
+
+console.log("Provider Used:", provider)
+console.log("Rainforest Success:", success)
+console.log("Scale SERP Fallback Triggered")
+console.log("Books Returned:", books.length)
+
+This should make debugging easy.
+
+==================================================
+FINAL VALIDATION
+================
+
+After implementation verify:
+
+✓ Rainforest key is detected correctly
+✓ No false "missing key" warnings
+✓ Search Bestsellers returns multiple books
+✓ Cover images display correctly
+✓ Rainforest used as primary provider
+✓ Scale SERP used automatically as fallback
+✓ Analysis step works
+✓ Research step works
+✓ Competitive Landscape works
+✓ No TypeScript errors
+✓ No build errors
+
+Finally provide:
+
+1. Modified files
+2. New files created
+3. Rainforest fixes applied
+4. Scale SERP fallback implementation details
+5. Confirmation that the system now uses:
+
+Primary: RAINFOREST_API_KEY
+Fallback: SCALE_SERP_API_KEY
+
+This prompt focuses specifically on the three issues you found and tells Replit exactly how to fix them.

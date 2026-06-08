@@ -91,11 +91,15 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       if (data.needsApiKey) { setLocalMsg(data.message || "Configure RAINFOREST_API_KEY on the server."); return; }
 
       const rows = Array.isArray(data.books) ? data.books : [];
+      // scale_serp and amazon are real live sources; ai_research and open_library are fallbacks
       const isFallbackSource = data.source === "google_books" || data.source === "open_library" || data.source === "ai_research";
+      const bookSource = isFallbackSource ? (data.source || "open_library")
+        : data.source === "scale_serp" ? "scale_serp"
+        : "amazon";
       updateAnalysis((prev) => {
         const stamped = rows
           .filter((r) => r.title)
-          .map((r) => ({ ...r, id: newBookId(), source: isFallbackSource ? (data.source || "open_library") : "amazon", expandedDetailsLoaded: Boolean(r.expandedDetailsLoaded) }));
+          .map((r) => ({ ...r, id: newBookId(), source: bookSource, expandedDetailsLoaded: Boolean(r.expandedDetailsLoaded) }));
         const bookKey = (b) => b.asin || b.googleBooksId || b.url || "";
         let nextBooks;
         if (mode === "replace") {
@@ -111,10 +115,10 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       const sourceLabel = data.source === "open_library" ? "Open Library"
         : data.source === "google_books" ? "Google Books"
         : data.source === "ai_research" ? "AI Research"
+        : data.source === "scale_serp" ? "Scale SERP"
         : "Amazon";
-      const fallbackNote = isFallbackSource
-        ? " Add RAINFOREST_API_KEY to your environment secrets for live Amazon data."
-        : "";
+      // Show server-provided notice when available, otherwise show fallback hint only if keys are missing
+      const fallbackNote = data.notice ? ` ${data.notice}` : "";
       setLocalMsg(`${rows.length} ${sourceLabel} result(s) loaded.${fallbackNote}`);
     } catch (e) {
       setLocalMsg(e.message || "Something went wrong.");
@@ -298,16 +302,18 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start gap-2">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                      book.source === "manual" ? "bg-amber-100 text-amber-900"
+                      book.source === "manual"       ? "bg-amber-100 text-amber-900"
                       : book.source === "open_library" ? "bg-emerald-100 text-emerald-800"
                       : book.source === "google_books" ? "bg-blue-100 text-blue-800"
-                      : book.source === "ai_research" ? "bg-violet-100 text-violet-800"
+                      : book.source === "ai_research"  ? "bg-violet-100 text-violet-800"
+                      : book.source === "scale_serp"   ? "bg-sky-100 text-sky-800"
                       : "bg-slate-100 text-slate-700"
                     }`}>
-                      {book.source === "manual" ? "Your reference"
+                      {book.source === "manual"       ? "Your reference"
                         : book.source === "open_library" ? "Open Library"
                         : book.source === "google_books" ? "Google Books"
-                        : book.source === "ai_research" ? "AI Research"
+                        : book.source === "ai_research"  ? "AI Research"
+                        : book.source === "scale_serp"   ? "Amazon"
                         : "Amazon"}
                     </span>
                   </div>

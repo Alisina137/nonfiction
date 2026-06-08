@@ -4,9 +4,15 @@ import {
   getBookByAsin,
   RainforestError
 } from "../../lib/rainforest";
+import { searchBooksWithScaleSerp, ScaleSerpError } from "../../lib/scaleSerpProvider";
 import { generateContent, extractJSON } from "../ai/aiRouter";
 
 const router = Router();
+
+// ─── Startup key detection ────────────────────────────────────────────────────
+
+console.log("[amazon-provider] Rainforest Key Exists:", !!process.env.RAINFOREST_API_KEY);
+console.log("[amazon-provider] Scale SERP Key Exists:", !!process.env.SCALE_SERP_API_KEY);
 
 // ─── ASIN helpers ─────────────────────────────────────────────────────────────
 
@@ -34,13 +40,14 @@ function parseAsinFromBody(body: any): string | null {
 async function aiBookSearch(query: string, maxResults = 15): Promise<any[]> {
   const prompt = `You are a publishing market researcher. List ${maxResults} real bestselling nonfiction books relevant to: "${query}"
 
-Respond with ONLY a valid JSON array (no markdown, no explanation). Each item:
+Respond with ONLY a valid JSON array (no markdown, no explanation, no code fences). Each item:
 {"title":"...","authors":"...","subtitle":"...or null","rating":4.5,"ratingsTotal":12000,"publicationDate":"2020","publisher":"...or null","description":"1-2 sentences or null","asin":"10-char or null"}
 
 Requirements:
 - Real books that exist on Amazon
 - Most popular/bestselling first
-- Do NOT wrap in an object — return a raw array starting with [`;
+- Return a raw JSON array starting with [ and ending with ]
+- No wrapping object, no markdown fences`;
 
   const result = await generateContent(prompt, undefined, { maxTokens: 4000 });
   let parsed: any;
@@ -60,6 +67,10 @@ Requirements:
   return valid.map((b: any) => {
     const rawAsin = typeof b.asin === "string" ? b.asin.trim().toUpperCase() : null;
     const asin = rawAsin && /^[A-Z0-9]{10}$/.test(rawAsin) ? rawAsin : null;
+    const thumbnail = asin
+      ? `https://m.media-amazon.com/images/P/${asin}.01._SX300_.jpg`
+      : null;
+    if (thumbnail) console.log("[AI] Book Cover URL:", thumbnail, "| ASIN:", asin);
     return {
       asin,
       title:        b.title.trim(),
@@ -68,7 +79,7 @@ Requirements:
       url:          asin
         ? `https://www.amazon.com/dp/${asin}`
         : `https://www.amazon.com/s?k=${encodeURIComponent(b.title.trim())}`,
-      thumbnail:    null,
+      thumbnail,
       rating:       typeof b.rating === "number" && b.rating > 0 ? b.rating : null,
       ratingsTotal: typeof b.ratingsTotal === "number" && b.ratingsTotal > 0 ? b.ratingsTotal : null,
       recentSales:  null, sponsored: false, bestsellerBadge: null,
@@ -117,53 +128,78 @@ async function openLibrarySearch(query: string, maxResults = 20): Promise<any[]>
 }
 
 // ─── POST /api/analysis/amazon-search ────────────────────────────────────────
-// Priority: Rainforest → AI research → Open Library
+// Priority: Rainforest → Scale SERP → AI research → Open Library
 
 router.post("/amazon-search", async (req, res) => {
   const { query, amazonDomain } = req.body || {};
   const q = typeof query === "string" ? query.trim() : "";
   if (!q) return res.status(400).json({ error: "Search query is required." });
 
+  let rainforestAttempted = false;
+  let scaleSerpAttempted  = false;
+
   // ── 1. Rainforest ──────────────────────────────────────────────────────────
   if (process.env.RAINFOREST_API_KEY) {
+    rainforestAttempted = true;
+    console.log("[amazon-search] Provider Used: rainforest");
     try {
       const books = await getBestsellerBooks(q, {
         amazonDomain: amazonDomain || "amazon.com",
         maxResults: 24
       });
-      return res.json({ books, query: q });
+      console.log("[amazon-search] Rainforest Success:", true, "| Books Returned:", books.length);
+      return res.json({ books, query: q, source: "amazon" });
     } catch (e: any) {
-      if (e instanceof RainforestError && e.code === "MISSING_KEY") {
-        // shouldn't happen here, fall through
-      } else if (e instanceof RainforestError && e.code === "NO_RESULTS") {
-        console.warn("[amazon-search] Rainforest: no results — falling through");
-      } else if (e instanceof RainforestError) {
-        console.warn(`[amazon-search] Rainforest error (${e.code}) — falling through: ${e.message}`);
-      } else {
-        console.warn("[amazon-search] Rainforest unexpected error — falling through:", e.message);
-      }
+      console.log("[amazon-search] Rainforest Success:", false, "—", e.message);
     }
   }
 
-  // ── 2. AI research (uses existing Gemini/Groq keys) ───────────────────────
+  // ── 2. Scale SERP ──────────────────────────────────────────────────────────
+  if (process.env.SCALE_SERP_API_KEY) {
+    scaleSerpAttempted = true;
+    console.log("[amazon-search] Provider Used: scale_serp");
+    console.log("[amazon-search] Scale SERP Fallback Triggered");
+    try {
+      const books = await searchBooksWithScaleSerp(q, { maxResults: 20 });
+      console.log("[amazon-search] Books Returned:", books.length);
+      return res.json({ books, query: q, source: "scale_serp" });
+    } catch (e: any) {
+      console.warn("[amazon-search] Scale SERP error — falling through:", e.message);
+    }
+  }
+
+  // ── 3. AI research (Gemini/Groq) ───────────────────────────────────────────
+  console.log("[amazon-search] Provider Used: ai_research");
   try {
     const books = await aiBookSearch(q, 15);
-    return res.json({
-      books, query: q,
-      source: "ai_research",
-      notice: "Results generated by AI market research. Add RAINFOREST_API_KEY for live Amazon data."
-    });
+    console.log("[amazon-search] Books Returned:", books.length);
+
+    // Build a helpful notice based on which keys were tried
+    let notice = "Results generated by AI market research.";
+    if (rainforestAttempted && scaleSerpAttempted) {
+      notice += " Both Rainforest and Scale SERP were tried but unavailable.";
+    } else if (rainforestAttempted) {
+      notice += " Rainforest API key is set but the account may be suspended.";
+    } else if (scaleSerpAttempted) {
+      notice += " Scale SERP was tried but failed.";
+    } else {
+      notice += " Add RAINFOREST_API_KEY or SCALE_SERP_API_KEY for live Amazon data.";
+    }
+
+    return res.json({ books, query: q, source: "ai_research", notice });
   } catch (e: any) {
     console.warn("[amazon-search] AI search error — falling through:", e.message);
   }
 
-  // ── 3. Open Library (last resort) ─────────────────────────────────────────
+  // ── 4. Open Library (last resort) ─────────────────────────────────────────
+  console.log("[amazon-search] Provider Used: open_library");
   try {
     const books = await openLibrarySearch(q, 20);
+    console.log("[amazon-search] Books Returned:", books.length);
     return res.json({
       books, query: q,
       source: "open_library",
-      notice: "Results from Open Library. Add RAINFOREST_API_KEY for live Amazon data."
+      notice: "Results from Open Library. Add RAINFOREST_API_KEY or SCALE_SERP_API_KEY for live Amazon data."
     });
   } catch (e: any) {
     return res.status(500).json({ error: e.message || "Book search failed. Please try again." });
@@ -171,7 +207,6 @@ router.post("/amazon-search", async (req, res) => {
 });
 
 // ─── POST /api/analysis/amazon-product ───────────────────────────────────────
-// Requires RAINFOREST_API_KEY — returns needsApiKey otherwise.
 
 router.post("/amazon-product", async (req, res) => {
   const { amazonDomain } = req.body || {};

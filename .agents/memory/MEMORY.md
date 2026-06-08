@@ -1,1 +1,2 @@
 - [Book Cover System Architecture](book-cover-system.md) — 5-concept cover system with buildCoverData() source of truth; SVG builders match React renderers exactly.
+- [Amazon Book Search Provider Chain](amazon-provider-chain.md) — Rainforest → Scale SERP → AI research → Open Library; Rainforest account is suspended; Scale SERP uses site:amazon.com/dp query.
