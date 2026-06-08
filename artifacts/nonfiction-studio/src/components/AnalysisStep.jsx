@@ -213,8 +213,18 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Intelligence generation failed.");
+
+      const REQUIRED_FIELDS = ["targetAudience", "readerPainProfile", "toneRecommendation"];
+      const allEmpty = REQUIRED_FIELDS.every((f) => !data[f]);
+      if (allEmpty) throw new Error("AI returned an empty intelligence profile. Please try again.");
+
       updateAnalysis((prev) => ({ ...prev, intelligence: data }));
-      setLocalMsg("Market intelligence extracted — these signals will auto-fill your author tone, audience, and positioning throughout the book builder.");
+
+      if (data._partial && Array.isArray(data._missingFields) && data._missingFields.length) {
+        setLocalMsg(`Intelligence extracted but incomplete — missing: ${data._missingFields.join(", ")}. Re-analyze for a full profile.`);
+      } else {
+        setLocalMsg("Market intelligence extracted — these signals will auto-fill your author tone, audience, and positioning throughout the book builder.");
+      }
     } catch (e) {
       setIntelError(e.message || "Failed to generate intelligence. Try again.");
     } finally {

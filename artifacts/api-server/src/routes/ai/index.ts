@@ -723,7 +723,33 @@ router.post("/competitive-intelligence", async (req, res) => {
     if (!data || typeof data !== "object") {
       return res.status(500).json({ error: "AI returned unparseable intelligence data." });
     }
-    return res.json({ ...data, _provider: usedProvider });
+
+    const str = (v: any) => (typeof v === "string" ? v.trim() : "");
+    const arr = (v: any) => (Array.isArray(v) ? v.map((x: any) => String(x).trim()).filter(Boolean) : []);
+
+    const intelligence = {
+      targetAudience:          str(data.targetAudience),
+      authorTones:             arr(data.authorTones),
+      energyStyle:             str(data.energyStyle),
+      emotionalTriggers:       arr(data.emotionalTriggers),
+      toneRecommendation:      str(data.toneRecommendation),
+      readerPainProfile:       str(data.readerPainProfile),
+      transformationPromise:   str(data.transformationPromise),
+      writingStyleFingerprint: str(data.writingStyleFingerprint),
+      positioningStrategy:     str(data.positioningStrategy),
+      marketGapAnalysis:       str(data.marketGapAnalysis),
+      bestsellerDNA:           str(data.bestsellerDNA),
+    };
+
+    const REQUIRED = ["targetAudience", "readerPainProfile", "toneRecommendation", "positioningStrategy", "marketGapAnalysis"] as const;
+    const missingFields = REQUIRED.filter((k) => !intelligence[k]);
+
+    return res.json({
+      ...intelligence,
+      _provider:     usedProvider,
+      _partial:      missingFields.length > 0,
+      _missingFields: missingFields.length > 0 ? missingFields : undefined,
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
