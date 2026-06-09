@@ -1156,12 +1156,6 @@ export default function Dashboard() {
                   }
                 }))
               }
-              updateResearch={(patch) =>
-                setProject((p) => ({
-                  ...p,
-                  research: typeof patch === "function" ? patch(p.research) : { ...p.research, ...patch }
-                }))
-              }
             />
           )}
 
