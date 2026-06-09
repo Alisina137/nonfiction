@@ -55,7 +55,7 @@ function buildAmazonQuery(research) {
   return (research.genre || "").toLowerCase().trim();
 }
 
-export default function AnalysisStep({ research, analysis, errors, updateAnalysis, patchBook, removeBook }) {
+export default function AnalysisStep({ research, analysis, errors, updateAnalysis, patchBook, removeBook, updateResearch }) {
   const [searchQuery, setSearchQuery]         = useState(analysis.lastSearchQuery || "");
   const [loadingSearch, setLoadingSearch]     = useState(false);
   const [loadingProductId, setLoadingProductId] = useState(null);
@@ -65,9 +65,13 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
   const [expandedId, setExpandedId]           = useState(null);
   const [intelLoading, setIntelLoading]       = useState(false);
   const [intelError, setIntelError]           = useState("");
+  const [posLoading, setPosLoading]           = useState(false);
+  const [posError, setPosError]               = useState("");
+  const [posResult, setPosResult]             = useState(null);
 
   const amazonDomain = analysis.amazonDomain || "amazon.com";
   const intelligence = analysis.intelligence  || null;
+  const isNewIntel   = intelligence && typeof intelligence.targetAudience === "object" && !Array.isArray(intelligence.targetAudience);
 
   useEffect(() => {
     if (analysis.lastSearchQuery) { setSearchQuery(analysis.lastSearchQuery); return; }
@@ -214,9 +218,10 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Intelligence generation failed.");
 
-      const REQUIRED_FIELDS = ["targetAudience", "readerPainProfile", "toneRecommendation"];
-      const allEmpty = REQUIRED_FIELDS.every((f) => !data[f]);
-      if (allEmpty) throw new Error("AI returned an empty intelligence profile. Please try again.");
+      // Validate new rich format (objects/arrays) or legacy flat format
+      const hasNew = data.readerPainPoints?.length > 0 || data.desiredOutcomes?.length > 0 || Object.keys(data.targetAudience || {}).length > 0;
+      const hasLegacy = !!(data.readerPainProfile || data.targetAudience);
+      if (!hasNew && !hasLegacy) throw new Error("AI returned an empty intelligence profile. Please try again.");
 
       updateAnalysis((prev) => ({ ...prev, intelligence: data }));
 
@@ -229,6 +234,56 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       setIntelError(e.message || "Failed to generate intelligence. Try again.");
     } finally {
       setIntelLoading(false);
+    }
+  }
+
+  async function finalizePositioning() {
+    if (!intelligence || posLoading) return;
+    setPosLoading(true);
+    setPosError("");
+    setPosResult(null);
+
+    const arrStr = (v) => Array.isArray(v) ? v.slice(0, 8).map(String).join("; ") : "";
+    const objStr = (v) => v && typeof v === "object" ? Object.values(v).filter(Boolean).join("; ") : (v || "");
+
+    const targetAudienceStr    = isNewIntel ? objStr(intelligence.targetAudience)         : (intelligence.targetAudience        || "");
+    const painPointsStr        = isNewIntel ? arrStr(intelligence.readerPainPoints)        : (intelligence.readerPainProfile     || "");
+    const desiredOutcomesStr   = isNewIntel ? arrStr(intelligence.desiredOutcomes)         : (intelligence.transformationPromise || "");
+    const buyerIntentStr       = isNewIntel ? objStr(intelligence.buyerIntent)             : (intelligence.positioningStrategy   || "");
+    const marketOpportunityStr = isNewIntel ? arrStr(intelligence.marketGaps)              : (intelligence.marketGapAnalysis     || "");
+    const compInsightsStr      = isNewIntel ? objStr(intelligence.competitorAnalysis)      : (intelligence.bestsellerDNA         || "");
+    const readerMotivationStr  = isNewIntel ? objStr(intelligence.readerPsychology)        : ((intelligence.emotionalTriggers || []).join(", "));
+    const toneStr              = isNewIntel ? objStr(intelligence.authorPersonaGuidance)   : (intelligence.toneRecommendation    || "");
+
+    try {
+      const res = await fetch("/api/ai/final-positioning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mainNiche:           research.mainNicheLabel || "",
+          subNiche:            research.subNicheLabel  || "",
+          deepNiche:           research.deepNicheLabel || "",
+          researchTitle:       research.bookTitle      || "",
+          researchSubtitle:    research.bookSubtitle   || "",
+          researchTopic:       research.bookTopic      || "",
+          targetAudience:      targetAudienceStr,
+          painPoints:          painPointsStr,
+          desiredOutcomes:     desiredOutcomesStr,
+          buyerIntent:         buyerIntentStr,
+          marketOpportunity:   marketOpportunityStr,
+          competitiveInsights: compInsightsStr,
+          readerMotivation:    readerMotivationStr,
+          tone:                toneStr,
+          analysisSummary:     analysis.books.map((b) => `${b.title}${b.authors?.length ? ` by ${b.authors.join(", ")}` : ""}`).join("; "),
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Positioning generation failed.");
+      setPosResult(data);
+    } catch (e) {
+      setPosError(e.message || "Failed to finalize positioning. Try again.");
+    } finally {
+      setPosLoading(false);
     }
   }
 
@@ -462,36 +517,148 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <IntelChip label="Target Audience"       value={intelligence.targetAudience} />
-              <IntelChip label="Energy Style"          value={intelligence.energyStyle} />
-              <IntelChip label="Reader Pain Profile"   value={intelligence.readerPainProfile} />
-              <IntelChip label="Transformation Promise" value={intelligence.transformationPromise} />
-            </div>
+            {isNewIntel ? (() => {
+              const ta    = intelligence.targetAudience             || {};
+              const ppts  = intelligence.readerPainPoints           || [];
+              const outs  = intelligence.desiredOutcomes            || [];
+              const gaps  = intelligence.marketGaps                 || [];
+              const strats= intelligence.positioningStrategies      || [];
+              const usps  = intelligence.uniqueSellingPropositions  || [];
+              const ti    = intelligence.titleInsights              || {};
+              const apg   = intelligence.authorPersonaGuidance      || {};
+              const brief = intelligence.outlineGenerationBrief     || {};
+              const strVal = (v) => typeof v === "string" ? v : (Array.isArray(v) ? v.join("; ") : (v && typeof v === "object" ? Object.values(v).filter(Boolean).join(" · ") : ""));
+              return (
+                <div className="space-y-4">
+                  {/* Target Audience */}
+                  {Object.keys(ta).length > 0 && (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Target Audience</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {ta.primary         && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Primary</p><p className="text-sm text-slate-800 leading-snug">{ta.primary}</p></div>}
+                        {ta.secondary       && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Secondary</p><p className="text-sm text-slate-800 leading-snug">{ta.secondary}</p></div>}
+                        {ta.experienceLevel && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Experience</p><p className="text-sm text-slate-800 leading-snug">{ta.experienceLevel}</p></div>}
+                        {ta.demographics    && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Demographics</p><p className="text-sm text-slate-800 leading-snug">{ta.demographics}</p></div>}
+                      </div>
+                      {ta.motivations && <div className="mt-2 border-t border-slate-100 pt-2"><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Motivations</p><p className="text-sm text-slate-700 leading-snug">{ta.motivations}</p></div>}
+                    </div>
+                  )}
 
-            <IntelTags
-              label="Recommended Author Tones"
-              values={intelligence.authorTones}
-              colorClass="bg-sky-100 text-sky-800"
-            />
+                  {/* Pain Points & Desired Outcomes */}
+                  {(ppts.length > 0 || outs.length > 0) && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {ppts.length > 0 && (
+                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Reader Pain Points</p>
+                          <ul className="space-y-1">
+                            {ppts.slice(0, 7).map((p, i) => (
+                              <li key={i} className="flex gap-1.5 text-sm text-slate-700"><span className="text-rose-400 shrink-0 mt-0.5">•</span><span>{String(p)}</span></li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {outs.length > 0 && (
+                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Desired Outcomes</p>
+                          <ul className="space-y-1">
+                            {outs.slice(0, 7).map((o, i) => (
+                              <li key={i} className="flex gap-1.5 text-sm text-slate-700"><span className="text-emerald-400 shrink-0 mt-0.5">•</span><span>{String(o)}</span></li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-            <IntelTags
-              label="Emotional Triggers"
-              values={intelligence.emotionalTriggers}
-              colorClass="bg-violet-100 text-violet-800"
-            />
+                  {/* Market Gaps */}
+                  {gaps.length > 0 && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-2">Market Gaps</p>
+                      <ul className="space-y-1">
+                        {gaps.slice(0, 5).map((g, i) => (
+                          <li key={i} className="flex gap-1.5 text-sm text-amber-900"><span className="text-amber-500 shrink-0 mt-0.5">◆</span><span>{String(g)}</span></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <IntelChip label="Tone Recommendation"    value={intelligence.toneRecommendation} />
-              <IntelChip label="Writing Style"          value={intelligence.writingStyleFingerprint} />
-              <IntelChip label="Positioning Strategy"   value={intelligence.positioningStrategy} />
-              <IntelChip label="Market Gap"             value={intelligence.marketGapAnalysis} />
-            </div>
+                  {/* Positioning Strategies */}
+                  {strats.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Positioning Strategies</p>
+                      <div className="flex flex-wrap gap-2">
+                        {strats.map((s, i) => {
+                          const label = typeof s === "string" ? s : (s.angle || s.name || s.strategy || Object.values(s)[0] || "");
+                          return <span key={i} className="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-800">{String(label)}</span>;
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-            {intelligence.bestsellerDNA && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">Bestseller DNA</p>
-                <p className="text-sm text-slate-800 leading-snug">{intelligence.bestsellerDNA}</p>
+                  {/* Unique Selling Propositions */}
+                  {usps.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Unique Selling Propositions</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {usps.slice(0, 4).map((u, i) => {
+                          const statement = typeof u === "string" ? u : (u.statement || u.usp || Object.values(u)[0] || "");
+                          const why = typeof u === "object" ? (u.whyItStandsOut || u.whyReadersCare || u.why || "") : "";
+                          return (
+                            <div key={i} className="rounded-xl border border-violet-200 bg-violet-50/60 p-3">
+                              <p className="text-sm font-semibold text-violet-900 leading-snug">{String(statement)}</p>
+                              {why && <p className="mt-1 text-xs text-violet-700 leading-snug">{why}</p>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Title Insights & Author Persona */}
+                  {(Object.keys(ti).length > 0 || Object.keys(apg).length > 0) && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {ti.bestTitleStyle                       && <IntelChip label="Best Title Style"         value={strVal(ti.bestTitleStyle)} />}
+                      {ti.bestSubtitleStyle                    && <IntelChip label="Best Subtitle Style"       value={strVal(ti.bestSubtitleStyle)} />}
+                      {ti.recommendedTransformationPromise     && <IntelChip label="Transformation Promise"    value={strVal(ti.recommendedTransformationPromise)} />}
+                      {ti.bestPositioningApproach              && <IntelChip label="Positioning Approach"      value={strVal(ti.bestPositioningApproach)} />}
+                      {apg.tone                                && <IntelChip label="Recommended Tone"          value={strVal(apg.tone)} />}
+                      {apg.authorVoice                         && <IntelChip label="Author Voice"              value={strVal(apg.authorVoice)} />}
+                      {apg.credibilityStyle                    && <IntelChip label="Credibility Style"         value={strVal(apg.credibilityStyle)} />}
+                      {apg.writingApproach                     && <IntelChip label="Writing Approach"          value={strVal(apg.writingApproach)} />}
+                    </div>
+                  )}
+
+                  {/* Outline Generation Brief */}
+                  {Object.keys(brief).length > 0 && (
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 mb-2">Outline Generation Brief</p>
+                      <p className="text-sm text-slate-800 leading-relaxed">{strVal(brief)}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })() : (
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <IntelChip label="Target Audience"        value={intelligence.targetAudience} />
+                  <IntelChip label="Energy Style"           value={intelligence.energyStyle} />
+                  <IntelChip label="Reader Pain Profile"    value={intelligence.readerPainProfile} />
+                  <IntelChip label="Transformation Promise" value={intelligence.transformationPromise} />
+                </div>
+                <IntelTags label="Recommended Author Tones" values={intelligence.authorTones}      colorClass="bg-sky-100 text-sky-800" />
+                <IntelTags label="Emotional Triggers"       values={intelligence.emotionalTriggers} colorClass="bg-violet-100 text-violet-800" />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <IntelChip label="Tone Recommendation"  value={intelligence.toneRecommendation} />
+                  <IntelChip label="Writing Style"        value={intelligence.writingStyleFingerprint} />
+                  <IntelChip label="Positioning Strategy" value={intelligence.positioningStrategy} />
+                  <IntelChip label="Market Gap"           value={intelligence.marketGapAnalysis} />
+                </div>
+                {intelligence.bestsellerDNA && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">Bestseller DNA</p>
+                    <p className="text-sm text-slate-800 leading-snug">{intelligence.bestsellerDNA}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -508,6 +675,136 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
             {analysis.books.length} book{analysis.books.length !== 1 ? "s" : ""} ready — click{" "}
             <span className="font-semibold text-indigo-700">Analyze Competitors</span> to extract your market intelligence.
           </p>
+        )}
+      </div>
+
+      {/* ── Final Book Positioning ── */}
+      <div className="mt-10 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/40 p-6 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+              Final Positioning Engine
+            </p>
+            <h3 className="mt-1 font-serif text-xl font-semibold text-slate-900">
+              Optimized Book Positioning
+            </h3>
+            <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-600">
+              Combines your Research inputs with competitor intelligence to generate the strongest possible Amazon KDP title, subtitle, and topic.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={finalizePositioning}
+            disabled={!intelligence || posLoading}
+            className="shrink-0 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-emerald-500 hover:to-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {posLoading ? "Optimizing…" : posResult ? "Re-optimize" : "Optimize Positioning"}
+          </button>
+        </div>
+
+        {!intelligence && !posLoading && (
+          <p className="mt-4 rounded-xl border border-dashed border-emerald-200 bg-white/60 px-4 py-3 text-sm text-slate-500">
+            Run <span className="font-semibold">Analyze Competitors</span> first to generate intelligence, then optimize your final positioning.
+          </p>
+        )}
+
+        {posLoading && (
+          <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
+            <p className="text-sm font-semibold text-emerald-700 animate-pulse">
+              AI synthesizing research and intelligence into your optimal book positioning…
+            </p>
+          </div>
+        )}
+
+        {posError && <p className="mt-3 text-sm font-medium text-rose-700">{posError}</p>}
+
+        {posResult && !posLoading && (
+          <div className="mt-5 space-y-6">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                Positioning generated — click any option to apply it to your Research
+              </p>
+            </div>
+
+            {posResult.finalTitle && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Optimized Title</p>
+                <button
+                  type="button"
+                  onClick={() => updateResearch?.({ bookTitle: posResult.finalTitle })}
+                  className={`w-full rounded-xl border px-4 py-3.5 text-left shadow-sm transition ${
+                    research.bookTitle === posResult.finalTitle
+                      ? "border-emerald-500 bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                      : "border-slate-200 bg-white text-slate-900 hover:border-emerald-400 hover:bg-emerald-50/60"
+                  }`}
+                >
+                  <p className="font-serif text-base font-semibold leading-snug">{posResult.finalTitle}</p>
+                  {posResult.titleReason && (
+                    <p className={`mt-1.5 text-[11px] italic leading-snug ${research.bookTitle === posResult.finalTitle ? "text-emerald-100" : "text-slate-400"}`}>
+                      {posResult.titleReason}
+                    </p>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {Array.isArray(posResult.subtitleOptions) && posResult.subtitleOptions.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Subtitle Options</p>
+                <ul className="space-y-2">
+                  {posResult.subtitleOptions.map((opt, i) => {
+                    if (!opt?.subtitle) return null;
+                    const active = research.bookSubtitle === opt.subtitle;
+                    return (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          onClick={() => updateResearch?.({ bookSubtitle: opt.subtitle })}
+                          className={`w-full rounded-xl border px-4 py-3 text-left text-sm transition ${
+                            active ? "border-emerald-500 bg-emerald-500 text-white font-semibold shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/60"
+                          }`}
+                        >
+                          {opt.subtitle}
+                          {opt.reason && <span className={`block mt-1 text-[10px] italic ${active ? "text-emerald-100" : "text-slate-400"}`}>{opt.reason}</span>}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {Array.isArray(posResult.topicOptions) && posResult.topicOptions.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Topic Options</p>
+                <ul className="space-y-2">
+                  {posResult.topicOptions.map((opt, i) => {
+                    if (!opt?.topic) return null;
+                    const active = research.bookTopic === opt.topic;
+                    return (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          onClick={() => updateResearch?.({ bookTopic: opt.topic })}
+                          className={`w-full rounded-xl border px-4 py-3 text-left text-sm transition ${
+                            active ? "border-emerald-500 bg-emerald-500 text-white font-semibold shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/60"
+                          }`}
+                        >
+                          {opt.style && (
+                            <span className={`block text-[9px] font-bold uppercase tracking-widest mb-1 ${active ? "text-emerald-200" : "text-slate-400"}`}>
+                              {opt.style}
+                            </span>
+                          )}
+                          {opt.topic}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

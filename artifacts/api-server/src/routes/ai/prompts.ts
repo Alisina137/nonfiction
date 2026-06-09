@@ -2157,33 +2157,225 @@ export function competitiveIntelligencePrompt({ niche, subNiche, deepNiche, book
       }).join("\n")
     : "(no competitor books provided — infer from niche/sub-niche)";
 
-  return `You are an Amazon KDP publishing strategist and consumer psychology expert.
+  return `You are an elite Amazon KDP market researcher, publishing strategist, reader psychology expert, and competitive intelligence analyst.
 
-Analyze the following competitor books and extract a full publishing intelligence profile for a new book entering this market.
+Your mission is to analyze:
 
-NICHE: ${niche || "unspecified"}
-SUB-NICHE: ${subNiche || "unspecified"}
-DEEP NICHE: ${deepNiche || "not specified"}
-AUTHOR'S CONCEPT: ${bookTopic?.trim() || "(not specified)"}
+1. The selected niche
+2. The selected sub-niche
+3. The selected deep niche
+4. All competitor books provided by the user
+5. Current market signals and reader demand patterns
 
-COMPETITOR BOOKS:
+Your goal is to produce a comprehensive market intelligence report that will be used to automatically power all downstream book-generation steps.
+
+INPUTS
+
+Main Niche:
+${niche || "unspecified"}
+
+Sub-Niche:
+${subNiche || "unspecified"}
+
+Deep Niche:
+${deepNiche || "not specified"}
+
+Competitor Books:
 ${bookLines}
 
-Based on these competitors, extract a complete publishing intelligence profile. Be specific and data-driven — every field must reflect THIS niche and these actual competitors.
+--------------------------------------------------
+ANALYSIS OBJECTIVES
+--------------------------------------------------
 
-Return ONLY valid JSON with this exact shape:
+Analyze the market and determine:
+
+- What readers are actively seeking
+- What problems readers want solved
+- What outcomes readers desire
+- What promises perform best
+- What angles competitors overuse
+- What gaps exist in the market
+- What opportunities exist for differentiation
+
+--------------------------------------------------
+GENERATE THE FOLLOWING
+--------------------------------------------------
+
+1. TARGET AUDIENCE
+
+Identify:
+
+- Primary audience
+- Secondary audience
+- Experience level
+- Demographics
+- Motivations
+
+--------------------------------------------------
+
+2. READER PAIN POINTS
+
+Generate:
+
+- Top 10 frustrations
+- Top 10 challenges
+- Top 10 fears
+- Top 10 obstacles
+
+--------------------------------------------------
+
+3. DESIRED OUTCOMES
+
+Generate:
+
+- Top 10 transformations readers want
+- Top 10 goals readers want to achieve
+- Top 10 benefits readers expect
+
+--------------------------------------------------
+
+4. BUYER INTENT ANALYSIS
+
+Determine:
+
+- Why readers buy books in this niche
+- What triggers purchasing decisions
+- What language resonates most
+- What promises attract attention
+
+--------------------------------------------------
+
+5. MARKET GAPS
+
+Identify:
+
+- Topics competitors ignore
+- Underserved audiences
+- Weak areas in competing books
+- Missed opportunities
+
+--------------------------------------------------
+
+6. UNIQUE SELLING PROPOSITIONS
+
+Generate 5 potential USPs.
+
+For each USP provide:
+
+- USP statement
+- Why it stands out
+- Why readers would care
+
+--------------------------------------------------
+
+7. POSITIONING STRATEGIES
+
+Generate 5 positioning angles.
+
+Examples:
+
+- Beginner-Friendly
+- Fast Results
+- Step-by-Step Framework
+- Scientific Approach
+- Real-World Practicality
+
+--------------------------------------------------
+
+8. COMPETITOR ANALYSIS
+
+Analyze competitor books and identify:
+
+- Common themes
+- Common promises
+- Common weaknesses
+- Repeated messaging
+- Strengths worth emulating
+- Opportunities to improve
+
+--------------------------------------------------
+
+9. RECOMMENDED BOOK STRUCTURE
+
+Generate:
+
+- Recommended number of chapters
+- Recommended chapter progression
+- Key topics to cover
+- Essential concepts
+- Bonus chapter opportunities
+
+--------------------------------------------------
+
+10. READER PSYCHOLOGY
+
+Identify:
+
+- Reader desires
+- Reader fears
+- Reader motivations
+- Reader objections
+- Emotional triggers
+
+--------------------------------------------------
+
+11. TITLE INSIGHTS
+
+Generate:
+
+- Best title style
+- Best subtitle style
+- Best positioning approach
+- Recommended transformation promise
+
+--------------------------------------------------
+
+12. AUTHOR PERSONA GUIDANCE
+
+Recommend:
+
+- Author voice
+- Tone
+- Credibility style
+- Writing approach
+
+--------------------------------------------------
+
+13. BOOK DIFFERENTIATION STRATEGY
+
+Explain:
+
+- What will make this book different
+- Why readers would choose it
+- How it can outperform competitors
+
+--------------------------------------------------
+
+14. OUTLINE GENERATION BRIEF
+
+Create a concise blueprint that future outline generation should follow.
+
+--------------------------------------------------
+
+OUTPUT FORMAT
+
+Return ONLY valid JSON. No markdown. No explanations. No additional text.
+
 {
-  "targetAudience": "specific 1-2 sentence description of the ideal reader for this market",
-  "authorTones": ["tone1", "tone2"],
-  "energyStyle": "one of: Calm mentor | Hard-hitting coach | Stoic philosopher | Masculine discipline | Inspirational motivator | Scientific thinker",
-  "emotionalTriggers": ["trigger1", "trigger2", "trigger3"],
-  "toneRecommendation": "specific tone strategy recommendation in 1-2 sentences",
-  "readerPainProfile": "core pain/frustration the reader has BEFORE picking up a book in this niche",
-  "transformationPromise": "the transformation the reader expects from a book in this market",
-  "writingStyleFingerprint": "description of the ideal writing style for bestsellers in this niche",
-  "positioningStrategy": "how a new book should position itself to stand out vs these specific competitors",
-  "marketGapAnalysis": "what is missing or underserved based on these competitors — concrete gaps",
-  "bestsellerDNA": "what structural or emotional elements make bestsellers in this niche work"
+  "targetAudience": {},
+  "readerPainPoints": [],
+  "desiredOutcomes": [],
+  "buyerIntent": {},
+  "marketGaps": [],
+  "uniqueSellingPropositions": [],
+  "positioningStrategies": [],
+  "competitorAnalysis": {},
+  "recommendedBookStructure": {},
+  "readerPsychology": {},
+  "titleInsights": {},
+  "authorPersonaGuidance": {},
+  "bookDifferentiationStrategy": {},
+  "outlineGenerationBrief": {}
 }`;
 }
 

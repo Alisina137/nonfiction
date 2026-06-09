@@ -729,30 +729,36 @@ router.post("/competitive-intelligence", async (req, res) => {
       return res.status(500).json({ error: "AI returned unparseable intelligence data." });
     }
 
-    const str = (v: any) => (typeof v === "string" ? v.trim() : "");
-    const arr = (v: any) => (Array.isArray(v) ? v.map((x: any) => String(x).trim()).filter(Boolean) : []);
+    const isArr = (v: any) => (Array.isArray(v) ? v : []);
+    const isObj = (v: any) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
 
     const intelligence = {
-      targetAudience:          str(data.targetAudience),
-      authorTones:             arr(data.authorTones),
-      energyStyle:             str(data.energyStyle),
-      emotionalTriggers:       arr(data.emotionalTriggers),
-      toneRecommendation:      str(data.toneRecommendation),
-      readerPainProfile:       str(data.readerPainProfile),
-      transformationPromise:   str(data.transformationPromise),
-      writingStyleFingerprint: str(data.writingStyleFingerprint),
-      positioningStrategy:     str(data.positioningStrategy),
-      marketGapAnalysis:       str(data.marketGapAnalysis),
-      bestsellerDNA:           str(data.bestsellerDNA),
+      targetAudience:              isObj(data.targetAudience),
+      readerPainPoints:            isArr(data.readerPainPoints),
+      desiredOutcomes:             isArr(data.desiredOutcomes),
+      buyerIntent:                 isObj(data.buyerIntent),
+      marketGaps:                  isArr(data.marketGaps),
+      uniqueSellingPropositions:   isArr(data.uniqueSellingPropositions),
+      positioningStrategies:       isArr(data.positioningStrategies),
+      competitorAnalysis:          isObj(data.competitorAnalysis),
+      recommendedBookStructure:    isObj(data.recommendedBookStructure),
+      readerPsychology:            isObj(data.readerPsychology),
+      titleInsights:               isObj(data.titleInsights),
+      authorPersonaGuidance:       isObj(data.authorPersonaGuidance),
+      bookDifferentiationStrategy: isObj(data.bookDifferentiationStrategy),
+      outlineGenerationBrief:      isObj(data.outlineGenerationBrief),
     };
 
-    const REQUIRED = ["targetAudience", "readerPainProfile", "toneRecommendation", "positioningStrategy", "marketGapAnalysis"] as const;
-    const missingFields = REQUIRED.filter((k) => !intelligence[k]);
+    const REQUIRED = ["targetAudience", "readerPainPoints", "desiredOutcomes", "marketGaps"] as const;
+    const missingFields = REQUIRED.filter((k) => {
+      const v = (intelligence as any)[k];
+      return !v || (Array.isArray(v) ? v.length === 0 : Object.keys(v).length === 0);
+    });
 
     return res.json({
       ...intelligence,
-      _provider:     usedProvider,
-      _partial:      missingFields.length > 0,
+      _provider:      usedProvider,
+      _partial:       missingFields.length > 0,
       _missingFields: missingFields.length > 0 ? missingFields : undefined,
     });
   } catch (error: any) {
