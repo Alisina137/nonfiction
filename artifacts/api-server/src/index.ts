@@ -1,5 +1,8 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { validateEnv } from "./lib/validateEnv";
+
+validateEnv();
 
 const rawPort = process.env["PORT"];
 

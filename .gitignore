@@ -47,3 +47,23 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Environment & secrets — never commit real values
+.env
+.env.*
+!.env.example
+
+# Stray API key files at root
+RAINFOREST_API_KEY
+SCALE_SERP_API_KEY
+GEMINI_API_KEY
+GROQ_API_KEY
+XAI_API_KEY
+OPENROUTER_API_KEY
+DATABASE_URL
+
+# Migration backups — already snapshotted, not needed in active history
+.migration-backup/
+
+# User-uploaded session assets (not business logic)
+attached_assets/
