@@ -42,8 +42,14 @@ import {
   extractJSON,
   getModelStatus,
   resetProviders,
-  TOKEN_LIMITS
+  TOKEN_LIMITS,
+  PROVIDERS
 } from "./aiRouter.js";
+import {
+  runTitlePipeline,
+  logTitlePipeline,
+  type TitleContext
+} from "./titleNormalizer.js";
 
 const router = Router();
 
@@ -207,10 +213,59 @@ router.post("/suggest-topic", async (req, res) => {
 
 router.post("/titles", async (req, res) => {
   try {
-    const { idea } = req.body;
-    const { text, usedProvider } = await runShort(titlesPrompt(idea), systemPrompt(), req, res, "title");
-    const data = extractJSON(text);
-    return res.json({ titles: data.titles || [], _provider: usedProvider });
+    const { idea, niche, subNiche } = req.body || {};
+    const ctx: TitleContext = { idea: idea?.trim(), niche: niche?.trim(), subNiche: subNiche?.trim() };
+    const prompt = titlesPrompt(idea || "");
+    const providerModel = PROVIDERS.find((p) => Boolean(p.apiKey()))?.model ?? "unknown";
+
+    // ── Attempt 1 ─────────────────────────────────────────────────────────
+    const first = await runShort(prompt, systemPrompt(), req, res, "title");
+    let pipeline = runTitlePipeline(first.text, ctx);
+
+    logTitlePipeline({
+      endpoint:         "titles",
+      provider:         first.usedProvider,
+      model:            providerModel,
+      rawResponse:      first.text,
+      parsedResponse:   null,
+      normalizedTitles: pipeline.titles,
+      validationResult: { valid: pipeline.valid, errors: pipeline.validationErrors },
+      repaired:         pipeline.repaired,
+      parseWarning:     pipeline.parseWarning,
+      attempt:          1
+    });
+
+    // ── Retry once if invalid ──────────────────────────────────────────────
+    if (!pipeline.valid) {
+      console.log("[titles] Validation failed — retrying once with same model");
+      try {
+        const retry = await runShort(prompt, systemPrompt(), req, res, "title");
+        const retryPipeline = runTitlePipeline(retry.text, ctx);
+
+        logTitlePipeline({
+          endpoint:         "titles",
+          provider:         retry.usedProvider,
+          model:            providerModel,
+          rawResponse:      retry.text,
+          parsedResponse:   null,
+          normalizedTitles: retryPipeline.titles,
+          validationResult: { valid: retryPipeline.valid, errors: retryPipeline.validationErrors },
+          repaired:         retryPipeline.repaired,
+          parseWarning:     retryPipeline.parseWarning,
+          attempt:          2
+        });
+
+        // Use retry result if better (fewer errors / repaired fewer items)
+        if (retryPipeline.valid || retryPipeline.titles.filter((t) => !t.title).length < pipeline.titles.filter((t) => !t.title).length) {
+          pipeline = retryPipeline;
+        }
+      } catch (retryErr: any) {
+        console.log("[titles] Retry failed:", retryErr?.message?.slice(0, 100));
+        // Keep the first attempt's (repaired) result — never error out to user
+      }
+    }
+
+    return res.json({ titles: pipeline.titles, _provider: first.usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

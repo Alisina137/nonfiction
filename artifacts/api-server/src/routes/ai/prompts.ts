@@ -420,10 +420,23 @@ Never impose a business-only outline on romance, thriller, fantasy, or story unl
 }
 
 export function titlesPrompt(idea: string) {
-  return `User idea: ${idea}
-Generate exactly 5 premium nonfiction book titles as a JSON array of strings.
-Each title must signal practical transformation and expert authority.
-Return JSON: {"titles":["..."]}`;
+  return `You are an Amazon KDP nonfiction title strategist.
+
+USER IDEA: ${idea || "(not provided)"}
+
+Generate exactly 3 premium nonfiction book titles for this idea.
+Each title must signal practical transformation, expert authority, and commercial appeal.
+
+TITLE RULES:
+- Short, memorable, bestseller-style
+- Clear audience or benefit
+- Strong buyer appeal on Amazon KDP
+- Avoid keyword stuffing, generic wording, or clickbait
+
+Return ONLY valid JSON — no markdown, no code fences, no explanation before or after:
+{"titles":[{"title":"First title","angle":"Audience-Focused","reason":"One short sentence."},{"title":"Second title","angle":"Transformation-Focused","reason":"One short sentence."},{"title":"Third title","angle":"Authority-Focused","reason":"One short sentence."}]}
+
+CRITICAL: Output raw JSON only. Start your response with { and end with }.`;
 }
 
 export function analyzeBookConceptPrompt({ niche, subNiche, deepNiche, title }: any) {

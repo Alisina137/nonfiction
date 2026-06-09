@@ -10,8 +10,15 @@ import { buildCompetitorSummariesForPrompt } from "../ai/analysisSummary.js";
 import {
   generateContentFast,
   extractJSON,
+  PROVIDERS,
   type ProviderId
 } from "../ai/aiRouter.js";
+import {
+  runTitlePipeline,
+  logTitlePipeline,
+  type TitleItem,
+  type TitleContext
+} from "../ai/titleNormalizer.js";
 
 const router = Router();
 
@@ -19,55 +26,6 @@ const AUDIENCE_REGEX = /\bfor\s+[A-Z][A-Za-z][A-Za-z'-]*(\s+(?:Who\s+\w+|[A-Z][A
 
 function countAudienceTitles(titles: string[]): number {
   return titles.filter((t) => AUDIENCE_REGEX.test(t)).length;
-}
-
-/** Extract titles from a potentially-truncated AI response. */
-function parseTitlesFromText(text: string): { titles: string[]; enhanced: any[] } {
-  // 1. Try clean JSON parse first
-  try {
-    const data = extractJSON(text);
-    const titles = Array.isArray(data.titles)
-      ? data.titles.map((t: any) => String(t || "").trim()).filter(Boolean).slice(0, 12)
-      : typeof data.title === "string" ? [data.title.trim()] : [];
-    const enhanced = Array.isArray(data.enhanced)
-      ? data.enhanced.filter((e: any) => e?.title).slice(0, 12)
-      : [];
-    if (titles.length > 0) return { titles, enhanced };
-  } catch { /* fall through */ }
-
-  // 2. Regex fallback — extract completed quoted strings from a "titles": [...] array
-  //    Works even when the JSON is truncated mid-element
-  const arrayMatch = text.match(/"titles"\s*:\s*\[([^\]]*)/s);
-  if (arrayMatch) {
-    const arrayBody = arrayMatch[1];
-    const titleMatches = [...arrayBody.matchAll(/"([^"\\](?:[^"\\]|\\.)*)"/g)];
-    const titles = titleMatches
-      .map((m) => m[1].replace(/\\"/g, '"').trim())
-      .filter(Boolean)
-      .slice(0, 12);
-    if (titles.length > 0) return { titles, enhanced: [] };
-  }
-
-  // 3. Last resort — pull any quoted string longer than 10 chars
-  const allQuoted = [...text.matchAll(/"([A-Z][^"]{9,80})"/g)];
-  const titles = allQuoted
-    .map((m) => m[1].trim())
-    .filter((t) => !t.includes("{") && !t.includes(":"))
-    .slice(0, 12);
-  return { titles, enhanced: [] };
-}
-
-async function runTitleGeneration(
-  params: any,
-  opts: { lowCredit?: boolean; disabledProviders?: string[]; maxTokens?: number }
-): Promise<{ titles: string[]; enhanced: any[]; usedProvider: ProviderId }> {
-  const { text, usedProvider } = await generateContentFast(
-    contextualBookTitlesPrompt(params),
-    systemPrompt(),
-    { ...opts, maxTokens: opts.maxTokens ?? 1200 }
-  );
-  const { titles, enhanced } = parseTitlesFromText(text);
-  return { titles, enhanced, usedProvider };
 }
 
 function aiOptsFromReq(req: any) {
@@ -79,6 +37,56 @@ function aiOptsFromReq(req: any) {
     lowCredit: body.lowCostMode === true,
     ...(disabledProviders.length ? { disabledProviders } : {})
   };
+}
+
+/** Run a single title generation call through the normalizer pipeline. */
+async function runNormalizedTitleCall(
+  prompt: string,
+  ctx: TitleContext,
+  opts: { lowCredit?: boolean; disabledProviders?: string[]; maxTokens?: number },
+  endpoint: string,
+  attempt: number
+): Promise<{ items: TitleItem[]; usedProvider: ProviderId; valid: boolean }> {
+  const providerModel = PROVIDERS.find((p) => Boolean(p.apiKey()))?.model ?? "unknown";
+  const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), opts);
+  const pipeline = runTitlePipeline(text, ctx);
+
+  logTitlePipeline({
+    endpoint,
+    provider:         usedProvider,
+    model:            providerModel,
+    rawResponse:      text,
+    parsedResponse:   null,
+    normalizedTitles: pipeline.titles,
+    validationResult: { valid: pipeline.valid, errors: pipeline.validationErrors },
+    repaired:         pipeline.repaired,
+    parseWarning:     pipeline.parseWarning,
+    attempt
+  });
+
+  return { items: pipeline.titles, usedProvider, valid: pipeline.valid };
+}
+
+/** Convert normalized TitleItem[] into card objects for the frontend. */
+function itemsToCards(items: TitleItem[]): any[] {
+  return items.map((item, i) => ({
+    title:             item.title,
+    subtitle:          "",
+    subtitleOptions:   [],
+    category:          item.angle || "Audience-Focused",
+    pattern:           item.angle || "",
+    hook:              item.reason || "",
+    audienceResonance: [],
+    keywords:          [],
+    toneProfile:       [],
+    seoScore:          null,
+    emotionalScore:    null,
+    clickabilityScore: null,
+    audienceMatch:     null,
+    isRecommended:     i === 0,
+    _angle:            item.angle  || "",
+    _reason:           item.reason || ""
+  }));
 }
 
 router.post("/contextual-titles", async (req, res) => {
@@ -93,7 +101,13 @@ router.post("/contextual-titles", async (req, res) => {
 
     const competitorSummaries = buildCompetitorSummariesForPrompt(analysis?.books || []);
     const opts = aiOptsFromReq(req);
+    const ctx: TitleContext = {
+      idea:     research.bookTopic?.trim() || research.deepNicheLabel?.trim() || "",
+      niche:    research.mainNicheLabel?.trim() || "",
+      subNiche: research.subNicheLabel?.trim()  || ""
+    };
 
+    // ── Mode: kdp-positioning ────────────────────────────────────────────────
     if (mode === "kdp-positioning") {
       const prompt = kdpSuggestPrompt({
         action:    "suggest_titles",
@@ -101,96 +115,108 @@ router.post("/contextual-titles", async (req, res) => {
         subNiche:  research.subNicheLabel?.trim()  || "",
         deepNiche: research.deepNicheLabel?.trim()  || "",
       });
-      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 800 });
-      let raw: any = {};
-      try { raw = extractJSON(text); } catch { /* ignore */ }
-      const titlesRaw: any[] = Array.isArray(raw?.titles) ? raw.titles : [];
-      const cards: any[] = titlesRaw
-        .filter((r: any) => r?.title)
-        .slice(0, 3)
-        .map((r: any, i: number) => ({
-          title:             r.title,
-          subtitle:          "",
-          subtitleOptions:   [],
-          category:          r.angle || "Audience-Focused",
-          pattern:           r.angle || "",
-          hook:              r.reason || "",
-          audienceResonance: [],
-          keywords:          [],
-          toneProfile:       [],
-          seoScore:          null,
-          emotionalScore:    null,
-          clickabilityScore: null,
-          audienceMatch:     null,
-          isRecommended:     i === 0,
-          _angle:            r.angle  || "",
-          _reason:           r.reason || "",
-        }));
-      const titles   = cards.map((c: any) => c.title).filter(Boolean);
-      const enhanced = cards.map((c: any) => ({
-        title:  c.title,
-        angle:  c.category,
-        hook:   c.hook,
-        reason: c._reason,
-      }));
+
+      let { items, usedProvider, valid } = await runNormalizedTitleCall(
+        prompt, ctx, { ...opts, maxTokens: 1500 }, "kdp-positioning", 1
+      );
+
+      // Retry once if invalid
+      if (!valid) {
+        try {
+          const retry = await runNormalizedTitleCall(
+            prompt, ctx, { ...opts, maxTokens: 1500 }, "kdp-positioning", 2
+          );
+          if (retry.valid) { items = retry.items; usedProvider = retry.usedProvider; }
+        } catch { /* keep first result */ }
+      }
+
+      const cards    = itemsToCards(items);
+      const titles   = items.map((t) => t.title);
+      const enhanced = items.map((t) => ({ title: t.title, angle: t.angle, hook: t.reason, reason: t.reason }));
       res.setHeader("X-AI-Provider", usedProvider);
       return res.json({ titles, enhanced, cards, _provider: usedProvider });
     }
 
+    // ── Mode: bestseller / other named modes ─────────────────────────────────
     if (mode) {
       const prompt = titleCardsPrompt({ research, competitorSummaries, intelligence, mode });
       const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 1200 });
-      const data = extractJSON(text);
-      const cards: any[] = Array.isArray(data.cards)
+
+      // titleCardsPrompt returns rich card objects — parse as-is, then normalize titles
+      let data: any = {};
+      try { data = extractJSON(text); } catch { /* ignore */ }
+
+      let cards: any[] = Array.isArray(data.cards)
         ? data.cards.filter((c: any) => c?.title).slice(0, 6)
         : [];
-      const titles = cards.map((c: any) => c.title).filter(Boolean);
+
+      // If cards came back empty, fall back through normalizer
+      if (!cards.length) {
+        const pipeline = runTitlePipeline(text, ctx);
+        logTitlePipeline({
+          endpoint:         "contextual-titles:" + mode,
+          provider:         usedProvider,
+          model:            PROVIDERS.find((p) => Boolean(p.apiKey()))?.model ?? "unknown",
+          rawResponse:      text,
+          parsedResponse:   data,
+          normalizedTitles: pipeline.titles,
+          validationResult: { valid: pipeline.valid, errors: pipeline.validationErrors },
+          repaired:         pipeline.repaired,
+          parseWarning:     pipeline.parseWarning,
+          attempt:          1
+        });
+        cards = itemsToCards(pipeline.titles);
+      }
+
+      const titles   = cards.map((c: any) => c.title).filter(Boolean);
       const enhanced = cards.map((c: any) => ({
-        title: c.title,
-        subtitle: c.subtitle,
-        hook: c.hook,
+        title:    c.title,
+        subtitle: c.subtitle   || "",
+        hook:     c.hook       || "",
         audience: Array.isArray(c.audienceResonance) ? c.audienceResonance[0] : "",
-        angle: c.pattern
+        angle:    c.pattern    || c.category || ""
       }));
       res.setHeader("X-AI-Provider", usedProvider);
       return res.json({ titles, enhanced, cards, _provider: usedProvider });
     }
 
-    const params = {
+    // ── Default mode: contextual titles ──────────────────────────────────────
+    const prompt = contextualBookTitlesPrompt({
       research,
       competitorSummaries,
       audienceCandidates: Array.isArray(audienceCandidates) ? audienceCandidates : [],
-      painPoints: Array.isArray(painPoints) ? painPoints : [],
-      transformations: Array.isArray(transformations) ? transformations : []
-    };
+      painPoints:         Array.isArray(painPoints) ? painPoints : [],
+      transformations:    Array.isArray(transformations) ? transformations : []
+    });
 
-    let { titles, enhanced, usedProvider } = await runTitleGeneration(params, opts);
+    let { items: firstItems, usedProvider, valid } = await runNormalizedTitleCall(
+      prompt, ctx, { ...opts, maxTokens: 1200 }, "contextual-titles", 1
+    );
 
-    const required = Math.ceil(titles.length * 0.7);
-    if (titles.length >= 3 && countAudienceTitles(titles) < required) {
+    // Audience-rule enforcement retry (70% of titles must name audience)
+    const firstTitles = firstItems.map((t) => t.title);
+    const required    = Math.ceil(firstTitles.length * 0.7);
+    if (firstTitles.length >= 3 && countAudienceTitles(firstTitles) < required) {
       try {
-        const retry = await runTitleGeneration(params, opts);
-        const orig = titles;
-        const audienceOf = (arr: string[]) => arr.filter((t) => AUDIENCE_REGEX.test(t));
-        const merged = [
-          ...audienceOf(retry.titles),
-          ...audienceOf(orig),
-          ...retry.titles.filter((t) => !AUDIENCE_REGEX.test(t)),
-          ...orig.filter((t) => !AUDIENCE_REGEX.test(t))
-        ];
-        const seen = new Set<string>();
-        titles = merged.filter((t) => {
-          const k = t.toLowerCase();
-          if (seen.has(k)) return false;
-          seen.add(k);
-          return true;
-        }).slice(0, 6);
-        usedProvider = retry.usedProvider;
-        if (retry.enhanced.length) enhanced = retry.enhanced;
-      } catch {
-        // keep first batch if retry fails
-      }
+        const retry = await runNormalizedTitleCall(
+          prompt, ctx, { ...opts, maxTokens: 1200 }, "contextual-titles", 2
+        );
+        // Prefer retry if it satisfies the audience rule or is equally valid
+        const retryAudience = countAudienceTitles(retry.items.map((t) => t.title));
+        if (retryAudience >= required || retry.valid) {
+          firstItems    = retry.items;
+          usedProvider  = retry.usedProvider;
+        }
+      } catch { /* keep first batch */ }
     }
+
+    const titles   = firstItems.map((t) => t.title);
+    const enhanced = firstItems.map((t) => ({
+      title:  t.title,
+      angle:  t.angle,
+      hook:   t.reason,
+      reason: t.reason
+    }));
 
     res.setHeader("X-AI-Provider", usedProvider);
     return res.json({ titles, enhanced, _provider: usedProvider });

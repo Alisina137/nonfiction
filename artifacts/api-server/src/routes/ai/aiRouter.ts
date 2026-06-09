@@ -103,7 +103,7 @@ export const MODEL_BY_PROVIDER = Object.fromEntries(
 // ─── Token budgets ─────────────────────────────────────────────────────────
 
 export const TOKEN_LIMITS: Record<string, number> = {
-  title:               500,
+  title:              1500,
   subtitle:            700,
   regenTitle:          250,
   outline:            1200,
