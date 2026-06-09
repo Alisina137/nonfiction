@@ -32,6 +32,7 @@ import {
   subtitleSuggestPrompt,
   topicSuggestPrompt,
   kdpSuggestPrompt,
+  kdpFinalPositioningPrompt,
   systemPrompt,
   titlesPrompt
 } from "./prompts.js";
@@ -200,6 +201,38 @@ router.post("/suggest-topic", async (req, res) => {
     } catch { /* leave topics empty */ }
     if (!topics.length) return res.status(500).json({ error: "No topics returned. Try again." });
     res.json({ topics, usedProvider });
+  } catch (e: any) {
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/final-positioning", async (req, res) => {
+  try {
+    const {
+      mainNiche, subNiche, deepNiche,
+      researchTitle, researchSubtitle, researchTopic,
+      targetAudience, painPoints, desiredOutcomes,
+      buyerIntent, marketOpportunity, competitiveInsights,
+      readerMotivation, tone, analysisSummary,
+    } = req.body || {};
+    const { text, usedProvider } = await runShort(
+      kdpFinalPositioningPrompt({
+        mainNiche: mainNiche || "", subNiche: subNiche || "", deepNiche: deepNiche || "",
+        researchTitle: researchTitle || "", researchSubtitle: researchSubtitle || "", researchTopic: researchTopic || "",
+        targetAudience: targetAudience || "", painPoints: painPoints || "", desiredOutcomes: desiredOutcomes || "",
+        buyerIntent: buyerIntent || "", marketOpportunity: marketOpportunity || "",
+        competitiveInsights: competitiveInsights || "", readerMotivation: readerMotivation || "",
+        tone: tone || "", analysisSummary: analysisSummary || "",
+      }),
+      systemPrompt(),
+      req, res, "positioning"
+    );
+    let result: any = {};
+    try { result = extractJSON(text); } catch { /* leave empty */ }
+    if (!result.finalTitle && !result.subtitleOptions?.length && !result.topicOptions?.length) {
+      return res.status(500).json({ error: "No positioning result returned. Try again." });
+    }
+    res.json({ ...result, usedProvider });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ error: e.message });
   }
