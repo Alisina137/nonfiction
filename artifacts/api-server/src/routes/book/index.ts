@@ -3,7 +3,7 @@ import {
   contextualBookTitlesPrompt,
   titleCardsPrompt,
   titleVariationsPrompt,
-  kdpPositioningTitlesPrompt,
+  kdpSuggestPrompt,
   systemPrompt
 } from "../ai/prompts.js";
 import { buildCompetitorSummariesForPrompt } from "../ai/analysisSummary.js";
@@ -95,43 +95,43 @@ router.post("/contextual-titles", async (req, res) => {
     const opts = aiOptsFromReq(req);
 
     if (mode === "kdp-positioning") {
-      const prompt = kdpPositioningTitlesPrompt({ research });
-      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 1200 });
-      let raw: any[] = [];
-      try {
-        const parsed = extractJSON(text);
-        raw = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.titles) ? parsed.titles : []);
-      } catch { /* leave raw empty */ }
-      const angleOrder = ["Outcome-Focused", "Problem-Solution Focused", "Audience-Focused"];
-      const cards: any[] = raw
+      const prompt = kdpSuggestPrompt({
+        action:    "suggest_titles",
+        mainNiche: research.mainNicheLabel?.trim() || "",
+        subNiche:  research.subNicheLabel?.trim()  || "",
+        deepNiche: research.deepNicheLabel?.trim()  || "",
+      });
+      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 800 });
+      let raw: any = {};
+      try { raw = extractJSON(text); } catch { /* ignore */ }
+      const titlesRaw: any[] = Array.isArray(raw?.titles) ? raw.titles : [];
+      const cards: any[] = titlesRaw
         .filter((r: any) => r?.title)
         .slice(0, 3)
         .map((r: any, i: number) => ({
-          title:            r.title,
-          subtitle:         r.subtitle || "",
-          subtitleOptions:  r.subtitle ? [{ style: "Strategic", text: r.subtitle }] : [],
-          category:         r.angle || angleOrder[i] || "Outcome-Focused",
-          pattern:          r.angle || angleOrder[i] || "Outcome-Focused",
-          hook:             r.reason || "",
-          audienceResonance: r.targetAudience ? [r.targetAudience] : [],
-          keywords:         [r.problem, r.desiredOutcome].filter(Boolean),
-          toneProfile:      [],
-          seoScore:         null,
-          emotionalScore:   null,
+          title:             r.title,
+          subtitle:          "",
+          subtitleOptions:   [],
+          category:          r.angle || "Audience-Focused",
+          pattern:           r.angle || "",
+          hook:              r.reason || "",
+          audienceResonance: [],
+          keywords:          [],
+          toneProfile:       [],
+          seoScore:          null,
+          emotionalScore:    null,
           clickabilityScore: null,
-          audienceMatch:    null,
-          isRecommended:    i === 0,
-          _problem:         r.problem || "",
-          _desiredOutcome:  r.desiredOutcome || "",
-          _targetAudience:  r.targetAudience || "",
+          audienceMatch:     null,
+          isRecommended:     i === 0,
+          _angle:            r.angle  || "",
+          _reason:           r.reason || "",
         }));
-      const titles = cards.map((c: any) => c.title).filter(Boolean);
+      const titles   = cards.map((c: any) => c.title).filter(Boolean);
       const enhanced = cards.map((c: any) => ({
-        title:    c.title,
-        subtitle: c.subtitle,
-        hook:     c.hook,
-        audience: c.audienceResonance?.[0] || "",
-        angle:    c.category
+        title:  c.title,
+        angle:  c.category,
+        hook:   c.hook,
+        reason: c._reason,
       }));
       res.setHeader("X-AI-Provider", usedProvider);
       return res.json({ titles, enhanced, cards, _provider: usedProvider });

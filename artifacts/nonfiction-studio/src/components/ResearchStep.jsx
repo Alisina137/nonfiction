@@ -41,8 +41,9 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
   const [subtitlesError, setSubtitlesError] = useState("");
 
   // Topic suggestion
-  const [topicLoading, setTopicLoading] = useState(false);
-  const [topicError, setTopicError]     = useState("");
+  const [topicLoading, setTopicLoading]   = useState(false);
+  const [topicError, setTopicError]       = useState("");
+  const [topicOptions, setTopicOptions]   = useState([]);
 
   const subtitleDebounceRef = useRef(null);
 
@@ -122,15 +123,15 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
     setSubtitlesLoading(true);
     setSubtitlesError("");
     try {
-      const ctx = fullProject ? buildBookContext({ ...fullProject, research }) : null;
       const data = await aiFetch("/api/ai/suggest-subtitles", {
         title,
         niche:     research?.mainNicheLabel || "",
         subNiche:  research?.subNicheLabel  || "",
-        bookTopic: research?.bookTopic      || "",
-        bookContext: ctx
+        deepNiche: research?.deepNicheLabel || "",
       });
-      const subs = Array.isArray(data.subtitles) ? data.subtitles.filter(Boolean) : [];
+      const subs = Array.isArray(data.subtitles)
+        ? data.subtitles.filter((s) => s?.subtitle)
+        : [];
       if (!subs.length) throw new Error("No subtitles returned. Try again.");
       setSubtitleSuggestions(subs);
     } catch (err) {
@@ -151,6 +152,7 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
     if (!title || topicLoading) return;
     setTopicLoading(true);
     setTopicError("");
+    setTopicOptions([]);
     try {
       const data = await aiFetch("/api/ai/suggest-topic", {
         title,
@@ -159,7 +161,9 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
         subNiche:  research?.subNicheLabel  || "",
         deepNiche: research?.deepNicheLabel || ""
       });
-      if (data?.topic) patch({ bookTopic: data.topic });
+      const opts = Array.isArray(data?.topics) ? data.topics.filter((t) => t?.topic) : [];
+      if (!opts.length) throw new Error("No topics returned. Try again.");
+      setTopicOptions(opts);
     } catch (err) {
       setTopicError(err?.message || "Failed to generate topic. Try again.");
     } finally {
@@ -209,23 +213,17 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
   }
 
   function applyTitle(titleData) {
-    const isObj   = typeof titleData === "object" && titleData !== null;
-    const title    = isObj ? (titleData.title    || "") : String(titleData || "");
-    const subtitle = isObj ? (titleData.subtitle || "") : "";
-    const angle    = isObj ? (titleData.angle    || "") : "";   // → bookTopic
-    const hook     = isObj ? (titleData.hook     || "") : "";   // → stanceOnTopic
-    const audience = isObj ? (titleData.audience || "") : "";   // → targetAudience
+    const isObj = typeof titleData === "object" && titleData !== null;
+    const title  = isObj ? (titleData.title  || "") : String(titleData || "");
+    const reason = isObj ? (titleData.reason || titleData.hook || "") : "";
 
     setResearch((prev) => ({
       ...prev,
-      bookTitle:   title,
-      ...(subtitle ? { bookSubtitle:   subtitle } : {}),
-      ...(angle    ? { bookTopic:      angle    } : {}),
-      ...(hook     ? { stanceOnTopic:  hook     } : {}),
-      ...(audience ? { targetAudience: audience } : {})
+      bookTitle: title,
+      ...(reason ? { stanceOnTopic: reason } : {}),
     }));
 
-    // Fetch subtitle suggestions for the chosen title
+    // Immediately fetch subtitle suggestions for the chosen title
     if (title) {
       clearTimeout(subtitleDebounceRef.current);
       subtitleDebounceRef.current = setTimeout(() => fetchSubtitles(title), 400);
@@ -342,6 +340,8 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
               <section className="mt-2 grid gap-2 sm:grid-cols-3">
                 {suggestedTitles.slice(0, 3).map((item) => {
                   const titleStr = typeof item === "string" ? item : item.title;
+                  const angle    = typeof item === "object" ? (item.angle  || "") : "";
+                  const reason   = typeof item === "object" ? (item.reason || item.hook || "") : "";
                   const active   = research.bookTitle === titleStr;
                   return (
                     <button
@@ -354,15 +354,15 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
                           : "border-slate-200 bg-white text-slate-800 hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md"
                       }`}
                     >
-                      <p className="text-sm font-semibold leading-snug">{titleStr}</p>
-                      {item.subtitle && (
-                        <p className={`mt-1 text-[11px] leading-snug ${active ? "text-sky-100" : "text-slate-500"}`}>
-                          {item.subtitle}
+                      {angle && (
+                        <p className={`mb-1 text-[9px] font-bold uppercase tracking-widest ${active ? "text-sky-200" : "text-slate-400"}`}>
+                          {angle}
                         </p>
                       )}
-                      {item.hook && (
-                        <p className={`mt-1.5 text-[10px] italic ${active ? "text-sky-200" : "text-slate-400"}`}>
-                          "{item.hook}"
+                      <p className="text-sm font-semibold leading-snug">{titleStr}</p>
+                      {reason && (
+                        <p className={`mt-1.5 text-[10px] italic leading-snug ${active ? "text-sky-200" : "text-slate-400"}`}>
+                          "{reason}"
                         </p>
                       )}
                     </button>
@@ -437,19 +437,26 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
               </p>
               <ul className="mt-1.5 space-y-1.5">
                 {subtitleSuggestions.map((sub) => {
-                  const active = research.bookSubtitle === sub;
+                  const subText = typeof sub === "string" ? sub : (sub.subtitle || "");
+                  const angle   = typeof sub === "object" ? (sub.angle || "") : "";
+                  const active  = research.bookSubtitle === subText;
                   return (
-                    <li key={sub}>
+                    <li key={subText}>
                       <button
                         type="button"
-                        onClick={() => patch({ bookSubtitle: sub })}
+                        onClick={() => patch({ bookSubtitle: subText })}
                         className={`w-full rounded-lg border px-3.5 py-2.5 text-left text-sm transition ${
                           active
                             ? "border-sky-500 bg-sky-500 text-white font-semibold shadow-sm"
                             : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50"
                         }`}
                       >
-                        {sub}
+                        {angle && (
+                          <span className={`block text-[9px] font-bold uppercase tracking-widest mb-1 ${active ? "text-sky-200" : "text-slate-400"}`}>
+                            {angle}
+                          </span>
+                        )}
+                        {subText}
                       </button>
                     </li>
                   );
@@ -489,13 +496,45 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
           {topicError && <p className="mt-1 text-xs text-red-600">{topicError}</p>}
           {topicLoading && (
             <p className="mt-1 text-xs text-slate-400 animate-pulse">
-              Generating topic description based on your title and niche…
+              Generating topic options based on your title and niche…
             </p>
           )}
-          {!topicError && !topicLoading && (
+          {!topicError && !topicLoading && topicOptions.length === 0 && (
             <p className="mt-1 text-[11px] text-slate-400">
               Tip: be specific — "Self-discipline for entrepreneurs" beats "discipline habits".
             </p>
+          )}
+          {topicOptions.length > 0 && (
+            <section className="mt-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Topic options — click to apply
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {topicOptions.map((opt) => {
+                  const active = research.bookTopic === opt.topic;
+                  return (
+                    <li key={opt.style}>
+                      <button
+                        type="button"
+                        onClick={() => patch({ bookTopic: opt.topic })}
+                        className={`w-full rounded-lg border px-3.5 py-2.5 text-left text-sm transition ${
+                          active
+                            ? "border-sky-500 bg-sky-500 text-white font-semibold shadow-sm"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+                        }`}
+                      >
+                        {opt.style && (
+                          <span className={`block text-[9px] font-bold uppercase tracking-widest mb-1 ${active ? "text-sky-200" : "text-slate-400"}`}>
+                            {opt.style}
+                          </span>
+                        )}
+                        {opt.topic}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           )}
         </section>
 

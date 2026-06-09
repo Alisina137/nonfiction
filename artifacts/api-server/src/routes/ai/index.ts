@@ -31,6 +31,7 @@ import {
   structurePrompt,
   subtitleSuggestPrompt,
   topicSuggestPrompt,
+  kdpSuggestPrompt,
   systemPrompt,
   titlesPrompt
 } from "./prompts.js";
@@ -141,29 +142,28 @@ router.post("/reset-providers", (_req, res) => {
 
 router.post("/suggest-subtitles", async (req, res) => {
   try {
-    const { title, niche, subNiche, bookTopic, bookContext } = req.body || {};
+    const { title, niche, subNiche, deepNiche } = req.body || {};
     if (!title?.trim()) return res.status(400).json({ error: "title is required" });
     const { text, usedProvider } = await runShort(
-      subtitleSuggestPrompt({ title, niche, subNiche, bookTopic, bookContext }),
+      kdpSuggestPrompt({
+        action:    "suggest_subtitles",
+        mainNiche: niche     || "",
+        subNiche:  subNiche  || "",
+        deepNiche: deepNiche || "",
+        title:     title.trim(),
+      }),
       systemPrompt(),
-      req,
-      res,
-      "subtitle"
+      req, res, "subtitle"
     );
-    let subtitles: string[] = [];
+    let subtitles: Array<{ subtitle: string; angle: string }> = [];
     try {
       const parsed = extractJSON(text);
-      subtitles = Array.isArray(parsed?.subtitles) ? parsed.subtitles.filter(Boolean) : [];
-    } catch {
-      // Regex fallback: extract any complete quoted strings from a "subtitles":[...] array
-      const arrayMatch = text.match(/"subtitles"\s*:\s*\[([^\]]*)/s);
-      if (arrayMatch) {
-        const body = arrayMatch[1];
-        subtitles = [...body.matchAll(/"((?:[^"\\]|\\.)*)"/g)]
-          .map((m) => m[1].replace(/\\"/g, '"').trim())
-          .filter(Boolean);
-      }
-    }
+      subtitles = Array.isArray(parsed?.subtitles)
+        ? parsed.subtitles
+            .filter((s: any) => typeof s?.subtitle === "string" && s.subtitle.trim())
+            .map((s: any) => ({ subtitle: s.subtitle.trim(), angle: s.angle || "" }))
+        : [];
+    } catch { /* leave subtitles empty */ }
     if (!subtitles.length) {
       return res.status(500).json({ error: "No subtitles returned. Try again." });
     }
@@ -178,23 +178,28 @@ router.post("/suggest-topic", async (req, res) => {
     const { title, subtitle, niche, subNiche, deepNiche } = req.body || {};
     if (!title?.trim()) return res.status(400).json({ error: "title is required" });
     const { text, usedProvider } = await runShort(
-      topicSuggestPrompt({ title, subtitle, niche, subNiche, deepNiche }),
+      kdpSuggestPrompt({
+        action:    "suggest_topics",
+        mainNiche: niche     || "",
+        subNiche:  subNiche  || "",
+        deepNiche: deepNiche || "",
+        title:     title.trim(),
+        subtitle:  subtitle  || "",
+      }),
       systemPrompt(),
-      req,
-      res,
-      "title"
+      req, res, "title"
     );
-    let topic = "";
+    let topics: Array<{ topic: string; style: string }> = [];
     try {
       const parsed = extractJSON(text);
-      topic = typeof parsed?.topic === "string" ? parsed.topic.trim() : "";
-    } catch {
-      // Regex fallback: extract the "topic":"..." value even if JSON is truncated
-      const m = text.match(/"topic"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
-      if (m) topic = m[1].replace(/\\"/g, '"').trim();
-    }
-    if (!topic) return res.status(500).json({ error: "No topic returned. Try again." });
-    res.json({ topic, usedProvider });
+      topics = Array.isArray(parsed?.topics)
+        ? parsed.topics
+            .filter((t: any) => typeof t?.topic === "string" && t.topic.trim())
+            .map((t: any) => ({ topic: t.topic.trim(), style: t.style || "" }))
+        : [];
+    } catch { /* leave topics empty */ }
+    if (!topics.length) return res.status(500).json({ error: "No topics returned. Try again." });
+    res.json({ topics, usedProvider });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ error: e.message });
   }

@@ -975,6 +975,248 @@ Rules:
 Return ONLY valid JSON: {"topic":"your topic description here"}`;
 }
 
+// ─── Unified KDP suggest prompt (titles / subtitles / topics) ─────────────────
+
+export function kdpSuggestPrompt({
+  action,
+  mainNiche,
+  subNiche,
+  deepNiche,
+  title,
+  subtitle,
+}: {
+  action:    "suggest_titles" | "suggest_subtitles" | "suggest_topics";
+  mainNiche: string;
+  subNiche:  string;
+  deepNiche?: string;
+  title?:    string;
+  subtitle?: string;
+}): string {
+  return `You are an elite Amazon KDP publishing strategist, nonfiction book positioning expert, and Amazon marketplace researcher.
+
+INPUTS
+
+Action:
+${action}
+
+Main Niche:
+${mainNiche}
+
+Sub-Niche:
+${subNiche}
+
+Deep Niche (Optional):
+${deepNiche || ""}
+
+Selected Title:
+${title || ""}
+
+Selected Subtitle:
+${subtitle || ""}
+
+IMPORTANT
+
+- Main Niche and Sub-Niche are required.
+- Deep Niche is optional.
+- Never request additional information.
+- If Deep Niche is empty, use Main Niche and Sub-Niche only.
+- If Deep Niche is provided, use it to improve specificity, audience targeting, positioning, and market differentiation.
+- Focus on Amazon KDP nonfiction books.
+- Optimize for buyer intent and conversion potential.
+- Avoid generic, vague, or AI-sounding content.
+- Sound like real bestselling nonfiction books.
+
+----------------------------------------------------
+STEP 1 - MARKET ANALYSIS
+----------------------------------------------------
+
+Before generating any output, analyze the niche and infer:
+
+- Target Audience
+- Primary Problem
+- Desired Outcome
+- Buyer Intent
+- Market Opportunity
+
+Apply this framework:
+
+Topic + Audience + Problem + Outcome
+
+Examples:
+
+Affiliate Marketing + College Students + Lack of Income + Build Online Revenue
+
+Productivity + Entrepreneurs + Lack of Focus + Get More Done
+
+Fitness + Women Over 40 + Slow Metabolism + Sustainable Weight Loss
+
+----------------------------------------------------
+ACTION: suggest_titles
+----------------------------------------------------
+
+If action = "suggest_titles"
+
+Generate exactly 3 title options.
+
+Use these title formulas:
+
+OPTION 1
+Benefit + Audience
+
+OPTION 2
+Unique Concept + Benefit
+
+OPTION 3
+Transformation-Focused Title
+
+TITLE RULES
+
+- Short and memorable
+- Commercially attractive
+- Bestseller style
+- Clear audience or benefit
+- Strong buyer appeal
+- Avoid keyword stuffing
+- Avoid generic wording
+- Avoid clickbait
+- Sound professional
+
+Return JSON:
+
+{
+  "titles": [
+    {
+      "title": "",
+      "angle": "Audience-Focused",
+      "reason": ""
+    },
+    {
+      "title": "",
+      "angle": "Benefit-Focused",
+      "reason": ""
+    },
+    {
+      "title": "",
+      "angle": "Transformation-Focused",
+      "reason": ""
+    }
+  ]
+}
+
+----------------------------------------------------
+ACTION: suggest_subtitles
+----------------------------------------------------
+
+If action = "suggest_subtitles"
+
+Generate exactly 3 subtitle options for the selected title.
+
+SUBTITLE FORMULA
+
+Problem + Outcome + Method
+
+Examples:
+
+- A Practical System to Beat Procrastination, Reduce Stress, and Get More Done Every Day
+
+- How to Build Better Habits, Stay Focused, and Achieve More Without Burnout
+
+- Proven Strategies for Managing Your Time, Increasing Productivity, and Reaching Your Goals
+
+SUBTITLE RULES
+
+- Expand on the promise of the title
+- Clarify the transformation
+- Focus on benefits
+- Sound professional
+- Sound publishable
+- Avoid fluff
+- Avoid buzzwords
+- Avoid AI-sounding language
+
+Return JSON:
+
+{
+  "subtitles": [
+    {
+      "subtitle": "",
+      "angle": "Benefit-Focused"
+    },
+    {
+      "subtitle": "",
+      "angle": "Problem-Solution"
+    },
+    {
+      "subtitle": "",
+      "angle": "Transformation-Focused"
+    }
+  ]
+}
+
+----------------------------------------------------
+ACTION: suggest_topics
+----------------------------------------------------
+
+If action = "suggest_topics"
+
+Generate exactly 3 topic descriptions.
+
+TOPIC FORMULA
+
+Audience + Problem + Outcome + Key Methods + Scope
+
+TOPIC RULES
+
+- Clearly define what the book covers
+- Provide enough detail to guide outline generation
+- Explain who the book is for
+- Explain the problems being solved
+- Explain the outcomes readers can expect
+- Mention key systems, frameworks, or methods that will be taught
+- Sound like a professional book concept
+
+Generate:
+
+OPTION 1
+Beginner-Friendly
+
+OPTION 2
+Practical & Action-Oriented
+
+OPTION 3
+Comprehensive Authority Style
+
+Return JSON:
+
+{
+  "topics": [
+    {
+      "topic": "",
+      "style": "Beginner-Friendly"
+    },
+    {
+      "topic": "",
+      "style": "Practical & Action-Oriented"
+    },
+    {
+      "topic": "",
+      "style": "Comprehensive Authority Style"
+    }
+  ]
+}
+
+----------------------------------------------------
+FINAL RULES
+----------------------------------------------------
+
+- Generate ONLY the content requested by the action.
+- Return ONLY valid JSON.
+- No markdown.
+- No explanations.
+- No additional text.
+- No code blocks.`;
+}
+
 export function bookContextBlock(ctx: any): string {
   if (!ctx) return "";
   const lines: string[] = [];
