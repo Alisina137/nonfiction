@@ -31,3 +31,9 @@ description: How the title normalization/validation/retry/fallback pipeline work
 ## Routes covered
 - `POST /api/ai/titles` — normalizer + retry + logging
 - `POST /api/book/contextual-titles` (all 3 modes: kdp-positioning, named, default)
+- `POST /api/ai/suggest-subtitles` — retry once on empty result; TOKEN_LIMITS.subtitle = 1200
+
+## Research state bugs (fixed)
+- `applyTitle()` in ResearchStep.jsx now auto-derives `bookTopic` from the title's `reason` field (≥40 chars) or constructs "title: practical guide for niche" — only when `bookTopic` is currently empty.
+- `stanceOnTopic` is only written by `applyTitle()` when it is currently empty (prevents silent overwrite on repeated title clicks).
+- AnalysisStep.jsx writes `research.bookTopic` from `intelligence.transformationPromise` after `generateIntelligence()` if topic is still empty; and auto-applies `posResult.topicOptions[0].topic` after `finalizePositioning()` if topic is still empty.

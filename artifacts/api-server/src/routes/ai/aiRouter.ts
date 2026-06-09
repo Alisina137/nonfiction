@@ -104,7 +104,7 @@ export const MODEL_BY_PROVIDER = Object.fromEntries(
 
 export const TOKEN_LIMITS: Record<string, number> = {
   title:              1500,
-  subtitle:            700,
+  subtitle:           1200,
   regenTitle:          250,
   outline:            1200,
   lesson:             6000,

@@ -217,11 +217,33 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
     const title  = isObj ? (titleData.title  || "") : String(titleData || "");
     const reason = isObj ? (titleData.reason || titleData.hook || "") : "";
 
-    setResearch((prev) => ({
-      ...prev,
-      bookTitle: title,
-      ...(reason ? { stanceOnTopic: reason } : {}),
-    }));
+    setResearch((prev) => {
+      // ── Bug #1 fix: auto-populate bookTopic if currently empty ───────────
+      let derivedTopic = prev.bookTopic?.trim() || "";
+      if (!derivedTopic) {
+        if (reason?.trim().length >= 40) {
+          // Use the AI rationale — it names the audience + transformation
+          derivedTopic = reason.trim();
+        } else {
+          // Construct a minimal positioning phrase from available niche context
+          const nicheCtx =
+            prev.deepNicheLabel?.trim() ||
+            prev.subNicheLabel?.trim()  ||
+            prev.mainNicheLabel?.trim() || "";
+          derivedTopic = nicheCtx
+            ? `${title}: practical guide for ${nicheCtx}.`
+            : title;
+        }
+      }
+
+      return {
+        ...prev,
+        bookTitle:  title,
+        bookTopic:  derivedTopic,
+        // ── Bug #3A fix: only write stanceOnTopic when it is not already set
+        ...(reason && !prev.stanceOnTopic?.trim() ? { stanceOnTopic: reason } : {}),
+      };
+    });
 
     // Immediately fetch subtitle suggestions for the chosen title
     if (title) {

@@ -150,30 +150,47 @@ router.post("/suggest-subtitles", async (req, res) => {
   try {
     const { title, niche, subNiche, deepNiche } = req.body || {};
     if (!title?.trim()) return res.status(400).json({ error: "title is required" });
-    const { text, usedProvider } = await runShort(
-      kdpSuggestPrompt({
-        action:    "suggest_subtitles",
-        mainNiche: niche     || "",
-        subNiche:  subNiche  || "",
-        deepNiche: deepNiche || "",
-        title:     title.trim(),
-      }),
-      systemPrompt(),
-      req, res, "subtitle"
-    );
-    let subtitles: Array<{ subtitle: string; angle: string }> = [];
-    try {
-      const parsed = extractJSON(text);
-      subtitles = Array.isArray(parsed?.subtitles)
-        ? parsed.subtitles
-            .filter((s: any) => typeof s?.subtitle === "string" && s.subtitle.trim())
-            .map((s: any) => ({ subtitle: s.subtitle.trim(), angle: s.angle || "" }))
-        : [];
-    } catch { /* leave subtitles empty */ }
+
+    const subtitlePrompt = kdpSuggestPrompt({
+      action:    "suggest_subtitles",
+      mainNiche: niche     || "",
+      subNiche:  subNiche  || "",
+      deepNiche: deepNiche || "",
+      title:     title.trim(),
+    });
+
+    function parseSubtitles(raw: string): Array<{ subtitle: string; angle: string }> {
+      try {
+        const parsed = extractJSON(raw);
+        if (!Array.isArray(parsed?.subtitles)) return [];
+        return parsed.subtitles
+          .filter((s: any) => typeof s?.subtitle === "string" && s.subtitle.trim().length >= 10)
+          .map((s: any) => ({ subtitle: s.subtitle.trim(), angle: s.angle || "" }));
+      } catch {
+        return [];
+      }
+    }
+
+    // ── Attempt 1 ────────────────────────────────────────────────────────
+    const first = await runShort(subtitlePrompt, systemPrompt(), req, res, "subtitle");
+    let subtitles = parseSubtitles(first.text);
+
+    // ── Retry once if empty or insufficient ──────────────────────────────
+    if (!subtitles.length) {
+      console.log("[suggest-subtitles] No subtitles on attempt 1 — retrying");
+      try {
+        const retry = await runShort(subtitlePrompt, systemPrompt(), req, res, "subtitle");
+        const retrySubtitles = parseSubtitles(retry.text);
+        if (retrySubtitles.length) subtitles = retrySubtitles;
+      } catch (retryErr: any) {
+        console.log("[suggest-subtitles] Retry failed:", retryErr?.message?.slice(0, 80));
+      }
+    }
+
     if (!subtitles.length) {
       return res.status(500).json({ error: "No subtitles returned. Try again." });
     }
-    res.json({ subtitles, usedProvider });
+    res.json({ subtitles, _provider: first.usedProvider });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ error: e.message });
   }

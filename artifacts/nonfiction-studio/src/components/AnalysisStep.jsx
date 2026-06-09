@@ -225,6 +225,19 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
 
       updateAnalysis((prev) => ({ ...prev, intelligence: data }));
 
+      // ── Bug #3B fix (intelligence seed): if bookTopic is still empty,
+      // seed it with the transformation promise from the intelligence profile.
+      if (!research.bookTopic?.trim() && updateResearch) {
+        const seed =
+          (typeof data.transformationPromise === "string" && data.transformationPromise.trim().length >= 30
+            ? data.transformationPromise.trim()
+            : "") ||
+          (typeof data.targetAudience === "string" && data.targetAudience.trim().length >= 30
+            ? data.targetAudience.trim()
+            : "");
+        if (seed) updateResearch({ bookTopic: seed });
+      }
+
       if (data._partial && Array.isArray(data._missingFields) && data._missingFields.length) {
         setLocalMsg(`Intelligence extracted but incomplete — missing: ${data._missingFields.join(", ")}. Re-analyze for a full profile.`);
       } else {
@@ -280,6 +293,15 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Positioning generation failed.");
       setPosResult(data);
+
+      // ── Bug #3B fix (positioning seed): auto-apply the first topic option
+      // to research.bookTopic when it is still empty after intelligence.
+      if (!research.bookTopic?.trim() && updateResearch) {
+        const firstTopic = Array.isArray(data.topicOptions) && data.topicOptions[0]?.topic;
+        if (firstTopic && firstTopic.trim().length >= 20) {
+          updateResearch({ bookTopic: firstTopic.trim() });
+        }
+      }
     } catch (e) {
       setPosError(e.message || "Failed to finalize positioning. Try again.");
     } finally {
