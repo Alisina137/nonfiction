@@ -120,10 +120,15 @@ function computeSuggestions(project) {
   const genreMatch = matchGenre(r.mainNicheLabel);
   if (genreMatch) s.genre = { value: genreMatch, source: "Research niche", confidence: 0.85 };
 
-  const rawAudience = intel.targetAudience?.trim() || r.targetAudience?.trim();
+  const intelAudienceStr = intel.targetAudience
+    ? (typeof intel.targetAudience === "object"
+        ? Object.values(intel.targetAudience).filter(Boolean).join(", ")
+        : String(intel.targetAudience))
+    : "";
+  const rawAudience = intelAudienceStr.trim() || r.targetAudience?.trim();
   if (rawAudience) {
     const matched = matchAudience(rawAudience);
-    s.audience = { value: matched || rawAudience, source: intel.targetAudience ? "Competitor Analysis" : "Research step", confidence: intel.targetAudience ? 0.85 : 0.72 };
+    s.audience = { value: matched || rawAudience, source: intelAudienceStr ? "Competitor Analysis" : "Research step", confidence: intelAudienceStr ? 0.85 : 0.72 };
   } else if (r.generalAudience?.trim()) {
     s.audience = { value: r.generalAudience.trim(), source: "Research step", confidence: 0.70 };
   }
@@ -137,8 +142,11 @@ function computeSuggestions(project) {
     const t = r.authorTones.find((x) => AUTHOR_TONE_OPTIONS.includes(x)) || matchTone(r.authorTones[0]);
     if (t) tone = { value: t, source: "Research step", confidence: 0.75 };
   }
-  if (!tone && intel.energyStyle) {
-    const t = matchTone(intel.energyStyle);
+  const intelToneHint = intel.energyStyle
+    || (typeof intel.authorPersonaGuidance === "object" ? intel.authorPersonaGuidance?.tone : null)
+    || null;
+  if (!tone && intelToneHint) {
+    const t = matchTone(typeof intelToneHint === "string" ? intelToneHint : String(intelToneHint));
     if (t) tone = { value: t, source: "Competitor Analysis", confidence: 0.70 };
   }
   if (tone) s.tone = tone;
@@ -162,8 +170,11 @@ function computeSuggestions(project) {
   if (personaNotes?.trim())
     s.authorPersonaNotes = { value: personaNotes.trim(), source: "Author Persona step", confidence: 0.85 };
 
-  if (intel.readerPainProfile?.trim())
-    s.readerPainPoints = { value: intel.readerPainProfile.trim(), source: "Competitor Analysis", confidence: 0.92 };
+  const intelPainStr = typeof intel.readerPainProfile === "string"
+    ? intel.readerPainProfile
+    : (Array.isArray(intel.readerPainPoints) ? intel.readerPainPoints.slice(0, 5).join("; ") : "");
+  if (intelPainStr?.trim())
+    s.readerPainPoints = { value: intelPainStr.trim(), source: "Competitor Analysis", confidence: 0.92 };
 
   const kwParts = [r.mainNicheLabel, r.subNicheLabel, r.deepNicheLabel, ...(r.bookTopic || "").split(" ").slice(0, 6)]
     .filter(Boolean).slice(0, 8);
