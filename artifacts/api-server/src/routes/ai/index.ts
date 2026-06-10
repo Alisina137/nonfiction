@@ -377,11 +377,11 @@ router.post("/outline", async (req, res) => {
 
 router.post("/niche-outline", async (req, res) => {
   try {
-    const { research, architecture, title, description, resources, bookContext } = req.body || {};
+    const { research, architecture, title, description, resources, bookContext, totalWords } = req.body || {};
     if (!architecture?.subNicheLabel)
       return res.status(400).json({ error: "Missing niche architecture" });
     const { text, usedProvider } = await runLong(
-      nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }),
+      nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext, totalWords }),
       nicheSystemPrompt(architecture),
       req,
       res,
