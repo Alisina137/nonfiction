@@ -98,9 +98,6 @@ function normalizeChapter(ch) {
     words: Number(ch.words) || 0,
     expanded: ch.expanded !== false,
     sections: Array.isArray(ch.sections) ? ch.sections.map(normalizeSection) : [],
-    importance: Number(ch.importance) > 0 ? Number(ch.importance) : undefined,
-    arcRole: ch.arcRole || undefined,
-    summary: ch.summary || undefined,
   };
 }
 
@@ -112,7 +109,6 @@ function normalizeSection(s) {
     words: Number(s.words) || 0,
     expanded: s.expanded !== false,
     subsections: Array.isArray(s.subsections) ? s.subsections.map(normalizeSub) : [],
-    importance: Number(s.importance) > 0 ? Number(s.importance) : undefined,
   };
 }
 
@@ -380,15 +376,13 @@ export default function OutlineStep({
     setGenBusy(true);
     setGenStatus("");
     try {
-      const totalWords = midpointTargetWords(bookDetails?.wordCountRange || "");
       const data = await aiFetch("/api/ai/niche-outline", {
         research: fullProject.research,
         architecture: arch,
         title: resolveBookTitle(fullProject),
         description: fullProject.description || "",
         resources: fullProject?.resources ?? null,
-        bookContext: buildBookContext(fullProject),
-        totalWords,
+        bookContext: buildBookContext(fullProject)
       });
       const applied = applyNicheOutlineToBookOutline(data, arch);
       setBookOutline((prev) => {
@@ -604,11 +598,6 @@ export default function OutlineStep({
                       title="Regenerate chapter title"
                     />
                   </div>
-                  {ch.importance != null && (
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200/70">
-                      {ch.importance}% importance
-                    </span>
-                  )}
                 </div>
                 <div className="flex flex-1 flex-wrap items-center gap-3 md:justify-end lg:gap-5">
                   <label className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-700">
@@ -681,30 +670,23 @@ export default function OutlineStep({
                           <div className="min-w-0 flex-[2]">
                             <div className="flex items-start gap-2">
                               <span className="mt-0.5 shrink-0 text-[11px] font-bold uppercase tracking-wide text-sky-700">{displaySec}</span>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-start gap-1">
-                                  <EditableTitle
-                                    dense
-                                    key={`${sec.id}-t`}
-                                    value={sec.title}
-                                    onCommit={(t) => updateSectionById(ch.id, sec.id, () => ({ ...sec, title: t || displaySec }))}
-                                  />
-                                  <RegenBtn
-                                    busy={!!regenBusy[sec.id]}
-                                    onClick={() => regenTitle({
-                                      level: "section",
-                                      id: sec.id,
-                                      currentTitle: sec.title,
-                                      parentChapterId: ch.id,
-                                    })}
-                                    title="Regenerate section title"
-                                  />
-                                </div>
-                                {sec.importance != null && (
-                                  <span className="mt-0.5 inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 ring-1 ring-sky-200/70">
-                                    {sec.importance}%
-                                  </span>
-                                )}
+                              <div className="min-w-0 flex-1 flex items-start gap-1">
+                                <EditableTitle
+                                  dense
+                                  key={`${sec.id}-t`}
+                                  value={sec.title}
+                                  onCommit={(t) => updateSectionById(ch.id, sec.id, () => ({ ...sec, title: t || displaySec }))}
+                                />
+                                <RegenBtn
+                                  busy={!!regenBusy[sec.id]}
+                                  onClick={() => regenTitle({
+                                    level: "section",
+                                    id: sec.id,
+                                    currentTitle: sec.title,
+                                    parentChapterId: ch.id,
+                                  })}
+                                  title="Regenerate section title"
+                                />
                               </div>
                             </div>
                           </div>

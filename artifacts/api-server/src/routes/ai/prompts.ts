@@ -774,7 +774,7 @@ Idea: ${idea}, Title: ${title}, Audience: ${audience}, Tone: ${tone}
 Return JSON: {"chapters":[{"title":"...","summary":"1-2 lines"}]}`;
 }
 
-export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext, totalWords }: any) {
+export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }: any) {
   const a = architecture || {};
   const chapterCount = a.recommendedChapters?.default || 10;
   const flow = (a.chapterFlow || []).map((beat: string, i: number) => `${i + 1}. ${beat}`).join("\n");
@@ -782,62 +782,69 @@ export function nicheOutlinePrompt({ research, architecture, title, description,
     ? research.authorTones.join(", ")
     : "direct and authoritative";
   const isStory = ["romance-arc", "romantasy-hybrid", "suspense-escalation", "mystery-procedural", "hero-journey", "narrative-arc"].includes(a.structureType || "");
-  const bookWords = Number(totalWords) || Number(a.recommendedWordCount?.midpoint) || 45000;
 
-  return `You are a professional nonfiction author, developmental editor, and book strategist.
-Your task: generate a complete "Niche Native Outline" — a fully custom hierarchical outline planned specifically for THIS book, THIS reader, and THIS transformation.
+  return `You are an expert AI Book Architect, Academic Formatter, and Amazon KDP Publishing Specialist.
 
-This is NOT a template. Think like a bestselling author who knows the audience intimately, a developmental editor who kills filler, and a book strategist who maximises commercial impact.
+Your task: Generate a ${chapterCount}-chapter book outline that combines thesis-grade organizational intelligence with bestseller-quality readability and commercial appeal. The result must feel like a professionally published Amazon bestseller — not a dry academic document, not a generic template.
 
-STRICTLY FORBIDDEN titles at every level:
-"Beat 1/2/3", "Scene N", "Section N/A/B", "Topic N", "Subtopic", "Chapter N", "Key Point", "Untitled", any numbered generic label, any title that repeats a sibling title's concept.
+========================================
+HIERARCHY — apply at every level
+========================================
+Chapter → Section → Subsection → Topic Block
+Each level flows logically from broad concept to detailed concept.
+Hierarchy must be deep, intentional, and logically progressive.
 
-GOOD chapter title examples:
-- "The Hidden Cost of Living in Reaction Mode"
-- "Identifying the Real Bottlenecks in Your Day"
-- "Building a Decision-Making System That Reduces Stress"
-- "Designing a Calendar That Protects What Matters"
-- "Turning Productive Days into Lasting Habits"
+========================================
+TITLE QUALITY — NON-NEGOTIABLE
+========================================
+Every title at EVERY level must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY.
+
+STRICTLY FORBIDDEN titles (never generate these):
+"Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder",
+"Chapter N", "Key Point", "Emotional Theme", "Untitled", any numbered generic label.
 
 GOOD section/subsection title examples:
-- "Why Willpower Fails by Mid-Afternoon"
-- "Spotting Time Leaks in Everyday Decisions"
-- "Creating Friction Against Your Biggest Distractions"
+- "The Fear of Falling Behind"
+- "When Failure Becomes Identity"
+- "Curated Success vs Real Life"
 - "The Quiet Weight of Comparison"
 - "Breaking the Perfectionism Loop"
+- "What Nobody Tells You About Starting Over"
+
+GOOD chapter title examples:
+- "The Invisible Rules That Keep You Stuck"
+- "Rewiring the Stories You Tell Yourself"
+- "Building Systems That Outlast Motivation"
 
 ========================================
 BOOK PROFILE
 ========================================
 TITLE: ${title || ""}
-TOPIC: ${safeStr(research?.bookTopic) || ""}
+TOPIC: ${research?.bookTopic || ""}
 NICHE: ${a.mainNicheLabel || ""} › ${a.subNicheLabel || ""}
-TARGET AUDIENCE: ${safeStr(research?.targetAudience) || bookContext?.audience || ""}
+TARGET AUDIENCE: ${research?.targetAudience || ""}
 AUTHOR TONE: ${tones}
-PUBLISHING GOAL: ${safeStr(research?.publishingGoal) || ""}
-AUTHOR STANCE: ${safeStr(research?.stanceOnTopic) || ""}
-WHAT MAKES IT STAND OUT: ${safeStr(research?.standout) || ""}
+PUBLISHING GOAL: ${research?.publishingGoal || ""}
+AUTHOR STANCE: ${research?.stanceOnTopic || ""}
+WHAT MAKES IT STAND OUT: ${research?.standout || ""}
 DESCRIPTION: ${description || ""}
-${bookContext ? `READER PAIN PROFILE: ${bookContext.readerPainProfile || ""}
-READER TRANSFORMATION PROMISE: ${bookContext.transformationPromise || ""}
-USP: ${bookContext.usp || ""}
+${bookContext ? `USP: ${bookContext.usp || ""}
 DIFFERENTIATION: ${bookContext.differentiation || ""}
+READER PAIN PROFILE: ${bookContext.readerPainProfile || ""}
+READER TRANSFORMATION PROMISE: ${bookContext.transformationPromise || ""}
 MARKET GAP TO FILL: ${bookContext.marketGap || ""}
+WRITING STYLE BENCHMARK: ${bookContext.writingStyleFingerprint || ""}
 POSITIONING STRATEGY: ${bookContext.positioningStrategy || ""}
 EMOTIONAL TRIGGERS: ${bookContext.emotionalTriggers || ""}
 AUTHOR BACKGROUND & STYLE: ${bookContext.authorSummary || ""}
-KEY SELLING POINTS: ${bookContext.keySellingPoints || ""}
-BOOK FLOW PREVIEW: ${bookContext.bookFlowSummary || ""}
+KEY SELLING POINTS:
+${bookContext.keySellingPoints || ""}
 COMPETING TITLES (differentiate from these): ${bookContext.competitorTitles || ""}` : ""}
 ${resources ? resourcesBlock(resources, "outline") : ""}
-
-TOTAL BOOK WORD COUNT: ${bookWords}
-TARGET CHAPTER COUNT: ${chapterCount}
-
 ========================================
-NICHE STRUCTURAL BLUEPRINT
+STRUCTURAL BLUEPRINT
 ========================================
-Structure type: ${a.structureType || "framework-driven"}
+Structure type: ${a.structureType || "narrative"}
 Pacing: ${a.pacingType || "standard"}
 Emotional arc: ${a.emotionalArc || "progressive"}
 Bestseller patterns: ${(a.bestsellerPatterns || []).join("; ") || ""}
@@ -848,146 +855,36 @@ Niche beat flow:
 ${flow || "(apply sub-niche-native escalation — never generic beats)"}
 
 ========================================
-PHASE 1 — CHAPTER TITLES (Reader Journey)
+CHAPTER CONTENT RULES
 ========================================
-Generate exactly ${chapterCount} chapter titles.
+${isStory ? `STORY/NARRATIVE STRUCTURE — each chapter must contain:
+- Clear narrative purpose in the story arc
+- Subsections represent: turning points, emotional shifts, conflicts, discoveries, climaxes, resolutions
+- Thematic consistency across chapters
+- Character development / emotional progression built into subsection titles` : `NONFICTION STRUCTURE — each chapter should ideally contain:
+- Opening hook (grabs attention immediately)
+- Core concept (what this chapter teaches)
+- Explanation (why it matters, evidence-backed)
+- Example or case study (real-world grounding)
+- Framework or system (practical model the reader can use)
+- Actionable takeaway (what to do next)
+- Mini summary or reflection prompt`}
 
-Rules:
-- Create a logical, progressive journey from the reader's current problem → promised transformation
-- Each chapter must have a UNIQUE purpose — zero concept overlap between chapters
-- Titles must feel like a bestselling author wrote them
-- No generic phrasing ("Chapter 1: Understanding X", "Mastering Y")
-- Each chapter naturally leads into the next
-- Titles should create emotional resonance or intellectual curiosity
-- The sequence must move from awareness → understanding → framework → implementation → mastery (or the equivalent arc for this niche)
+CONTENT QUALITY:
+- Each chapter must build on the previous one — no repetition, no filler
+- Deepen stakes or insight progressively throughout the book
+- Smooth narrative transitions between chapters
+- No shallow sections — every subsection must deliver real value
 
-${isStory ? `STORY/NARRATIVE NOTE: chapters represent story beats — turning points, escalations, climaxes, resolutions. Subsections are scene-level moments within each beat.` : `NONFICTION NOTE: each chapter delivers one core teaching. The journey arc should map the reader from pain/problem → insight → system → transformed outcome.`}
-
-========================================
-PHASE 2 — CHAPTER IMPORTANCE SCORING
-========================================
-Assign an importance percentage to each chapter.
-
-MANDATORY RULES:
-- All importance values MUST sum to EXACTLY 100
-- Do NOT distribute evenly — chapters have different strategic weight
-- Weight by: reader impact, transformation depth, explanation complexity, strategic position
-- Anchor/transformation chapters receive higher importance
-- Introductory or wrap-up chapters receive lower importance
-
-Example (8 chapters): 8, 10, 14, 18, 20, 16, 10, 4
+CHAPTERS TO GENERATE: ${chapterCount}
+SECTIONS PER CHAPTER: 2-3 (with fully specific, real titles — no generic labels)
+SUBSECTIONS PER SECTION: 2-3 (with fully specific, real titles — no generic labels)
 
 ========================================
-PHASE 3 — CHAPTER WORD COUNTS
+OUTPUT FORMAT
 ========================================
-Calculate: chapterWords = round(${bookWords} × importance / 100)
-
-Adjust the last chapter so that sum(all chapterWords) == ${bookWords} exactly.
-
-========================================
-PHASE 4 — SECTION PLANNING (2–4 per chapter)
-========================================
-Decide how many sections each chapter needs (2, 3, or 4). Do NOT default every chapter to 3.
-
-Decision guide:
-- Simple, focused chapters → 2 sections
-- Standard depth chapters → 3 sections
-- Complex or multi-angle chapters → 4 sections
-
-Each section title must:
-- Directly expand the chapter's central concept
-- Cover a distinct angle (causes / psychology / framework / implementation / evidence / etc.)
-- Follow a logical learning sequence within the chapter
-- Be specific and publication-ready
-- NOT repeat concepts from sibling sections
-
-========================================
-PHASE 5 — SECTION WORD COUNTS
-========================================
-Distribute chapterWords across sections UNEQUALLY (importance-weighted).
-
-- No equal distribution
-- More important sections receive more words
-- sum(sectionWords) MUST equal chapterWords exactly
-- Assign an importance percentage to each section (must sum to 100 within each chapter)
-
-========================================
-PHASE 6 — SUBSECTION PLANNING (2–4 per section)
-========================================
-Decide how many subsections each section needs (2, 3, or 4). Do NOT default every section to 3.
-
-Decision guide:
-- Brief, focused sections → 2 subsections
-- Standard depth → 3 subsections
-- Multi-concept sections → 4 subsections
-
-Each subsection title must:
-- Be specific, emotionally resonant, and commercially publishable
-- Support the parent section exclusively
-- Add unique value not present in any sibling subsection
-
-========================================
-PHASE 7 — SUBSECTION WORD COUNTS
-========================================
-Distribute sectionWords across subsections UNEQUALLY.
-
-- No equal distribution
-- sum(subsectionWords) MUST equal sectionWords exactly
-
-========================================
-PHASE 8 — VALIDATION (perform before outputting)
-========================================
-Self-check every constraint:
-1. Chapter importance values sum to exactly 100? If not → fix.
-2. sum(chapterWords) == ${bookWords}? If not → adjust last chapter.
-3. For each chapter: sum(sectionWords) == chapterWords? If not → proportionally rebalance sections.
-4. For each section: sum(subsectionWords) == sectionWords? If not → proportionally rebalance subsections.
-5. No two chapter titles share a concept? If overlap found → rewrite the duplicate.
-6. Section counts vary across chapters (not all exactly 3)? If all are 3 → vary at least a third of chapters.
-7. Subsection counts vary across sections? If all are 3 → vary at least a third of sections.
-8. All titles are specific and publication-ready? No generic labels?
-
-Fix ALL failures before outputting.
-
-========================================
-OUTPUT FORMAT — return ONLY valid JSON
-========================================
-{
-  "totalWords": ${bookWords},
-  "chapters": [
-    {
-      "title": "Specific chapter title",
-      "importance": 15,
-      "words": 6750,
-      "arcRole": "opening hook|escalation|climax|transformation|revelation|payoff|resolution|etc",
-      "summary": "2-sentence reader-focused summary of what this chapter achieves",
-      "sections": [
-        {
-          "title": "Specific section title",
-          "importance": 40,
-          "words": 2700,
-          "subsections": [
-            { "title": "Specific subsection title", "words": 900 },
-            { "title": "Specific subsection title", "words": 1000 },
-            { "title": "Specific subsection title", "words": 800 }
-          ]
-        },
-        {
-          "title": "Specific section title",
-          "importance": 60,
-          "words": 4050,
-          "subsections": [
-            { "title": "Specific subsection title", "words": 2025 },
-            { "title": "Specific subsection title", "words": 2025 }
-          ]
-        }
-      ]
-    }
-  ],
-  "architectureNotes": "Brief note on overall structural strategy and how chapters build on each other"
-}
-
-No markdown. No explanation. Return ONLY the JSON object.`;
+Return ONLY valid JSON — no markdown, no explanation:
+{"chapters":[{"title":"Specific chapter title signaling transformation or insight","summary":"2-sentence summary of what this chapter achieves for the reader","arcRole":"opening hook|escalation|climax|resolution|transformation|revelation|payoff|etc","sections":[{"title":"Specific concept, conflict, or angle within the chapter","subsections":[{"title":"Precise emotionally-specific insight, tactic, or story beat","intent":"What shift or insight this delivers to the reader"}]}]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
 }
 
 export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
