@@ -133,7 +133,7 @@ export default function ProviderStatusBadge() {
   const panelRef  = useRef(null);
   const btnRef    = useRef(null);
 
-  const { models, availableCount, loading, lastRefresh, refresh, toggleManualDisabled } = useModelStatus();
+  const { models, availableCount, loading, lastRefresh, refresh, toggleManualDisabled, resetManualDisabled } = useModelStatus();
 
   const totalCount = Object.keys(PROVIDER_DEFS).length;
 
@@ -180,8 +180,9 @@ export default function ProviderStatusBadge() {
     setResetting(true);
     try {
       await resetAllProviders();
+      resetManualDisabled();
       await refresh();
-      setToast({ message: "All provider states reset — every model is now available.", id: Date.now() });
+      setToast({ message: "All providers reset — quota cleared and all models re-enabled.", id: Date.now() });
     } catch {
       setToast({ message: "Reset failed. Try refreshing the page.", id: Date.now(), kind: "warn" });
     } finally {
@@ -197,9 +198,9 @@ export default function ProviderStatusBadge() {
   const allModels = Object.values(models).sort((a, b) => a.order - b.order);
 
   const statusSummaryColor =
-    availableCount >= 5 ? "text-emerald-700" :
-    availableCount >= 3 ? "text-amber-700"   :
-    availableCount >= 1 ? "text-amber-600"   :
+    availableCount >= totalCount ? "text-emerald-700" :
+    availableCount >= 2          ? "text-amber-700"   :
+    availableCount >= 1          ? "text-amber-600"   :
     "text-red-600";
 
   return (

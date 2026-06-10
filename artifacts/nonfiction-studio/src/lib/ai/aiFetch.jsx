@@ -78,6 +78,10 @@ export function clearLocallyExhaustedProviders() {
   try { window.localStorage.removeItem(EXHAUSTED_KEY); } catch {}
 }
 
+export function clearManuallyDisabledProviders() {
+  try { window.localStorage.removeItem(MANUAL_OFF_KEY); } catch {}
+}
+
 // ─── Manual disable/enable ────────────────────────────────────────────────────
 
 export function getManuallyDisabledProviders() {
@@ -180,8 +184,10 @@ export class GenerationCanceledError extends Error {
 // ─── Reset all client-side provider state ─────────────────────────────────────
 
 export async function resetAllProviders() {
-  // Only reset quota/exhaustion state — manual enable/disable preferences are preserved
   clearLocallyExhaustedProviders();
+  clearManuallyDisabledProviders();
+  lastProvider = null;
+  emit("provider", { provider: null });
   try {
     await fetch("/api/ai/reset-providers", { method: "POST" });
   } catch {}

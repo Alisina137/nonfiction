@@ -12,6 +12,7 @@ import {
   getLocallyExhaustedProviders,
   getManuallyDisabledProviders,
   setManuallyDisabled,
+  clearManuallyDisabledProviders,
   EXHAUSTED_KEY
 } from "./aiFetch";
 
@@ -152,6 +153,11 @@ export function useModelStatus() {
     return () => clearTimeout(expiryRef.current);
   }, [localTick]);
 
+  function resetManualDisabled() {
+    clearManuallyDisabledProviders();
+    setManualDisabledState(new Set());
+  }
+
   function toggleManualDisabled(providerId) {
     const currentStatus = buildMergedStatus(serverProviders, manualDisabled)[providerId]?.status;
     // Never allow toggling exhausted / offline / unconfigured models
@@ -182,5 +188,5 @@ export function useModelStatus() {
     (m) => m.status === "exhausted" || m.status === "offline"
   ).length;
 
-  return { models, availableCount, exhaustedCount, loading, lastRefresh, refresh, toggleManualDisabled };
+  return { models, availableCount, exhaustedCount, loading, lastRefresh, refresh, toggleManualDisabled, resetManualDisabled };
 }
