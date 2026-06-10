@@ -105,12 +105,13 @@ export default function WriteStep({
     try {
       setStatus(`Building writing strategy for "${block.chapterContext?.title}"…`);
       const data = await aiFetch("/api/ai/chapter-strategy", {
-        chapterTitle: block.chapterContext?.title || "",
-        chapterNumber: block.chapterContext?.number || "",
-        sectionTitles: block.chapterContext?.sectionTitles || [],
-        bookStructure: bookStructureVal(fullProject),
-        bookTone: writingTone(fullProject),
-        bookContext: buildBookContext(fullProject)
+        chapterTitle:   block.chapterContext?.title   || "",
+        chapterNumber:  block.chapterContext?.number  || "",
+        chapterPurpose: block.chapterContext?.summary || "",
+        sectionTitles:  block.chapterContext?.sectionTitles || [],
+        bookStructure:  bookStructureVal(fullProject),
+        bookTone:       writingTone(fullProject),
+        bookContext:    buildBookContext(fullProject)
       });
       const strategy = data.strategy || null;
       if (strategy) setChapterStrategies((prev) => ({ ...prev, [key]: strategy }));
@@ -164,8 +165,12 @@ export default function WriteStep({
     try {
       const data = await aiFetch("/api/ai/improve", {
         action,
-        currentText: activeProse,
-        tone: writingTone(fullProject)
+        currentText:     activeProse,
+        tone:            writingTone(fullProject),
+        audience:        writingAudience(fullProject),
+        bookStructure:   bookStructureVal(fullProject),
+        subsectionTitle: activeBlock?.label || "",
+        bookContext:     buildBookContext(fullProject)
       });
       setProse(activeBlock.id, data.text || "");
       setStatus("Applied AI refinement.");

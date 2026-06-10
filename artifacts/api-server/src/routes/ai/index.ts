@@ -92,7 +92,7 @@ function compressLessonBody(body: any): any {
   } : chapterContext;
 
   const compressedPrev = Array.isArray(previousConcepts)
-    ? previousConcepts.slice(-2).map((c: any) =>
+    ? previousConcepts.slice(-8).map((c: any) =>
         typeof c === "string" ? c.slice(0, 120) : { title: c.title, summary: String(c.summary || "").slice(0, 120) }
       )
     : previousConcepts;
@@ -471,9 +471,9 @@ router.post("/extract-resource", async (req, res) => {
 
 router.post("/improve", async (req, res) => {
   try {
-    const { action, currentText, tone } = req.body || {};
+    const { action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext } = req.body || {};
     const { text, usedProvider } = await runLong(
-      improvementPrompt({ action, currentText, tone }),
+      improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext }),
       systemPrompt(),
       req,
       res,

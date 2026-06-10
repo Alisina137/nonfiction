@@ -11,6 +11,18 @@ function syntheticSubsection(title, role) {
   };
 }
 
+/** Build subsection context from the real outline object, falling back gracefully. */
+function realSubsection(sub, fallbackRole) {
+  return {
+    title:       sub.title || "Subsection",
+    description: sub.explanation || sub.description || sub.objective || sub.intent || `Develop "${sub.title}" with concrete, specific insight.`,
+    strategy:    sub.strategy    || fallbackRole,
+    ...(Array.isArray(sub.keyPoints) && sub.keyPoints.length ? { keyPoints: sub.keyPoints } : {}),
+    ...(sub.application ? { application: sub.application } : {}),
+    ...(sub.intent      ? { intent: sub.intent }            : {}),
+  };
+}
+
 export function enumerateWriteBlocks(bookOutline) {
   const o = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const blocks = [];
@@ -36,10 +48,11 @@ export function enumerateWriteBlocks(bookOutline) {
   chapters.forEach((ch, ci) => {
     const chapterKey = ch.id || `ch-${ci}`;
     const chapterContext = {
-      index: ci,
-      number: ci + 1,
-      title: ch.title || `Chapter ${ci + 1}`,
-      words: Number(ch.words) || 0,
+      index:        ci,
+      number:       ci + 1,
+      title:        ch.title   || `Chapter ${ci + 1}`,
+      summary:      ch.summary || "",
+      words:        Number(ch.words) || 0,
       sectionTitles: Array.isArray(ch.sections) ? ch.sections.map((s) => s.title || "Section") : []
     };
     const sections = Array.isArray(ch.sections) ? ch.sections : [];
@@ -54,10 +67,7 @@ export function enumerateWriteBlocks(bookOutline) {
           chapterKey,
           chapterContext,
           sectionTitle: sec.title || null,
-          subsection: syntheticSubsection(
-            sec.title || "Section",
-            `Section-level lesson within ${chapterContext.title}.`
-          )
+          subsection: realSubsection(sec, `Section-level lesson within ${chapterContext.title}.`)
         });
         return;
       }
@@ -70,10 +80,7 @@ export function enumerateWriteBlocks(bookOutline) {
           chapterKey,
           chapterContext,
           sectionTitle: sec.title || null,
-          subsection: syntheticSubsection(
-            sub.title || "Subsection",
-            `Subsection in ${sec.title || "section"} — deliver one new framework or tactic.`
-          )
+          subsection: realSubsection(sub, `Subsection in ${sec.title || "section"} — deliver one new framework or tactic.`)
         });
       });
     });
@@ -138,7 +145,7 @@ export function collectPreviousConcepts(blocks, lessons, beforeIndex) {
   for (let i = 0; i < beforeIndex; i += 1) {
     const id = blocks[i]?.id;
     const entry = id ? lessons?.[id] : null;
-    const fw = str(entry?.lesson?.framework);
+    const fw = str(entry?.lesson?.keyTakeaway || entry?.lesson?.framework);
     const title = str(entry?.lesson?.title) || str(blocks[i]?.label);
     if (fw) concepts.push(fw);
     else if (title) concepts.push(title);

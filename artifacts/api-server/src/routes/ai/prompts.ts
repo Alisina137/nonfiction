@@ -1577,8 +1577,58 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 }`;
 }
 
-export function improvementPrompt({ action, currentText, tone }: any) {
-  return `Improve the writing with action "${action}" (tone: "${tone}"). Return only the refined text.\n${currentText}`;
+export function improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext }: any) {
+  const toneInstr = resolveToneInstruction(tone || "");
+
+  const contextLines: string[] = [];
+  if (bookContext?.title)        contextLines.push(`Book: "${bookContext.title}"`);
+  if (audience || bookContext?.audience)
+    contextLines.push(`Target Reader: ${audience || bookContext.audience}`);
+  if (bookStructure || bookContext?.structure)
+    contextLines.push(`Book Structure: ${bookStructure || bookContext.structure}`);
+  if (subsectionTitle)           contextLines.push(`Subsection: ${subsectionTitle}`);
+  if (bookContext?.bookTopic)    contextLines.push(`Core Topic: ${bookContext.bookTopic}`);
+  if (bookContext?.usp)          contextLines.push(`USP: ${bookContext.usp}`);
+  if (bookContext?.authorSummary) contextLines.push(`Author Voice: ${String(bookContext.authorSummary).slice(0, 200)}`);
+  const ctxBlock = contextLines.length ? contextLines.join("\n") + "\n" : "";
+
+  const ACTION_INSTRUCTIONS: Record<string, string> = {
+    sharpen:     "Rewrite for maximum clarity and precision. Remove vague language, redundancy, and motivational filler. Every sentence must earn its place. Keep the same length.",
+    shorten:     "Tighten the writing by at least 20%. Cut redundancy, filler, and over-explanation. Preserve every key insight, example, and named framework.",
+    expand:      "Deepen the content — add a concrete example, case study, or nuanced sub-point that the reader can immediately apply. Do NOT add filler or generic summaries. Add genuine depth only.",
+    add_example: "Insert a vivid, specific, real-world example that makes the main concept tangible. Place it naturally within the existing flow. The example must be concrete, not hypothetical.",
+  };
+  const instruction = ACTION_INSTRUCTIONS[action] || `Apply the following refinement: "${action}".`;
+
+  return `You are a professional nonfiction editor refining a single book section.
+
+════════════════════════════════════
+BOOK CONTEXT
+════════════════════════════════════
+${ctxBlock}Voice & Tone: ${tone || "Direct & practical"}
+Tone Instruction: ${toneInstr}
+
+════════════════════════════════════
+EDITING ACTION
+════════════════════════════════════
+${instruction}
+
+════════════════════════════════════
+EDITING RULES (non-negotiable)
+════════════════════════════════════
+- Match the existing voice, tone, and reading level exactly — do NOT shift register
+- Do NOT change the structural purpose of the section
+- Do NOT add a generic summary paragraph or motivational closer at the end
+- Do NOT introduce markdown headers inside the prose
+- Preserve any specific examples, data points, named frameworks, or statistics already present
+- The refined text must feel like it belongs in a book with the context above
+
+════════════════════════════════════
+TEXT TO IMPROVE
+════════════════════════════════════
+${currentText}
+
+Return ONLY the refined prose — no commentary, no JSON, no metadata.`;
 }
 
 export function architecturePreviewPrompt({
