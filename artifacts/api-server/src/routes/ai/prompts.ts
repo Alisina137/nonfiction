@@ -1,5 +1,15 @@
 // ─── Shared project data extractor ───────────────────────────────────────────
 
+function safeStr(v: any): string {
+  if (typeof v === "string") return v.trim();
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const s = v.primary || v.description || v.value ||
+      (Object.values(v) as any[]).find((x: any) => typeof x === "string") || "";
+    return typeof s === "string" ? s.trim() : "";
+  }
+  return "";
+}
+
 function extractProjectData(project: any) {
   const research  = project?.research  || {};
   const intel     = project?.analysis?.intelligence || {};
@@ -21,7 +31,7 @@ function extractProjectData(project: any) {
   const topic    = research.bookTopic || "";
   const niche    = [research.mainNicheLabel, research.subNicheLabel, research.deepNicheLabel].filter(Boolean).join(" › ");
   const genre    = bd.genre || research.mainNicheLabel || "";
-  const audience = bd.audience || pb.proposedAudience || research.targetAudience || intel.targetAudience || "";
+  const audience = safeStr(bd.audience) || safeStr(pb.proposedAudience) || safeStr(research.targetAudience) || safeStr(intel.targetAudience) || "";
   const tone     = bd.tone || pb.proposedTone || intel.energyStyle || "";
   const structure = bd.structure || "";
 

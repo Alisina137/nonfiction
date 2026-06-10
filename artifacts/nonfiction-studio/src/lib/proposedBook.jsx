@@ -11,6 +11,15 @@ function previewSentence(text, max = 520) {
   return `${t.slice(0, max - 1)}…`;
 }
 
+function toStr(v) {
+  if (typeof v === "string") return v;
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    return v.primary || v.description || v.value ||
+      Object.values(v).find((x) => typeof x === "string") || "";
+  }
+  return "";
+}
+
 /** Local synthesis for the Proposed Book step (replace with AI later). */
 export function buildSyntheticProposedBookContent(project, focusTags) {
   const tags = [...new Set(focusTags.map((t) => String(t || "").trim()).filter(Boolean))];
@@ -19,7 +28,7 @@ export function buildSyntheticProposedBookContent(project, focusTags) {
   const topic = (research.bookTopic || "").trim();
   const genre = (research.mainNicheLabel || research.genre || "nonfiction").trim();
   const standout = [(research.standout || "").trim(), (research.stanceOnTopic || "").trim()].filter(Boolean).join(" ");
-  const audience = (research.targetAudience || "").trim() || research.generalAudience || "readers who need this solved";
+  const audience = toStr(research.targetAudience).trim() || research.generalAudience || "readers who need this solved";
   const tonesList = Array.isArray(research.authorTones)
     ? research.authorTones.filter(Boolean).join(", ")
     : "";
