@@ -753,13 +753,34 @@ router.post("/generate-strategic-book-plan", async (req, res) => {
       return res.status(400).json({ error: "project object is required" });
     }
     const prompt = generateStrategicBookPlanPrompt(project);
-    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "strategicPlan");
-    const raw = extractJSON(text);
-    if (!raw || typeof raw !== "object") {
-      return res.status(500).json({ error: "AI returned unparseable strategic plan data." });
+
+    // ── Attempt 1 ─────────────────────────────────────────────────────────
+    const first = await runLong(prompt, systemPrompt(), req, res, "strategicPlan");
+    let raw = extractJSON(first.text);
+
+    // ── Retry once if invalid or empty ────────────────────────────────────
+    function planHasContent(r: any): boolean {
+      if (!r || typeof r !== "object") return false;
+      return !!(r.bookPitch || r.recommendedStructure?.structureName || r.signatureFramework?.name || r.bookConceptScore?.overall);
     }
+
+    if (!planHasContent(raw)) {
+      console.log("[generate-strategic-book-plan] Invalid/empty on attempt 1 — retrying");
+      try {
+        const retry = await runLong(prompt, systemPrompt(), req, res, "strategicPlan");
+        const retryRaw = extractJSON(retry.text);
+        if (planHasContent(retryRaw)) raw = retryRaw;
+      } catch (retryErr: any) {
+        console.log("[generate-strategic-book-plan] Retry failed:", retryErr?.message?.slice(0, 80));
+      }
+    }
+
+    if (!planHasContent(raw)) {
+      return res.status(500).json({ error: "AI returned unparseable strategic plan data. Please try again." });
+    }
+
     const plan = normalizeStrategicPlan(raw);
-    return res.json({ ...plan, _provider: usedProvider });
+    return res.json({ ...plan, _provider: first.usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

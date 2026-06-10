@@ -491,11 +491,20 @@ export default function ProposedBookStep({ proposedBook, setProposedBook, fullPr
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   function merge(patch) {
-    setProposedBook(typeof patch === "function" ? patch : { ...(proposedBook || {}), ...patch });
+    setProposedBook(prev => {
+      const base = prev || {};
+      const resolved = typeof patch === "function" ? patch(base) : patch;
+      return { ...base, ...resolved };
+    });
   }
 
   function mergeContent(contentPatch) {
-    merge({ content: { ...content, ...(typeof contentPatch === "function" ? contentPatch(content) : contentPatch) } });
+    setProposedBook(prev => {
+      const base = prev || {};
+      const prevContent = base.content && typeof base.content === "object" ? base.content : {};
+      const resolved = typeof contentPatch === "function" ? contentPatch(prevContent) : contentPatch;
+      return { ...base, content: { ...prevContent, ...resolved } };
+    });
   }
 
   function commitTags(tags) {
@@ -576,7 +585,7 @@ export default function ProposedBookStep({ proposedBook, setProposedBook, fullPr
     const synth = buildSyntheticProposedBookContent(fullProject || {}, focusTags);
     merge({
       focusTags,
-      content: { ...content, ...synth },
+      content: synth,
       generatedAt: new Date().toISOString()
     });
   }
