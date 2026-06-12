@@ -98,8 +98,6 @@ function normalizeChapter(ch) {
     words: Number(ch.words) || 0,
     expanded: ch.expanded !== false,
     sections: Array.isArray(ch.sections) ? ch.sections.map(normalizeSection) : [],
-    objective: ch.objective || "",
-    readingTime: ch.readingTime || "",
   };
 }
 
@@ -371,6 +369,20 @@ export default function OutlineStep({
 
   // ─── Generate all chapters (AI-powered full outline) ──────────────────────
 
+  /** Apply an AI section count to an existing sections array.
+   * Keeps existing sections where available, pads/trims to match targetCount. */
+  function applyTargetSectionCount(existingSections, targetCount, chWords) {
+    const count = Math.max(1, targetCount);
+    const secWords = Math.max(120, Math.round(chWords / count));
+    const kept = existingSections.slice(0, count).map((s) =>
+      normalizeSection({ ...s, words: secWords })
+    );
+    while (kept.length < count) {
+      kept.push(normalizeSection({ id: safeId(), title: "", words: secWords, expanded: true, subsections: [] }));
+    }
+    return kept;
+  }
+
   async function generateChapters() {
     setGenAllBusy(true);
     setGenAllStatus("");
@@ -378,7 +390,7 @@ export default function OutlineStep({
       const res = await fetch("/api/ai/generate-chapters", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project: fullProject }),
+        body: JSON.stringify({ project: fullProject, chapterCount: chapters.length }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Generation failed.");
@@ -386,51 +398,24 @@ export default function OutlineStep({
       const rawChapters = Array.isArray(data.chapters) ? data.chapters : [];
       if (rawChapters.length === 0) throw new Error("No chapters returned. Try again.");
 
-      // Convert AI chapters → normalized chapter shape with sections
-      const mapped = rawChapters.map((ch) => {
-        const chWords = Math.max(400, Number(ch.words) || 2000);
-        const rawSecs = Array.isArray(ch.sections) ? ch.sections : [];
-        const secWords = rawSecs.length > 0
-          ? Math.max(120, Math.round(chWords / rawSecs.length))
-          : chWords;
-        const sections = rawSecs.map((s) => normalizeSection({
-          id: safeId(),
-          title: typeof s === "string" ? s : (s.title || "Section"),
-          words: secWords,
-          expanded: true,
-          subsections: [],
-        }));
-        return normalizeChapter({
-          id: safeId(),
-          title: ch.title || "Chapter",
-          words: chWords,
-          objective: ch.objective || "",
-          readingTime: ch.readingTime || "",
-          expanded: true,
-          sections,
-        });
-      });
-
+      // Apply AI results onto existing chapter cards (preserve IDs and existing section content)
       setBookOutline((prev) => {
         const base = normalizedBookOutline(prev);
-        // Respect AI-suggested intro/conclusion words if provided
-        const introWords = data.introduction?.words
-          ? Math.max(200, Number(data.introduction.words))
-          : base.introduction.words;
-        const introTitle = data.introduction?.title || base.introduction.title;
-        const outroWords = data.conclusion?.words
-          ? Math.max(200, Number(data.conclusion.words))
-          : base.conclusion.words;
-        const outroTitle = data.conclusion?.title || base.conclusion.title;
-        return {
-          ...base,
-          introduction: { ...base.introduction, title: introTitle, words: introWords },
-          chapters: mapped,
-          conclusion: { ...base.conclusion, title: outroTitle, words: outroWords },
-        };
+        const updated = base.chapters.map((ch, i) => {
+          const ai = rawChapters[i];
+          if (!ai) return ch;
+          const chWords = Math.max(400, Number(ai.words) || ch.words || 2000);
+          const sections = applyTargetSectionCount(
+            Array.isArray(ch.sections) ? ch.sections : [],
+            Math.max(1, Number(ai.sections) || 3),
+            chWords
+          );
+          return normalizeChapter({ ...ch, title: ai.title || ch.title, words: chWords, sections });
+        });
+        return { ...base, chapters: updated };
       });
 
-      setGenAllStatus(`${mapped.length} chapters generated with smart word allocation and dynamic sections.`);
+      setGenAllStatus(`${rawChapters.length} chapters updated — titles, word counts, and section counts applied.`);
     } catch (e) {
       setGenAllStatus(e.message || "Generation failed. Try again.");
     } finally {
@@ -438,14 +423,12 @@ export default function OutlineStep({
     }
   }
 
-  // ─── Regenerate a single chapter (preserves rest of outline) ──────────────
+  // ─── Regenerate a single chapter (title + words + section count only) ─────
 
   async function regenerateChapter(ch, ci) {
     setRegenChBusy((p) => ({ ...p, [ch.id]: true }));
     try {
-      const allTitles = chapters.map((c) => c.title);
-      // Remove this chapter's own title so it can be replaced freely
-      const existingChapterTitles = allTitles.filter((_, i) => i !== ci);
+      const existingChapterTitles = chapters.map((c) => c.title).filter((_, i) => i !== ci);
 
       const res = await fetch("/api/ai/regenerate-chapter", {
         method: "POST",
@@ -467,27 +450,13 @@ export default function OutlineStep({
       if (!d.title) throw new Error("No chapter data returned. Try again.");
 
       const chWords = Math.max(400, Number(d.words) || ch.words || 2000);
-      const rawSecs = Array.isArray(d.sections) ? d.sections : [];
-      const secWords = rawSecs.length > 0
-        ? Math.max(120, Math.round(chWords / rawSecs.length))
-        : chWords;
-      const sections = rawSecs.map((s) => normalizeSection({
-        id: safeId(),
-        title: typeof s === "string" ? s : (s.title || "Section"),
-        words: secWords,
-        expanded: true,
-        subsections: [],
-      }));
+      const sections = applyTargetSectionCount(
+        Array.isArray(ch.sections) ? ch.sections : [],
+        Math.max(1, Number(d.sections) || (ch.sections?.length || 3)),
+        chWords
+      );
 
-      updateChapterById(ch.id, () => normalizeChapter({
-        ...ch,
-        title: d.title,
-        words: chWords,
-        objective: d.objective || ch.objective || "",
-        readingTime: d.readingTime || ch.readingTime || "",
-        sections,
-        expanded: true,
-      }));
+      updateChapterById(ch.id, () => normalizeChapter({ ...ch, title: d.title, words: chWords, sections, expanded: true }));
     } catch (e) {
       setGenAllStatus(e.message || "Regenerate failed.");
     } finally {
@@ -704,12 +673,6 @@ export default function OutlineStep({
                       title="Regenerate chapter title"
                     />
                   </div>
-                  {ch.objective && (
-                    <p className="mt-1 text-[11px] leading-snug text-slate-500 italic">{ch.objective}</p>
-                  )}
-                  {ch.readingTime && (
-                    <p className="mt-0.5 text-[10px] font-medium text-slate-400">⏱ {ch.readingTime}</p>
-                  )}
                 </div>
                 <div className="flex flex-1 flex-wrap items-center gap-3 md:justify-end lg:gap-5">
                   <label className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-700">

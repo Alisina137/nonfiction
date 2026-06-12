@@ -3218,15 +3218,14 @@ export function generateChaptersPrompt(ctx: {
   marketGap: string;
   positioningStrategy: string;
   competitorTitles: string;
+  chapterCount: number;
 }): string {
   return `You are a world-class bestselling book architect.
 
-Analyze all available book information and create a publishing-quality outline.
-Determine the optimal chapter count, chapter order, word allocation, section count, and section structure dynamically.
-Create a logical reader transformation journey with no redundancy.
-Allocate words according to chapter importance rather than equally.
-Generate unique chapter titles and section titles that are specific to the book topic.
-The outline must feel comparable to a professionally published bestseller and require minimal manual editing.
+Analyze the book information below and generate chapter-level planning data ONLY.
+You must generate EXACTLY ${ctx.chapterCount} chapters — no more, no less.
+Do NOT generate section titles, chapter descriptions, objectives, summaries, or any content.
+Only output: chapter title, chapter word count, and suggested section count per chapter.
 
 ══════════════════════════════════════
 BOOK INFORMATION
@@ -3257,68 +3256,46 @@ Competitor Titles: ${ctx.competitorTitles || "(none)"}
 GENERATION RULES
 ══════════════════════════════════════
 
-CHAPTER COUNT — Determine dynamically:
-- Simple focused topics: 6–9 chapters
-- Standard nonfiction: 9–14 chapters
-- Comprehensive deep-dives: 14–20 chapters
-- Never default to a fixed number; match the topic's natural scope
+CHAPTER COUNT:
+- You MUST output EXACTLY ${ctx.chapterCount} chapter objects — this is fixed by the user.
+- Do not reduce or increase this number.
 
-WORD ALLOCATION — Distribute intelligently (TOTAL must equal ${ctx.targetWords.toLocaleString()}):
-- Introduction and Conclusion: typically 3–6% of total each
-- Core transformation chapters: 8–12% of total each
-- Supporting/context chapters: 4–7% of total each
-- Total of all chapters + intro + conclusion MUST exactly equal ${ctx.targetWords.toLocaleString()} words
+CHAPTER TITLES:
+- Create a logical reader transformation journey from beginning to mastery.
+- No generic patterns: "Introduction to X", "Understanding Y", "The Basics of Z".
+- Each title must be specific to the book topic and its position in the flow.
+- Titles should intrigue and compel reading.
+- No "Chapter N:" prefix — just the title itself.
+- No two chapters share a title or the same core concept.
+- Chapters must build on each other without repetition.
 
-SECTION COUNT PER CHAPTER — Determine dynamically per chapter complexity:
-- Short/transitional chapters: 2–3 sections
+WORD ALLOCATION — distribute intelligently across exactly ${ctx.chapterCount} chapters:
+- Core transformation chapters receive more words (larger share of total).
+- Supporting/context chapters receive fewer words.
+- Total word count of ALL ${ctx.chapterCount} chapters MUST sum to exactly ${ctx.targetWords.toLocaleString()} words.
+- Vary the word counts — do not assign the same amount to every chapter.
+- Adjust the largest chapter by up to 200 words to make the total exact.
+
+SECTION COUNT PER CHAPTER — integer only, based on chapter complexity:
+- Simple/transitional chapters: 2–3 sections
 - Standard chapters: 3–5 sections
 - Core/complex chapters: 5–8 sections
-- Never default every chapter to the same count
-
-TITLE QUALITY:
-- No generic patterns: "Introduction to X", "Understanding Y", "The Basics of Z"
-- Each title must be specific to the book topic and chapter purpose
-- Titles should intrigue and compel reading
-- No "Chapter N:" prefix — just the title itself
-
-SECTION TITLE QUALITY:
-- Each section must deliver distinct, non-overlapping value
-- No repeated naming patterns across chapters
-- Sections must support the chapter objective in a logical progression
-
-VALIDATION (apply before outputting):
-- No two chapters share a title or the same core concept
-- No two sections in the book share a title
-- The chapters form a clear beginning-to-mastery reader journey
-- Word counts sum to exactly ${ctx.targetWords.toLocaleString()} (adjust largest chapter if off by ≤200)
+- Do not assign the same section count to every chapter.
 
 ══════════════════════════════════════
-OUTPUT FORMAT — Return only valid JSON
+OUTPUT FORMAT — Return ONLY valid JSON, no markdown, no explanation
 ══════════════════════════════════════
 
 {
-  "introduction": {
-    "title": "Introduction title (specific to the book, not just 'Introduction')",
-    "words": 1800
-  },
   "chapters": [
-    {
-      "title": "Chapter title — no prefix",
-      "objective": "One to two sentence description of what this chapter achieves for the reader.",
-      "words": 4200,
-      "readingTime": "17 min",
-      "sections": [
-        { "title": "Section title" },
-        { "title": "Section title" },
-        { "title": "Section title" }
-      ]
-    }
-  ],
-  "conclusion": {
-    "title": "Conclusion title (specific, not just 'Conclusion')",
-    "words": 1600
-  }
-}`;
+    { "title": "Chapter title", "words": 4200, "sections": 5 },
+    { "title": "Chapter title", "words": 2800, "sections": 3 }
+  ]
+}
+
+The "chapters" array must contain exactly ${ctx.chapterCount} objects.
+Each object has exactly three keys: "title" (string), "words" (integer), "sections" (integer).
+Do not include any other keys.`;
 }
 
 // ─── Regenerate single chapter prompt ────────────────────────────────────────
@@ -3343,7 +3320,9 @@ export function regenerateChapterPrompt(ctx: {
     .join("\n");
   return `You are a world-class bestselling book architect.
 
-Regenerate chapter ${ctx.chapterIndex + 1} of ${ctx.totalChapters} in a nonfiction book.
+Regenerate the planning data for chapter ${ctx.chapterIndex + 1} of ${ctx.totalChapters} in a nonfiction book.
+Output ONLY: a unique chapter title, a word count, and a suggested section count (integer).
+Do NOT generate section titles, objectives, descriptions, or any content.
 
 BOOK: "${ctx.title || "Untitled"}"
 TOPIC: ${ctx.bookTopic || ""}
@@ -3352,7 +3331,7 @@ AUDIENCE: ${ctx.audience || ""}
 TONE: ${ctx.tone || ""}
 CORE PROMISE: ${ctx.corePromise || ""}
 
-EXISTING CHAPTER TITLES (do not duplicate these):
+EXISTING CHAPTER TITLES (your new title must not duplicate any of these):
 ${existingList || "  (none yet)"}
 
 POSITION CONTEXT:
@@ -3361,21 +3340,15 @@ POSITION CONTEXT:
 - Next chapter: "${ctx.nextChapterTitle || "Conclusion"}"
 
 REQUIREMENTS:
-- Word count for this chapter: ~${ctx.currentWords.toLocaleString()} words
-- Determine the right number of sections (2–8) for this chapter's complexity — do NOT default to 3
-- Title must be unique — no overlap with any existing chapter title above
-- No generic title patterns ("Introduction to X", "Understanding Y")
-- Sections must progress logically and deliver unique value each
+- Title: unique, specific to the book topic, no generic patterns, no "Chapter N:" prefix
+- Words: keep close to ${ctx.currentWords.toLocaleString()} (you may adjust ±500 if it improves the book)
+- Sections (integer): 2–3 for simple chapters, 3–5 for standard, 5–8 for complex — do not default to 3
 - The chapter must fit logically between its neighbors
 
-Return only valid JSON:
+Return ONLY valid JSON, no markdown, no explanation:
 {
   "title": "Chapter title — no prefix",
-  "objective": "One to two sentence summary of what this chapter achieves.",
   "words": ${ctx.currentWords},
-  "readingTime": "X min",
-  "sections": [
-    { "title": "Section title" }
-  ]
+  "sections": 4
 }`;
 }

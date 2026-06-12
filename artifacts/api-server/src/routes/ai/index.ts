@@ -1004,15 +1004,15 @@ router.post("/generate-subsections", async (req, res) => {
   }
 });
 
-/** POST /api/ai/generate-chapters — AI-powered full outline with dynamic chapters + sections */
+/** POST /api/ai/generate-chapters — generate title + word count + section count for existing chapter slots */
 router.post("/generate-chapters", async (req, res) => {
   try {
-    const { project } = req.body || {};
+    const { project, chapterCount } = req.body || {};
     if (!project || typeof project !== "object") {
       return res.status(400).json({ error: "project object is required" });
     }
+    const count = Math.max(1, Math.min(30, Number(chapterCount) || 8));
 
-    // ── Extract all available context ────────────────────────────────────────
     const research = project.research  || {};
     const intel    = project.analysis?.intelligence || {};
     const pb       = project.proposedBook?.content  || {};
@@ -1030,7 +1030,6 @@ router.post("/generate-chapters", async (req, res) => {
     const title    = bd.title    || research.bookTitle    || project.bookTitle?.selectedCard?.title    || "";
     const subtitle = bd.subtitle || research.bookSubtitle || project.bookTitle?.selectedCard?.subtitle || "";
 
-    // Resolve target word count from range
     const wcrRaw = bd.wordCountRange || "";
     let targetWords = 45000;
     const parts = wcrRaw.split(/\s*[–—-]\s*/).map((p: string) => p.trim().replace(/k/i, ""));
@@ -1042,30 +1041,30 @@ router.post("/generate-chapters", async (req, res) => {
     const ctx = {
       title,
       subtitle,
-      bookTopic:           safeStr(research.bookTopic),
-      niche:               [research.mainNicheLabel, research.subNicheLabel, research.deepNicheLabel].filter(Boolean).join(" › "),
-      audience:            safeStr(bd.audience || pb.proposedAudience || research.targetAudience || intel.targetAudience),
-      tone:                safeStr(bd.tone || pb.proposedTone || intel.energyStyle),
+      bookTopic:            safeStr(research.bookTopic),
+      niche:                [research.mainNicheLabel, research.subNicheLabel, research.deepNicheLabel].filter(Boolean).join(" › "),
+      audience:             safeStr(bd.audience || pb.proposedAudience || research.targetAudience || intel.targetAudience),
+      tone:                 safeStr(bd.tone || pb.proposedTone || intel.energyStyle),
       targetWords,
-      wordCountRange:      wcrRaw || "40,000–50,000 words",
-      corePromise:         safeStr(bd.corePromise),
-      uniqueMechanism:     safeStr(bd.uniqueMechanism),
+      wordCountRange:       wcrRaw || "40,000–50,000 words",
+      corePromise:          safeStr(bd.corePromise),
+      uniqueMechanism:      safeStr(bd.uniqueMechanism),
       transformationBefore: safeStr(bd.readerTransformationBefore),
       transformationAfter:  safeStr(bd.readerTransformationAfter),
-      signatureFramework:  safeStr(persona.signatureFramework || pb.signatureFramework?.name),
-      bookPitch:           safeStr(pb.bookPitch),
-      structure:           safeStr(bd.structure),
-      authorSummary:       safeStr(persona.voiceSummary || persona.authorDescription || bio.professionalBackground),
-      readerPainProfile:   safeStr(intel.readerPainProfile),
+      signatureFramework:   safeStr(persona.signatureFramework || pb.signatureFramework?.name),
+      bookPitch:            safeStr(pb.bookPitch),
+      structure:            safeStr(bd.structure),
+      authorSummary:        safeStr(persona.voiceSummary || persona.authorDescription || bio.professionalBackground),
+      readerPainProfile:    safeStr(intel.readerPainProfile),
       transformationPromise: safeStr(intel.transformationPromise || pb.proposedTransformation),
-      marketGap:           safeStr(intel.marketGapAnalysis),
-      positioningStrategy: safeStr(intel.positioningStrategy),
-      competitorTitles:    (project.analysis?.books || []).slice(0, 6).map((b: any) => b.title).filter(Boolean).join("; "),
+      marketGap:            safeStr(intel.marketGapAnalysis),
+      positioningStrategy:  safeStr(intel.positioningStrategy),
+      competitorTitles:     (project.analysis?.books || []).slice(0, 6).map((b: any) => b.title).filter(Boolean).join("; "),
+      chapterCount:         count,
     };
 
     const prompt = generateChaptersPrompt(ctx);
 
-    // ── Try once, retry once on bad parse ────────────────────────────────────
     async function attempt() {
       const { text, usedProvider, exhaustedProviders } = await generateContent(
         prompt,
@@ -1081,7 +1080,7 @@ router.post("/generate-chapters", async (req, res) => {
     try { parsed = extractJSON(first.text); } catch { /* retry */ }
 
     if (!parsed?.chapters || !Array.isArray(parsed.chapters) || parsed.chapters.length === 0) {
-      console.log("[generate-chapters] Attempt 1 returned empty/invalid — retrying");
+      console.log("[generate-chapters] Attempt 1 invalid — retrying");
       const retry = await attempt();
       parsed = extractJSON(retry.text);
     }
@@ -1090,12 +1089,19 @@ router.post("/generate-chapters", async (req, res) => {
       return res.status(500).json({ error: "Could not generate a valid chapter structure. Please try again." });
     }
 
-    return res.json({
-      introduction: parsed.introduction || null,
-      chapters: parsed.chapters,
-      conclusion: parsed.conclusion || null,
-      _provider: first.usedProvider,
-    });
+    // Normalise each chapter to only the fields we need
+    const chapters = parsed.chapters.slice(0, count).map((ch: any) => ({
+      title:    typeof ch.title === "string" ? ch.title.trim() : "Chapter",
+      words:    Math.max(200, Number(ch.words)    || 2000),
+      sections: Math.max(1,   Number(ch.sections) || 3),
+    }));
+
+    // If AI returned fewer chapters than requested, pad with defaults
+    while (chapters.length < count) {
+      chapters.push({ title: `Chapter ${chapters.length + 1}`, words: Math.round(targetWords / count), sections: 3 });
+    }
+
+    return res.json({ chapters, _provider: first.usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
@@ -1155,11 +1161,18 @@ router.post("/regenerate-chapter", async (req, res) => {
     let parsed: any = null;
     try { parsed = extractJSON(text); } catch { /* fall through */ }
 
-    if (!parsed?.title || !Array.isArray(parsed.sections)) {
+    if (!parsed?.title) {
       return res.status(500).json({ error: "AI returned an unparseable chapter. Try again." });
     }
 
-    return res.json({ chapter: parsed, _provider: usedProvider });
+    return res.json({
+      chapter: {
+        title:    typeof parsed.title === "string" ? parsed.title.trim() : "Chapter",
+        words:    Math.max(200, Number(parsed.words)    || ctx.currentWords),
+        sections: Math.max(1,   Number(parsed.sections) || 3),
+      },
+      _provider: usedProvider,
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
