@@ -56,7 +56,7 @@ function buildAmazonQuery(research) {
 }
 
 export default function AnalysisStep({ research, analysis, errors, updateAnalysis, patchBook, removeBook, updateResearch }) {
-  const [searchQuery, setSearchQuery]         = useState(analysis.lastSearchQuery || "");
+  const [searchQuery, setSearchQuery]         = useState(analysis.lastSearchQuery || research.bookTitle || "");
   const [loadingSearch, setLoadingSearch]     = useState(false);
   const [loadingProductId, setLoadingProductId] = useState(null);
   const [localMsg, setLocalMsg]               = useState("");
