@@ -98,6 +98,8 @@ function normalizeChapter(ch) {
     words: Number(ch.words) || 0,
     expanded: ch.expanded !== false,
     sections: Array.isArray(ch.sections) ? ch.sections.map(normalizeSection) : [],
+    objective: ch.objective || "",
+    readingTime: ch.readingTime || "",
   };
 }
 
@@ -248,6 +250,9 @@ export default function OutlineStep({
   const [regenBusy, setRegenBusy]       = useState({});
   const [genSubsBusy, setGenSubsBusy]   = useState({});
   const [genSecsBusy, setGenSecsBusy]   = useState({});
+  const [genAllBusy,  setGenAllBusy]    = useState(false);
+  const [genAllStatus, setGenAllStatus] = useState("");
+  const [regenChBusy, setRegenChBusy]  = useState({});
 
   const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const intro = normalizeIntro(boRaw.introduction);
@@ -362,6 +367,132 @@ export default function OutlineStep({
         sections: (ch.sections || []).map((sec) => ({ ...sec, expanded })),
       })),
     }));
+  }
+
+  // ─── Generate all chapters (AI-powered full outline) ──────────────────────
+
+  async function generateChapters() {
+    setGenAllBusy(true);
+    setGenAllStatus("");
+    try {
+      const res = await fetch("/api/ai/generate-chapters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: fullProject }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Generation failed.");
+
+      const rawChapters = Array.isArray(data.chapters) ? data.chapters : [];
+      if (rawChapters.length === 0) throw new Error("No chapters returned. Try again.");
+
+      // Convert AI chapters → normalized chapter shape with sections
+      const mapped = rawChapters.map((ch) => {
+        const chWords = Math.max(400, Number(ch.words) || 2000);
+        const rawSecs = Array.isArray(ch.sections) ? ch.sections : [];
+        const secWords = rawSecs.length > 0
+          ? Math.max(120, Math.round(chWords / rawSecs.length))
+          : chWords;
+        const sections = rawSecs.map((s) => normalizeSection({
+          id: safeId(),
+          title: typeof s === "string" ? s : (s.title || "Section"),
+          words: secWords,
+          expanded: true,
+          subsections: [],
+        }));
+        return normalizeChapter({
+          id: safeId(),
+          title: ch.title || "Chapter",
+          words: chWords,
+          objective: ch.objective || "",
+          readingTime: ch.readingTime || "",
+          expanded: true,
+          sections,
+        });
+      });
+
+      setBookOutline((prev) => {
+        const base = normalizedBookOutline(prev);
+        // Respect AI-suggested intro/conclusion words if provided
+        const introWords = data.introduction?.words
+          ? Math.max(200, Number(data.introduction.words))
+          : base.introduction.words;
+        const introTitle = data.introduction?.title || base.introduction.title;
+        const outroWords = data.conclusion?.words
+          ? Math.max(200, Number(data.conclusion.words))
+          : base.conclusion.words;
+        const outroTitle = data.conclusion?.title || base.conclusion.title;
+        return {
+          ...base,
+          introduction: { ...base.introduction, title: introTitle, words: introWords },
+          chapters: mapped,
+          conclusion: { ...base.conclusion, title: outroTitle, words: outroWords },
+        };
+      });
+
+      setGenAllStatus(`${mapped.length} chapters generated with smart word allocation and dynamic sections.`);
+    } catch (e) {
+      setGenAllStatus(e.message || "Generation failed. Try again.");
+    } finally {
+      setGenAllBusy(false);
+    }
+  }
+
+  // ─── Regenerate a single chapter (preserves rest of outline) ──────────────
+
+  async function regenerateChapter(ch, ci) {
+    setRegenChBusy((p) => ({ ...p, [ch.id]: true }));
+    try {
+      const allTitles = chapters.map((c) => c.title);
+      // Remove this chapter's own title so it can be replaced freely
+      const existingChapterTitles = allTitles.filter((_, i) => i !== ci);
+
+      const res = await fetch("/api/ai/regenerate-chapter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project: fullProject,
+          chapterIndex: ci,
+          totalChapters: chapters.length,
+          currentWords: ch.words || 2000,
+          prevChapterTitle: ci === 0 ? "" : (chapters[ci - 1]?.title || ""),
+          nextChapterTitle: ci === chapters.length - 1 ? "" : (chapters[ci + 1]?.title || ""),
+          existingChapterTitles,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Regeneration failed.");
+
+      const d = data.chapter || {};
+      if (!d.title) throw new Error("No chapter data returned. Try again.");
+
+      const chWords = Math.max(400, Number(d.words) || ch.words || 2000);
+      const rawSecs = Array.isArray(d.sections) ? d.sections : [];
+      const secWords = rawSecs.length > 0
+        ? Math.max(120, Math.round(chWords / rawSecs.length))
+        : chWords;
+      const sections = rawSecs.map((s) => normalizeSection({
+        id: safeId(),
+        title: typeof s === "string" ? s : (s.title || "Section"),
+        words: secWords,
+        expanded: true,
+        subsections: [],
+      }));
+
+      updateChapterById(ch.id, () => normalizeChapter({
+        ...ch,
+        title: d.title,
+        words: chWords,
+        objective: d.objective || ch.objective || "",
+        readingTime: d.readingTime || ch.readingTime || "",
+        sections,
+        expanded: true,
+      }));
+    } catch (e) {
+      setGenAllStatus(e.message || "Regenerate failed.");
+    } finally {
+      setRegenChBusy((p) => { const n = { ...p }; delete n[ch.id]; return n; });
+    }
   }
 
   // ─── Generate all sections for a chapter ──────────────────────────────────
@@ -500,21 +631,39 @@ export default function OutlineStep({
       )}
 
       {/* Toolbar */}
-      <section className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setAllExpanded(true)}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          Expand all
-        </button>
-        <button
-          type="button"
-          onClick={() => setAllExpanded(false)}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          Collapse all
-        </button>
+      <section className="mt-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={genAllBusy}
+            onClick={generateChapters}
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-indigo-700 hover:to-sky-600 disabled:opacity-60"
+          >
+            {genAllBusy
+              ? <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Generating…</>
+              : "✨ Generate Chapters"
+            }
+          </button>
+          <button
+            type="button"
+            onClick={() => setAllExpanded(true)}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Expand all
+          </button>
+          <button
+            type="button"
+            onClick={() => setAllExpanded(false)}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Collapse all
+          </button>
+        </div>
+        {genAllStatus && (
+          <p className={`text-sm ${genAllStatus.toLowerCase().includes("fail") || genAllStatus.toLowerCase().includes("error") ? "text-rose-600" : "text-emerald-700 font-medium"}`}>
+            {genAllStatus}
+          </p>
+        )}
       </section>
 
       <div className="mt-8 space-y-4">
@@ -555,6 +704,12 @@ export default function OutlineStep({
                       title="Regenerate chapter title"
                     />
                   </div>
+                  {ch.objective && (
+                    <p className="mt-1 text-[11px] leading-snug text-slate-500 italic">{ch.objective}</p>
+                  )}
+                  {ch.readingTime && (
+                    <p className="mt-0.5 text-[10px] font-medium text-slate-400">⏱ {ch.readingTime}</p>
+                  )}
                 </div>
                 <div className="flex flex-1 flex-wrap items-center gap-3 md:justify-end lg:gap-5">
                   <label className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-700">
@@ -595,6 +750,18 @@ export default function OutlineStep({
                     />
                   </label>
                   <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={!!regenChBusy[ch.id] || genAllBusy}
+                      title="Regenerate this chapter with AI"
+                      onClick={() => regenerateChapter(ch, ci)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[10px] font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50"
+                    >
+                      {regenChBusy[ch.id]
+                        ? <span className="h-2.5 w-2.5 animate-spin rounded-full border border-indigo-300 border-t-indigo-600" />
+                        : "🔄"
+                      }
+                    </button>
                     <button type="button" title="Remove chapter" onClick={() => deleteChapter(ch.id)}
                       className="rounded-lg px-2 py-1.5 text-lg text-red-600 transition hover:bg-red-50">🗑</button>
                     <button
