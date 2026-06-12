@@ -245,8 +245,6 @@ export default function OutlineStep({
   currentStep,
   outlineStepIndex,
 }) {
-  const [genBusy, setGenBusy] = useState(false);
-  const [genStatus, setGenStatus] = useState("");
   const [regenBusy, setRegenBusy]       = useState({});
   const [genSubsBusy, setGenSubsBusy]   = useState({});
   const [genSecsBusy, setGenSecsBusy]   = useState({});
@@ -364,38 +362,6 @@ export default function OutlineStep({
         sections: (ch.sections || []).map((sec) => ({ ...sec, expanded })),
       })),
     }));
-  }
-
-  // ─── Generate full niche-native outline ───────────────────────────────────
-
-  async function generateNicheNativeOutline() {
-    if (!arch?.subNicheLabel) {
-      setGenStatus("Complete Research with a main + sub-niche first.");
-      return;
-    }
-    setGenBusy(true);
-    setGenStatus("");
-    try {
-      const data = await aiFetch("/api/ai/niche-outline", {
-        research: fullProject.research,
-        architecture: arch,
-        title: resolveBookTitle(fullProject),
-        description: fullProject.description || "",
-        resources: fullProject?.resources ?? null,
-        bookContext: buildBookContext(fullProject)
-      });
-      const applied = applyNicheOutlineToBookOutline(data, arch);
-      setBookOutline((prev) => {
-        const base = normalizedBookOutline(prev);
-        return { ...base, chapters: applied.chapters, nicheOutlineNotes: applied.architectureNotes };
-      });
-      setGenStatus(data.architectureNotes || "Niche-native outline generated.");
-    } catch (e) {
-      if (e instanceof GenerationCanceledError) setGenStatus("Outline canceled — Grok approval declined.");
-      else setGenStatus(e.message || "Could not generate outline.");
-    } finally {
-      setGenBusy(false);
-    }
   }
 
   // ─── Generate all sections for a chapter ──────────────────────────────────
@@ -537,14 +503,6 @@ export default function OutlineStep({
       <section className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          disabled={genBusy}
-          onClick={generateNicheNativeOutline}
-          className="rounded-full bg-gradient-to-r from-indigo-600 to-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-50"
-        >
-          {genBusy ? "Generating…" : "Generate niche-native outline"}
-        </button>
-        <button
-          type="button"
           onClick={() => setAllExpanded(true)}
           className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
         >
@@ -557,7 +515,6 @@ export default function OutlineStep({
         >
           Collapse all
         </button>
-        {genStatus && <p className="text-sm text-slate-600">{genStatus}</p>}
       </section>
 
       <div className="mt-8 space-y-4">
