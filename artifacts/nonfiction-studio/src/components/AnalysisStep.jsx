@@ -72,9 +72,10 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
 
   useEffect(() => {
     if (analysis.lastSearchQuery) { setSearchQuery(analysis.lastSearchQuery); return; }
+    if (research.bookTitle) { setSearchQuery(research.bookTitle); return; }
     const q = buildAmazonQuery(research);
     if (q) setSearchQuery(q);
-  }, [research.deepNicheLabel, research.subNicheLabel, research.mainNicheLabel, research.bookTopic, research.genre]);
+  }, [research.bookTitle, research.deepNicheLabel, research.subNicheLabel, research.mainNicheLabel, research.bookTopic, research.genre]);
 
   async function runAmazonSearch(mode) {
     const q = searchQuery.trim();
