@@ -442,6 +442,12 @@ TITLE RULES:
 - Clear audience or benefit
 - Strong buyer appeal on Amazon KDP
 - Avoid keyword stuffing, generic wording, or clickbait
+- Use title case
+- NEVER use colons (:), semicolons (;), dashes (— or -), or pipes (|) as separators
+- Format MUST follow one of these three patterns ONLY:
+  PATTERN A — Single powerful title: "The Deep Work Catalyst"
+  PATTERN B — Main title with subtitle in parentheses: "The Deep Work Catalyst (Ignite Your Focus and Multiply Your Output)"
+  PATTERN C — Main title with subtitle after a comma: "The Deep Work Catalyst, Ignite Your Focus and Multiply Your Output"
 
 Return ONLY valid JSON — no markdown, no code fences, no explanation before or after:
 {"titles":[{"title":"First title","angle":"Audience-Focused","reason":"One short sentence."},{"title":"Second title","angle":"Transformation-Focused","reason":"One short sentence."},{"title":"Third title","angle":"Authority-Focused","reason":"One short sentence."}]}
@@ -555,7 +561,12 @@ HARD RULES (must follow):
    - Any title without a clearly named audience or specific transformation.
    - Robotic or keyword-stuffed phrasing.
 5. Each title under 70 characters when possible.
-6. No duplicates. No subtitles. No quotes around the titles in the JSON.
+6. No duplicates. No quotes around the titles in the JSON.
+7. Use title case for all titles.
+8. NEVER use colons (:), semicolons (;), dashes (— or -), or pipes (|) as title separators. If a title needs a subtitle, use ONE of these formats ONLY:
+   - Single powerful title with no subtitle: "Discipline Habits for Young Men"
+   - Main title with subtitle in parentheses: "Discipline Habits for Young Men (Build Unbreakable Routines and Own Your Future)"
+   - Main title with subtitle after a comma: "Discipline Habits for Young Men, Build Unbreakable Routines and Own Your Future"
 
 Return STRICT JSON:
 {
@@ -1103,6 +1114,12 @@ TITLE RULES
 - Avoid generic wording
 - Avoid clickbait
 - Sound professional
+- Use title case
+- NEVER use colons (:), semicolons (;), dashes (— or -), or pipes (|) as separators
+- Format MUST follow one of these three patterns ONLY:
+  PATTERN A — Single powerful title: "The Deep Work Catalyst"
+  PATTERN B — Main title with subtitle in parentheses: "The Deep Work Catalyst (Ignite Your Focus and Multiply Your Output)"
+  PATTERN C — Main title with subtitle after a comma: "The Deep Work Catalyst, Ignite Your Focus and Multiply Your Output"
 
 Return JSON:
 
