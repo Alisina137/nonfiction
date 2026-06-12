@@ -803,6 +803,12 @@ STRICTLY FORBIDDEN titles (never generate these):
 "Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder",
 "Chapter N", "Key Point", "Emotional Theme", "Untitled", any numbered generic label.
 
+CHAPTER TITLE FORMAT — parentheses only to separate main title from subtitle:
+  CORRECT: "The Burnout Trap (Why Traditional Success Always Fails You)"
+  WRONG:   "The Burnout Trap: Why Traditional Success Always Fails You"
+  WRONG:   "The Burnout Trap — Why Traditional Success Always Fails You"
+Single-phrase titles with no subtitle are also fine — just no colon/dash separators.
+
 GOOD section/subsection title examples:
 - "The Fear of Falling Behind"
 - "When Failure Becomes Identity"
@@ -3181,7 +3187,7 @@ Return exactly this JSON structure — EXACTLY ${chapterCount} chapters, EXACTLY
   "chapters": [
     {
       "number": 1,
-      "title": "Full chapter title without any 'Chapter N:' prefix",
+      "title": "Main Title (Supporting Subtitle) — parentheses only, never a colon or dash",
       "sections": [
         "Section 1 title",
         "Section 2 title",
@@ -3264,10 +3270,14 @@ CHAPTER TITLES:
 - Create a logical reader transformation journey from beginning to mastery.
 - No generic patterns: "Introduction to X", "Understanding Y", "The Basics of Z".
 - Each title must be specific to the book topic and its position in the flow.
-- Titles should intrigue and compel reading.
 - No "Chapter N:" prefix — just the title itself.
 - No two chapters share a title or the same core concept.
 - Chapters must build on each other without repetition.
+- TITLE FORMAT: Use "Main Title (Supporting Subtitle)" — parentheses only, never a colon, em dash, or hyphen to separate the two parts.
+  CORRECT: "The Burnout Trap (Why Traditional Success Always Fails You)"
+  WRONG:   "The Burnout Trap: Why Traditional Success Always Fails You"
+  WRONG:   "The Burnout Trap — Why Traditional Success Always Fails You"
+- If a title needs no subtitle, write a single strong phrase without punctuation separators.
 
 WORD ALLOCATION — distribute intelligently across exactly ${ctx.chapterCount} chapters:
 - Core transformation chapters receive more words (larger share of total).
@@ -3341,13 +3351,16 @@ POSITION CONTEXT:
 
 REQUIREMENTS:
 - Title: unique, specific to the book topic, no generic patterns, no "Chapter N:" prefix
+- Title format: "Main Title (Supporting Subtitle)" using parentheses — never a colon, em dash, or hyphen as separator
+  CORRECT: "The Focus Formula (How High Achievers Protect Their Time)"
+  WRONG:   "The Focus Formula: How High Achievers Protect Their Time"
 - Words: keep close to ${ctx.currentWords.toLocaleString()} (you may adjust ±500 if it improves the book)
 - Sections (integer): 2–3 for simple chapters, 3–5 for standard, 5–8 for complex — do not default to 3
 - The chapter must fit logically between its neighbors
 
 Return ONLY valid JSON, no markdown, no explanation:
 {
-  "title": "Chapter title — no prefix",
+  "title": "Chapter title (optional supporting subtitle)",
   "words": ${ctx.currentWords},
   "sections": 4
 }`;
