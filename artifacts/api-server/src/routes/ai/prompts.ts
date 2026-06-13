@@ -2798,18 +2798,33 @@ Avoid generic titles.
 Forbidden: "Introduction", "Key Concepts", "Overview", "Summary", "Final Thoughts", "Chapter N", "Section N", "Topic N", "Subsection N".
 Titles must feel professionally published and commercially valuable — specific, emotionally intelligent, niche-relevant.
 
-RULE 6 — SUBSECTION UNIQUENESS TEST
+RULE 6 — NO COLON FORMAT (CRITICAL)
+NEVER use a two-part title with a colon separator.
+
+❌ WRONG: "The Attention Crisis: What Distractions Do to Deep Work"
+❌ WRONG: "The Habit Loop: How Triggers Control Your Behavior"
+❌ WRONG: "Emotional Labor: Why Caregiving Exhausts the Body"
+
+✅ CORRECT: "What Distractions Actually Do to Deep Work"
+✅ CORRECT: "How Triggers Control Your Behavior Without Your Awareness"
+✅ CORRECT: "Why Caregiving Exhausts the Body Over Time"
+
+The subsection title is the explanatory phrase only — never a label followed by a colon.
+No subsection title may contain a colon (:) under any circumstances.
+If you catch yourself writing "X: Y" — delete "X:" and keep only "Y".
+
+RULE 7 — SUBSECTION UNIQUENESS TEST
 Before returning output, verify every pair: Are they discussing different ideas? Providing unique value? Would a reader learn something different from each?
 If the answer is NO, regenerate.
 
-RULE 7 — ANTI-REPETITION CHECK
+RULE 8 — ANTI-REPETITION CHECK
 Count unique subsection titles. If unique titles < ${subsectionCount}: REGENERATE until all are unique.
 Never return duplicate subsection titles.
 
-RULE 8 — SECTION RELEVANCE CHECK
+RULE 9 — SECTION RELEVANCE CHECK
 For every subsection: re-read the section title and score relevance 1–10. If relevance < 8: regenerate that subsection.
 
-RULE 9 — RETURN ONLY FINAL RESULTS
+RULE 10 — RETURN ONLY FINAL RESULTS
 Output ONLY a valid JSON array — no explanations, no markdown, no code fences, no comments.
 
 Generate exactly ${subsectionCount} subsection title(s).

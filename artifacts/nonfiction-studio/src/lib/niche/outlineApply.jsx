@@ -32,16 +32,16 @@ export function applyNicheOutlineToBookOutline(aiPayload, architecture) {
 
       const subsections = Array.from({ length: subCount }, (_, qi) => ({
         id: safeId(),
-        // Use AI title — never fall back to "Beat N"
-        title: aiSubs[qi]?.title || `${fromAi?.title || "Section"}: Part ${qi + 1}`,
+        // Use AI title — never fall back to a colon-format placeholder
+        title: aiSubs[qi]?.title || `Part ${qi + 1}`,
         intent: aiSubs[qi]?.intent || "",
         words: subWords
       }));
 
       return {
         id: safeId(),
-        // Use AI section title — never fall back to "Section N"
-        title: fromAi?.title || `${ch.title || "Chapter"}: Section ${si + 1}`,
+        // Use AI section title — never fall back to a colon-format placeholder
+        title: fromAi?.title || `Section ${si + 1}`,
         words: secWords,
         expanded: true,
         subsections

@@ -66,7 +66,7 @@ function stripSectionColon(title: string): string {
   return right.length > 0 ? right : s;
 }
 
-/** Apply stripSectionColon to every section (and its subsections) in a chapters array. */
+/** Apply stripSectionColon to every section AND subsection title in a chapters array. */
 function sanitizeOutlineSections(chapters: any[]): any[] {
   if (!Array.isArray(chapters)) return chapters;
   return chapters.map((ch: any) => ({
@@ -74,7 +74,13 @@ function sanitizeOutlineSections(chapters: any[]): any[] {
     sections: Array.isArray(ch.sections)
       ? ch.sections.map((sec: any) => ({
           ...sec,
-          title: stripSectionColon(sec.title || "")
+          title: stripSectionColon(sec.title || ""),
+          subsections: Array.isArray(sec.subsections)
+            ? sec.subsections.map((sub: any) => ({
+                ...sub,
+                title: stripSectionColon(sub.title || "")
+              }))
+            : sec.subsections
         }))
       : ch.sections
   }));
@@ -593,7 +599,11 @@ router.post("/regenerate-title", async (req, res) => {
       res
     );
     const data = extractJSON(text);
-    return res.json({ title: data.title || currentTitle, _provider: usedProvider });
+    const rawTitle = data.title || currentTitle;
+    const title = (level === "section" || level === "subsection")
+      ? stripSectionColon(rawTitle)
+      : rawTitle;
+    return res.json({ title, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
@@ -1018,7 +1028,7 @@ router.post("/generate-subsections", async (req, res) => {
     }
     const titles = data
       .filter((t: any) => typeof t === "string" && t.trim())
-      .map((t: any) => String(t).trim())
+      .map((t: any) => stripSectionColon(String(t).trim()))
       .slice(0, count);
     return res.json({ titles, _provider: usedProvider });
   } catch (error: any) {
