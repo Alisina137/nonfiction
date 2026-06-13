@@ -906,16 +906,31 @@ export default function Dashboard() {
       if (currentStep === 1) {
         const intel = p.analysis?.intelligence;
         if (intel) {
-          next.audience = intel.targetAudience || p.audience || "";
-          next.tone     = Array.isArray(intel.authorTones) && intel.authorTones.length
-            ? intel.authorTones.join("; ")
-            : p.tone || "";
+          // targetAudience is an object in the new format — extract readable string
+          const ta = intel.targetAudience;
+          const taStr = typeof ta === "string"
+            ? ta
+            : (ta?.primary || Object.values(ta || {}).filter(Boolean)[0] || "");
+
+          // author guidance lives in authorPersonaGuidance in the new format
+          const apg = intel.authorPersonaGuidance || {};
+          const toneStr = apg.tone || "";
+          const toneArr = toneStr ? [toneStr] : (Array.isArray(intel.authorTones) ? intel.authorTones : []);
+
+          // transformation promise lives in titleInsights in the new format
+          const corePromise =
+            intel.titleInsights?.recommendedTransformationPromise ||
+            intel.transformationPromise ||
+            p.research.corePromise || "";
+
+          next.audience = taStr || p.audience || "";
+          next.tone     = toneStr || p.tone || "";
           next.research = {
             ...p.research,
-            targetAudience: intel.targetAudience  || p.research.targetAudience || "",
-            authorTones:    Array.isArray(intel.authorTones) ? intel.authorTones : p.research.authorTones || [],
-            energyStyle:    intel.energyStyle     || p.research.energyStyle    || "",
-            corePromise:    intel.transformationPromise || p.research.corePromise || ""
+            targetAudience: taStr       || p.research.targetAudience || "",
+            authorTones:    toneArr.length ? toneArr : p.research.authorTones || [],
+            energyStyle:    apg.writingApproach || intel.energyStyle || p.research.energyStyle || "",
+            corePromise:    corePromise,
           };
         }
       }

@@ -824,22 +824,18 @@ router.post("/competitive-intelligence", async (req, res) => {
 
     const isArr = (v: any) => (Array.isArray(v) ? v : []);
     const isObj = (v: any) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
+    const isStr = (v: any) => (typeof v === "string" ? v : "");
 
     const intelligence = {
-      targetAudience:              isObj(data.targetAudience),
-      readerPainPoints:            isArr(data.readerPainPoints),
-      desiredOutcomes:             isArr(data.desiredOutcomes),
-      buyerIntent:                 isObj(data.buyerIntent),
-      marketGaps:                  isArr(data.marketGaps),
-      uniqueSellingPropositions:   isArr(data.uniqueSellingPropositions),
-      positioningStrategies:       isArr(data.positioningStrategies),
-      competitorAnalysis:          isObj(data.competitorAnalysis),
-      recommendedBookStructure:    isObj(data.recommendedBookStructure),
-      readerPsychology:            isObj(data.readerPsychology),
-      titleInsights:               isObj(data.titleInsights),
-      authorPersonaGuidance:       isObj(data.authorPersonaGuidance),
-      bookDifferentiationStrategy: isObj(data.bookDifferentiationStrategy),
-      outlineGenerationBrief:      isObj(data.outlineGenerationBrief),
+      targetAudience:            isObj(data.targetAudience),
+      readerPainPoints:          isArr(data.readerPainPoints),
+      desiredOutcomes:           isArr(data.desiredOutcomes),
+      marketGaps:                isArr(data.marketGaps),
+      uniqueSellingPropositions: isArr(data.uniqueSellingPropositions),
+      positioningStrategies:     isArr(data.positioningStrategies),
+      titleInsights:             isObj(data.titleInsights),
+      authorPersonaGuidance:     isObj(data.authorPersonaGuidance),
+      outlineGenerationBrief:    isStr(data.outlineGenerationBrief) || isStr(Object.values(isObj(data.outlineGenerationBrief)).join(" ")),
     };
 
     const REQUIRED = ["targetAudience", "readerPainPoints", "desiredOutcomes", "marketGaps"] as const;

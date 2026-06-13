@@ -216,24 +216,23 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Intelligence generation failed.");
 
-      // Validate new rich format (objects/arrays) or legacy flat format
-      const hasNew = data.readerPainPoints?.length > 0 || data.desiredOutcomes?.length > 0 || Object.keys(data.targetAudience || {}).length > 0;
-      const hasLegacy = !!(data.readerPainProfile || data.targetAudience);
-      if (!hasNew && !hasLegacy) throw new Error("AI returned an empty intelligence profile. Please try again.");
+      // Validate that the response has at least some usable content
+      const hasData =
+        (data.readerPainPoints?.length > 0) ||
+        (data.desiredOutcomes?.length > 0)  ||
+        (Object.keys(data.targetAudience || {}).length > 0) ||
+        (data.marketGaps?.length > 0);
+      if (!hasData) throw new Error("AI returned an empty intelligence profile. Please try again.");
 
       updateAnalysis((prev) => ({ ...prev, intelligence: data }));
 
-      // ── Bug #3B fix (intelligence seed): if bookTopic is still empty,
-      // seed it with the transformation promise from the intelligence profile.
+      // If bookTopic is still empty, seed it from the transformation promise
       if (!research.bookTopic?.trim() && updateResearch) {
         const seed =
-          (typeof data.transformationPromise === "string" && data.transformationPromise.trim().length >= 30
-            ? data.transformationPromise.trim()
-            : "") ||
-          (typeof data.targetAudience === "string" && data.targetAudience.trim().length >= 30
-            ? data.targetAudience.trim()
-            : "");
-        if (seed) updateResearch({ bookTopic: seed });
+          data.titleInsights?.recommendedTransformationPromise?.trim() ||
+          data.titleInsights?.bestPositioningApproach?.trim() ||
+          "";
+        if (seed && seed.length >= 20) updateResearch({ bookTopic: seed });
       }
 
       if (data._partial && Array.isArray(data._missingFields) && data._missingFields.length) {
@@ -487,7 +486,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
               const usps  = intelligence.uniqueSellingPropositions  || [];
               const ti    = intelligence.titleInsights              || {};
               const apg   = intelligence.authorPersonaGuidance      || {};
-              const brief = intelligence.outlineGenerationBrief     || {};
+              const brief = intelligence.outlineGenerationBrief     || "";
               const strVal = (v) => typeof v === "string" ? v : (Array.isArray(v) ? v.join("; ") : (v && typeof v === "object" ? Object.values(v).filter(Boolean).join(" · ") : ""));
               return (
                 <div className="space-y-4">
@@ -590,7 +589,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
                   )}
 
                   {/* Outline Generation Brief */}
-                  {Object.keys(brief).length > 0 && (
+                  {!!strVal(brief) && (
                     <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 mb-2">Outline Generation Brief</p>
                       <p className="text-sm text-slate-800 leading-relaxed">{strVal(brief)}</p>
