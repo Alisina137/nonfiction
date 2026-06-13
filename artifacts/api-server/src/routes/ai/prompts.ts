@@ -2682,7 +2682,32 @@ Each title should feel like it belongs in a bestselling nonfiction book.
 
 ====================================================
 
-RULE 8 — SELF-AUDIT
+RULE 8 — NO COLON FORMAT (CRITICAL)
+
+NEVER use a two-part title with a colon.
+
+❌ WRONG: "The Productivity Trap: Why Being Busy Isn't Effective"
+❌ WRONG: "The Focus Problem: How Distractions Destroy Deep Work"
+❌ WRONG: "The Attention Crisis: What Modern Work Does to Your Brain"
+
+✅ CORRECT: "Why Being Busy Isn't the Same as Being Effective"
+✅ CORRECT: "How Distractions Destroy Deep Work"
+✅ CORRECT: "What Modern Work Does to Your Brain"
+
+The section title is the explanatory phrase only — never a label followed by a colon.
+
+No section title may contain a colon (:) under any circumstances.
+
+Preferred formats:
+- Why [something happens or is true]
+- How [something works or can be changed]
+- What [the reader needs to understand or do]
+- The [specific concept, tactic, or insight]
+- Building / Creating / Designing [something actionable]
+
+====================================================
+
+RULE 9 — SELF-AUDIT
 
 Before returning results, check every section title:
 1. Is it directly related to the chapter?
@@ -2690,12 +2715,13 @@ Before returning results, check every section title:
 3. Does it teach something different from every other section?
 4. Does it help fulfill the chapter promise?
 5. Would a professional editor approve it?
+6. Does it contain a colon? If YES — rewrite it.
 
 If any answer is NO: Regenerate.
 
 ====================================================
 
-RULE 9 — CHAPTER COMPLETENESS TEST
+RULE 10 — CHAPTER COMPLETENESS TEST
 
 After generating all sections, ask:
 
@@ -2705,7 +2731,7 @@ If NO: Regenerate.
 
 ====================================================
 
-RULE 10 — ANTI-REPETITION VALIDATION
+RULE 11 — ANTI-REPETITION VALIDATION
 
 Count unique section titles. If unique titles < ${sectionCount}: REGENERATE.
 

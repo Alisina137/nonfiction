@@ -54,6 +54,33 @@ import {
 const router = Router();
 
 /**
+ * Strip the "Label: " prefix from section titles.
+ * "The Productivity Trap: Why Being Busy..." → "Why Being Busy..."
+ * Leaves titles without a colon unchanged.
+ */
+function stripSectionColon(title: string): string {
+  const s = String(title || "").trim();
+  const idx = s.indexOf(":");
+  if (idx === -1) return s;
+  const right = s.slice(idx + 1).trim();
+  return right.length > 0 ? right : s;
+}
+
+/** Apply stripSectionColon to every section (and its subsections) in a chapters array. */
+function sanitizeOutlineSections(chapters: any[]): any[] {
+  if (!Array.isArray(chapters)) return chapters;
+  return chapters.map((ch: any) => ({
+    ...ch,
+    sections: Array.isArray(ch.sections)
+      ? ch.sections.map((sec: any) => ({
+          ...sec,
+          title: stripSectionColon(sec.title || "")
+        }))
+      : ch.sections
+  }));
+}
+
+/**
  * Express response shape for AI endpoints:
  *   - 200: { ...payload, _provider: "openai"|"anthropic"|"xai"|"gemini" }
  *   - 500: { error }
@@ -369,7 +396,7 @@ router.post("/outline", async (req, res) => {
   try {
     const { text, usedProvider } = await runShort(outlinePrompt(req.body), systemPrompt(), req, res, "outline");
     const data = extractJSON(text);
-    return res.json({ chapters: data.chapters || [], _provider: usedProvider });
+    return res.json({ chapters: sanitizeOutlineSections(data.chapters || []), _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
@@ -388,7 +415,8 @@ router.post("/niche-outline", async (req, res) => {
       "outline"
     );
     const data = extractJSON(text);
-    return res.json({ ...data, _provider: usedProvider });
+    const chapters = sanitizeOutlineSections(data.chapters || []);
+    return res.json({ ...data, chapters, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
@@ -965,7 +993,7 @@ router.post("/generate-sections", async (req, res) => {
     }
     const titles = data
       .filter((t: any) => typeof t === "string" && t.trim())
-      .map((t: any) => String(t).trim())
+      .map((t: any) => stripSectionColon(String(t).trim()))
       .slice(0, count);
     return res.json({ titles, _provider: usedProvider });
   } catch (error: any) {
