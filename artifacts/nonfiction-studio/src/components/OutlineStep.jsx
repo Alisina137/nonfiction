@@ -101,11 +101,20 @@ function normalizeChapter(ch) {
   };
 }
 
+/** "Label: The Real Title" → "The Real Title". Leaves titles without a colon unchanged. */
+function stripAfterColon(title) {
+  const s = String(title || "").trim();
+  const idx = s.indexOf(":");
+  if (idx === -1) return s;
+  const right = s.slice(idx + 1).trim();
+  return right.length > 0 ? right : s;
+}
+
 function normalizeSection(s) {
   if (!s || typeof s !== "object") return newSectionSkeleton(650);
   return {
     id: s.id || safeId(),
-    title: s.title || "Section",
+    title: stripAfterColon(s.title || "Section"),
     words: Number(s.words) || 0,
     expanded: s.expanded !== false,
     subsections: Array.isArray(s.subsections) ? s.subsections.map(normalizeSub) : [],
@@ -114,7 +123,7 @@ function normalizeSection(s) {
 
 function normalizeSub(su) {
   if (!su || typeof su !== "object") return newSubsection();
-  return { id: su.id || safeId(), title: su.title || "Subsection", words: Number(su.words) || 0 };
+  return { id: su.id || safeId(), title: stripAfterColon(su.title || "Subsection"), words: Number(su.words) || 0 };
 }
 
 function normalizedBookOutline(raw) {
