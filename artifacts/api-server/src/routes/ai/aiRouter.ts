@@ -123,6 +123,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
   fieldSuggestion:    1200,
   subsectionGen:       900,
   chapterStrategy:    1200,
+  competitiveIntel:   4000,
   default:             800
 };
 
