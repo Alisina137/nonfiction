@@ -84,7 +84,7 @@ export default function DescriptionStep({
         authorName: resolveAuthorName(fullProject),
         focusTags: fullProject?.proposedBook?.focusTags || [],
         shortSample: manuscriptSample(fullProject)
-      });
+      }, { noCache: true });
       if (data.description) setDescription(data.description);
       patchMarketing({
         shortHook: data.shortHook || marketing.shortHook || "",
