@@ -573,24 +573,21 @@ function repairTruncatedJSON(raw: string): any {
 }
 
 export function extractJSON(text: string): any {
-  const t = String(text || "");
+  // Pre-strip code fences so all downstream logic sees clean text.
+  // Handles: ```json...```, ```...```, unclosed fences, and mixed-case tags.
+  let t = String(text || "").trim()
+    .replace(/^```[a-zA-Z]*\r?\n?/, "")  // strip opening fence + optional lang tag
+    .replace(/\r?\n?```\s*$/, "")         // strip closing fence
+    .trim();
 
-  const fenceMatch = t.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch) {
-    const inner = fenceMatch[1].trim();
-    try { return JSON.parse(inner); } catch { /* fall through */ }
-    const r = repairTruncatedJSON(inner);
-    if (r !== null) return r;
-  }
+  // ── 1. Direct parse (fast path) ───────────────────────────────────────
+  try { return JSON.parse(t); } catch { /* fall through */ }
 
-  const openFence = t.match(/```(?:json)?\s+([\s\S]+)$/);
-  if (openFence) {
-    const inner = openFence[1].trim();
-    try { return JSON.parse(inner); } catch { /* fall through */ }
-    const r = repairTruncatedJSON(inner);
-    if (r !== null) return r;
-  }
+  // ── 2. Repair truncated JSON ──────────────────────────────────────────
+  const r0 = repairTruncatedJSON(t);
+  if (r0 !== null) return r0;
 
+  // ── 3. Find first { or [ and retry from there ─────────────────────────
   const objStart = t.indexOf("{");
   const arrStart = t.indexOf("[");
   const start =
