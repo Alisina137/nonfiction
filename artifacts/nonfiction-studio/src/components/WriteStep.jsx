@@ -32,6 +32,29 @@ function FieldLabel({ children, hint }) {
   );
 }
 
+function StatusDot({ done, active, busy }) {
+  if (busy) {
+    return (
+      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+        <span className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-sky-500" />
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
+        done
+          ? "bg-emerald-500 text-white"
+          : active
+            ? "border border-sky-500 bg-white text-sky-600"
+            : "border border-slate-300 bg-white text-slate-400"
+      }`}
+    >
+      {done ? "✓" : ""}
+    </span>
+  );
+}
+
 function writingTone(fullProject) {
   const d = fullProject?.bookDetails || {};
   const r = fullProject?.research || {};
@@ -65,12 +88,17 @@ export default function WriteStep({
   const [batchBusy, setBatchBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [chapterStrategies, setChapterStrategies] = useState({});
+  const [expandedChapters, setExpandedChapters] = useState({});
+  const [expandedSections, setExpandedSections] = useState({});
 
   const progress = useMemo(() => countDraftedBlocks(blocks, lessons), [blocks, lessons]);
   const activeBlock = blocks.find((b) => b.id === activeId) || blocks[0] || null;
   const activeIndex = activeBlock ? blocks.findIndex((b) => b.id === activeBlock.id) : -1;
   const activeLesson = activeBlock ? lessons?.[activeBlock.id] : null;
   const activeProse = activeLesson?.prose ?? "";
+
+  const introBlock = useMemo(() => blocks.find((b) => b.kind === "introduction") || null, [blocks]);
+  const conclusionBlock = useMemo(() => blocks.find((b) => b.kind === "conclusion") || null, [blocks]);
 
   useEffect(() => {
     if (currentStep !== writeStepIndex) return;
@@ -82,6 +110,14 @@ export default function WriteStep({
     const firstOpen = blocks.find((b) => !blockHasContent(lessons, b.id));
     setActiveId((firstOpen || blocks[0]).id);
   }, [activeId, blocks, currentStep, lessons, writeStepIndex]);
+
+  function toggleChapter(chId) {
+    setExpandedChapters((p) => ({ ...p, [chId]: p[chId] === false ? true : false }));
+  }
+
+  function toggleSection(secId) {
+    setExpandedSections((p) => ({ ...p, [secId]: p[secId] === false ? true : false }));
+  }
 
   function patchLesson(blockId, patch) {
     setLessons((prev) => {
@@ -230,6 +266,7 @@ export default function WriteStep({
   const isBusy = Boolean(busyId) || batchBusy;
   const activeKeyTakeaway = activeLesson?.lesson?.keyTakeaway;
   const activeStructureUsed = activeLesson?.lesson?.structureUsed;
+  const chapters = Array.isArray(bookOutline?.chapters) ? bookOutline.chapters : [];
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -254,44 +291,168 @@ export default function WriteStep({
       {errors?.form && <p className="mt-4 text-center text-sm text-red-600">{errors.form}</p>}
       {status && <p className="mt-3 text-center text-sm text-slate-600">{status}</p>}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,280px)_1fr]">
-        <nav className="book-panel max-h-[min(70vh,640px)] overflow-y-auto p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Manuscript map</p>
-          <ul className="mt-3 space-y-1">
-            {blocks.map((block, idx) => {
-              const done = blockHasContent(lessons, block.id);
-              const active = block.id === activeBlock?.id;
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,300px)_1fr]">
+
+        {/* ── Hierarchical sidebar ── */}
+        <nav className="book-panel max-h-[min(80vh,700px)] overflow-y-auto p-3">
+          <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Manuscript</p>
+
+          <ul className="mt-2 space-y-0.5">
+
+            {/* Introduction */}
+            {introBlock && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveId(introBlock.id)}
+                  className={`flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold transition ${
+                    introBlock.id === activeBlock?.id
+                      ? "bg-sky-50 ring-1 ring-inset ring-sky-200/80 text-sky-900"
+                      : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <StatusDot
+                    done={blockHasContent(lessons, introBlock.id)}
+                    active={introBlock.id === activeBlock?.id}
+                    busy={busyId === introBlock.id}
+                  />
+                  <span className="truncate">Introduction</span>
+                </button>
+              </li>
+            )}
+
+            {/* Chapters */}
+            {chapters.map((ch, ci) => {
+              const secs = Array.isArray(ch.sections) ? ch.sections : [];
+              const chExpanded = expandedChapters[ch.id] !== false;
+
               return (
-                <li key={block.id}>
+                <li key={ch.id} className="pt-1">
+                  {/* Chapter header */}
                   <button
                     type="button"
-                    onClick={() => setActiveId(block.id)}
-                    className={`flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left text-sm transition ${
-                      active ? "bg-sky-50 ring-1 ring-inset ring-sky-200/80" : "hover:bg-slate-50"
-                    }`}
+                    onClick={() => toggleChapter(ch.id)}
+                    className="flex w-full items-center gap-1.5 rounded-xl px-2 py-2 text-left transition hover:bg-slate-50"
                   >
-                    <span
-                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                        done
-                          ? "bg-emerald-500 text-white"
-                          : active
-                            ? "border border-sky-500 bg-white text-sky-700"
-                            : "border border-slate-300 bg-white text-slate-400"
-                      }`}
-                    >
-                      {done ? "✓" : idx + 1}
+                    <span className="shrink-0 text-[9px] text-slate-400 w-2.5">
+                      {chExpanded ? "▼" : "▶"}
                     </span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium text-slate-800">{block.label}</span>
-                      <span className="block truncate text-[11px] text-slate-500">{block.breadcrumb}</span>
+                    <span className="min-w-0 truncate text-[11px] font-bold text-slate-800">
+                      {ci + 1}. {ch.title}
                     </span>
                   </button>
+
+                  {/* Sections */}
+                  {chExpanded && secs.length > 0 && (
+                    <ul className="ml-3 border-l border-slate-100 pl-2 space-y-0.5 pb-1">
+                      {secs.map((sec, si) => {
+                        const subs = Array.isArray(sec.subsections) ? sec.subsections : [];
+                        const secExpanded = expandedSections[sec.id] !== false;
+
+                        if (subs.length === 0) {
+                          const done = blockHasContent(lessons, sec.id);
+                          const active = activeBlock?.id === sec.id;
+                          return (
+                            <li key={sec.id}>
+                              <button
+                                type="button"
+                                onClick={() => setActiveId(sec.id)}
+                                className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left transition ${
+                                  active
+                                    ? "bg-sky-50 ring-1 ring-inset ring-sky-200/80"
+                                    : "hover:bg-slate-50"
+                                }`}
+                              >
+                                <StatusDot done={done} active={active} busy={busyId === sec.id} />
+                                <span className={`min-w-0 truncate text-[11px] ${active ? "font-semibold text-sky-900" : "text-slate-600"}`}>
+                                  {ci + 1}.{si + 1} {sec.title}
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        }
+
+                        return (
+                          <li key={sec.id} className="pt-0.5">
+                            {/* Section header */}
+                            <button
+                              type="button"
+                              onClick={() => toggleSection(sec.id)}
+                              className="flex w-full items-center gap-1.5 rounded-xl px-2 py-1.5 text-left transition hover:bg-slate-50"
+                            >
+                              <span className="shrink-0 text-[9px] text-slate-400 w-2.5">
+                                {secExpanded ? "▼" : "▶"}
+                              </span>
+                              <span className="min-w-0 truncate text-[11px] font-semibold text-slate-600">
+                                {ci + 1}.{si + 1} {sec.title}
+                              </span>
+                            </button>
+
+                            {/* Subsections */}
+                            {secExpanded && (
+                              <ul className="ml-3 border-l border-slate-100 pl-2 space-y-0.5 pb-1">
+                                {subs.map((sub, qi) => {
+                                  const done = blockHasContent(lessons, sub.id);
+                                  const active = activeBlock?.id === sub.id;
+                                  return (
+                                    <li key={sub.id}>
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveId(sub.id)}
+                                        className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left transition ${
+                                          active
+                                            ? "bg-sky-50 ring-1 ring-inset ring-sky-200/80"
+                                            : "hover:bg-slate-50"
+                                        }`}
+                                      >
+                                        <StatusDot done={done} active={active} busy={busyId === sub.id} />
+                                        <span className={`min-w-0 truncate text-[11px] ${active ? "font-semibold text-sky-900" : "text-slate-500"}`}>
+                                          {ci + 1}.{si + 1}.{qi + 1} {sub.title}
+                                        </span>
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+
+                  {chExpanded && secs.length === 0 && (
+                    <p className="ml-6 mt-1 pb-1 text-[10px] text-slate-400 italic">No sections</p>
+                  )}
                 </li>
               );
             })}
+
+            {/* Conclusion */}
+            {conclusionBlock && (
+              <li className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveId(conclusionBlock.id)}
+                  className={`flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold transition ${
+                    conclusionBlock.id === activeBlock?.id
+                      ? "bg-sky-50 ring-1 ring-inset ring-sky-200/80 text-sky-900"
+                      : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <StatusDot
+                    done={blockHasContent(lessons, conclusionBlock.id)}
+                    active={conclusionBlock.id === activeBlock?.id}
+                    busy={busyId === conclusionBlock.id}
+                  />
+                  <span className="truncate">Conclusion</span>
+                </button>
+              </li>
+            )}
           </ul>
         </nav>
 
+        {/* ── Draft editor panel ── */}
         <div className="book-panel flex flex-col gap-4">
           {activeBlock && (
             <>
@@ -369,15 +530,18 @@ export default function WriteStep({
                   disabled={activeIndex <= 0}
                   className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"
                 >
-                  Previous section
+                  ← Previous
                 </button>
+                <span className="text-xs text-slate-400">
+                  {activeIndex + 1} / {blocks.length}
+                </span>
                 <button
                   type="button"
                   onClick={goNextBlock}
                   disabled={activeIndex < 0 || activeIndex >= blocks.length - 1}
                   className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"
                 >
-                  Next section
+                  Next →
                 </button>
               </div>
             </>
