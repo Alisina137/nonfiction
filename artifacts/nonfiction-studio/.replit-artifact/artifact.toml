@@ -12,7 +12,7 @@ version = "1.0.0"
 [[services]]
 name = "web"
 paths = [ "/" ]
-localPort = 21617
+localPort = 5000
 
 [services.development]
 run = "pnpm --filter @workspace/nonfiction-studio run dev"
@@ -27,5 +27,5 @@ from = "/*"
 to = "/index.html"
 
 [services.env]
-PORT = "21617"
+PORT = "5000"
 BASE_PATH = "/"
