@@ -115,6 +115,7 @@ function normalizeSection(s) {
   return {
     id: s.id || safeId(),
     title: stripAfterColon(s.title || "Section"),
+    objective: typeof s.objective === "string" ? s.objective : "",
     words: Number(s.words) || 0,
     expanded: s.expanded !== false,
     subsections: Array.isArray(s.subsections) ? s.subsections.map(normalizeSub) : [],
@@ -123,7 +124,12 @@ function normalizeSection(s) {
 
 function normalizeSub(su) {
   if (!su || typeof su !== "object") return newSubsection();
-  return { id: su.id || safeId(), title: stripAfterColon(su.title || "Subsection"), words: Number(su.words) || 0 };
+  return {
+    id: su.id || safeId(),
+    title: stripAfterColon(su.title || "Subsection"),
+    purpose: typeof su.purpose === "string" ? su.purpose : "",
+    words: Number(su.words) || 0
+  };
 }
 
 function normalizedBookOutline(raw) {
@@ -379,26 +385,36 @@ export default function OutlineStep({
     setGenSecsBusy((p) => ({ ...p, [chId]: true }));
     try {
       const bd = fullProject?.bookDetails || {};
+      const ch = chapters.find((c) => c.id === chId);
       const data = await aiFetch("/api/ai/generate-sections", {
         bookTitle:      resolveBookTitle(fullProject),
         chapterTitle,
         sectionCount:   Math.max(1, sectionCount),
         corePromise:    bd.corePromise    || "",
         coreThesis:     bd.coreThesis     || "",
-        chapterPurpose: "",
+        chapterPurpose: ch?.objective     || ch?.summary || "",
         research:       fullProject?.research,
       });
-      const titles = Array.isArray(data.titles) ? data.titles : [];
-      if (titles.length === 0) return;
-      updateChapterById(chId, (ch) => {
-        const chWords = Number(ch.words) || 1200;
-        const secWords = Math.max(150, Math.round(chWords / Math.max(titles.length, 1)));
+
+      // Prefer rich objects (new format); fall back to title strings (legacy)
+      const richSections = Array.isArray(data.sections) ? data.sections : [];
+      const fallbackTitles = Array.isArray(data.titles) ? data.titles : [];
+      const items = richSections.length > 0
+        ? richSections
+        : fallbackTitles.map((t) => ({ title: t, objective: "" }));
+
+      if (items.length === 0) return;
+
+      updateChapterById(chId, (chapter) => {
+        const chWords = Number(chapter.words) || 1200;
+        const secWords = Math.max(150, Math.round(chWords / Math.max(items.length, 1)));
         return normalizeChapter({
-          ...ch,
+          ...chapter,
           expanded: true,
-          sections: titles.map((title) => normalizeSection({
+          sections: items.map((item) => normalizeSection({
             ...newSectionSkeleton(secWords),
-            title,
+            title:     item.title     || "New section",
+            objective: item.objective || "",
           })),
         });
       });
@@ -421,19 +437,27 @@ export default function OutlineStep({
         subsectionCount: Math.max(1, subsectionCount),
         research: fullProject?.research,
       });
-      const titles = Array.isArray(data.titles) ? data.titles : [];
-      if (titles.length === 0) return;
+
+      // Prefer rich objects (new format); fall back to title strings (legacy)
+      const richSubs = Array.isArray(data.subsections) ? data.subsections : [];
+      const fallbackTitles = Array.isArray(data.titles) ? data.titles : [];
+      const items = richSubs.length > 0
+        ? richSubs
+        : fallbackTitles.map((t) => ({ title: t, purpose: "" }));
+
+      if (items.length === 0) return;
+
       updateSectionById(chId, secId, (s) => ({
         ...s,
         expanded: true,
-        subsections: titles.map((title) => ({
-          id: safeId(),
-          title,
-          words: Math.max(80, Math.round(Number(s.words || 400) / Math.max(titles.length, 1))),
+        subsections: items.map((item) => ({
+          id:      safeId(),
+          title:   item.title   || "New subsection",
+          purpose: item.purpose || "",
+          words:   Math.max(80, Math.round(Number(s.words || 400) / Math.max(items.length, 1))),
         })),
       }));
     } catch (e) {
-      // silently ignore — subsections stay unchanged
       console.error("[generate-subsections]", e?.message);
     } finally {
       setGenSubsBusy((p) => { const n = { ...p }; delete n[key]; return n; });

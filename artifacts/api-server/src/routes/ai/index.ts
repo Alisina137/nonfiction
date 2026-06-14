@@ -999,15 +999,32 @@ router.post("/generate-sections", async (req, res) => {
       chapterPurpose ? String(chapterPurpose) : undefined
     );
     const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "sectionGen");
-    const data = extractJSON(text);
-    if (!Array.isArray(data)) {
+    const raw = extractJSON(text);
+
+    let sections: Array<{ title: string; objective: string }> = [];
+
+    if (raw && !Array.isArray(raw) && Array.isArray(raw.sections)) {
+      // New format: { sections: [{ sectionTitle, sectionObjective }] }
+      sections = raw.sections
+        .filter((s: any) => s && typeof s.sectionTitle === "string" && s.sectionTitle.trim())
+        .map((s: any) => ({
+          title:     stripSectionColon(String(s.sectionTitle).trim()),
+          objective: typeof s.sectionObjective === "string" ? s.sectionObjective.trim() : ""
+        }));
+    } else if (Array.isArray(raw)) {
+      // Legacy format: string array
+      sections = raw
+        .filter((t: any) => typeof t === "string" && t.trim())
+        .map((t: any) => ({ title: stripSectionColon(String(t).trim()), objective: "" }));
+    }
+
+    if (sections.length === 0) {
+      console.error("[generate-sections] Could not parse sections from:", text.slice(0, 400));
       return res.status(500).json({ error: "AI returned unparseable section data." });
     }
-    const titles = data
-      .filter((t: any) => typeof t === "string" && t.trim())
-      .map((t: any) => stripSectionColon(String(t).trim()))
-      .slice(0, count);
-    return res.json({ titles, _provider: usedProvider });
+
+    const titles = sections.map((s) => s.title);
+    return res.json({ sections, titles, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
@@ -1023,16 +1040,32 @@ router.post("/generate-subsections", async (req, res) => {
     const count = Math.min(15, Math.max(1, Number(subsectionCount) || 3));
     const prompt = subsectionGenerationPrompt(String(chapterTitle), String(sectionTitle), count, research);
     const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "subsectionGen");
-    const data = extractJSON(text);
-    if (!Array.isArray(data)) {
-      console.error("[generate-subsections] Expected array, got:", typeof data, text.slice(0, 300));
+    const raw = extractJSON(text);
+
+    let subsections: Array<{ title: string; purpose: string }> = [];
+
+    if (raw && !Array.isArray(raw) && Array.isArray(raw.subsections)) {
+      // New format: { subsections: [{ subsectionTitle, subsectionPurpose }] }
+      subsections = raw.subsections
+        .filter((s: any) => s && typeof s.subsectionTitle === "string" && s.subsectionTitle.trim())
+        .map((s: any) => ({
+          title:   stripSectionColon(String(s.subsectionTitle).trim()),
+          purpose: typeof s.subsectionPurpose === "string" ? s.subsectionPurpose.trim() : ""
+        }));
+    } else if (Array.isArray(raw)) {
+      // Legacy format: string array
+      subsections = raw
+        .filter((t: any) => typeof t === "string" && t.trim())
+        .map((t: any) => ({ title: stripSectionColon(String(t).trim()), purpose: "" }));
+    }
+
+    if (subsections.length === 0) {
+      console.error("[generate-subsections] Could not parse subsections from:", text.slice(0, 300));
       return res.status(500).json({ error: "AI returned unparseable subsection data." });
     }
-    const titles = data
-      .filter((t: any) => typeof t === "string" && t.trim())
-      .map((t: any) => stripSectionColon(String(t).trim()))
-      .slice(0, count);
-    return res.json({ titles, _provider: usedProvider });
+
+    const titles = subsections.map((s) => s.title);
+    return res.json({ subsections, titles, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

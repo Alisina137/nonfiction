@@ -912,30 +912,11 @@ ${isStory ? `STORY/NARRATIVE STRUCTURE — each chapter must contain:
 - Mini summary or reflection prompt`}
 
 ========================================
-SECTION GENERATION RULES
-========================================
-- Generate sections only after determining the chapter objective.
-- Every section must directly support the chapter objective.
-- Section count is DYNAMIC: generate between 3 and 5 sections per chapter.
-- Use only the number of sections required to fully explain the chapter topic.
-- Do not force 5 sections if 3 or 4 provide better coverage.
-- Avoid redundant sections.
-- Each section explores a unique aspect of the chapter.
-
-========================================
-SUBSECTION GENERATION RULES
-========================================
-- Generate subsections only when they help expand and clarify a section.
-- Subsection count is DYNAMIC: generate between 2 and 4 subsections per section.
-- Use fewer items when the topic is simple, more when the topic is complex.
-- Every subsection must deepen the parent section rather than introduce unrelated ideas.
-- Subsections should create a logical flow inside the section.
-
-========================================
 HIERARCHY RULE
 ========================================
 Book Promise → Chapter Objective → Section Objective → Subsection Objective
 Every child element must directly support its parent element.
+Sections and subsections are generated separately per chapter — do NOT include them in this output.
 
 ========================================
 QUALITY RULES
@@ -944,13 +925,17 @@ QUALITY RULES
 - Do not repeat concepts under different names.
 - Do not create artificial structure merely to reach a target count.
 - Prioritize clarity, progression, and reader transformation.
-- The final outline must feel like the table of contents of a professionally published nonfiction book.
+- The final chapter list must feel like the table of contents of a professionally published nonfiction book.
 
 ========================================
-OUTPUT FORMAT
+OUTPUT FORMAT — CHAPTERS ONLY
 ========================================
+Generate ONLY chapter-level structure.
+Do NOT generate sections or subsections.
+Leave every "sections" array completely empty: [].
+
 Return ONLY valid JSON — no markdown, no explanation:
-{"chapters":[{"title":"Specific chapter title signaling transformation or insight — no colons","summary":"2-sentence summary of what this chapter achieves for the reader's journey","arcRole":"opening hook|escalation|climax|resolution|transformation|revelation|payoff|etc","sections":[{"title":"Specific section title — unique angle within the chapter","subsections":[{"title":"Precise insight, tactic, or story beat — deepens the parent section","intent":"What shift or insight this delivers to the reader"}]}]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
+{"chapters":[{"title":"Chapter title — specific, compelling, no colons","chapterObjective":"1–2 sentence description of what this chapter achieves in the reader's transformation arc","sections":[]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
 }
 
 export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
@@ -2636,7 +2621,12 @@ Chapter Title: ${chapterTitle}
 
 ${purposeLine}
 
-Desired Number of Sections: ${sectionCount}${contextBlock ? `\n\n${contextBlock}` : ""}
+${contextBlock ? `${contextBlock}\n\n` : ""}COMPLEXITY SCORING (mandatory — compute internally before generating):
+Rate the chapter topic complexity on a scale of 1–5:
+  Score 1–2 → generate 3 sections
+  Score 3   → generate 4 sections
+  Score 4–5 → generate 5 sections
+Generate only the number of sections the chapter genuinely needs. Do not pad to reach a higher count.
 
 ====================================================
 
@@ -2786,21 +2776,27 @@ If NO: Regenerate.
 
 ====================================================
 
-RULE 11 — ANTI-REPETITION VALIDATION
+CORE BOOK LOGIC (applies to all sections)
 
-Count unique section titles. If unique titles < ${sectionCount}: REGENERATE.
+1. The book is a transformation journey: problem → solution → mastery.
+2. Every section must move the reader forward in the chapter's transformation.
+3. Sections break the chapter into distinct logical dimensions.
+4. No repetition across sections. No filler or decorative titles.
 
-Never return duplicates.
+====================================================
+
+ANTI-REPETITION VALIDATION
+
+Count unique section titles. If any are duplicates: REGENERATE.
+Never return duplicate section titles.
 
 ====================================================
 
 OUTPUT FORMAT
 
-Return ONLY a valid JSON array of exactly ${sectionCount} string(s).
+Return ONLY valid JSON — no markdown, no explanations, no code fences, no comments.
 
-No markdown. No explanations. No comments. Only the JSON array.
-
-["Section Title 1", "Section Title 2", ...]`;
+{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter"}]}`;
 }
 
 export function subsectionGenerationPrompt(
@@ -2825,7 +2821,13 @@ Chapter
 INPUTS
 Chapter Title: ${chapterTitle}
 Section Title: ${sectionTitle}
-Desired Number of Subsections: ${subsectionCount}${topic ? `\nBook Topic: ${topic}` : ""}${niche ? `\nNiche: ${niche}${subNiche ? ` › ${subNiche}` : ""}` : ""}${audience ? `\nTarget Audience: ${audience}` : ""}
+${topic ? `Book Topic: ${topic}\n` : ""}${niche ? `Niche: ${niche}${subNiche ? ` › ${subNiche}` : ""}\n` : ""}${audience ? `Target Audience: ${audience}\n` : ""}
+COMPLEXITY SCORING (mandatory — compute internally before generating):
+Rate the section topic complexity on a scale of 1–5:
+  Score 1–2 → generate 3 subsections
+  Score 3   → generate 4 subsections
+  Score 4–5 → generate 5 subsections
+Generate only the number of subsections the section genuinely needs. Do not pad to reach a higher count.
 
 RULES (NON-NEGOTIABLE)
 
@@ -2873,18 +2875,21 @@ Before returning output, verify every pair: Are they discussing different ideas?
 If the answer is NO, regenerate.
 
 RULE 8 — ANTI-REPETITION CHECK
-Count unique subsection titles. If unique titles < ${subsectionCount}: REGENERATE until all are unique.
+Count unique subsection titles. If any are duplicates: REGENERATE until all are unique.
 Never return duplicate subsection titles.
 
 RULE 9 — SECTION RELEVANCE CHECK
 For every subsection: re-read the section title and score relevance 1–10. If relevance < 8: regenerate that subsection.
 
+RULE 9A — CORE BOOK LOGIC
+The book is a transformation journey: problem → solution → mastery.
+Every subsection must move the reader forward in the section's logical expansion.
+No repetition. No filler or decorative titles.
+
 RULE 10 — RETURN ONLY FINAL RESULTS
-Output ONLY a valid JSON array — no explanations, no markdown, no code fences, no comments.
+Output ONLY valid JSON — no explanations, no markdown, no code fences, no comments.
 
-Generate exactly ${subsectionCount} subsection title(s).
-
-["<title 1>", "<title 2>", ...]`;
+{"subsections":[{"subsectionTitle":"Subsection title — precise, specific, no colons","subsectionPurpose":"1 sentence: what insight or action this subsection delivers"}]}`;
 }
 
 // ─── Generate Field-Level Suggestion ──────────────────────────────────────────

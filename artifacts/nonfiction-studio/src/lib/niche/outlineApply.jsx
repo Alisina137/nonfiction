@@ -7,12 +7,20 @@ function safeId() {
 
 /**
  * Convert AI niche-outline response into bookOutline.chapters tree.
- * Never falls back to "Beat N" or "Section N" — uses the AI title or
- * a blank placeholder that prompts the user to rename.
+ *
+ * Supports two output modes from the AI:
+ *   1. Chapters-only (new spec): chapters with empty sections[] → keep empty,
+ *      user will click "✦ Sections" per chapter to populate them.
+ *   2. Full tree (legacy): chapters already contain sections + subsections.
+ *
+ * Field name compatibility:
+ *   - chapter: ch.title OR ch.chapterTitle
+ *   - chapter objective: ch.chapterObjective OR ch.summary
+ *   - section: sec.title (legacy only)
+ *   - subsection: sub.title (legacy only)
  */
 export function applyNicheOutlineToBookOutline(aiPayload, architecture) {
   const chapters = Array.isArray(aiPayload?.chapters) ? aiPayload.chapters : [];
-  const secsPer = architecture?.sectionsPerChapter ?? 2;
   const subsPer = architecture?.subsectionsPerSection ?? 2;
   const defaultChWords = Math.max(
     800,
@@ -20,42 +28,62 @@ export function applyNicheOutlineToBookOutline(aiPayload, architecture) {
   );
 
   const mapped = chapters.map((ch, ci) => {
-    const aiSections = Array.isArray(ch.sections) ? ch.sections : [];
-    const sectionCount = Math.max(aiSections.length, secsPer);
-    const secWords = Math.max(200, Math.round(defaultChWords / Math.max(sectionCount, 1)));
+    // Support both field names
+    const chapterTitle     = ch.title || ch.chapterTitle || `Chapter ${ci + 1}`;
+    const chapterObjective = ch.chapterObjective || ch.summary || "";
 
-    const sections = Array.from({ length: sectionCount }, (_, si) => {
-      const fromAi = aiSections[si];
+    const aiSections = Array.isArray(ch.sections) ? ch.sections : [];
+
+    // CHAPTERS-ONLY MODE: AI returned empty sections[] — respect it.
+    // User will generate sections per-chapter using "✦ Sections" button.
+    if (aiSections.length === 0) {
+      return {
+        id:        safeId(),
+        title:     chapterTitle,
+        objective: chapterObjective,
+        summary:   chapterObjective,
+        arcRole:   ch.arcRole || "",
+        words:     defaultChWords,
+        expanded:  true,
+        sections:  []
+      };
+    }
+
+    // FULL TREE MODE (legacy): sections were provided inline by the AI
+    const secWords = Math.max(200, Math.round(defaultChWords / Math.max(aiSections.length, 1)));
+
+    const sections = aiSections.map((fromAi, si) => {
       const aiSubs = fromAi && Array.isArray(fromAi.subsections) ? fromAi.subsections : [];
       const subCount = Math.max(aiSubs.length, subsPer);
       const subWords = Math.max(120, Math.round(secWords / Math.max(subCount, 1)));
 
       const subsections = Array.from({ length: subCount }, (_, qi) => ({
-        id: safeId(),
-        // Use AI title — never fall back to a colon-format placeholder
-        title: aiSubs[qi]?.title || `Part ${qi + 1}`,
-        intent: aiSubs[qi]?.intent || "",
-        words: subWords
+        id:      safeId(),
+        title:   aiSubs[qi]?.title || `Part ${qi + 1}`,
+        intent:  aiSubs[qi]?.intent || "",
+        purpose: aiSubs[qi]?.purpose || "",
+        words:   subWords
       }));
 
       return {
-        id: safeId(),
-        // Use AI section title — never fall back to a colon-format placeholder
-        title: fromAi?.title || `Section ${si + 1}`,
-        words: secWords,
-        expanded: true,
+        id:        safeId(),
+        title:     fromAi?.title || `Section ${si + 1}`,
+        objective: fromAi?.objective || "",
+        words:     secWords,
+        expanded:  true,
         subsections
       };
     });
 
     return {
-      id: safeId(),
-      title: ch.title || `Chapter ${ci + 1}`,
-      words: defaultChWords,
-      expanded: true,
-      sections,
-      arcRole: ch.arcRole || "",
-      summary: ch.summary || ""
+      id:        safeId(),
+      title:     chapterTitle,
+      objective: chapterObjective,
+      summary:   chapterObjective,
+      arcRole:   ch.arcRole || "",
+      words:     defaultChWords,
+      expanded:  true,
+      sections
     };
   });
 
