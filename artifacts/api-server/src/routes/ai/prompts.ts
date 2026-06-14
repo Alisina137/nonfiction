@@ -780,9 +780,40 @@ Return valid JSON only:
 }
 
 export function outlinePrompt({ idea, title, description, audience, tone }: any) {
-  return `Build an 8-10 chapter outline.
-Idea: ${idea}, Title: ${title}, Audience: ${audience}, Tone: ${tone}
-Return JSON: {"chapters":[{"title":"...","summary":"1-2 lines"}]}`;
+  return `You are an expert nonfiction book architect.
+
+Your task is to create a professional, logically structured book outline that follows the same planning principles used by premium AI book-writing platforms.
+
+CORE PRINCIPLES:
+1. Start with the book's central promise, transformation, or desired outcome.
+2. Design the outline as a reader journey from their current state to their desired state.
+3. Every chapter must move the reader closer to the promised outcome.
+4. Chapters must build upon previous chapters and create a natural progression.
+5. Avoid repetitive, overlapping, or filler chapters.
+
+BOOK DETAILS:
+IDEA: ${idea || "(not provided)"}
+TITLE: ${title || "(not provided)"}
+DESCRIPTION: ${description || "(not provided)"}
+AUDIENCE: ${audience || "(not provided)"}
+TONE: ${tone || "(not provided)"}
+
+CHAPTER TITLE RULES:
+- Premium, professional, and compelling
+- NEVER use colons (:) in titles
+- Preferred formats: "The Hidden Cost of Distraction" / "Building a Focus System That Lasts" / "Mastering Deep Work in a Distracted World"
+
+SECTION RULES (per chapter):
+- Generate 3–5 sections — only as many as the chapter genuinely needs
+- Each section must directly support the chapter's objective
+- No redundant sections
+
+SUBSECTION RULES (per section):
+- Generate 2–4 subsections when they help expand and clarify
+- Every subsection must deepen the parent section
+
+Return ONLY valid JSON — no markdown, no explanation:
+{"chapters":[{"title":"Chapter title without colons","summary":"2-sentence summary of reader transformation this chapter delivers","sections":[{"title":"Section title","subsections":[{"title":"Subsection title"}]}]}]}`;
 }
 
 export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }: any) {
@@ -794,38 +825,20 @@ export function nicheOutlinePrompt({ research, architecture, title, description,
     : "direct and authoritative";
   const isStory = ["romance-arc", "romantasy-hybrid", "suspense-escalation", "mystery-procedural", "hero-journey", "narrative-arc"].includes(a.structureType || "");
 
-  return `You are an expert AI Book Architect, Academic Formatter, and Amazon KDP Publishing Specialist.
+  return `You are an expert nonfiction book architect.
 
-Your task: Generate a ${chapterCount}-chapter book outline that combines thesis-grade organizational intelligence with bestseller-quality readability and commercial appeal. The result must feel like a professionally published Amazon bestseller — not a dry academic document, not a generic template.
-
-========================================
-HIERARCHY — apply at every level
-========================================
-Chapter → Section → Subsection → Topic Block
-Each level flows logically from broad concept to detailed concept.
-Hierarchy must be deep, intentional, and logically progressive.
+Your task is to create a professional, logically structured book outline that follows the same planning principles used by premium AI book-writing platforms.
 
 ========================================
-TITLE QUALITY — NON-NEGOTIABLE
+CORE PRINCIPLES
 ========================================
-Every title at EVERY level must be SPECIFIC, MEANINGFUL, and PUBLICATION-READY.
-
-STRICTLY FORBIDDEN titles (never generate these):
-"Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder",
-"Chapter N", "Key Point", "Emotional Theme", "Untitled", any numbered generic label.
-
-GOOD section/subsection title examples:
-- "The Fear of Falling Behind"
-- "When Failure Becomes Identity"
-- "Curated Success vs Real Life"
-- "The Quiet Weight of Comparison"
-- "Breaking the Perfectionism Loop"
-- "What Nobody Tells You About Starting Over"
-
-GOOD chapter title examples:
-- "The Invisible Rules That Keep You Stuck"
-- "Rewiring the Stories You Tell Yourself"
-- "Building Systems That Outlast Motivation"
+1. Start with the book's central promise, transformation, or desired outcome.
+2. Design the outline as a reader journey from their current state to their desired state.
+3. Every chapter must move the reader closer to the promised outcome.
+4. Chapters must build upon previous chapters and create a natural progression.
+5. Avoid repetitive, overlapping, or filler chapters.
+6. Do not create chapters that feel isolated from the overall transformation.
+7. The outline must feel like it was planned by an experienced author, not generated from a template.
 
 ========================================
 BOOK PROFILE
@@ -842,8 +855,12 @@ DESCRIPTION: ${description || ""}
 ${bookContext ? `USP: ${bookContext.usp || ""}
 DIFFERENTIATION: ${bookContext.differentiation || ""}
 READER PAIN PROFILE: ${bookContext.readerPainProfile || ""}
+READER BEFORE STATE: ${bookContext.readerTransformationBefore || bookContext.readerPainProfile || ""}
+READER AFTER STATE: ${bookContext.readerTransformationAfter || bookContext.transformationPromise || ""}
 READER TRANSFORMATION PROMISE: ${bookContext.transformationPromise || ""}
 MARKET GAP TO FILL: ${bookContext.marketGap || ""}
+CORE PROMISE: ${bookContext.corePromise || ""}
+UNIQUE MECHANISM: ${bookContext.uniqueMechanism || ""}
 WRITING STYLE BENCHMARK: ${bookContext.writingStyleFingerprint || ""}
 POSITIONING STRATEGY: ${bookContext.positioningStrategy || ""}
 EMOTIONAL TRIGGERS: ${bookContext.emotionalTriggers || ""}
@@ -866,13 +883,24 @@ Niche beat flow:
 ${flow || "(apply sub-niche-native escalation — never generic beats)"}
 
 ========================================
-CHAPTER CONTENT RULES
+CHAPTER GENERATION RULES
 ========================================
+- Generate exactly ${chapterCount} chapters that cover the complete transformation.
+- Each chapter must have a clear, singular objective.
+- Chapter titles must be premium, professional, and compelling.
+- NEVER use colons (:) in chapter titles.
+- Preferred title formats:
+  "The Hidden Cost of Distraction"
+  "Building a Focus System That Lasts"
+  "Mastering Deep Work in a Distracted World"
+- Titles must expand the book topic naturally and logically.
+- FORBIDDEN titles: "Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder", "Chapter N", "Key Point", "Emotional Theme", "Untitled", any numbered generic label.
+
 ${isStory ? `STORY/NARRATIVE STRUCTURE — each chapter must contain:
 - Clear narrative purpose in the story arc
 - Subsections represent: turning points, emotional shifts, conflicts, discoveries, climaxes, resolutions
 - Thematic consistency across chapters
-- Character development / emotional progression built into subsection titles` : `NONFICTION STRUCTURE — each chapter should ideally contain:
+- Character development / emotional progression built into subsection titles` : `NONFICTION CHAPTER CONTENT (each chapter should contain):
 - Opening hook (grabs attention immediately)
 - Core concept (what this chapter teaches)
 - Explanation (why it matters, evidence-backed)
@@ -881,21 +909,46 @@ ${isStory ? `STORY/NARRATIVE STRUCTURE — each chapter must contain:
 - Actionable takeaway (what to do next)
 - Mini summary or reflection prompt`}
 
-CONTENT QUALITY:
-- Each chapter must build on the previous one — no repetition, no filler
-- Deepen stakes or insight progressively throughout the book
-- Smooth narrative transitions between chapters
-- No shallow sections — every subsection must deliver real value
+========================================
+SECTION GENERATION RULES
+========================================
+- Generate sections only after determining the chapter objective.
+- Every section must directly support the chapter objective.
+- Section count is DYNAMIC: generate between 3 and 5 sections per chapter.
+- Use only the number of sections required to fully explain the chapter topic.
+- Do not force 5 sections if 3 or 4 provide better coverage.
+- Avoid redundant sections.
+- Each section explores a unique aspect of the chapter.
 
-CHAPTERS TO GENERATE: ${chapterCount}
-SECTIONS PER CHAPTER: 2-3 (with fully specific, real titles — no generic labels)
-SUBSECTIONS PER SECTION: 2-3 (with fully specific, real titles — no generic labels)
+========================================
+SUBSECTION GENERATION RULES
+========================================
+- Generate subsections only when they help expand and clarify a section.
+- Subsection count is DYNAMIC: generate between 2 and 4 subsections per section.
+- Use fewer items when the topic is simple, more when the topic is complex.
+- Every subsection must deepen the parent section rather than introduce unrelated ideas.
+- Subsections should create a logical flow inside the section.
+
+========================================
+HIERARCHY RULE
+========================================
+Book Promise → Chapter Objective → Section Objective → Subsection Objective
+Every child element must directly support its parent element.
+
+========================================
+QUALITY RULES
+========================================
+- Do not use generic filler headings.
+- Do not repeat concepts under different names.
+- Do not create artificial structure merely to reach a target count.
+- Prioritize clarity, progression, and reader transformation.
+- The final outline must feel like the table of contents of a professionally published nonfiction book.
 
 ========================================
 OUTPUT FORMAT
 ========================================
 Return ONLY valid JSON — no markdown, no explanation:
-{"chapters":[{"title":"Specific chapter title signaling transformation or insight","summary":"2-sentence summary of what this chapter achieves for the reader","arcRole":"opening hook|escalation|climax|resolution|transformation|revelation|payoff|etc","sections":[{"title":"Specific concept, conflict, or angle within the chapter","subsections":[{"title":"Precise emotionally-specific insight, tactic, or story beat","intent":"What shift or insight this delivers to the reader"}]}]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
+{"chapters":[{"title":"Specific chapter title signaling transformation or insight — no colons","summary":"2-sentence summary of what this chapter achieves for the reader's journey","arcRole":"opening hook|escalation|climax|resolution|transformation|revelation|payoff|etc","sections":[{"title":"Specific section title — unique angle within the chapter","subsections":[{"title":"Precise insight, tactic, or story beat — deepens the parent section","intent":"What shift or insight this delivers to the reader"}]}]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
 }
 
 export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
