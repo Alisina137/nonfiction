@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   ALLOWED_RESOURCE_EXTENSIONS,
   parseResourceUploadFile,
@@ -47,6 +48,7 @@ const STYLE_SLIDERS = [
 const DEFAULT_CONTROLS = { tone: 30, inspiration: 50, authority: 70, storytelling: 40, complexity: 30 };
 
 const DEFAULT_DRAFT = {
+  authorName:             "",
   inspiredBy:             "",
   authorDescription:      "",
   writingSamples:         [{ text: "", source: "" }],
@@ -286,8 +288,9 @@ export default function AuthorPersonaStep({ authorPersona, setAuthorPersona, ful
       ...authorPersona,
       selectedId: p.id,
       draft: {
-        inspiredBy:             p.inspiredBy            ?? "",
-        authorDescription:      p.authorDescription     ?? "",
+        authorName:             p.authorName             ?? "",
+        inspiredBy:             p.inspiredBy             ?? "",
+        authorDescription:      p.authorDescription      ?? "",
         writingSamples:         Array.isArray(p.writingSamples) && p.writingSamples.length
           ? p.writingSamples.map(w => ({ text: w.text ?? "", source: w.source ?? "" }))
           : [{ text: "", source: "" }],
@@ -326,15 +329,44 @@ export default function AuthorPersonaStep({ authorPersona, setAuthorPersona, ful
     const t1 = setTimeout(() => setAiPhase(AI_PHASES[1]), 1800);
     const t2 = setTimeout(() => setAiPhase(AI_PHASES[2]), 3600);
 
+    // Debug: log context data being sent
+    const contextSummary = {
+      hasResearch:    !!fullProject?.research,
+      hasAnalysis:    !!fullProject?.analysis,
+      hasBookTitle:   !!fullProject?.bookTitle,
+      hasBookDetails: !!fullProject?.bookDetails,
+      topic:          fullProject?.research?.bookTopic || "(none)",
+      audience:       fullProject?.research?.targetAudience || fullProject?.bookDetails?.audience || "(none)",
+      title:          fullProject?.bookDetails?.title || fullProject?.bookTitle?.selectedCard?.title || "(none)",
+    };
+    console.log("[AuthorPersona] Sending context:", contextSummary);
+    console.log("[AuthorPersona] Full project keys:", Object.keys(fullProject || {}));
+
     try {
+      console.log("[AuthorPersona] Calling /api/ai/generate-author-persona");
       const data = await aiFetch(
         "/api/ai/generate-author-persona",
         { project: fullProject },
         { noCache: true }
       );
 
-      updateDraft({
+      console.log("[AuthorPersona] AI response received:", {
+        authorArchetype:   data.authorArchetype,
+        authorName:        data.authorName,
+        inspiredBy:        data.inspiredBy,
+        hasDescription:    !!data.authorDescription,
+        hasCorePromise:    !!data.coreAuthorPromise,
+        hasVoiceSummary:   !!data.voiceSummary,
+        hasPersonaStrength: !!data.personaStrength,
+        dosCount:          data.dos?.length ?? 0,
+        dontsCount:        data.donts?.length ?? 0,
+        _provider:         data._provider,
+      });
+
+      const patch = {
         authorArchetype:        data.authorArchetype        || "",
+        authorName:             data.authorName             || "",
+        inspiredBy:             data.inspiredBy             || "",
         authorDescription:      data.authorDescription      || draft.authorDescription || "",
         coreAuthorPromise:      data.coreAuthorPromise      || "",
         readerRelationship:     data.readerRelationship     || "",
@@ -348,9 +380,23 @@ export default function AuthorPersonaStep({ authorPersona, setAuthorPersona, ful
         donts:                  Array.isArray(data.donts)             ? data.donts             : [],
         contentGuidelines:      Array.isArray(data.contentGuidelines) ? data.contentGuidelines : [],
         writingSample:          data.writingSample          || ""
+      };
+
+      console.log("[AuthorPersona] Applying state patch:", {
+        authorArchetype: patch.authorArchetype,
+        authorName:      patch.authorName,
+        inspiredBy:      patch.inspiredBy,
       });
+
+      updateDraft(patch);
+
+      console.log("[AuthorPersona] State updated successfully. Data persists via DashboardPage autosave to localStorage.");
+      toast.success("Author persona generated successfully.");
     } catch (e) {
-      setAiError(e.message || "Generation failed. Please try again.");
+      const msg = e.message || "Generation failed. Please try again.";
+      console.error("[AuthorPersona] Generation error:", msg);
+      setAiError(msg);
+      toast.error(msg);
     } finally {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -369,6 +415,7 @@ export default function AuthorPersonaStep({ authorPersona, setAuthorPersona, ful
     const entry = {
       id:                     selectedId && selectedId !== CREATE_NEW_VALUE ? selectedId : safeId(),
       name,
+      authorName:             draft.authorName,
       inspiredBy:             draft.inspiredBy,
       authorDescription:      draft.authorDescription,
       writingSamples:         samples.map(s => ({ text: s.text, source: s.source || "" })),
@@ -388,12 +435,16 @@ export default function AuthorPersonaStep({ authorPersona, setAuthorPersona, ful
       updatedAt:              new Date().toISOString()
     };
 
+    console.log("[AuthorPersona] Saving persona:", { id: entry.id, name: entry.name });
+
     const isExisting = selectedId && selectedId !== CREATE_NEW_VALUE && saved.some(p => p.id === selectedId);
     const nextSaved  = isExisting
       ? saved.map(p => p.id === entry.id ? entry : p)
       : [...saved, entry];
 
     setAuthorPersona({ ...authorPersona, savedPersonas: nextSaved, selectedId: entry.id });
+    console.log("[AuthorPersona] Persona saved. Total saved:", nextSaved.length);
+    toast.success("Persona saved.");
   }
 
   // ── Writing sample file upload ─────────────────────────────────────────────

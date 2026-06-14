@@ -115,7 +115,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
   architecturePreview: 500,
   structure:           400,
   details:            2500,
-  authorPersona:      2000,
+  authorPersona:      3500,
   strategicPlan:      3500,
   bookSection:        1500,
   sectionGen:         1000,

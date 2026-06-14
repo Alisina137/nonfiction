@@ -674,6 +674,8 @@ router.post("/generate-author-persona", async (req, res) => {
 
     return res.json({
       authorArchetype:        typeof data.authorArchetype    === "string" ? data.authorArchetype.trim()    : "",
+      authorName:             typeof data.authorName         === "string" ? data.authorName.trim()         : "",
+      inspiredBy:             typeof data.inspiredBy         === "string" ? data.inspiredBy.trim()         : "",
       authorDescription:      typeof data.authorDescription  === "string" ? data.authorDescription.trim()  : "",
       coreAuthorPromise:      typeof data.coreAuthorPromise  === "string" ? data.coreAuthorPromise.trim()  : "",
       readerRelationship:     typeof data.readerRelationship === "string" ? data.readerRelationship.trim() : "",

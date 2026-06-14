@@ -338,6 +338,8 @@ Return ONLY valid JSON — no commentary before or after:
 
 {
   "authorArchetype": "ONE of: Trusted Expert | Friendly Mentor | Inspirational Motivator | Academic Researcher | Investigative Journalist | Business Strategist | Transformation Coach | Storytelling Teacher | Practical Practitioner | Thought Leader",
+  "authorName": "Suggested pen name or author name that fits this persona and niche — leave as empty string if not applicable",
+  "inspiredBy": "2–3 published author names whose writing style, tone, and cadence best match this persona, comma-separated (e.g. Malcolm Gladwell, James Clear, Brené Brown)",
   "authorDescription": "2–3 sentence author bio in third person, specific to this topic and audience",
   "coreAuthorPromise": "The single sentence promise this author makes to readers (e.g. I help X achieve Y without Z)",
   "readerRelationship": "ONE of: Mentor | Coach | Teacher | Guide | Friend | Consultant | Professor",
