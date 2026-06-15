@@ -263,6 +263,7 @@ export default function OutlineStep({
   const [regenBusy, setRegenBusy]       = useState({});
   const [genSubsBusy, setGenSubsBusy]   = useState({});
   const [genSecsBusy, setGenSecsBusy]   = useState({});
+  const [genChaptersBusy, setGenChaptersBusy] = useState(false);
 
   const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const intro = normalizeIntro(boRaw.introduction);
@@ -377,6 +378,33 @@ export default function OutlineStep({
         sections: (ch.sections || []).map((sec) => ({ ...sec, expanded })),
       })),
     }));
+  }
+
+  // ─── Generate chapter titles via niche-outline ─────────────────────────────
+
+  async function generateChapters() {
+    if (!arch) return;
+    setGenChaptersBusy(true);
+    try {
+      const bd = fullProject?.bookDetails || {};
+      const data = await aiFetch("/api/ai/niche-outline", {
+        architecture: arch,
+        title:        resolveBookTitle(fullProject),
+        description:  bd.description || bd.positioningStatement || "",
+        research:     fullProject?.research,
+        bookContext:  buildBookContext(fullProject),
+      });
+      const result = applyNicheOutlineToBookOutline(data, arch);
+      if (!Array.isArray(result?.chapters) || result.chapters.length === 0) return;
+      commit((draft) => ({
+        ...draft,
+        chapters: result.chapters.map(normalizeChapter),
+      }));
+    } catch (e) {
+      console.error("[generate-chapters]", e?.message);
+    } finally {
+      setGenChaptersBusy(false);
+    }
   }
 
   // ─── Generate all sections for a chapter ──────────────────────────────────
@@ -534,6 +562,20 @@ export default function OutlineStep({
 
       {/* Toolbar */}
       <section className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={genChaptersBusy || !arch}
+          onClick={generateChapters}
+          title={arch ? "Generate chapter titles from your research and niche architecture" : "Complete the Research step first to enable chapter generation"}
+          className="flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {genChaptersBusy ? (
+            <><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" />Generating…</>
+          ) : (
+            "✦ Generate Chapters"
+          )}
+        </button>
+        <div className="h-5 w-px bg-slate-200" />
         <button
           type="button"
           onClick={() => setAllExpanded(true)}
