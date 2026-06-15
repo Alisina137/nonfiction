@@ -177,7 +177,7 @@ export default function WriteStep({
         bookStructure: bookStructureVal(fullProject),
         sectionTitle: block.sectionTitle || null,
         chapterStrategy: chapterStrategy || null
-      });
+      }, { noCache: true });
       const lesson = data.lesson || data;
       const prose = lessonToProse(lesson);
       const entry = { lesson, prose, generatedAt: new Date().toISOString() };
@@ -208,8 +208,9 @@ export default function WriteStep({
         subsectionTitle: activeBlock?.label || "",
         bookContext:     buildBookContext(fullProject)
       });
-      setProse(activeBlock.id, data.text || "");
-      setStatus("Applied AI refinement.");
+      if (data.text) setProse(activeBlock.id, data.text);
+      else setStatus("Refinement returned empty text — your draft was kept.");
+      if (data.text) setStatus("Applied AI refinement.");
     } catch (e) {
       if (e instanceof GenerationCanceledError) setStatus("Refinement canceled — Grok approval declined.");
       else setStatus(e.message || "Could not refine text.");
@@ -224,16 +225,25 @@ export default function WriteStep({
     setStatus("Generating remaining sections…");
     let snapshot = lessons && typeof lessons === "object" ? { ...lessons } : {};
     let strategyCache = { ...chapterStrategies };
+    const failed = [];
     try {
       for (let i = 0; i < blocks.length; i += 1) {
         const block = blocks[i];
         if (blockHasContent(snapshot, block.id)) continue;
         setActiveId(block.id);
+        const before = snapshot;
         const result = await generateBlock(block, i, snapshot, strategyCache);
         snapshot = result.snapshot || snapshot;
         strategyCache = result.strategyCache || strategyCache;
+        if (snapshot === before || !blockHasContent(snapshot, block.id)) {
+          failed.push(block.label);
+        }
       }
-      setStatus("Batch generation finished.");
+      if (failed.length) {
+        setStatus(`Batch done — ${failed.length} section${failed.length > 1 ? "s" : ""} failed: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}`);
+      } else {
+        setStatus("Batch generation finished — all sections drafted.");
+      }
     } finally {
       setBatchBusy(false);
     }

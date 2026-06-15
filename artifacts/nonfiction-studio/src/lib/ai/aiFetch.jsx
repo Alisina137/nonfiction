@@ -11,8 +11,9 @@
 const CACHE_PREFIX  = "nonfiction-ai-cache-";
 const CACHE_TTL_MS  = 30 * 60 * 1000;
 
-export const EXHAUSTED_KEY  = "nonfiction-ai-exhausted-local";   // { [provider]: expiresAt }
-export const MANUAL_OFF_KEY = "nonfiction-ai-disabled-manual";   // [provider, ...]
+export const EXHAUSTED_KEY    = "nonfiction-ai-exhausted-local";   // { [provider]: expiresAt }
+export const MANUAL_OFF_KEY   = "nonfiction-ai-disabled-manual";   // [provider, ...]
+export const PREFERRED_KEY    = "nonfiction-ai-preferred-provider"; // "gemini"|"groq"|"xai"|"openrouter"|""
 
 const NO_CACHE_PATHS = ["/api/ai/improve"];
 
@@ -97,6 +98,19 @@ export function setManuallyDisabled(providerId, disabled) {
     if (disabled) list.add(providerId);
     else list.delete(providerId);
     window.localStorage.setItem(MANUAL_OFF_KEY, JSON.stringify([...list]));
+  } catch {}
+}
+
+// ─── Preferred provider ────────────────────────────────────────────────────────
+
+export function getPreferredProvider() {
+  try { return window.localStorage.getItem(PREFERRED_KEY) || ""; } catch { return ""; }
+}
+
+export function setPreferredProvider(providerId) {
+  try {
+    if (providerId) window.localStorage.setItem(PREFERRED_KEY, providerId);
+    else window.localStorage.removeItem(PREFERRED_KEY);
   } catch {}
 }
 
@@ -215,13 +229,15 @@ export async function aiFetch(url, body = {}, { signal, noCache } = {}) {
   }
 
   // Merge client-tracked exhausted + manual disables into every request
-  const exhausted = getLocallyExhaustedProviders();
-  const manual    = getManuallyDisabledProviders();
-  const disabled  = [...new Set([...exhausted, ...manual])];
+  const exhausted   = getLocallyExhaustedProviders();
+  const manual      = getManuallyDisabledProviders();
+  const disabled    = [...new Set([...exhausted, ...manual])];
+  const preferred   = getPreferredProvider();
 
   const merged = {
     ...body,
-    ...(disabled.length ? { disabledProviders: disabled } : {})
+    ...(disabled.length ? { disabledProviders: disabled } : {}),
+    ...(preferred       ? { preferredProvider: preferred } : {})
   };
 
   const res = await fetch(url, {

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   subscribeAiBus,
   providerLabel,
-  resetAllProviders
+  resetAllProviders,
+  getPreferredProvider,
+  setPreferredProvider
 } from "@/lib/ai/aiFetch";
 import { useModelStatus, PROVIDER_DEFS } from "@/lib/ai/modelStatus";
 
@@ -76,16 +78,45 @@ const ACTIVE_LABELS = {
 
 // ─── Model list row ───────────────────────────────────────────────────────────
 
-function ModelRow({ m, onToggle }) {
-  const canToggle = m.status !== "exhausted" && m.status !== "offline" && m.status !== "no_key";
-  const isOn      = m.status === "available";
+function ModelRow({ m, onToggle, isPreferred, onSetPreferred }) {
+  const canToggle   = m.status !== "exhausted" && m.status !== "offline" && m.status !== "no_key";
+  const canPrefer   = m.status === "available";
+  const isOn        = m.status === "available";
 
   return (
-    <div className="flex items-center gap-2.5 py-1.5">
+    <div className="flex items-center gap-2 py-1.5">
+      {/* "Use first" radio */}
+      <button
+        type="button"
+        disabled={!canPrefer}
+        onClick={() => canPrefer && onSetPreferred(isPreferred ? "" : m.id)}
+        title={
+          !canPrefer
+            ? "Only available models can be preferred"
+            : isPreferred
+              ? "Clear preference — use default order"
+              : `Always try ${m.label} first`
+        }
+        className={`shrink-0 flex h-3.5 w-3.5 items-center justify-center rounded-full border transition-colors ${
+          !canPrefer
+            ? "cursor-not-allowed border-slate-200 bg-slate-100"
+            : isPreferred
+              ? "border-indigo-500 bg-indigo-500"
+              : "border-slate-300 bg-white hover:border-indigo-400"
+        }`}
+      >
+        {isPreferred && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+      </button>
+
       <StatusDot status={m.status} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-1.5">
           <span className="text-[12px] font-semibold text-slate-800">{m.label}</span>
+          {isPreferred && (
+            <span className="rounded-full bg-indigo-100 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-indigo-700">
+              first
+            </span>
+          )}
         </div>
         <p className={`mt-px text-[11px] leading-tight ${statusTextColor(m.status)}`}>
           {statusLabel(m)}
@@ -126,14 +157,20 @@ function ModelRow({ m, onToggle }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ProviderStatusBadge() {
-  const [activeProvider, setActiveProvider] = useState(null);
-  const [toast,          setToast]          = useState(null);
-  const [panelOpen,      setPanelOpen]      = useState(false);
-  const [resetting,      setResetting]      = useState(false);
+  const [activeProvider,  setActiveProvider]  = useState(null);
+  const [toast,           setToast]           = useState(null);
+  const [panelOpen,       setPanelOpen]       = useState(false);
+  const [resetting,       setResetting]       = useState(false);
+  const [preferredProv,   setPreferredProv]   = useState(() => getPreferredProvider());
   const panelRef  = useRef(null);
   const btnRef    = useRef(null);
 
   const { models, availableCount, loading, lastRefresh, refresh, toggleManualDisabled, resetManualDisabled } = useModelStatus();
+
+  function handleSetPreferred(providerId) {
+    setPreferredProvider(providerId);
+    setPreferredProv(providerId);
+  }
 
   const totalCount = Object.keys(PROVIDER_DEFS).length;
 
@@ -271,19 +308,42 @@ export default function ProviderStatusBadge() {
               </div>
 
               <div className="px-4 py-2">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  Fallback order
-                </p>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    Fallback order
+                  </p>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                    <span className="h-2.5 w-2.5 rounded-full border border-indigo-400 bg-indigo-500 inline-block" />
+                    <span>= use first</span>
+                  </div>
+                </div>
                 <div className="divide-y divide-slate-50">
                   {allModels.map((m, i) => (
                     <div key={m.id} className="flex items-center gap-1">
                       <span className="w-4 shrink-0 text-[10px] font-bold text-slate-300">{i + 1}</span>
                       <div className="flex-1">
-                        <ModelRow m={m} onToggle={toggleManualDisabled} />
+                        <ModelRow
+                          m={m}
+                          onToggle={toggleManualDisabled}
+                          isPreferred={preferredProv === m.id}
+                          onSetPreferred={handleSetPreferred}
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
+                {preferredProv && (
+                  <p className="mt-2 text-[10px] text-indigo-600">
+                    ● {PROVIDER_DEFS[preferredProv]?.label || preferredProv} will be tried first on every request.
+                    <button
+                      type="button"
+                      onClick={() => handleSetPreferred("")}
+                      className="ml-1.5 underline hover:text-indigo-800"
+                    >
+                      Clear
+                    </button>
+                  </p>
+                )}
               </div>
 
               {/* Footer */}

@@ -413,6 +413,7 @@ export interface GenOptions {
   maxTokens?:         number;
   lowCredit?:         boolean;
   disabledProviders?: string[];
+  preferredProvider?: string;
   onFallback?:        (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
   onSuccess?:         (provider: ProviderId) => void;
 }
@@ -435,11 +436,21 @@ async function runChain(
     : (opts.maxTokens ?? TOKEN_LIMITS.default);
 
   // Build eligible chain — only providers with configured keys
-  const chain = PROVIDERS.filter((p) => Boolean(p.apiKey()));
+  let chain = PROVIDERS.filter((p) => Boolean(p.apiKey()));
+
+  // If the client requested a preferred provider, move it to the front of the chain
+  const preferred = opts.preferredProvider as ProviderId | undefined;
+  if (preferred && PROVIDER_BY_ID[preferred]) {
+    const prefProvider = chain.find((p) => p.id === preferred);
+    if (prefProvider) {
+      chain = [prefProvider, ...chain.filter((p) => p.id !== preferred)];
+    }
+  }
 
   const activeIds = chain.map((p) => p.id).filter((id) => !clientDisabled.has(id));
   console.log("================================");
   console.log("ROUTER START");
+  console.log(`[AI] Preferred: ${preferred || "none (default order)"}`);
   console.log(`[AI] Client-disabled: [${[...clientDisabled].join(", ") || "none"}]`);
   console.log(`[AI] Active providers: [${activeIds.join(", ")}]`);
   console.log("================================");
@@ -572,6 +583,30 @@ function repairTruncatedJSON(raw: string): any {
   try { return JSON.parse(s + strClose + closers); } catch { return null; }
 }
 
+/**
+ * Escape literal newlines / tabs / carriage returns inside JSON string values.
+ * AI models (especially Groq / Llama) often emit multi-line prose directly
+ * inside JSON strings, which is invalid JSON but extremely common.
+ */
+function sanitizeJsonNewlines(raw: string): string {
+  let result  = "";
+  let inStr   = false;
+  let escaped = false;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    if (escaped)         { result += c; escaped = false; continue; }
+    if (c === "\\" && inStr) { result += c; escaped = true; continue; }
+    if (c === '"')       { inStr = !inStr; result += c; continue; }
+    if (inStr) {
+      if (c === "\n")    { result += "\\n";  continue; }
+      if (c === "\r")    { result += "\\r";  continue; }
+      if (c === "\t")    { result += "\\t";  continue; }
+    }
+    result += c;
+  }
+  return result;
+}
+
 export function extractJSON(text: string): any {
   // Pre-strip code fences so all downstream logic sees clean text.
   // Handles: ```json...```, ```...```, unclosed fences, and mixed-case tags.
@@ -583,20 +618,25 @@ export function extractJSON(text: string): any {
   // ── 1. Direct parse (fast path) ───────────────────────────────────────
   try { return JSON.parse(t); } catch { /* fall through */ }
 
-  // ── 2. Repair truncated JSON ──────────────────────────────────────────
-  const r0 = repairTruncatedJSON(t);
+  // ── 2. Sanitize unescaped newlines inside strings, then retry ─────────
+  // Groq / Llama frequently emit literal newlines inside JSON string values.
+  const sanitized = sanitizeJsonNewlines(t);
+  try { return JSON.parse(sanitized); } catch { /* fall through */ }
+
+  // ── 3. Repair truncated JSON ──────────────────────────────────────────
+  const r0 = repairTruncatedJSON(sanitized);
   if (r0 !== null) return r0;
 
-  // ── 3. Find first { or [ and retry from there ─────────────────────────
-  const objStart = t.indexOf("{");
-  const arrStart = t.indexOf("[");
+  // ── 4. Find first { or [ and retry from there ─────────────────────────
+  const objStart = sanitized.indexOf("{");
+  const arrStart = sanitized.indexOf("[");
   const start =
     objStart === -1 ? arrStart :
     arrStart === -1 ? objStart :
     Math.min(objStart, arrStart);
 
   if (start !== -1) {
-    const raw = t.slice(start);
+    const raw = sanitized.slice(start);
     try { return JSON.parse(raw); } catch { /* fall through */ }
     const r = repairTruncatedJSON(raw);
     if (r !== null) return r;

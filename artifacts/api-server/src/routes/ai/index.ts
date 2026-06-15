@@ -100,10 +100,14 @@ function aiOptsFromReq(req: any, maxTokens?: number) {
   const disabledProviders: string[] = Array.isArray(body.disabledProviders)
     ? body.disabledProviders.filter((p: any) => typeof p === "string")
     : [];
+  const preferredProvider = typeof body.preferredProvider === "string" && body.preferredProvider
+    ? body.preferredProvider
+    : undefined;
   return {
     lowCredit: body.lowCostMode === true,
     maxTokens: maxTokens ?? TOKEN_LIMITS.default,
-    ...(disabledProviders.length ? { disabledProviders } : {})
+    ...(disabledProviders.length ? { disabledProviders } : {}),
+    ...(preferredProvider ? { preferredProvider } : {})
   };
 }
 
