@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { BOOK_BUILDER_STEPS } from "../lib/constants";

@@ -227,10 +227,9 @@ router.post("/suggest-subtitles", async (req, res) => {
     if (!subtitles.length) {
       return res.status(500).json({ error: "No subtitles returned. Try again." });
     }
-    return res.json({ subtitles, _provider: first.usedProvider });
+    res.json({ subtitles, _provider: first.usedProvider });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ error: e.message });
-    return;
   }
 });
 
@@ -260,10 +259,9 @@ router.post("/suggest-topic", async (req, res) => {
         : [];
     } catch { /* leave topics empty */ }
     if (!topics.length) return res.status(500).json({ error: "No topics returned. Try again." });
-    return res.json({ topics, usedProvider });
+    res.json({ topics, usedProvider });
   } catch (e: any) {
     if (!res.headersSent) res.status(500).json({ error: e.message });
-    return;
   }
 });
 
