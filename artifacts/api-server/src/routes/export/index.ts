@@ -16,6 +16,18 @@ import {
   XmlComponent,
   XmlAttributeComponent
 } from "docx";
+
+// XmlComponent and XmlAttributeComponent are declared abstract in docx@9 TS
+// types but are instantiable at runtime. Returning `any` avoids TS errors
+// on the protected `.root` property and the generic type requirement.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeXmlNode(tag: string): any {
+  return new (XmlComponent as any)(tag);
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeXmlAttr(attrs: Record<string, string>): any {
+  return new (XmlAttributeComponent as any)(attrs);
+}
 import { generateContent, extractJSON } from "../ai/aiRouter.js";
 import { chapterArchitecturePrompt } from "../ai/prompts.js";
 
@@ -1058,20 +1070,20 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   {
     // Helper: make a <w:fldChar> run with given fldCharType (and optional dirty flag)
     const fldCharRun = (type: string, dirty = false): XmlComponent => {
-      const run = new XmlComponent("w:r");
-      const fc  = new XmlComponent("w:fldChar");
+      const run = makeXmlNode("w:r");
+      const fc  = makeXmlNode("w:fldChar");
       const attrs: Record<string, string> = { "w:fldCharType": type };
       if (dirty) attrs["w:dirty"] = "true";
-      fc.root.push(new XmlAttributeComponent(attrs));
+      fc.root.push(makeXmlAttr(attrs));
       run.root.push(fc);
       return run;
     };
 
     // Helper: make an <w:instrText> run with preserve-space
     const instrRun = (text: string): XmlComponent => {
-      const run  = new XmlComponent("w:r");
-      const it   = new XmlComponent("w:instrText");
-      it.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
+      const run  = makeXmlNode("w:r");
+      const it   = makeXmlNode("w:instrText");
+      it.root.push(makeXmlAttr({ "xml:space": "preserve" }));
       it.root.push(text);
       run.root.push(it);
       return run;
@@ -1081,7 +1093,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     frontChildren.push(centeredPara("Table of Contents", P.chapterSz + 2, true, false, "000000", 0, 280));
 
     // Paragraph 1: fldChar begin + instrText switches + fldChar separate
-    const fieldBeginPara = new XmlComponent("w:p");
+    const fieldBeginPara = makeXmlNode("w:p");
     fieldBeginPara.root.push(fldCharRun("begin", true));
     fieldBeginPara.root.push(instrRun(` TOC \\o "1-3" \\h \\z \\u `));
     fieldBeginPara.root.push(fldCharRun("separate"));
@@ -1093,21 +1105,21 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
       const style  = ["TOC1", "TOC2", "TOC3"][level];
       const indent = [0, 360, 720][level];
 
-      const ep   = new XmlComponent("w:p");
-      const pPr  = new XmlComponent("w:pPr");
-      const pSty = new XmlComponent("w:pStyle");
-      pSty.root.push(new XmlAttributeComponent({ "w:val": style }));
+      const ep   = makeXmlNode("w:p");
+      const pPr  = makeXmlNode("w:pPr");
+      const pSty = makeXmlNode("w:pStyle");
+      pSty.root.push(makeXmlAttr({ "w:val": style }));
       pPr.root.push(pSty);
       if (indent > 0) {
-        const ind = new XmlComponent("w:ind");
-        ind.root.push(new XmlAttributeComponent({ "w:left": String(indent) }));
+        const ind = makeXmlNode("w:ind");
+        ind.root.push(makeXmlAttr({ "w:left": String(indent) }));
         pPr.root.push(ind);
       }
       ep.root.push(pPr);
 
-      const run = new XmlComponent("w:r");
-      const t   = new XmlComponent("w:t");
-      t.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
+      const run = makeXmlNode("w:r");
+      const t   = makeXmlNode("w:t");
+      t.root.push(makeXmlAttr({ "xml:space": "preserve" }));
       t.root.push(entry.label);
       run.root.push(t);
       ep.root.push(run);
@@ -1116,7 +1128,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     }
 
     // Final paragraph: fldChar end
-    const fieldEndPara = new XmlComponent("w:p");
+    const fieldEndPara = makeXmlNode("w:p");
     fieldEndPara.root.push(fldCharRun("end"));
     frontChildren.push(fieldEndPara as any);
 
@@ -1633,7 +1645,7 @@ async function buildBlueprintDocx(project: any, architecture: ChapterArchitectur
           basedOn: "Normal",
           next: "Normal",
           run: { size: 36, bold: true, color: "0F172A" },
-          paragraph: { spacing: { before: 480, after: 160 }, pageBreakBefore: true }
+          paragraph: { spacing: { before: 480, after: 160 }, pageBreakBefore: true } as any
         },
         {
           id: "Heading2",

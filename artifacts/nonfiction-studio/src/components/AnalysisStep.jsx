@@ -114,14 +114,11 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
         }
         return { ...prev, books: nextBooks, lastSearchQuery: q };
       });
-      const sourceLabel = data.source === "open_library" ? "Open Library"
-        : data.source === "google_books" ? "Google Books"
-        : data.source === "ai_research" ? "AI Research"
-        : data.source === "scale_serp" ? "Scale SERP"
-        : "Amazon";
-      // Show server-provided notice when available, otherwise show fallback hint only if keys are missing
       const fallbackNote = data.notice ? ` ${data.notice}` : "";
-      setLocalMsg(`${rows.length} ${sourceLabel} result(s) loaded.${fallbackNote}`);
+      const sourceNote = data.source === "ai_research" ? " (AI research)"
+        : data.source === "open_library" ? " (Open Library)"
+        : "";
+      setLocalMsg(`${rows.length} Research Book${rows.length !== 1 ? "s" : ""} Found${sourceNote}.${fallbackNote}`);
     } catch (e) {
       setLocalMsg(e.message || "Something went wrong.");
     } finally {
@@ -307,7 +304,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       <ul className="mt-6 space-y-3">
         {analysis.books.length === 0 && (
           <li className="rounded-2xl border border-dashed border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-500">
-            No references yet — search above or paste a URL below.
+            No relevant books found yet — try a broader topic or click "Search bestsellers" above.
           </li>
         )}
         {analysis.books.map((book) => {
@@ -318,12 +315,22 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
             <li key={book.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex gap-4 p-4">
                 {book.thumbnail ? (
-                  <img src={book.thumbnail} alt="" className="h-28 w-[4.85rem] shrink-0 rounded-lg object-cover" />
-                ) : (
-                  <div className="flex h-28 w-[4.85rem] shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
-                    No cover
-                  </div>
-                )}
+                  <img
+                    src={book.thumbnail}
+                    alt=""
+                    className="h-28 w-[4.85rem] shrink-0 rounded-lg object-cover bg-slate-100"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      e.currentTarget.nextElementSibling.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="flex h-28 w-[4.85rem] shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400"
+                  style={{ display: book.thumbnail ? "none" : "flex" }}
+                >
+                  No cover
+                </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start gap-2">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${

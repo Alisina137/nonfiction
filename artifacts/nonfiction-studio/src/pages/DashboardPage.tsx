@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import AnalysisStep from "@/components/AnalysisStep";

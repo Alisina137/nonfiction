@@ -164,7 +164,7 @@ function normalizeProductDetail(data: any): RainforestProductDetail {
     bestsellersRanks = p.bestsellers_rank
       .filter((r: any) => r.rank != null && r.category)
       .map((r: any) => ({ category: r.category, rank: r.rank, link: r.link || null }));
-    bestsellersRankFlat ||= bestsellersRanks
+    bestsellersRankFlat ||= bestsellersRanks!
       .map((r) => `#${r.rank} in ${r.category}`)
       .join(" · ") || null;
   }

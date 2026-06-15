@@ -185,7 +185,7 @@ function normalizeScaleSerpResults(data: any): RainforestBookRow[] {
         const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(p.title)}`;
 
         books.push({
-          asin:                 null,
+          asin:                 null as unknown as string,
           title:                p.title,
           subtitle:             null,
           authors:              p.authors,

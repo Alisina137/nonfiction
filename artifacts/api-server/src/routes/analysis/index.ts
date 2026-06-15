@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {
-  getBestsellerBooks,
+  searchAmazonBooks,
   getBookByAsin,
   RainforestError
 } from "../../lib/rainforest";
@@ -33,6 +33,139 @@ function parseAsinFromBody(body: any): string | null {
   if (!raw) return null;
   if (typeof raw === "string" && /^[A-Z0-9]{10}$/i.test(raw.trim())) return raw.trim().toUpperCase();
   return extractAsinFromAmazonUrl(raw);
+}
+
+// ─── Deduplication ────────────────────────────────────────────────────────────
+
+function normalizeStr(s: string): string {
+  return (s || "").toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function deduplicateBooks(books: any[]): any[] {
+  const seenAsins     = new Set<string>();
+  const seenTitleAuth = new Set<string>();
+  const result: any[] = [];
+  for (const b of books) {
+    if (b.asin) {
+      if (seenAsins.has(b.asin)) continue;
+      seenAsins.add(b.asin);
+    } else {
+      const key = `${normalizeStr(b.title || "")}||${normalizeStr(b.authors || "")}`;
+      if (seenTitleAuth.has(key)) continue;
+      seenTitleAuth.add(key);
+    }
+    result.push(b);
+  }
+  return result;
+}
+
+// ─── Relevance scoring ────────────────────────────────────────────────────────
+
+const RELEVANT_CATEGORY_KEYWORDS = [
+  "time management", "productivity", "business", "professional development",
+  "self improvement", "self-help", "personal development", "success",
+  "entrepreneurship", "leadership", "management", "motivation", "career",
+  "finance", "investing", "health", "science", "history", "biography",
+  "communication", "habits", "mindset", "marketing", "sales"
+];
+
+function scoreRelevance(book: any, qWords: string[]): number {
+  const title = normalizeStr(book.title || "");
+  const significantWords = qWords.filter(w => w.length > 2);
+
+  // titleMatch (0-1): fraction of significant query words in title
+  const titleMatch = significantWords.length > 0
+    ? significantWords.filter(w => title.includes(w)).length / significantWords.length
+    : 0;
+
+  // keywordMatch: any query word at all appears in title
+  const keywordMatch = significantWords.some(w => title.includes(w)) ? 1 : 0;
+
+  // categoryMatch: bestseller category matches a relevant topic
+  let categoryMatch = 0;
+  const ranks: any[] = Array.isArray(book.bestsellersRanks) ? book.bestsellersRanks : [];
+  outer: for (const r of ranks) {
+    const cat = normalizeStr(r.category || "");
+    for (const kw of RELEVANT_CATEGORY_KEYWORDS) {
+      if (cat.includes(kw)) { categoryMatch = 1; break outer; }
+    }
+  }
+  if (!categoryMatch && book.bestsellerBadge) {
+    const cat = normalizeStr(
+      typeof book.bestsellerBadge === "string" ? book.bestsellerBadge
+      : book.bestsellerBadge?.category || ""
+    );
+    for (const kw of RELEVANT_CATEGORY_KEYWORDS) {
+      if (cat.includes(kw)) { categoryMatch = 1; break; }
+    }
+  }
+
+  // reviewCountWeight: log scale
+  const reviewWeight = book.ratingsTotal ? Math.min(Math.log10(book.ratingsTotal + 1), 5) : 0;
+
+  // ratingWeight: 0–2
+  const ratingWeight = typeof book.rating === "number" ? (book.rating / 5) * 2 : 0;
+
+  return (titleMatch * 5) + (categoryMatch * 4) + (keywordMatch * 3) + reviewWeight + ratingWeight;
+}
+
+// ─── Expanded Rainforest search (multi-query, merge, dedup) ───────────────────
+
+const EXPANSION_SUFFIXES = [
+  " books",
+  " bestseller",
+  " self help",
+  " productivity",
+  " business",
+  " professional development",
+];
+
+async function expandedRainforestSearch(query: string, domain: string): Promise<any[]> {
+  // Step 1 — original query
+  let initial: any[] = [];
+  try {
+    const books = await searchAmazonBooks(query, {
+      amazonDomain: domain,
+      sortBy: "bestseller_rankings",
+      maxResults: 24
+    });
+    initial = books.map(b => ({ ...b, source_provider: "rainforest" }));
+    console.log(`[amazon-search] Rainforest initial query: ${initial.length} books`);
+  } catch (e: any) {
+    console.log(`[amazon-search] Rainforest initial query failed: ${e.message}`);
+  }
+
+  if (initial.length >= 5) {
+    return deduplicateBooks(initial);
+  }
+
+  // Step 2 — run expansion queries in parallel until we have enough
+  const expansionQueries = EXPANSION_SUFFIXES.map(s => `${query}${s}`);
+  console.log(`[amazon-search] Only ${initial.length} books — running ${expansionQueries.length} expansion queries`);
+
+  const settled = await Promise.allSettled(
+    expansionQueries.map(async (eq) => {
+      try {
+        const books = await searchAmazonBooks(eq, {
+          amazonDomain: domain,
+          sortBy: "bestseller_rankings",
+          maxResults: 10
+        });
+        return books.map(b => ({ ...b, source_provider: "rainforest" }));
+      } catch {
+        return [] as any[];
+      }
+    })
+  );
+
+  const allBooks: any[] = [...initial];
+  for (const r of settled) {
+    if (r.status === "fulfilled") allBooks.push(...(r.value as any[]));
+  }
+
+  const deduped = deduplicateBooks(allBooks);
+  console.log(`[amazon-search] After expansion + dedup: ${deduped.length} books`);
+  return deduped;
 }
 
 // ─── AI fallback: generate list of real bestselling books in a niche ──────────
@@ -104,7 +237,7 @@ async function openLibrarySearch(query: string, maxResults = 20): Promise<any[]>
 
   const res = await fetch(url.toString(), { headers: { "User-Agent": "NonfictionStudio/1.0" } });
   if (!res.ok) throw new Error(`Open Library API error: ${res.status}`);
-  const data = await res.json();
+  const data = await res.json() as any;
 
   return ((data.docs as any[]) || [])
     .filter((doc: any) => doc?.title)
@@ -128,53 +261,73 @@ async function openLibrarySearch(query: string, maxResults = 20): Promise<any[]>
 }
 
 // ─── POST /api/analysis/amazon-search ────────────────────────────────────────
-// Priority: Rainforest → Scale SERP → AI research → Open Library
+// Priority: Rainforest (+ expansion) → Scale SERP supplement → AI research → Open Library
 
 router.post("/amazon-search", async (req, res) => {
   const { query, amazonDomain } = req.body || {};
   const q = typeof query === "string" ? query.trim() : "";
   if (!q) return res.status(400).json({ error: "Search query is required." });
 
+  const domain  = (amazonDomain || "amazon.com").replace(/^www\./, "");
+  const qWords  = normalizeStr(q).split(" ").filter(Boolean);
+
   let rainforestAttempted = false;
   let scaleSerpAttempted  = false;
 
-  // ── 1. Rainforest ──────────────────────────────────────────────────────────
+  // ── 1. Rainforest with multi-query expansion ────────────────────────────────
   if (process.env.RAINFOREST_API_KEY) {
     rainforestAttempted = true;
-    console.log("[amazon-search] Provider Used: rainforest");
+    let books: any[] = [];
+
     try {
-      const books = await getBestsellerBooks(q, {
-        amazonDomain: amazonDomain || "amazon.com",
-        maxResults: 24
-      });
-      console.log("[amazon-search] Rainforest Success:", true, "| Books Returned:", books.length);
-      return res.json({ books, query: q, source: "amazon" });
+      books = await expandedRainforestSearch(q, domain);
     } catch (e: any) {
-      console.log("[amazon-search] Rainforest Success:", false, "—", e.message);
+      console.warn("[amazon-search] Rainforest expansion threw unexpectedly:", e.message);
+    }
+
+    // ── 2. Supplement with Scale SERP if still < 5 ─────────────────────────
+    if (books.length < 5 && process.env.SCALE_SERP_API_KEY) {
+      scaleSerpAttempted = true;
+      console.log(`[amazon-search] Rainforest yielded only ${books.length} — supplementing with Scale SERP`);
+      try {
+        const serpBooks = await searchBooksWithScaleSerp(q, { maxResults: 20 });
+        const tagged    = serpBooks.map(b => ({ ...b, source_provider: "scale_serp" }));
+        books = deduplicateBooks([...books, ...tagged]);
+        console.log(`[amazon-search] After Scale SERP supplement: ${books.length} books`);
+      } catch (e: any) {
+        console.warn("[amazon-search] Scale SERP supplement failed:", e.message);
+      }
+    }
+
+    if (books.length > 0) {
+      books.sort((a, b) => scoreRelevance(b, qWords) - scoreRelevance(a, qWords));
+      const top10 = books.slice(0, 10);
+      console.log(`[amazon-search] Returning ${top10.length} books to client`);
+      return res.json({ books: top10, query: q, source: "amazon" });
     }
   }
 
-  // ── 2. Scale SERP ──────────────────────────────────────────────────────────
-  if (process.env.SCALE_SERP_API_KEY) {
+  // ── 3. Scale SERP as sole primary (no Rainforest key) ──────────────────────
+  if (!rainforestAttempted && process.env.SCALE_SERP_API_KEY) {
     scaleSerpAttempted = true;
-    console.log("[amazon-search] Provider Used: scale_serp");
-    console.log("[amazon-search] Scale SERP Fallback Triggered");
+    console.log("[amazon-search] Using Scale SERP as primary (no Rainforest key)");
     try {
-      const books = await searchBooksWithScaleSerp(q, { maxResults: 20 });
-      console.log("[amazon-search] Books Returned:", books.length);
-      return res.json({ books, query: q, source: "scale_serp" });
+      const books  = await searchBooksWithScaleSerp(q, { maxResults: 20 });
+      const tagged = books.map(b => ({ ...b, source_provider: "scale_serp" }));
+      tagged.sort((a, b) => scoreRelevance(b, qWords) - scoreRelevance(a, qWords));
+      console.log("[amazon-search] Scale SERP primary returned:", tagged.length);
+      return res.json({ books: tagged.slice(0, 10), query: q, source: "scale_serp" });
     } catch (e: any) {
-      console.warn("[amazon-search] Scale SERP error — falling through:", e.message);
+      console.warn("[amazon-search] Scale SERP primary failed:", e.message);
     }
   }
 
-  // ── 3. AI research (Gemini/Groq) ───────────────────────────────────────────
+  // ── 4. AI research (Gemini / Groq) ─────────────────────────────────────────
   console.log("[amazon-search] Provider Used: ai_research");
   try {
     const books = await aiBookSearch(q, 15);
-    console.log("[amazon-search] Books Returned:", books.length);
+    console.log("[amazon-search] AI returned:", books.length);
 
-    // Build a helpful notice based on which keys were tried
     let notice = "Results generated by AI market research.";
     if (rainforestAttempted && scaleSerpAttempted) {
       notice += " Both Rainforest and Scale SERP were tried but unavailable.";
@@ -188,14 +341,14 @@ router.post("/amazon-search", async (req, res) => {
 
     return res.json({ books, query: q, source: "ai_research", notice });
   } catch (e: any) {
-    console.warn("[amazon-search] AI search error — falling through:", e.message);
+    console.warn("[amazon-search] AI search error:", e.message);
   }
 
-  // ── 4. Open Library (last resort) ─────────────────────────────────────────
+  // ── 5. Open Library (last resort) ──────────────────────────────────────────
   console.log("[amazon-search] Provider Used: open_library");
   try {
     const books = await openLibrarySearch(q, 20);
-    console.log("[amazon-search] Books Returned:", books.length);
+    console.log("[amazon-search] Open Library returned:", books.length);
     return res.json({
       books, query: q,
       source: "open_library",
