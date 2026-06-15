@@ -15,7 +15,7 @@ paths = [ "/" ]
 localPort = 5000
 
 [services.development]
-run = "pnpm --filter @workspace/nonfiction-studio run dev"
+run = "PORT=5000 BASE_PATH=/ pnpm --filter @workspace/nonfiction-studio run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/nonfiction-studio", "run", "build" ]
