@@ -580,7 +580,10 @@ function repairTruncatedJSON(raw: string): any {
   if (lastChildEndPos > 0 && !inString) {
     try { return JSON.parse(s.slice(0, lastChildEndPos + 1) + closers); } catch { /* fall through */ }
   }
-  try { return JSON.parse(s + strClose + closers); } catch { return null; }
+
+  // Strip trailing comma that would produce invalid `{"key": "val", }` JSON
+  const base = inString ? s : s.replace(/,\s*$/, "");
+  try { return JSON.parse(base + strClose + closers); } catch { return null; }
 }
 
 /**
