@@ -1606,9 +1606,11 @@ QUALITY CHECK (verify before returning)
 
 If any answer is NO — rewrite.`;
 
-  return `You are a professional nonfiction author and developmental editor.
+  return `You are an expert nonfiction book writer. Your task is NOT to write generic content.
 
-Write a complete, publication-ready subsection for a nonfiction book.
+You must use ALL available data provided below — including topic research, bestseller analysis, competitor insights, book positioning, target audience, book description, chapter outline, chapter summary, and any previously written sections.
+
+Before writing, analyze the full context and ensure this section aligns with the overall book structure and narrative arc.
 
 ════════════════════════════════════
 LOCATION IN BOOK
@@ -1619,13 +1621,43 @@ Subsection: ${subsectionTitle}${purposeNote}
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
-Tone Instruction: ${toneInstr}${prevNote}${strategyBlock}${flowBlock}${antiTemplateRules}${qualityCheck}${ctxBlock}${resBlock}
+Tone Instruction: ${toneInstr}${prevNote}${strategyBlock}${flowBlock}${antiTemplateRules}
+
+════════════════════════════════════
+10 NON-NEGOTIABLE WRITING RULES
+════════════════════════════════════
+1. CONSISTENCY — Match the voice, terminology, and narrative thread established in earlier sections. Do not contradict or reintroduce concepts already resolved.
+2. NO REPETITION — Every concept, framework, or example used here must be NEW. If previousConcepts lists it, do not repeat it in any form.
+3. TONE — Stay strictly within the selected tone and structure type. No tonal drift.
+4. PRACTICAL EXAMPLES — Include at least one concrete, specific, real-world example. No hypothetical placeholders ("imagine a person who…" without grounding it in reality).
+5. ACTIONABLE ADVICE — Every key point must close with something the reader can DO. Replace generic explanations with specific instructions.
+6. SMOOTH TRANSITIONS — Open with a bridge that connects to the prior section. Close with a sentence that naturally leads into the next section.
+7. DEPTH — Expand important ideas beyond surface-level explanation. Choose one idea per section and go deep rather than covering many ideas shallowly.
+8. AUDIENCE FIRST — Every sentence must be written with the target reader's exact situation, vocabulary, and goals in mind. No expert jargon without immediate plain-language translation.
+9. COMPETITOR GAPS — If competing titles are listed in the book context, this section must deliver something those books miss, handle superficially, or get wrong. Name the gap internally and fill it.
+10. STANDALONE VALUE — This section must be valuable even if read in isolation. A reader who sees only this section should gain a complete, usable insight.
+
+${qualityCheck}${ctxBlock}${resBlock}
+
+════════════════════════════════════
+REQUIRED OUTPUT STRUCTURE
+════════════════════════════════════
+Every section MUST follow this exact 6-part structure internally within the prose:
+
+1. ENGAGING INTRODUCTION — Hook the reader with a surprising fact, bold claim, short scene, or provocative question specific to this topic. No generic warm-ups.
+2. CLEAR CONCEPT EXPLANATION — Define and explain the core idea with precision. Use plain language. Anchor it to the reader's real situation.
+3. REAL-WORLD EXAMPLE — A specific, concrete, named example (person, company, situation, research finding) that proves the concept works. Not a hypothetical.
+4. PRACTICAL ACTION STEPS — 2–4 specific, numbered steps the reader can execute immediately. Not tips — steps with clear verbs and measurable outcomes.
+5. KEY TAKEAWAY — One distilled sentence that captures the single most important lesson. Make it memorable and quotable.
+6. NATURAL TRANSITION — A closing sentence or short paragraph that bridges into the next section without announcing it ("Next, we'll look at…").
+
+The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.
 
 ════════════════════════════════════
 SUBSECTION UNIQUENESS TEST
 ════════════════════════════════════
 Before writing, answer internally: "What unique value does this subsection provide that no other subsection provides?"
-If the answer overlaps with another subsection — reframe this one's angle until it is genuinely distinct.
+If the answer overlaps with another subsection — reframe the angle until it is genuinely distinct.
 
 ════════════════════════════════════
 OUTPUT FORMAT
@@ -1635,12 +1667,14 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 {
   "title": "The subsection title (publication-ready, specific, compelling)",
   "structureUsed": "${structureKey}",
-  "content": "The full subsection prose — multi-paragraph, written according to the ${structureKey} flow above. Minimum 350 words. Use natural paragraph breaks. Do NOT include markdown headers inside the content — write as flowing prose.",
+  "content": "The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.",
   "flowSections": [
     ${flow.map(step => `{"label": "${step}", "text": "2-4 sentences summarizing what this flow section covers in the content"}`).join(",\n    ")}
   ],
-  "keyTakeaway": "One sentence — the single most important thing the reader learns from this subsection",
-  "teachingMethod": "The primary teaching method used (e.g. anecdote, data-led, analogy, direct instruction, case study, exercise)"
+  "keyTakeaway": "One sentence — the single most important thing the reader learns (matches part 5 of the prose)",
+  "transition": "The exact closing sentence or short paragraph from part 6 — the natural bridge to the next section",
+  "teachingMethod": "The primary teaching method used (e.g. anecdote, data-led, analogy, direct instruction, case study, exercise)",
+  "competitorGap": "One sentence describing what competing books miss that this section addresses (or 'N/A' if no competitor data provided)"
 }`;
 }
 
