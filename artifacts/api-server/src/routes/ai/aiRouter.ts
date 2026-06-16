@@ -36,12 +36,13 @@ export type XaiModel = typeof XAI_MODELS[number];
 export const XAI_DEFAULT_MODEL: XaiModel = "grok-3-mini";
 
 export interface ProviderConfig {
-  id:      ProviderId;
-  label:   string;
-  model:   string;
-  apiUrl:  string;
-  apiKey:  () => string | undefined;
-  order:   number;
+  id:             ProviderId;
+  label:          string;
+  model:          string;
+  fallbackModels?: string[];   // tried in order when primary model quota-exhausted
+  apiUrl:         string;
+  apiKey:         () => string | undefined;
+  order:          number;
 }
 
 export const PROVIDERS: ProviderConfig[] = [
@@ -54,12 +55,13 @@ export const PROVIDERS: ProviderConfig[] = [
     order:  1
   },
   {
-    id:     "groq",
-    label:  "Groq (Llama)",
-    model:  "llama-3.3-70b-versatile",
-    apiUrl: "https://api.groq.com/openai/v1/chat/completions",
-    apiKey: () => process.env.GROQ_API_KEY,
-    order:  2
+    id:             "groq",
+    label:          "Groq (Llama)",
+    model:          "llama-3.3-70b-versatile",
+    fallbackModels: ["llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768"],
+    apiUrl:         "https://api.groq.com/openai/v1/chat/completions",
+    apiKey:         () => process.env.GROQ_API_KEY,
+    order:          2
   },
   {
     id:     "xai",
@@ -70,9 +72,15 @@ export const PROVIDERS: ProviderConfig[] = [
     order:  3
   },
   {
-    id:     "openrouter",
-    label:  "OpenRouter (fallback)",
-    model:  "meta-llama/llama-3.3-70b-instruct:free",
+    id:             "openrouter",
+    label:          "OpenRouter (fallback)",
+    model:          "meta-llama/llama-3.3-70b-instruct:free",
+    fallbackModels: [
+      "google/gemma-3-27b-it:free",
+      "deepseek/deepseek-r1-0528:free",
+      "mistralai/mistral-7b-instruct:free",
+      "qwen/qwen3-30b-a3b:free"
+    ],
     apiUrl: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY,
     order:  4
@@ -326,6 +334,19 @@ async function callOpenAICompat(
     extraHeaders["X-Title"]      = "Nonfiction AI Studio";
   }
 
+  // OpenRouter supports a `models` array for provider-level fallback routing.
+  // When the primary model is rate-limited, OpenRouter automatically tries the next.
+  const requestBody = provider.id === "openrouter" && provider.fallbackModels?.length
+    ? {
+        models:      [provider.model, ...provider.fallbackModels],
+        route:       "fallback",
+        messages,
+        temperature: 0.7,
+        max_tokens:  maxTokens,
+        stream:      false
+      }
+    : { model: provider.model, messages, temperature: 0.7, max_tokens: maxTokens, stream: false };
+
   const res = await fetch(provider.apiUrl, {
     method:  "POST",
     headers: {
@@ -333,7 +354,7 @@ async function callOpenAICompat(
       Authorization:  `Bearer ${apiKey}`,
       ...extraHeaders
     },
-    body: JSON.stringify({ model: provider.model, messages, temperature: 0.7, max_tokens: maxTokens, stream: false })
+    body: JSON.stringify(requestBody)
   });
 
   const rawText = await res.text();
@@ -353,7 +374,7 @@ async function callOpenAICompat(
   return { text, status: res.status };
 }
 
-/** Dispatch to the correct caller for a given provider */
+/** Dispatch to the correct caller for a given provider, with per-model fallback on quota exhaustion. */
 async function callProvider(
   provider: ProviderConfig,
   prompt: string,
@@ -363,48 +384,85 @@ async function callProvider(
   const { prompt: finalPrompt, maxTokens: finalMax } = ensureTokenBudget(prompt, maxTokens);
   const startMs = Date.now();
 
-  let lastError = "";
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (attempt > 0) {
-      const delay = RETRY_DELAYS_MS[attempt - 1] ?? 4000;
-      console.log(`[AI] Retry ${attempt}/${MAX_RETRIES} for ${provider.id} in ${delay}ms…`);
-      await new Promise((r) => setTimeout(r, delay));
+  // OpenRouter handles its own fallback via the `models` array sent in the request body,
+  // so we only call it once. For all other providers we iterate through fallback models ourselves.
+  const modelsToTry = provider.id === "openrouter"
+    ? [provider.model]
+    : [provider.model, ...(provider.fallbackModels ?? [])];
+
+  let lastQuotaError: any = null;
+
+  for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
+    const currentModel = modelsToTry[modelIdx];
+    // Swap in the current model without mutating the original config
+    const activeProvider = modelIdx === 0 ? provider : { ...provider, model: currentModel };
+
+    if (modelIdx > 0) {
+      console.log(`[AI] ${provider.id}: primary model quota exhausted — trying fallback model "${currentModel}"`);
     }
 
-    try {
-      let result: CallResult;
-      if (provider.id === "gemini") {
-        result = await callGemini(finalPrompt, system, finalMax);
-      } else {
-        result = await callOpenAICompat(provider, finalPrompt, system, finalMax);
+    let modelQuotaExhausted = false;
+    let lastError = "";
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        const delay = RETRY_DELAYS_MS[attempt - 1] ?? 4000;
+        console.log(`[AI] Retry ${attempt}/${MAX_RETRIES} for ${provider.id}/${currentModel} in ${delay}ms…`);
+        await new Promise((r) => setTimeout(r, delay));
       }
 
-      const elapsed = Date.now() - startMs;
-      console.log(`[AI] ✓ ${provider.id} succeeded in ${elapsed}ms`);
-      return result.text;
+      try {
+        let result: CallResult;
+        if (provider.id === "gemini") {
+          result = await callGemini(finalPrompt, system, finalMax);
+        } else {
+          result = await callOpenAICompat(activeProvider, finalPrompt, system, finalMax);
+        }
 
-    } catch (e: any) {
-      if (e?.skipProvider) throw e;  // misconfigured key — propagate immediately
-      const httpStatus: number | undefined = e?.httpStatus;
-      const msg = e?.message || String(e);
-      lastError = msg;
+        const elapsed = Date.now() - startMs;
+        const modelTag = modelIdx > 0 ? ` (fallback: ${currentModel})` : "";
+        console.log(`[AI] ✓ ${provider.id}${modelTag} succeeded in ${elapsed}ms`);
+        return result.text;
 
-      console.log(`HTTP STATUS: ${httpStatus ?? "unknown"} — ${provider.id}`);
-      console.log(`ERROR BODY: ${msg.slice(0, 300)}`);
+      } catch (e: any) {
+        if (e?.skipProvider) throw e;  // misconfigured key — propagate immediately
+        const httpStatus: number | undefined = e?.httpStatus;
+        const msg = e?.message || String(e);
+        lastError = msg;
 
-      // Hard errors — no point retrying
-      if (isHardUnavailable(msg, httpStatus) || isQuotaExhausted(msg, httpStatus)) {
+        console.log(`HTTP STATUS: ${httpStatus ?? "unknown"} — ${provider.id}/${currentModel}`);
+        console.log(`ERROR BODY: ${msg.slice(0, 300)}`);
+
+        // Hard errors — no point retrying or falling back to another model
+        if (isHardUnavailable(msg, httpStatus)) {
+          throw Object.assign(e, { httpStatus });
+        }
+
+        // Quota exhausted — move to next fallback model instead of retrying
+        if (isQuotaExhausted(msg, httpStatus)) {
+          const hasMore = modelIdx < modelsToTry.length - 1;
+          console.log(`[AI] ${provider.id}/${currentModel} quota exhausted${hasMore ? " — trying next fallback model" : " — all models exhausted"}`);
+          lastQuotaError = Object.assign(e, { httpStatus });
+          modelQuotaExhausted = true;
+          break;
+        }
+
+        // Transient — retry if attempts left
+        if (attempt < MAX_RETRIES && isTransientError(msg, httpStatus)) continue;
+
         throw Object.assign(e, { httpStatus });
       }
-
-      // Transient — retry if attempts left
-      if (attempt < MAX_RETRIES && isTransientError(msg, httpStatus)) continue;
-
-      throw Object.assign(e, { httpStatus });
     }
+
+    if (!modelQuotaExhausted) {
+      // Exhausted retries on a non-quota error
+      throw new Error(`[${provider.id}/${currentModel}] failed after ${MAX_RETRIES} retries: ${lastError}`);
+    }
+    // else: quota exhausted on this model — continue outer loop to next model
   }
 
-  throw new Error(`[${provider.id}] failed after ${MAX_RETRIES} retries: ${lastError}`);
+  // Every model in the list was quota-exhausted
+  throw lastQuotaError ?? Object.assign(new Error(`[${provider.id}] all models quota exhausted`), { httpStatus: 429 });
 }
 
 // ─── Chain runner ──────────────────────────────────────────────────────────
