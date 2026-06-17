@@ -88,7 +88,7 @@ function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove,
     <div className="mt-3">
       <textarea
         className="w-full resize-y rounded-xl border border-slate-200 bg-white/70 px-4 py-3 font-[inherit] text-[15px] leading-[1.8] text-slate-800 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100 disabled:opacity-60"
-        style={{ minHeight: 140 }}
+        style={{ minHeight: 280 }}
         value={prose}
         onChange={(e) => onSetProse(blockId, e.target.value)}
         disabled={isThisBusy}
