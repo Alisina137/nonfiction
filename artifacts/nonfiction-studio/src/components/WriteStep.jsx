@@ -354,8 +354,8 @@ export default function WriteStep({
         {/* Header */}
         <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-8 py-5">
           <div>
-            <p className="text-[13px] font-semibold uppercase tracking-[1px] text-slate-400">{label}</p>
-            <h2 className="mt-1 text-[22px] font-bold leading-snug text-slate-900">{node.title || label}</h2>
+            <p className="text-[12px] font-semibold uppercase tracking-[1px] text-slate-400">{label}</p>
+            <h2 className="mt-1 text-[20px] font-semibold leading-snug text-slate-900">{node.title || label}</h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {hasContent && (
@@ -473,10 +473,10 @@ export default function WriteStep({
               {/* Chapter header */}
               <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-8 py-6">
                 <div className="min-w-0">
-                  <p className="text-[13px] font-semibold uppercase tracking-[1px] text-slate-400">
+                  <p className="text-[12px] font-semibold uppercase tracking-[1px] text-slate-400">
                     Chapter {ci + 1}
                   </p>
-                  <h2 className="mt-1.5 text-[28px] font-bold leading-tight tracking-tight text-slate-900">
+                  <h2 className="mt-1.5 text-[20px] font-semibold leading-tight tracking-tight text-slate-900">
                     {ch.title || `Chapter ${ci + 1}`}
                   </h2>
                 </div>
@@ -523,7 +523,7 @@ export default function WriteStep({
                         /* ── Section ── 32px top margin */
                         <div key={sec.id || si} className="mt-8 first:mt-6">
                           {/* Section heading */}
-                          <h3 className="text-[20px] font-semibold text-slate-800">
+                          <h3 className="text-[18px] font-medium text-slate-800">
                             <span className="mr-2 text-sky-600">{secNum}</span>
                             {sec.title || `Section ${secNum}`}
                           </h3>
@@ -540,7 +540,7 @@ export default function WriteStep({
                                 <div key={sub.id || qi} className="mt-4 pl-4 border-l-2 border-slate-100">
                                   {/* Subsection heading */}
                                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                                    <h4 className="text-[16px] font-semibold text-slate-700">
+                                    <h4 className="text-[16px] font-medium text-slate-700">
                                       <span className="mr-1.5 text-[13px] font-bold text-sky-500">{subNum}</span>
                                       {sub.title || `Subsection ${subNum}`}
                                     </h4>
