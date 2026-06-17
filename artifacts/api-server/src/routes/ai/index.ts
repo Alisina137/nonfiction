@@ -483,9 +483,17 @@ router.post("/lesson", async (req, res) => {
       res,
       "lesson"
     );
-    const data = extractJSON(text);
+    let data: any;
+    try {
+      data = extractJSON(text);
+    } catch {
+      // AI returned plain prose instead of JSON — wrap it so lessonToProse can use it
+      console.warn("[lesson] extractJSON failed — using raw text as content fallback");
+      data = { content: text.trim() };
+    }
     return res.json({ lesson: data, _provider: usedProvider });
   } catch (error: any) {
+    console.error("[lesson] route error:", (error as any)?.message);
     return aiErrorResponse(res, error);
   }
 });
