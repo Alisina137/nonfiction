@@ -13,14 +13,13 @@ const CACHE_TTL_MS  = 30 * 60 * 1000;
 
 export const EXHAUSTED_KEY    = "nonfiction-ai-exhausted-local";   // { [provider]: expiresAt }
 export const MANUAL_OFF_KEY   = "nonfiction-ai-disabled-manual";   // [provider, ...]
-export const PREFERRED_KEY    = "nonfiction-ai-preferred-provider"; // "gemini"|"groq"|"xai"|"openrouter"|""
+export const PREFERRED_KEY    = "nonfiction-ai-preferred-provider"; // "gemini"|"groq"|"openrouter"|""
 
 const NO_CACHE_PATHS = ["/api/ai/improve"];
 
 export const PROVIDER_LABELS = {
   gemini:     "Gemini",
   groq:       "Groq",
-  xai:        "xAI (Grok)",
   openrouter: "OpenRouter"
 };
 

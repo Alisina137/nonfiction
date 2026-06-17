@@ -64,7 +64,6 @@ function statusTextColor(status) {
 const PROVIDER_COLOR = {
   gemini:     "bg-sky-100     text-sky-800     border-sky-200",
   groq:       "bg-violet-100  text-violet-800  border-violet-200",
-  xai:        "bg-zinc-100    text-zinc-800    border-zinc-300",
   openrouter: "bg-slate-100   text-slate-700   border-slate-200"
 };
 
@@ -72,7 +71,6 @@ const PROVIDER_COLOR = {
 const ACTIVE_LABELS = {
   gemini:     "Gemini",
   groq:       "Groq",
-  xai:        "xAI (Grok)",
   openrouter: "OpenRouter"
 };
 

@@ -24,8 +24,7 @@ const POLL_INTERVAL_MS = 3 * 60 * 1000;
 export const PROVIDER_DEFS = {
   gemini:     { label: "Gemini 2.5 Flash",      model: "gemini-2.5-flash",                               order: 1 },
   groq:       { label: "Groq (Llama)",           model: "llama-3.3-70b-versatile",                        order: 2 },
-  xai:        { label: "xAI (Grok)",             model: "grok-3-mini",                                    order: 3 },
-  openrouter: { label: "OpenRouter (fallback)",  model: "meta-llama/llama-3.3-70b-instruct:free",         order: 4 }
+  openrouter: { label: "OpenRouter (fallback)",  model: "meta-llama/llama-3.3-70b-instruct:free",         order: 3 }
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_DEFS);

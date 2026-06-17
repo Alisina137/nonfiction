@@ -1,12 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Multi-Provider AI Router — 5 independent providers, independent free quotas
+// Multi-Provider AI Router — 3 independent providers, independent free quotas
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // PROVIDER CHAIN (both normal and low-cost mode — same order, same providers):
 //   1. Gemini     — Google AI Studio (GEMINI_API_KEY)
 //   2. Groq       — Groq Cloud (GROQ_API_KEY)
-//   3. xAI        — xAI Cloud / Grok (XAI_API_KEY)
-//   4. OpenRouter — last-resort fallback (OPENROUTER_API_KEY)
+//   3. OpenRouter — last-resort fallback (OPENROUTER_API_KEY)
 //
 // QUOTA TRACKING:
 //   On 429 / quota / rate-limit / daily-limit errors:
@@ -23,17 +22,7 @@
 
 // ─── Provider configuration ───────────────────────────────────────────────
 
-export type ProviderId = "gemini" | "groq" | "xai" | "openrouter";
-
-// ─── xAI model list (configurable from one place) ─────────────────────────
-export const XAI_MODELS = [
-  "grok-3-mini",
-  "grok-3",
-  "grok-2-1212",
-  "grok-beta"
-] as const;
-export type XaiModel = typeof XAI_MODELS[number];
-export const XAI_DEFAULT_MODEL: XaiModel = "grok-3-mini";
+export type ProviderId = "gemini" | "groq" | "openrouter";
 
 export interface ProviderConfig {
   id:             ProviderId;
@@ -64,14 +53,6 @@ export const PROVIDERS: ProviderConfig[] = [
     order:          2
   },
   {
-    id:     "xai",
-    label:  "xAI (Grok)",
-    model:  XAI_DEFAULT_MODEL,
-    apiUrl: "https://api.x.ai/v1/chat/completions",
-    apiKey: () => process.env.XAI_API_KEY,
-    order:  3
-  },
-  {
     id:             "openrouter",
     label:          "OpenRouter (fallback)",
     model:          "meta-llama/llama-3.3-70b-instruct:free",
@@ -83,7 +64,7 @@ export const PROVIDERS: ProviderConfig[] = [
     ],
     apiUrl: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY,
-    order:  4
+    order:  3
   }
 ];
 
@@ -96,9 +77,6 @@ const PROVIDER_BY_ID = Object.fromEntries(PROVIDERS.map((p) => [p.id, p])) as Re
   for (const p of PROVIDERS) {
     if (!p.apiKey()) {
       console.warn(`[AI] WARNING: ${p.id.toUpperCase()}_API_KEY is not set — ${p.label} will be skipped in the provider chain.`);
-      if (p.id === "xai") {
-        console.warn("[AI] To enable xAI (Grok), add XAI_API_KEY to your Replit Secrets. Get your key at https://console.x.ai/");
-      }
     }
   }
 })();
