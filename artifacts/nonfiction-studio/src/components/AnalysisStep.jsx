@@ -56,7 +56,7 @@ function buildAmazonQuery(research) {
 }
 
 export default function AnalysisStep({ research, analysis, errors, updateAnalysis, patchBook, removeBook, updateResearch }) {
-  const [searchQuery, setSearchQuery]         = useState(analysis.lastSearchQuery || research.bookTitle || "");
+  const [searchQuery, setSearchQuery]         = useState(research.bookSubtitle || analysis.lastSearchQuery || research.bookTitle || "");
   const [loadingSearch, setLoadingSearch]     = useState(false);
   const [loadingProductId, setLoadingProductId] = useState(null);
   const [localMsg, setLocalMsg]               = useState("");
@@ -71,11 +71,12 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
   const isNewIntel   = intelligence && typeof intelligence.targetAudience === "object" && !Array.isArray(intelligence.targetAudience);
 
   useEffect(() => {
+    if (research.bookSubtitle) { setSearchQuery(research.bookSubtitle); return; }
     if (analysis.lastSearchQuery) { setSearchQuery(analysis.lastSearchQuery); return; }
     if (research.bookTitle) { setSearchQuery(research.bookTitle); return; }
     const q = buildAmazonQuery(research);
     if (q) setSearchQuery(q);
-  }, [research.bookTitle, research.deepNicheLabel, research.subNicheLabel, research.mainNicheLabel, research.bookTopic, research.genre]);
+  }, [research.bookSubtitle, research.bookTitle, research.deepNicheLabel, research.subNicheLabel, research.mainNicheLabel, research.bookTopic, research.genre]);
 
   async function runAmazonSearch(mode) {
     const q = searchQuery.trim();
