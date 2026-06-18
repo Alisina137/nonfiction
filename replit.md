@@ -18,10 +18,11 @@ Set all of these in Replit Secrets (or `.env` for local dev). See `.env.example`
 | Variable | Required | Description |
 |---|---|---|
 | `DATABASE_URL` | **Yes** | PostgreSQL connection string (auto-provisioned on Replit) |
-| `GEMINI_API_KEY` | At least 1 AI key | Gemini 2.5 Flash — primary AI provider |
+| `GEMINI_API_KEY` | At least 1 AI key | Gemini 2.5 Flash — primary AI provider (#1) |
 | `GROQ_API_KEY` | At least 1 AI key | Groq Llama 3.3 70B — AI fallback #2 |
-| `XAI_API_KEY` | At least 1 AI key | xAI / Grok — AI fallback #3 |
-| `OPENROUTER_API_KEY` | At least 1 AI key | OpenRouter free tier — AI last resort |
+| `CEREBRAS_API_KEY` | At least 1 AI key | Cerebras Inference — AI fallback #3 |
+| `OPENROUTER_API_KEY` | At least 1 AI key | OpenRouter free tier — AI fallback #4 |
+| `SAMBANOVA_API_KEY` | At least 1 AI key | SambaNova Cloud — AI fallback #5 / last resort |
 | `RAINFOREST_API_KEY` | At least 1 Amazon key | Rainforest API — primary Amazon data |
 | `SCALE_SERP_API_KEY` | At least 1 Amazon key | Scale SERP — Amazon data fallback |
 
@@ -36,7 +37,7 @@ The API server validates all variables on startup and will print a clear error i
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
-- AI: Gemini → Groq → xAI → OpenRouter (auto-fallback chain)
+- AI: Gemini → Groq → Cerebras → OpenRouter → SambaNova (auto-fallback chain)
 
 ## Where things live
 
@@ -52,7 +53,7 @@ The API server validates all variables on startup and will print a clear error i
 
 ## Architecture decisions
 
-- **Multi-provider AI chain**: Gemini → Groq → xAI → OpenRouter. Each provider is independently disabled for 10min/60min/24h on rate-limit/hard/quota errors. This maximises uptime on free-tier keys.
+- **Multi-provider AI chain**: Gemini → Groq → Cerebras → OpenRouter → SambaNova. Each provider is independently disabled for 10min/60min/24h on rate-limit/hard/quota errors. This maximises uptime on free-tier keys.
 - **Dual Amazon provider**: Rainforest (primary) → Scale SERP (fallback). If Rainforest key is absent or returns an error, Scale SERP is tried automatically.
 - **All prompts in source control**: Every AI prompt lives in `prompts.ts` — none are stored in the database or generated dynamically outside Git.
 - **Env-validated at startup**: `validateEnv()` runs before `app.listen()` and will exit with a clear error message if `DATABASE_URL` is missing.

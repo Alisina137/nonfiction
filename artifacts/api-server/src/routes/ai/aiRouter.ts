@@ -1,11 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Multi-Provider AI Router — 3 independent providers, independent free quotas
+// Multi-Provider AI Router — 5 independent providers, independent free quotas
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // PROVIDER CHAIN (both normal and low-cost mode — same order, same providers):
 //   1. Gemini     — Google AI Studio (GEMINI_API_KEY)
 //   2. Groq       — Groq Cloud (GROQ_API_KEY)
-//   3. OpenRouter — last-resort fallback (OPENROUTER_API_KEY)
+//   3. Cerebras   — Cerebras Inference (CEREBRAS_API_KEY)
+//   4. OpenRouter — OpenRouter free tier (OPENROUTER_API_KEY)
+//   5. SambaNova  — SambaNova Cloud (SAMBANOVA_API_KEY)
 //
 // QUOTA TRACKING:
 //   On 429 / quota / rate-limit / daily-limit errors:
@@ -22,7 +24,7 @@
 
 // ─── Provider configuration ───────────────────────────────────────────────
 
-export type ProviderId = "gemini" | "groq" | "openrouter";
+export type ProviderId = "gemini" | "groq" | "cerebras" | "openrouter" | "sambanova";
 
 export interface ProviderConfig {
   id:             ProviderId;
@@ -53,6 +55,15 @@ export const PROVIDERS: ProviderConfig[] = [
     order:          2
   },
   {
+    id:             "cerebras",
+    label:          "Cerebras (Llama)",
+    model:          "llama-3.3-70b",
+    fallbackModels: ["llama3.1-8b"],
+    apiUrl:         "https://api.cerebras.ai/v1/chat/completions",
+    apiKey:         () => process.env.CEREBRAS_API_KEY,
+    order:          3
+  },
+  {
     id:             "openrouter",
     label:          "OpenRouter (fallback)",
     model:          "meta-llama/llama-3.3-70b-instruct:free",
@@ -64,7 +75,16 @@ export const PROVIDERS: ProviderConfig[] = [
     ],
     apiUrl: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY,
-    order:  3
+    order:  4
+  },
+  {
+    id:             "sambanova",
+    label:          "SambaNova (Llama)",
+    model:          "Meta-Llama-3.3-70B-Instruct",
+    fallbackModels: ["Meta-Llama-3.1-8B-Instruct"],
+    apiUrl:         "https://api.sambanova.ai/v1/chat/completions",
+    apiKey:         () => process.env.SAMBANOVA_API_KEY,
+    order:          5
   }
 ];
 

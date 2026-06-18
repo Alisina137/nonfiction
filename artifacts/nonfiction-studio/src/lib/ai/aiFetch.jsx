@@ -20,7 +20,9 @@ const NO_CACHE_PATHS = ["/api/ai/improve"];
 export const PROVIDER_LABELS = {
   gemini:     "Gemini",
   groq:       "Groq",
-  openrouter: "OpenRouter"
+  cerebras:   "Cerebras",
+  openrouter: "OpenRouter",
+  sambanova:  "SambaNova"
 };
 
 // ─── Tiny event bus ──────────────────────────────────────────────────────────
