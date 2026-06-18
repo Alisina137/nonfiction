@@ -24,7 +24,7 @@
 
 // ─── Provider configuration ───────────────────────────────────────────────
 
-export type ProviderId = "gemini" | "groq" | "cerebras" | "openrouter" | "sambanova";
+export type ProviderId = "gemini" | "grok" | "groq" | "cerebras" | "openrouter" | "sambanova";
 
 export interface ProviderConfig {
   id:             ProviderId;
@@ -46,13 +46,22 @@ export const PROVIDERS: ProviderConfig[] = [
     order:  1
   },
   {
+    id:             "grok",
+    label:          "Grok 4 (xAI)",
+    model:          "grok-4",
+    fallbackModels: ["grok-3"],
+    apiUrl:         "https://api.x.ai/v1/chat/completions",
+    apiKey:         () => process.env.GROK_API_KEY,
+    order:          2
+  },
+  {
     id:             "groq",
     label:          "Groq (Llama)",
     model:          "llama-3.3-70b-versatile",
     fallbackModels: ["llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768"],
     apiUrl:         "https://api.groq.com/openai/v1/chat/completions",
     apiKey:         () => process.env.GROQ_API_KEY,
-    order:          2
+    order:          3
   },
   {
     id:             "cerebras",
@@ -61,7 +70,7 @@ export const PROVIDERS: ProviderConfig[] = [
     fallbackModels: ["llama3.1-8b"],
     apiUrl:         "https://api.cerebras.ai/v1/chat/completions",
     apiKey:         () => process.env.CEREBRAS_API_KEY,
-    order:          3
+    order:          4
   },
   {
     id:             "openrouter",
@@ -75,7 +84,7 @@ export const PROVIDERS: ProviderConfig[] = [
     ],
     apiUrl: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY,
-    order:  4
+    order:  5
   },
   {
     id:             "sambanova",
@@ -84,9 +93,106 @@ export const PROVIDERS: ProviderConfig[] = [
     fallbackModels: ["Meta-Llama-3.1-8B-Instruct"],
     apiUrl:         "https://api.sambanova.ai/v1/chat/completions",
     apiKey:         () => process.env.SAMBANOVA_API_KEY,
-    order:          5
+    order:          6
   }
 ];
+
+// ─── Task type → specialized model chain ─────────────────────────────────────
+//
+// Each phase of the book creation pipeline uses the model best suited for that
+// task.  When a TaskType is set in GenOptions, runChain uses the task-specific
+// provider order instead of the default PROVIDERS order.
+//
+// Providers that have no API key are automatically skipped at runtime.
+// The same provider may specify model + fallbackModels so that one API key can
+// serve multiple quality tiers (e.g. gemini-2.5-pro → gemini-2.5-flash).
+//
+// PHASE MAP:
+//   idea     → Phase 1: Title / idea generation  (Grok 4 primary)
+//   research → Phase 2: Market / competitor analysis  (DeepSeek R1 primary)
+//   outline  → Phase 3: Structure / outline  (Gemini Pro primary)
+//   write    → Phase 4: Long-form prose  (Gemini Pro + 6-model pool)
+//   edit     → Phase 5: Editing / improvement  (Llama 4 Maverick primary)
+//   metadata → Phase 6: Description / SEO / metadata  (Gemini Flash-Lite primary)
+
+export type TaskType = "idea" | "research" | "outline" | "write" | "edit" | "metadata";
+
+interface ModelSpec {
+  providerId:     ProviderId;
+  model:          string;
+  label:          string;
+  fallbackModels?: string[];
+}
+
+export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
+
+  // ── Phase 1: Book idea & title generation ──────────────────────────────
+  // Grok 4 leads — best creative ideation and marketable angles.
+  idea: [
+    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
+    { providerId: "gemini",     model: "gemini-2.5-flash",                        label: "Gemini Flash" },
+    { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
+    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free",  label: "OpenRouter",       fallbackModels: ["google/gemma-3-27b-it:free"] },
+    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
+  ],
+
+  // ── Phase 2: Market analysis & research ────────────────────────────────
+  // DeepSeek R1 leads — deep chain-of-thought reasoning for competitive intel.
+  research: [
+    { providerId: "openrouter", model: "deepseek/deepseek-r1-0528:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free", "mistralai/mistral-7b-instruct:free"] },
+    { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
+    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
+    { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
+    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
+  ],
+
+  // ── Phase 3: Book structure & outline ─────────────────────────────────
+  // Gemini Pro leads — excellent at hierarchical structure and chapter planning.
+  outline: [
+    { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
+    { providerId: "openrouter", model: "deepseek/deepseek-r1-0528:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free"] },
+    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
+    { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
+    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
+  ],
+
+  // ── Phase 4: Main content / prose writing ─────────────────────────────
+  // 7-model pool.  Gemini Pro is the primary author; OpenRouter serves
+  // DeepSeek/Qwen/Maverick as an internal fallback pool.
+  write: [
+    { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
+    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
+    { providerId: "openrouter", model: "deepseek/deepseek-r1-0528:free",          label: "DeepSeek R1",      fallbackModels: ["qwen/qwen3-32b:free", "meta-llama/llama-4-maverick:free", "google/gemma-3-27b-it:free"] },
+    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
+    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant", "gemma2-9b-it"] },
+  ],
+
+  // ── Phase 5: Editing & quality improvement ─────────────────────────────
+  // Llama 4 Maverick leads — best at natural, human-like writing improvement.
+  edit: [
+    { providerId: "openrouter", model: "meta-llama/llama-4-maverick:free",        label: "Llama 4 Maverick", fallbackModels: ["deepseek/deepseek-r1-0528:free", "google/gemma-3-27b-it:free"] },
+    { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
+    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
+    { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
+    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
+  ],
+
+  // ── Phase 6: Metadata generation ──────────────────────────────────────
+  // Gemini Flash-Lite leads — fast, efficient for short SEO / description tasks.
+  metadata: [
+    { providerId: "gemini",     model: "gemini-2.5-flash-lite-preview-06-17",     label: "Gemini Flash-Lite", fallbackModels: ["gemini-2.5-flash"] },
+    { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
+    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free",  label: "OpenRouter",       fallbackModels: ["google/gemma-3-27b-it:free"] },
+    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
+    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
+  ],
+};
 
 export const PROVIDER_IDS = PROVIDERS.map((p) => p.id);
 
@@ -267,12 +373,13 @@ interface CallResult { text: string; status: number }
 async function callGemini(
   prompt: string,
   system: string | undefined,
-  maxTokens: number
+  maxTokens: number,
+  model = "gemini-2.5-flash"
 ): Promise<CallResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw Object.assign(new Error("GEMINI_API_KEY is not configured"), { skipProvider: true });
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const contents: any[] = [];
   if (system) {
@@ -372,28 +479,42 @@ async function callOpenAICompat(
   return { text, status: res.status };
 }
 
-/** Dispatch to the correct caller for a given provider, with per-model fallback on quota exhaustion. */
+/** Dispatch to the correct caller for a given provider, with per-model fallback on quota exhaustion.
+ *
+ * @param modelOverride        - Override the provider's default primary model
+ * @param fallbackModelsOverride - Override the provider's default fallback model list
+ * @returns { text, modelUsed } — the generated text and the model that produced it
+ */
 async function callProvider(
   provider: ProviderConfig,
   prompt: string,
   system: string | undefined,
-  maxTokens: number
-): Promise<string> {
+  maxTokens: number,
+  modelOverride?: string,
+  fallbackModelsOverride?: string[]
+): Promise<{ text: string; modelUsed: string }> {
+
+  // Build an effective provider config with any task-specific overrides applied.
+  const effectiveProvider: ProviderConfig = {
+    ...provider,
+    model:          modelOverride          ?? provider.model,
+    fallbackModels: fallbackModelsOverride ?? provider.fallbackModels
+  };
+
   const { prompt: finalPrompt, maxTokens: finalMax } = ensureTokenBudget(prompt, maxTokens);
   const startMs = Date.now();
 
   // OpenRouter handles its own fallback via the `models` array sent in the request body,
   // so we only call it once. For all other providers we iterate through fallback models ourselves.
-  const modelsToTry = provider.id === "openrouter"
-    ? [provider.model]
-    : [provider.model, ...(provider.fallbackModels ?? [])];
+  const modelsToTry = effectiveProvider.id === "openrouter"
+    ? [effectiveProvider.model]
+    : [effectiveProvider.model, ...(effectiveProvider.fallbackModels ?? [])];
 
   let lastQuotaError: any = null;
 
   for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
     const currentModel = modelsToTry[modelIdx];
-    // Swap in the current model without mutating the original config
-    const activeProvider = modelIdx === 0 ? provider : { ...provider, model: currentModel };
+    const activeProvider = { ...effectiveProvider, model: currentModel };
 
     if (modelIdx > 0) {
       console.log(`[AI] ${provider.id}: primary model quota exhausted — trying fallback model "${currentModel}"`);
@@ -412,15 +533,15 @@ async function callProvider(
       try {
         let result: CallResult;
         if (provider.id === "gemini") {
-          result = await callGemini(finalPrompt, system, finalMax);
+          result = await callGemini(finalPrompt, system, finalMax, currentModel);
         } else {
           result = await callOpenAICompat(activeProvider, finalPrompt, system, finalMax);
         }
 
         const elapsed = Date.now() - startMs;
         const modelTag = modelIdx > 0 ? ` (fallback: ${currentModel})` : "";
-        console.log(`[AI] ✓ ${provider.id}${modelTag} succeeded in ${elapsed}ms`);
-        return result.text;
+        console.log(`[AI] ✓ ${provider.id}${modelTag} — model: ${currentModel} — ${elapsed}ms`);
+        return { text: result.text, modelUsed: currentModel };
 
       } catch (e: any) {
         if (e?.skipProvider) throw e;  // misconfigured key — propagate immediately
@@ -453,13 +574,10 @@ async function callProvider(
     }
 
     if (!modelQuotaExhausted) {
-      // Exhausted retries on a non-quota error
       throw new Error(`[${provider.id}/${currentModel}] failed after ${MAX_RETRIES} retries: ${lastError}`);
     }
-    // else: quota exhausted on this model — continue outer loop to next model
   }
 
-  // Every model in the list was quota-exhausted
   throw lastQuotaError ?? Object.assign(new Error(`[${provider.id}] all models quota exhausted`), { httpStatus: 429 });
 }
 
@@ -470,6 +588,7 @@ export interface GenOptions {
   lowCredit?:         boolean;
   disabledProviders?: string[];
   preferredProvider?: string;
+  taskType?:          TaskType;
   onFallback?:        (info: { from: ProviderId; to: ProviderId; reason: string }) => void;
   onSuccess?:         (provider: ProviderId) => void;
 }
@@ -477,6 +596,7 @@ export interface GenOptions {
 export interface GenResult {
   text:               string;
   usedProvider:       ProviderId;
+  usedModel:          string;
   exhaustedProviders: ProviderId[];
 }
 
@@ -485,40 +605,82 @@ async function runChain(
   system: string | undefined,
   opts: GenOptions
 ): Promise<GenResult> {
-  const clientDisabled   = new Set(opts.disabledProviders ?? []);
+  const clientDisabled    = new Set(opts.disabledProviders ?? []);
+  const { taskType }      = opts;
   const exhaustedProviders: ProviderId[] = [];
   const maxTokens = opts.lowCredit
     ? Math.min(opts.maxTokens ?? TOKEN_LIMITS.default, LOW_COST_TOKEN_CAP)
     : (opts.maxTokens ?? TOKEN_LIMITS.default);
 
-  // Build eligible chain — only providers with configured keys
-  let chain = PROVIDERS.filter((p) => Boolean(p.apiKey()));
+  // ── Build typed chain items with model overrides ──────────────────────────
+  //
+  // Each item carries: the provider config + the specific model to use + its
+  // fallback models for that task.  This lets one provider key serve different
+  // model tiers depending on the task (e.g. gemini-2.5-pro for outline writing,
+  // gemini-2.5-flash-lite for metadata).
 
-  // If the client requested a preferred provider, move it to the front of the chain
-  const preferred = opts.preferredProvider as ProviderId | undefined;
-  if (preferred && PROVIDER_BY_ID[preferred]) {
-    const prefProvider = chain.find((p) => p.id === preferred);
-    if (prefProvider) {
-      chain = [prefProvider, ...chain.filter((p) => p.id !== preferred)];
-    }
+  interface ChainItem {
+    provider:      ProviderConfig;
+    model:         string;
+    fallbackModels: string[];
+    label:         string;
   }
 
-  const activeIds = chain.map((p) => p.id).filter((id) => !clientDisabled.has(id));
+  let chainItems: ChainItem[];
+
+  if (taskType && TASK_CHAINS[taskType]) {
+    // ── Task-specific chain ───────────────────────────────────────────────
+    // Process specs in the task's defined order.  Each provider appears at most
+    // once (first occurrence wins); providers without API keys are skipped.
+    const seen = new Set<ProviderId>();
+    chainItems  = [];
+    for (const spec of TASK_CHAINS[taskType]) {
+      const p = PROVIDER_BY_ID[spec.providerId];
+      if (!p || !p.apiKey()) continue;
+      if (seen.has(p.id))    continue;
+      seen.add(p.id);
+      chainItems.push({
+        provider:       p,
+        model:          spec.model,
+        fallbackModels: spec.fallbackModels ?? [],
+        label:          spec.label
+      });
+    }
+  } else {
+    // ── Default chain ─────────────────────────────────────────────────────
+    // Use PROVIDERS order; respect the client's preferred-provider hint.
+    let providers = PROVIDERS.filter((p) => Boolean(p.apiKey()));
+    const preferred = opts.preferredProvider as ProviderId | undefined;
+    if (preferred && PROVIDER_BY_ID[preferred]) {
+      const pref = providers.find((p) => p.id === preferred);
+      if (pref) providers = [pref, ...providers.filter((p) => p.id !== preferred)];
+    }
+    chainItems = providers.map((p) => ({
+      provider:       p,
+      model:          p.model,
+      fallbackModels: p.fallbackModels ?? [],
+      label:          p.label
+    }));
+  }
+
+  const activeLabels = chainItems
+    .filter((c) => !clientDisabled.has(c.provider.id))
+    .map((c) => c.label);
+
   console.log("================================");
   console.log("ROUTER START");
-  console.log(`[AI] Preferred: ${preferred || "none (default order)"}`);
-  console.log(`[AI] Client-disabled: [${[...clientDisabled].join(", ") || "none"}]`);
-  console.log(`[AI] Active providers: [${activeIds.join(", ")}]`);
+  if (taskType)  console.log(`[AI] Task:     ${taskType}`);
+  console.log(`[AI] Chain:    [${activeLabels.join(", ")}]`);
+  console.log(`[AI] Disabled: [${[...clientDisabled].join(", ") || "none"}]`);
   console.log("================================");
 
   const attempts: Array<{ id: ProviderId; error: string }> = [];
-  let lastSuccessfulId: ProviderId | null = null;
 
-  for (const provider of chain) {
+  for (const { provider, model, fallbackModels, label } of chainItems) {
 
     // ── Client-side disabled check ────────────────────────────────────────
     if (clientDisabled.has(provider.id)) {
-      console.log(`[AI] Skipping ${provider.id} — disabled by user`);
+      console.log(`[AI] Skipping ${label} — disabled by user`);
       continue;
     }
 
@@ -526,55 +688,56 @@ async function runChain(
     if (isProviderDisabled(provider.id)) {
       const until    = providerDisabledUntil.get(provider.id) ?? 0;
       const minsLeft = Math.ceil((until - Date.now()) / 60000);
-      console.log(`[AI] Skipping ${provider.id} — cooldown ~${minsLeft}min remaining`);
+      console.log(`[AI] Skipping ${label} — cooldown ~${minsLeft}min remaining`);
       continue;
     }
 
-    console.log(`[AI] Trying: ${provider.id} (${provider.model})`);
+    console.log(`[AI] Trying: ${label} (model: ${model})`);
 
     try {
-      const text = await callProvider(provider, prompt, system, maxTokens);
+      const { text, modelUsed } = await callProvider(
+        provider, prompt, system, maxTokens, model, fallbackModels
+      );
 
-      // Notify on fallback
       if (attempts.length > 0) {
         const prevId = attempts[attempts.length - 1].id;
         opts.onFallback?.({ from: prevId, to: provider.id, reason: "fallback" });
       }
       opts.onSuccess?.(provider.id);
 
-      return { text, usedProvider: provider.id, exhaustedProviders };
+      return { text, usedProvider: provider.id, usedModel: modelUsed, exhaustedProviders };
 
     } catch (e: any) {
       const msg        = e?.message || String(e);
       const httpStatus = e?.httpStatus as number | undefined;
 
       if (e?.skipProvider) {
-        console.log(`[AI] Skipping ${provider.id} — key not configured`);
+        console.log(`[AI] Skipping ${label} — key not configured`);
         continue;
       }
 
       if (isQuotaExhausted(msg, httpStatus)) {
-        console.log(`[AI] ${provider.id} quota exhausted — disabled 24h, switching to next provider`);
+        console.log(`[AI] ${label} quota exhausted — disabled 24h, switching to next provider`);
         disableProvider(provider.id, msg, "credit");
         exhaustedProviders.push(provider.id);
       } else if (isHardUnavailable(msg, httpStatus)) {
         const keyMsg = isInvalidKey(msg, httpStatus)
-          ? `[AI] ⚠ ${provider.id} INVALID API KEY (HTTP ${httpStatus}) — check your ${provider.id.toUpperCase()}_API_KEY secret. Disabled 60min.`
-          : `[AI] ${provider.id} hard unavailable (${httpStatus}) — disabled 60min`;
+          ? `[AI] ⚠ ${label} INVALID API KEY (HTTP ${httpStatus}) — check your ${provider.id.toUpperCase()}_API_KEY secret. Disabled 60min.`
+          : `[AI] ${label} hard unavailable (${httpStatus}) — disabled 60min`;
         console.log(keyMsg);
         disableProvider(provider.id, msg, "hard");
       } else if (isTransientError(msg, httpStatus)) {
-        console.log(`[AI] ${provider.id} transient error — disabled 10min`);
+        console.log(`[AI] ${label} transient error — disabled 10min`);
         disableProvider(provider.id, msg, "rate_limit");
       } else {
-        console.log(`[AI] ${provider.id} failed: ${msg.slice(0, 200)}`);
+        console.log(`[AI] ${label} failed: ${msg.slice(0, 200)}`);
       }
 
       attempts.push({ id: provider.id, error: msg.slice(0, 100) });
     }
   }
 
-  const enabledCount = activeIds.length;
+  const enabledCount = activeLabels.length;
   const hint = enabledCount === 0
     ? "No providers are currently enabled. Enable at least one provider in the AI Provider Status panel."
     : `All ${enabledCount} enabled provider${enabledCount === 1 ? "" : "s"} are unavailable (quota exhausted or offline). Wait for quotas to reset (up to 24h) or click "Reset all" in the provider status panel.`;

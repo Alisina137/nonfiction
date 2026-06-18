@@ -43,7 +43,8 @@ import {
   getModelStatus,
   resetProviders,
   TOKEN_LIMITS,
-  PROVIDERS
+  PROVIDERS,
+  type TaskType
 } from "./aiRouter.js";
 import {
   runTitlePipeline,
@@ -142,10 +143,39 @@ function setProviderHeader(res: any, provider: string, exhausted: string[] = [])
   if (exhausted.length) res.setHeader("X-Exhausted-Providers", exhausted.join(","));
 }
 
+// ─── Content-type → task-phase routing ────────────────────────────────────────
+// Each content type maps to one of the 6 task phases in aiRouter.ts.
+// runLong / runShort use this to select the right specialist model chain.
+const CONTENT_TYPE_TO_TASK: Record<string, TaskType> = {
+  title:               "idea",
+  subtitle:            "idea",
+  regenTitle:          "idea",
+  description:         "metadata",
+  cover:               "metadata",
+  conceptGen:          "metadata",
+  details:             "metadata",
+  fieldSuggestion:     "metadata",
+  outline:             "outline",
+  structure:           "outline",
+  sectionGen:          "outline",
+  subsectionGen:       "outline",
+  chapterStrategy:     "outline",
+  lesson:              "write",
+  bookSection:         "write",
+  authorPersona:       "write",
+  strategicPlan:       "research",
+  competitiveIntel:    "research",
+  analysis:            "research",
+  architecturePreview: "research",
+  improve:             "edit",
+  default:             "write",
+};
+
 // Long-form — uses free chain when client sets lowCostMode=true
 async function runLong(prompt: string, system: string, req: any, res: any, contentType = "default") {
   const maxTokens = TOKEN_LIMITS[contentType] ?? TOKEN_LIMITS.default;
-  const opts      = aiOptsFromReq(req, maxTokens);
+  const taskType  = CONTENT_TYPE_TO_TASK[contentType];
+  const opts      = { ...aiOptsFromReq(req, maxTokens), ...(taskType ? { taskType } : {}) };
   const { text, usedProvider, exhaustedProviders } = await generateContent(prompt, system, opts);
   setProviderHeader(res, usedProvider, exhaustedProviders);
   return { text, usedProvider };
@@ -154,9 +184,9 @@ async function runLong(prompt: string, system: string, req: any, res: any, conte
 // Short-form
 async function runShort(prompt: string, system: string, req: any, res: any, contentType = "default") {
   const maxTokens = TOKEN_LIMITS[contentType] ?? TOKEN_LIMITS.default;
-  const { text, usedProvider, exhaustedProviders } = await generateContentFast(
-    prompt, system, aiOptsFromReq(req, maxTokens)
-  );
+  const taskType  = CONTENT_TYPE_TO_TASK[contentType];
+  const opts      = { ...aiOptsFromReq(req, maxTokens), ...(taskType ? { taskType } : {}) };
+  const { text, usedProvider, exhaustedProviders } = await generateContentFast(prompt, system, opts);
   setProviderHeader(res, usedProvider, exhaustedProviders);
   return { text, usedProvider };
 }
@@ -506,7 +536,7 @@ router.post("/extract-resource", async (req, res) => {
     const { text: rawText, usedProvider } = await generateContentFast(
       extractResourcePrompt({ text, title, category }),
       systemPrompt(),
-      aiOptsFromReq(req, TOKEN_LIMITS.default)
+      { ...aiOptsFromReq(req, TOKEN_LIMITS.default), taskType: "metadata" as const }
     );
     setProviderHeader(res, usedProvider);
     return res.json({ summary: rawText.trim(), _provider: usedProvider });
@@ -540,7 +570,8 @@ router.post("/analyze-book-concept", async (req, res) => {
       analyzeBookConceptPrompt(req.body),
       systemPrompt(),
       req,
-      res
+      res,
+      "analysis"
     );
     const raw = extractJSON(text);
     const str = (v: any) => (typeof v === "string" ? v.trim() : "");
@@ -583,7 +614,8 @@ router.post("/architecture-preview", async (req, res) => {
       architecturePreviewPrompt(req.body),
       systemPrompt(),
       req,
-      res
+      res,
+      "architecturePreview"
     );
     const data = extractJSON(text);
     const out = {
@@ -608,7 +640,8 @@ router.post("/regenerate-title", async (req, res) => {
       regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }),
       systemPrompt(),
       req,
-      res
+      res,
+      "regenTitle"
     );
     const data = extractJSON(text);
     const rawTitle = data.title || currentTitle;

@@ -22,11 +22,12 @@ const POLL_INTERVAL_MS = 3 * 60 * 1000;
 // ─── Static provider metadata (mirrors aiRouter.ts PROVIDERS array) ───────────
 
 export const PROVIDER_DEFS = {
-  gemini:     { label: "Gemini 2.5 Flash",      model: "gemini-2.5-flash",                               order: 1 },
-  groq:       { label: "Groq (Llama)",           model: "llama-3.3-70b-versatile",                        order: 2 },
-  cerebras:   { label: "Cerebras (Llama)",       model: "llama-3.3-70b",                                  order: 3 },
-  openrouter: { label: "OpenRouter (fallback)",  model: "meta-llama/llama-3.3-70b-instruct:free",         order: 4 },
-  sambanova:  { label: "SambaNova (Llama)",      model: "Meta-Llama-3.3-70B-Instruct",                   order: 5 }
+  gemini:     { label: "Gemini (Flash/Pro/Lite)", model: "gemini-2.5-flash",                               order: 1 },
+  grok:       { label: "Grok 4 (xAI)",           model: "grok-4",                                         order: 2 },
+  groq:       { label: "Groq (Llama)",            model: "llama-3.3-70b-versatile",                        order: 3 },
+  cerebras:   { label: "Cerebras (Llama)",        model: "llama-3.3-70b",                                  order: 4 },
+  openrouter: { label: "OpenRouter (multi-model)", model: "deepseek/deepseek-r1-0528:free",                order: 5 },
+  sambanova:  { label: "SambaNova (Llama)",       model: "Meta-Llama-3.3-70B-Instruct",                   order: 6 }
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_DEFS);
