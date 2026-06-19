@@ -6,56 +6,8 @@
  * insight without burning an AI call.
  */
 
-export const DEEP_NICHE_MAP = {
-  "Self-Help": {
-    Success: [
-      "Millionaire Mindset",
-      "Stoic Success Principles",
-      "Goal Achievement Systems",
-      "Success Through Discipline"
-    ],
-    "Spiritual + Happiness": [
-      "Spiritual Healing for Anxiety",
-      "Letting Go & Emotional Freedom",
-      "Meditation for Emotional Healing"
-    ],
-    "Time Management": [
-      "ADHD Time Management",
-      "Deep Work Focus",
-      "Digital Distraction Detox",
-      "Anti-Procrastination Systems"
-    ],
-    "Communication & Social Skills": [
-      "Small Talk for Introverts",
-      "Assertiveness Training",
-      "Workplace Communication",
-      "Charisma Building"
-    ],
-    "Inner Child": [
-      "Shadow Work Journal",
-      "Reparenting Yourself",
-      "Healing Abandonment Wounds",
-      "Emotional Neglect Recovery"
-    ],
-    Motivational: [
-      "Discipline Over Motivation",
-      "Success Mindset for Men",
-      "Consistency & Habit Building"
-    ],
-    "Self-Esteem": [
-      "Self-Love for Women",
-      "Confidence for Introverts",
-      "Healing Insecurity",
-      "Overcoming People-Pleasing"
-    ],
-    "Personal Transformation": [
-      "Dopamine Detox",
-      "Masculine Discipline",
-      "90-Day Life Reset",
-      "Digital Minimalism"
-    ]
-  }
-};
+/** Deep niches are now user-defined per sub-niche in the Niche Catalog Manager. */
+export const DEEP_NICHE_MAP = {};
 
 export function getDeepNiches(mainLabel, subLabel) {
   if (!mainLabel || !subLabel) return [];

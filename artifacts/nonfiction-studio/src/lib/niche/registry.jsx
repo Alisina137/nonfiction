@@ -101,7 +101,13 @@ export function loadNicheRegistry() {
   try {
     const stored = window.localStorage.getItem(NICHE_REGISTRY_STORAGE_KEY);
     if (!stored) return normalizeRegistry(DEFAULT_NICHE_REGISTRY);
-    return normalizeRegistry(JSON.parse(stored));
+    const parsed = JSON.parse(stored);
+    // Version migration: clear old catalog (v1) and use new defaults (v2+)
+    if (!parsed.version || parsed.version < DEFAULT_NICHE_REGISTRY.version) {
+      window.localStorage.removeItem(NICHE_REGISTRY_STORAGE_KEY);
+      return normalizeRegistry(DEFAULT_NICHE_REGISTRY);
+    }
+    return normalizeRegistry(parsed);
   } catch {
     return normalizeRegistry(DEFAULT_NICHE_REGISTRY);
   }
