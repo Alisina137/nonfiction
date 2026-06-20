@@ -1,5 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { BOOK_FOCUS_PRESET_TAGS } from "@/lib/constants";
+import { useId, useState } from "react";
 import { buildSyntheticProposedBookContent } from "@/lib/proposedBook";
 import { aiFetch } from "@/lib/ai/aiFetch";
 
@@ -455,32 +454,22 @@ function BookPitchCard({ pitch, onRegen, loading, onEdit }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ProposedBookStep({ proposedBook, setProposedBook, fullProject }) {
-  const uid       = useId();
-  const panelRef  = useRef(null);
-  const openerRef = useRef(null);
-  const [pickOpen, setPickOpen] = useState(false);
-  const [search,   setSearch]   = useState("");
+  const uid = useId();
   const [customInput, setCustomInput] = useState("");
 
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiPhase,      setAiPhase]      = useState("");
-  const [aiError,      setAiError]      = useState("");
-  const [regenLoading, setRegenLoading] = useState({});
+  const [aiGenerating,  setAiGenerating]  = useState(false);
+  const [aiPhase,       setAiPhase]       = useState("");
+  const [aiError,       setAiError]       = useState("");
+  const [regenLoading,  setRegenLoading]  = useState({});
   const [sectionErrors, setSectionErrors] = useState({});
 
-  const pb         = proposedBook || {};
-  const focusTags  = Array.isArray(pb.focusTags) ? pb.focusTags.map(normalizeTag).filter(Boolean) : [];
-  const content    = pb.content && typeof pb.content === "object" ? pb.content : {};
+  const [suggestLoading,   setSuggestLoading]   = useState(false);
+  const [suggestError,     setSuggestError]     = useState("");
+  const [aiSuggestions,    setAiSuggestions]    = useState([]);
 
-  const presetAvail = useMemo(() => {
-    const lowerTaken = new Set(focusTags.map(t => t.toLowerCase()));
-    const q = search.trim().toLowerCase();
-    return BOOK_FOCUS_PRESET_TAGS.filter(t => {
-      if (lowerTaken.has(t.toLowerCase())) return false;
-      if (!q) return true;
-      return t.toLowerCase().includes(q);
-    });
-  }, [focusTags, search]);
+  const pb        = proposedBook || {};
+  const focusTags = Array.isArray(pb.focusTags) ? pb.focusTags.map(normalizeTag).filter(Boolean) : [];
+  const content   = pb.content && typeof pb.content === "object" ? pb.content : {};
 
   const hasStrategicPlan = !!(
     content.recommendedStructure?.structureName ||
@@ -530,6 +519,33 @@ export default function ProposedBookStep({ proposedBook, setProposedBook, fullPr
 
   function removeTag(remove) {
     commitTags(focusTags.filter(t => t.toLowerCase() !== remove.toLowerCase()));
+  }
+
+  // ── AI Generate — focus area suggestions ──────────────────────────────────
+
+  async function handleGenerateFocusAreas() {
+    if (suggestLoading) return;
+    setSuggestLoading(true);
+    setSuggestError("");
+    setAiSuggestions([]);
+    try {
+      const data = await aiFetch(
+        "/api/ai/generate-focus-areas",
+        { project: fullProject },
+        { noCache: true }
+      );
+      const suggestions = Array.isArray(data.focusAreas) ? data.focusAreas : [];
+      setAiSuggestions(suggestions);
+    } catch (e) {
+      setSuggestError(e.message || "Failed to generate suggestions. Try again.");
+    } finally {
+      setSuggestLoading(false);
+    }
+  }
+
+  function addSuggestion(tag) {
+    addTag(tag);
+    setAiSuggestions(prev => prev.filter(t => t.toLowerCase() !== tag.toLowerCase()));
   }
 
   // ── AI Generate — full plan ────────────────────────────────────────────────
@@ -617,21 +633,6 @@ export default function ProposedBookStep({ proposedBook, setProposedBook, fullPr
     mergeContent({ [key]: value });
   }
 
-  // ── Click outside ──────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    function onDocDown(ev) {
-      const t = ev.target;
-      const p = panelRef.current;
-      const o = openerRef.current;
-      if (!p || !o) return;
-      if (p.contains(t) || o.contains(t)) return;
-      setPickOpen(false);
-    }
-    document.addEventListener("mousedown", onDocDown);
-    return () => document.removeEventListener("mousedown", onDocDown);
-  }, []);
-
   const MIN_FOCUS = 5;
   const meetsSoftMin = focusTags.length >= MIN_FOCUS;
 
@@ -642,70 +643,113 @@ export default function ProposedBookStep({ proposedBook, setProposedBook, fullPr
 
       {/* ── Book Focus Selector ── */}
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-        <h2 className="text-xl font-semibold text-slate-900">Book Focus</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Select the main focus areas for your book to guide strategy and drafts.{" "}
-          <span className="font-medium text-slate-800">Recommend at least {MIN_FOCUS} topics.</span>
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">Book Focus</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Select the main focus areas to guide strategy and drafts.{" "}
+              <span className="font-medium text-slate-800">Aim for at least {MIN_FOCUS}.</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerateFocusAreas}
+            disabled={suggestLoading}
+            className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 shadow-sm transition hover:bg-violet-100 disabled:opacity-60"
+          >
+            {suggestLoading ? (
+              <>
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+                Generating…
+              </>
+            ) : (
+              <>✨ Suggest Focus Areas</>
+            )}
+          </button>
+        </div>
 
-        {!meetsSoftMin && (
+        {!meetsSoftMin && focusTags.length > 0 && (
           <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950">
             {focusTags.length} selected — aim for at least {MIN_FOCUS} pillars.
           </p>
         )}
 
-        <div className="relative mt-6">
-          <div ref={openerRef} role="group" aria-label="Focus tags"
-            className="flex min-h-[72px] flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3 pr-20">
+        {/* Selected tags */}
+        <div className="mt-5">
+          <div role="group" aria-label="Selected focus tags"
+            className="flex min-h-[56px] flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
             {focusTags.length === 0 && (
-              <span className="flex items-center text-sm text-slate-400">Pick from the dropdown or add custom tags…</span>
+              <span className="flex items-center text-sm text-slate-400">
+                Click "Suggest Focus Areas" or add custom tags below…
+              </span>
             )}
             {focusTags.map(tag => (
-              <button key={tag.toLowerCase()} type="button" title="Remove topic"
+              <button key={tag.toLowerCase()} type="button" title="Remove"
                 onClick={() => removeTag(tag)}
-                className="group inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm hover:bg-slate-50">
+                className="group inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 transition-colors">
                 <span className="truncate">{tag}</span>
-                <span aria-hidden className="shrink-0 text-[10px] text-slate-400 group-hover:text-slate-600">×</span>
+                <span aria-hidden className="shrink-0 text-[10px] text-slate-400 group-hover:text-rose-500">×</span>
               </button>
             ))}
-            <div className="absolute right-2 top-2 flex items-center gap-1">
-              {focusTags.length > 0 && (
-                <button type="button" title="Clear all" onClick={() => commitTags([])}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50">
-                  ×
-                </button>
-              )}
-              <button type="button" aria-expanded={pickOpen} aria-controls={`${uid}-preset-panel`}
-                onClick={() => setPickOpen(o => !o)}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-slate-500 shadow-sm hover:bg-slate-50">
-                <span aria-hidden>▼</span>
-              </button>
-            </div>
           </div>
-
-          {pickOpen && (
-            <div id={`${uid}-preset-panel`} ref={panelRef} role="dialog" aria-label="Suggested focus topics"
-              className="absolute left-0 right-0 top-full z-30 mt-2 max-h-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-              <input type="text" className="sticky top-0 z-10 w-full border-b border-slate-100 px-4 py-2.5 text-sm outline-none placeholder:text-slate-400"
-                placeholder="Search topics…" value={search} onChange={e => setSearch(e.target.value)} />
-              <div className="max-h-56 overflow-y-auto py-2">
-                {presetAvail.length === 0
-                  ? <p className="px-4 py-6 text-center text-xs text-slate-500">No more topics — try a shorter search.</p>
-                  : presetAvail.map(t => (
-                      <button key={t} type="button"
-                        className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                        onClick={() => { addTag(t); setSearch(""); }}>
-                        {t}
-                      </button>
-                    ))}
-              </div>
-            </div>
+          {focusTags.length > 0 && (
+            <button type="button" onClick={() => commitTags([])}
+              className="mt-1.5 text-xs text-slate-400 hover:text-rose-500 transition-colors">
+              Clear all
+            </button>
           )}
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-2">
+        {/* AI suggestions panel */}
+        {suggestError && (
+          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            {suggestError}
+          </p>
+        )}
+
+        {aiSuggestions.length > 0 && (
+          <div className="mt-4 rounded-xl border border-violet-100 bg-violet-50/60 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-violet-600">
+              ✨ AI Suggestions — click to add
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {aiSuggestions.map(tag => {
+                const alreadyAdded = focusTags.some(t => t.toLowerCase() === tag.toLowerCase());
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    disabled={alreadyAdded}
+                    onClick={() => addSuggestion(tag)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      alreadyAdded
+                        ? "border-slate-200 bg-white text-slate-400 cursor-default"
+                        : "border-violet-200 bg-white text-violet-800 shadow-sm hover:border-violet-400 hover:bg-violet-100"
+                    }`}
+                  >
+                    {alreadyAdded ? <span className="text-emerald-500">✓</span> : <span>+</span>}
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+            <button type="button"
+              onClick={() => {
+                aiSuggestions
+                  .filter(t => !focusTags.some(f => f.toLowerCase() === t.toLowerCase()))
+                  .forEach(t => addTag(t));
+                setAiSuggestions([]);
+              }}
+              className="mt-3 text-xs font-medium text-violet-600 hover:text-violet-800 underline-offset-2 hover:underline transition-colors">
+              Add all suggestions
+            </button>
+          </div>
+        )}
+
+        {/* Custom tag input */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <input id={`${uid}-custom-tag`} className="input-light min-w-[min(260px,calc(100%-6rem))] flex-1"
-            placeholder="Add custom tag (press Enter)" value={customInput}
+            placeholder="Add custom focus area (press Enter)" value={customInput}
             onChange={e => setCustomInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(customInput); setCustomInput(""); } }} />
           <button type="button" onClick={() => { addTag(customInput); setCustomInput(""); }}

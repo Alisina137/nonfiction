@@ -3210,3 +3210,80 @@ Return exactly this JSON structure — EXACTLY ${chapterCount} chapters, EXACTLY
   ]
 }`;
 }
+
+// ─── Generate Focus Areas ─────────────────────────────────────────────────────
+
+export function generateFocusAreasPrompt(project: any): string {
+  const research = project?.research  || {};
+  const intel    = project?.analysis?.intelligence || {};
+  const pb       = project?.proposedBook?.content  || {};
+  const bd       = project?.bookDetails || {};
+  const books    = project?.analysis?.books || [];
+
+  const title     = bd.title     || research.bookTitle    || project?.bookTitle?.selectedCard?.title    || "";
+  const subtitle  = bd.subtitle  || research.bookSubtitle || project?.bookTitle?.selectedCard?.subtitle || "";
+  const topic     = research.bookTopic || "";
+  const niche     = [research.mainNicheLabel, research.subNicheLabel, research.deepNicheLabel].filter(Boolean).join(" › ");
+  const genre     = bd.genre     || research.mainNicheLabel || "";
+  const audience  = bd.audience  || pb.proposedAudience   || intel.targetAudience || "";
+  const tone      = bd.tone      || pb.proposedTone        || intel.energyStyle    || "";
+  const structure = bd.structure || "";
+
+  const painProfile    = intel.readerPainProfile     || "";
+  const transformation = intel.transformationPromise || pb.proposedTransformation || "";
+  const marketGap      = intel.marketGapAnalysis     || "";
+  const corePromise    = bd.corePromise              || "";
+  const uniqueMechanism = bd.uniqueMechanism         || "";
+  const beforeState    = bd.readerTransformationBefore || "";
+  const afterState     = bd.readerTransformationAfter  || "";
+
+  const topBooks = books.slice(0, 4).map((b: any) => b?.title || b?.name || "").filter(Boolean);
+
+  return `You are a nonfiction book strategist. Your task is to suggest exactly 10 specific, actionable FOCUS AREAS for a book — these are thematic pillars that will guide the book's strategy, chapter structure, and drafting voice.
+
+Focus areas are short phrases (3–7 words each) that capture what the book will emphasize. They are NOT chapter titles — they are strategic lenses that cut across the whole book.
+
+Good examples: "Step-by-step practical frameworks", "Beginner-friendly language", "Real case studies from practitioners", "Emotional mindset shifts", "Actionable checklists per chapter", "Busy professional time constraints".
+
+━━━ BOOK DATA ━━━
+${title       ? `Title: ${title}` : ""}
+${subtitle    ? `Subtitle: ${subtitle}` : ""}
+${topic       ? `Topic: ${topic}` : ""}
+${niche       ? `Niche: ${niche}` : ""}
+${genre       ? `Genre: ${genre}` : ""}
+${audience    ? `Target audience: ${audience}` : ""}
+${tone        ? `Tone / voice: ${tone}` : ""}
+${structure   ? `Book structure: ${structure}` : ""}
+${corePromise ? `Core promise: ${corePromise}` : ""}
+${uniqueMechanism ? `Unique mechanism: ${uniqueMechanism}` : ""}
+${beforeState ? `Reader before: ${beforeState}` : ""}
+${afterState  ? `Reader after: ${afterState}` : ""}
+${painProfile    ? `Reader pain profile: ${painProfile}` : ""}
+${transformation ? `Transformation promise: ${transformation}` : ""}
+${marketGap      ? `Market gap: ${marketGap}` : ""}
+${topBooks.length ? `Top competing books: ${topBooks.join(", ")}` : ""}
+
+━━━ TASK ━━━
+Generate exactly 10 focus area phrases that are:
+1. Specific to THIS book's niche, audience, and genre — not generic
+2. Diverse — covering different dimensions (content style, reader experience, structural approach, emotional angle, practical depth, etc.)
+3. Short and punchy (3–7 words each)
+4. Actionable — each one meaningfully guides what goes INTO the book
+
+Return ONLY this JSON — no explanation:
+
+{
+  "focusAreas": [
+    "Focus area one",
+    "Focus area two",
+    "Focus area three",
+    "Focus area four",
+    "Focus area five",
+    "Focus area six",
+    "Focus area seven",
+    "Focus area eight",
+    "Focus area nine",
+    "Focus area ten"
+  ]
+}`;
+}

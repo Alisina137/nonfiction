@@ -15,6 +15,7 @@ import {
   regenerateBookSectionPrompt,
   generateDetailsPrompt,
   generateFieldSuggestionPrompt,
+  generateFocusAreasPrompt,
   sectionGenerationPrompt,
   subsectionGenerationPrompt,
   generateFindingPrompt,
@@ -1158,6 +1159,29 @@ router.post("/generate-field-suggestion", async (req, res) => {
     }
 
     return res.json(response);
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** POST /api/ai/generate-focus-areas — suggest 10 AI-generated focus areas from project data */
+router.post("/generate-focus-areas", async (req, res) => {
+  try {
+    const { project } = req.body || {};
+    if (!project || typeof project !== "object") {
+      return res.status(400).json({ error: "project object is required" });
+    }
+    const prompt = generateFocusAreasPrompt(project);
+    const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "fieldSuggestion");
+    const data = extractJSON(text);
+    if (!data || !Array.isArray(data.focusAreas)) {
+      return res.status(500).json({ error: "AI returned unparseable focus areas." });
+    }
+    const focusAreas: string[] = data.focusAreas
+      .filter((x: any) => typeof x === "string" && x.trim())
+      .map((x: string) => x.trim())
+      .slice(0, 10);
+    return res.json({ focusAreas, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
