@@ -69,7 +69,7 @@ export const PROVIDERS: ProviderConfig[] = [
     model:          "meta-llama/llama-3.3-70b-instruct:free",
     fallbackModels: [
       "google/gemma-3-27b-it:free",
-      "deepseek/deepseek-r1-0528:free",
+      "deepseek/deepseek-r1:free",
       "mistralai/mistral-7b-instruct:free",
       "qwen/qwen3-30b-a3b:free"
     ],
@@ -130,7 +130,7 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   // ── Phase 2: Market analysis & research ────────────────────────────────
   // DeepSeek R1 leads — deep chain-of-thought reasoning for competitive intel.
   research: [
-    { providerId: "openrouter", model: "deepseek/deepseek-r1-0528:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free", "mistralai/mistral-7b-instruct:free"] },
+    { providerId: "openrouter", model: "deepseek/deepseek-r1:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free", "mistralai/mistral-7b-instruct:free"] },
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
@@ -141,7 +141,7 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   // Gemini Pro leads — excellent at hierarchical structure and chapter planning.
   outline: [
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "openrouter", model: "deepseek/deepseek-r1-0528:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free"] },
+    { providerId: "openrouter", model: "deepseek/deepseek-r1:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
@@ -152,7 +152,7 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   // DeepSeek/Qwen/Maverick as an internal fallback pool.
   write: [
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "openrouter", model: "deepseek/deepseek-r1-0528:free",          label: "DeepSeek R1",      fallbackModels: ["qwen/qwen3-32b:free", "meta-llama/llama-4-maverick:free", "google/gemma-3-27b-it:free"] },
+    { providerId: "openrouter", model: "deepseek/deepseek-r1:free",          label: "DeepSeek R1",      fallbackModels: ["qwen/qwen3-32b:free", "meta-llama/llama-4-maverick:free", "google/gemma-3-27b-it:free"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant", "gemma2-9b-it"] },
@@ -161,7 +161,7 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   // ── Phase 5: Editing & quality improvement ─────────────────────────────
   // Llama 4 Maverick leads — best at natural, human-like writing improvement.
   edit: [
-    { providerId: "openrouter", model: "meta-llama/llama-4-maverick:free",        label: "Llama 4 Maverick", fallbackModels: ["deepseek/deepseek-r1-0528:free", "google/gemma-3-27b-it:free"] },
+    { providerId: "openrouter", model: "meta-llama/llama-4-maverick:free",        label: "Llama 4 Maverick", fallbackModels: ["deepseek/deepseek-r1:free", "google/gemma-3-27b-it:free"] },
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
@@ -489,17 +489,26 @@ async function callProvider(
   const { prompt: finalPrompt, maxTokens: finalMax } = ensureTokenBudget(prompt, maxTokens);
   const startMs = Date.now();
 
-  // OpenRouter handles its own fallback via the `models` array sent in the request body,
-  // so we only call it once. For all other providers we iterate through fallback models ourselves.
-  const modelsToTry = effectiveProvider.id === "openrouter"
-    ? [effectiveProvider.model]
-    : [effectiveProvider.model, ...(effectiveProvider.fallbackModels ?? [])];
+  // All providers (including OpenRouter) iterate through fallback models manually here.
+  // For OpenRouter's PRIMARY call we still send the `models` array so their router can
+  // pick the best available — but if that call fails hard (e.g. model removed from free
+  // tier), we fall through to the individual fallback models one-by-one ourselves.
+  const modelsToTry = [effectiveProvider.model, ...(effectiveProvider.fallbackModels ?? [])];
 
   let lastQuotaError: any = null;
 
   for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
     const currentModel = modelsToTry[modelIdx];
-    const activeProvider = { ...effectiveProvider, model: currentModel };
+    // For OpenRouter fallback iterations (modelIdx > 0) send a single-model request
+    // rather than the full `models` array — the primary model may be gone and we
+    // don't want it included in the fallback attempt.
+    const activeProvider = {
+      ...effectiveProvider,
+      model: currentModel,
+      fallbackModels: (effectiveProvider.id === "openrouter" && modelIdx > 0)
+        ? []
+        : effectiveProvider.fallbackModels,
+    };
 
     if (modelIdx > 0) {
       console.log(`[AI] ${provider.id}: primary model quota exhausted — trying fallback model "${currentModel}"`);
@@ -537,8 +546,16 @@ async function callProvider(
         console.log(`HTTP STATUS: ${httpStatus ?? "unknown"} — ${provider.id}/${currentModel}`);
         console.log(`ERROR BODY: ${msg.slice(0, 300)}`);
 
-        // Hard errors — no point retrying or falling back to another model
+        // Hard errors — if there are still fallback models to try, skip to the next
+        // one instead of killing the whole provider. This handles cases like
+        // OpenRouter returning 404 for a specific free-tier model being removed.
         if (isHardUnavailable(msg, httpStatus)) {
+          const hasMoreModels = modelIdx < modelsToTry.length - 1;
+          if (hasMoreModels) {
+            console.log(`[AI] ${provider.id}/${currentModel} model unavailable (${httpStatus}) — skipping to next fallback`);
+            modelQuotaExhausted = true;
+            break;
+          }
           throw Object.assign(e, { httpStatus });
         }
 
