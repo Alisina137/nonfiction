@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { BOOK_WORD_COUNT_RANGES } from "@/lib/constants";
-import { applyNicheOutlineToBookOutline } from "@/lib/niche/outlineApply";
+import { applyNicheOutlineToBookOutline, applyDynamicOutlineToBookOutline } from "@/lib/niche/outlineApply";
 import { loadNicheRegistry, resolveArchitecture } from "@/lib/niche/registry";
 import { resolveBookTitle } from "@/lib/projectMeta";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
@@ -264,6 +264,7 @@ export default function OutlineStep({
   const [genSubsBusy, setGenSubsBusy]   = useState({});
   const [genSecsBusy, setGenSecsBusy]   = useState({});
   const [genChaptersBusy, setGenChaptersBusy] = useState(false);
+  const [genPhase, setGenPhase]         = useState("");
 
   const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const intro = normalizeIntro(boRaw.introduction);
@@ -380,13 +381,23 @@ export default function OutlineStep({
     }));
   }
 
-  // ─── Generate chapter titles via niche-outline ─────────────────────────────
+  // ─── Generate chapters — dynamic section + word assignment ──────────────────
 
   async function generateChapters() {
     if (!arch) return;
     setGenChaptersBusy(true);
+    setGenPhase("Analyzing book data…");
+
+    const phaseTimers = [
+      setTimeout(() => setGenPhase("Building reader-retention arc…"), 1800),
+      setTimeout(() => setGenPhase("Scoring chapters by depth and importance…"), 4200),
+      setTimeout(() => setGenPhase("Assigning sections and distributing words…"), 7000),
+    ];
+
     try {
       const bd = fullProject?.bookDetails || {};
+      const targetWords = midpointTargetWords(bd.wordCountRange || "");
+
       const data = await aiFetch("/api/ai/niche-outline", {
         architecture: arch,
         title:        resolveBookTitle(fullProject),
@@ -394,16 +405,24 @@ export default function OutlineStep({
         research:     fullProject?.research,
         bookContext:  buildBookContext(fullProject),
       });
-      const result = applyNicheOutlineToBookOutline(data, arch);
+
+      const result = applyDynamicOutlineToBookOutline(data, arch, targetWords);
       if (!Array.isArray(result?.chapters) || result.chapters.length === 0) return;
+
+      const reserveWords = result.introWords ?? Math.max(700, Math.round(targetWords * 0.035));
+
       commit((draft) => ({
         ...draft,
-        chapters: result.chapters.map(normalizeChapter),
+        introduction: { ...normalizeIntro(draft.introduction), words: reserveWords },
+        conclusion:   { ...normalizeConclusion(draft.conclusion), words: reserveWords },
+        chapters:     result.chapters.map(normalizeChapter),
       }));
     } catch (e) {
       console.error("[generate-chapters]", e?.message);
     } finally {
+      phaseTimers.forEach(clearTimeout);
       setGenChaptersBusy(false);
+      setGenPhase("");
     }
   }
 
@@ -561,35 +580,44 @@ export default function OutlineStep({
       )}
 
       {/* Toolbar */}
-      <section className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          disabled={genChaptersBusy || !arch}
-          onClick={generateChapters}
-          title={arch ? "Generate chapter titles from your research and niche architecture" : "Complete the Research step first to enable chapter generation"}
-          className="flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {genChaptersBusy ? (
-            <><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" />Generating…</>
-          ) : (
-            "✦ Generate Chapters"
-          )}
-        </button>
-        <div className="h-5 w-px bg-slate-200" />
-        <button
-          type="button"
-          onClick={() => setAllExpanded(true)}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          Expand all
-        </button>
-        <button
-          type="button"
-          onClick={() => setAllExpanded(false)}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          Collapse all
-        </button>
+      <section className="mt-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={genChaptersBusy || !arch}
+            onClick={generateChapters}
+            title={arch ? "Generate chapters with dynamic sections and word counts" : "Complete the Research step first to enable chapter generation"}
+            className="flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {genChaptersBusy ? (
+              <><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" />Generating…</>
+            ) : (
+              "✦ Generate Chapters"
+            )}
+          </button>
+          <div className="h-5 w-px bg-slate-200" />
+          <button
+            type="button"
+            onClick={() => setAllExpanded(true)}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Expand all
+          </button>
+          <button
+            type="button"
+            onClick={() => setAllExpanded(false)}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Collapse all
+          </button>
+        </div>
+
+        {genChaptersBusy && genPhase && (
+          <div className="flex items-center gap-2.5 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-2.5">
+            <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-indigo-400 border-t-indigo-700" />
+            <span className="text-xs font-medium text-indigo-800">{genPhase}</span>
+          </div>
+        )}
       </section>
 
       <div className="mt-8 space-y-4">

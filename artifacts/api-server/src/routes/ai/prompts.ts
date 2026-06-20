@@ -928,6 +928,39 @@ QUALITY RULES
 - The final chapter list must feel like the table of contents of a professionally published nonfiction book.
 
 ========================================
+CHAPTER SCORING (required for every chapter)
+========================================
+For each chapter assign three integer scores from 1 to 100.
+
+importanceScore — How critical is this chapter to the book's core promise?
+  100 = The single most essential chapter; the reader's transformation depends on it
+  1   = Optional supplementary content; book works fine without it
+
+complexityScore — How conceptually dense or technically demanding is this chapter?
+  100 = Multiple complex concepts, heavy mental load, requires careful explanation
+  1   = Simple, light, easy to absorb
+
+expansionScore — How much content depth, examples, and elaboration does this chapter require?
+  100 = Needs extensive examples, frameworks, case studies, exercises, step-by-step guidance
+  1   = Brief, concise, minimal elaboration needed
+
+Factors that INCREASE expansionScore:
+- Chapter contains multiple distinct concepts
+- Requires real-world examples or case studies
+- Introduces a practical framework the reader must master
+- Has high educational or implementation weight
+- Central to the reader's transformation journey
+- Is one of the core "teaching" chapters
+
+Factors that DECREASE expansionScore:
+- Transitional or bridge chapters
+- Short orientation / context-setting chapters
+- Wrap-up, summary, or conclusion-style chapters
+
+Use the full 1-100 range. Do NOT cluster all chapters at the same score.
+The scores will be used to automatically assign section counts (3, 4, or 5) and word budgets.
+
+========================================
 OUTPUT FORMAT — CHAPTERS ONLY
 ========================================
 Generate ONLY chapter-level structure.
@@ -935,7 +968,7 @@ Do NOT generate sections or subsections.
 Leave every "sections" array completely empty: [].
 
 Return ONLY valid JSON — no markdown, no explanation:
-{"chapters":[{"title":"Chapter title — specific, compelling, no colons","chapterObjective":"1–2 sentence description of what this chapter achieves in the reader's transformation arc","sections":[]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
+{"chapters":[{"title":"Chapter title — specific, compelling, no colons","chapterObjective":"1–2 sentence description of what this chapter achieves in the reader's transformation arc","importanceScore":85,"complexityScore":70,"expansionScore":80,"sections":[]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
 }
 
 export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
