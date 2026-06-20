@@ -35,6 +35,79 @@ function parseAsinFromBody(body: any): string | null {
   return extractAsinFromAmazonUrl(raw);
 }
 
+// ─── Title normalisation for deduplication ────────────────────────────────────
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\b(a|an|the|and|of|in|on|to|for|with|by|from|at)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function titlesAreSimilar(a: string, b: string): boolean {
+  const na = normalizeTitle(a).split(" ").filter(Boolean);
+  const nb = normalizeTitle(b).split(" ").filter(Boolean);
+  if (na.length === 0 || nb.length === 0) return false;
+  const setA = new Set(na);
+  const overlap = nb.filter((w) => setA.has(w)).length;
+  const similarity = overlap / Math.max(na.length, nb.length);
+  return similarity >= 0.7;
+}
+
+// ─── Competitor scoring ───────────────────────────────────────────────────────
+
+function scoreBook(book: any, matchCount: number, totalKeywords: number): number {
+  const reviewScore     = Math.min((book.ratingsTotal || 0) / 1000, 100) * 0.5;
+  const ratingScore     = ((book.rating || 0) * 20) * 0.2;
+  const bestsellerScore = (book.bestsellerBadge || book.bestsellersRankFlat) ? 100 * 0.2 : 0;
+  const relevanceScore  = (matchCount / Math.max(totalKeywords, 1)) * 100 * 0.1;
+  return reviewScore + ratingScore + bestsellerScore + relevanceScore;
+}
+
+// ─── Deduplicate a flat book list ─────────────────────────────────────────────
+
+function deduplicateBooks(entries: Array<{ book: any; matchedKeywords: string[] }>): Array<{ book: any; matchedKeywords: string[] }> {
+  const seenAsins  = new Map<string, number>(); // asin → index in result
+  const result: Array<{ book: any; matchedKeywords: string[] }> = [];
+
+  for (const entry of entries) {
+    const { book, matchedKeywords } = entry;
+    const asin = book.asin ? String(book.asin).toUpperCase() : null;
+
+    // Deduplicate by ASIN
+    if (asin) {
+      const existingIdx = seenAsins.get(asin);
+      if (existingIdx !== undefined) {
+        const existing = result[existingIdx];
+        const mergedKeys = Array.from(new Set([...existing.matchedKeywords, ...matchedKeywords]));
+        result[existingIdx] = { book: existing.book, matchedKeywords: mergedKeys };
+        continue;
+      }
+    }
+
+    // Deduplicate by title similarity
+    let isDup = false;
+    for (let i = 0; i < result.length; i++) {
+      if (titlesAreSimilar(book.title || "", result[i].book.title || "")) {
+        const existing = result[i];
+        const mergedKeys = Array.from(new Set([...existing.matchedKeywords, ...matchedKeywords]));
+        result[i] = { book: existing.book, matchedKeywords: mergedKeys };
+        isDup = true;
+        break;
+      }
+    }
+    if (isDup) continue;
+
+    const idx = result.length;
+    if (asin) seenAsins.set(asin, idx);
+    result.push({ book, matchedKeywords });
+  }
+
+  return result;
+}
+
 // ─── AI fallback: generate list of real bestselling books in a niche ──────────
 
 async function aiBookSearch(query: string, maxResults = 15): Promise<any[]> {
@@ -70,7 +143,6 @@ Requirements:
     const thumbnail = asin
       ? `https://m.media-amazon.com/images/P/${asin}.01._SX300_.jpg`
       : null;
-    if (thumbnail) console.log("[AI] Book Cover URL:", thumbnail, "| ASIN:", asin);
     return {
       asin,
       title:        b.title.trim(),
@@ -127,6 +199,201 @@ async function openLibrarySearch(query: string, maxResults = 20): Promise<any[]>
     });
 }
 
+// ─── Single keyword search using provider chain ───────────────────────────────
+
+async function searchOneKeyword(keyword: string, amazonDomain: string): Promise<{ books: any[]; source: string }> {
+  // 1. Rainforest
+  if (process.env.RAINFOREST_API_KEY) {
+    try {
+      const books = await getBestsellerBooks(keyword, { amazonDomain, maxResults: 20 });
+      return { books, source: "amazon" };
+    } catch (e: any) {
+      console.log(`[multi-search] Rainforest failed for "${keyword}":`, e.message);
+    }
+  }
+
+  // 2. Scale SERP
+  if (process.env.SCALE_SERP_API_KEY) {
+    try {
+      const books = await searchBooksWithScaleSerp(keyword, { maxResults: 20 });
+      return { books, source: "scale_serp" };
+    } catch (e: any) {
+      console.log(`[multi-search] Scale SERP failed for "${keyword}":`, e.message);
+    }
+  }
+
+  // 3. AI fallback
+  try {
+    const books = await aiBookSearch(keyword, 15);
+    return { books, source: "ai_research" };
+  } catch (e: any) {
+    console.log(`[multi-search] AI failed for "${keyword}":`, e.message);
+  }
+
+  return { books: [], source: "none" };
+}
+
+// ─── AI keyword generation ────────────────────────────────────────────────────
+
+async function generateKeywords(params: {
+  niche: string;
+  subNiche: string;
+  deepNiche: string;
+  title: string;
+  subtitle: string;
+  bookTopic: string;
+  genre: string;
+}): Promise<string[]> {
+  const context = [
+    params.deepNiche && `Deep niche: ${params.deepNiche}`,
+    params.subNiche  && `Sub-niche: ${params.subNiche}`,
+    params.niche     && `Main niche: ${params.niche}`,
+    params.title     && `Book title: ${params.title}`,
+    params.subtitle  && `Subtitle: ${params.subtitle}`,
+    params.bookTopic && `Topic: ${params.bookTopic}`,
+    params.genre     && `Genre: ${params.genre}`,
+  ].filter(Boolean).join("\n");
+
+  const prompt = `You are an Amazon KDP market research expert. Generate 12-15 Amazon search keywords for discovering competitor bestseller books.
+
+Book context:
+${context}
+
+Rules:
+- Each keyword must be 1-4 words (short, Amazon-friendly search phrases)
+- Focus on sub-niche terms, reader problems, reader goals, industry terminology, related categories, alternative market phrases
+- Do NOT use the full subtitle as a keyword
+- Do NOT use the book title as a keyword
+- Prioritize keywords that will return many results (broad-to-medium specificity)
+- Cover different angles: skill-based, problem-based, outcome-based, category-based
+
+Respond with ONLY a valid JSON array of strings. Example:
+["social skills","emotional intelligence","communication skills","people skills","confidence building","charisma","body language","interpersonal skills","networking","relationship building","conversation skills","social psychology"]
+
+No markdown, no explanation, just the JSON array.`;
+
+  const result = await generateContent(prompt, undefined, { maxTokens: 800 });
+  let parsed: any;
+  try {
+    parsed = extractJSON(result.text);
+  } catch (e: any) {
+    throw new Error(`Keyword generation parse failed: ${e.message}`);
+  }
+
+  let keywords: string[] = [];
+  if (Array.isArray(parsed)) {
+    keywords = parsed.filter((k: any) => typeof k === "string" && k.trim().length > 0).map((k: string) => k.trim().toLowerCase());
+  } else {
+    throw new Error("AI keyword response was not an array");
+  }
+
+  if (keywords.length === 0) throw new Error("AI returned no keywords");
+  return keywords.slice(0, 15);
+}
+
+// ─── POST /api/analysis/generate-keywords ─────────────────────────────────────
+
+router.post("/generate-keywords", async (req, res) => {
+  const { niche = "", subNiche = "", deepNiche = "", title = "", subtitle = "", bookTopic = "", genre = "" } = req.body || {};
+
+  if (!niche && !subNiche && !deepNiche && !title && !bookTopic) {
+    return res.status(400).json({ error: "At least one of niche, title, or bookTopic is required." });
+  }
+
+  try {
+    const keywords = await generateKeywords({ niche, subNiche, deepNiche, title, subtitle, bookTopic, genre });
+    return res.json({ keywords });
+  } catch (e: any) {
+    console.error("[generate-keywords] Error:", e.message);
+    return res.status(500).json({ error: e.message || "Failed to generate keywords." });
+  }
+});
+
+// ─── POST /api/analysis/multi-search ─────────────────────────────────────────
+// Searches all keywords in parallel, merges & deduplicates, scores and ranks results.
+
+router.post("/multi-search", async (req, res) => {
+  const { keywords, amazonDomain = "amazon.com" } = req.body || {};
+
+  if (!Array.isArray(keywords) || keywords.length === 0) {
+    return res.status(400).json({ error: "keywords must be a non-empty array." });
+  }
+
+  const validKeywords = keywords
+    .filter((k: any) => typeof k === "string" && k.trim().length > 0)
+    .map((k: string) => k.trim())
+    .slice(0, 20); // hard cap to prevent abuse
+
+  console.log(`[multi-search] Searching ${validKeywords.length} keywords in parallel`);
+
+  // ── Run all keyword searches in parallel ───────────────────────────────────
+  const searchResults = await Promise.allSettled(
+    validKeywords.map(async (kw) => {
+      const { books, source } = await searchOneKeyword(kw, amazonDomain);
+      return { keyword: kw, books, source };
+    })
+  );
+
+  // ── Collect all books with keyword tracking ────────────────────────────────
+  let allEntries: Array<{ book: any; matchedKeywords: string[] }> = [];
+  const sourceCounts: Record<string, number> = {};
+  let totalRaw = 0;
+
+  for (const result of searchResults) {
+    if (result.status === "fulfilled") {
+      const { keyword, books, source } = result.value;
+      sourceCounts[source] = (sourceCounts[source] || 0) + books.length;
+      totalRaw += books.length;
+      for (const book of books) {
+        allEntries.push({ book, matchedKeywords: [keyword] });
+      }
+    }
+  }
+
+  console.log(`[multi-search] Raw books collected: ${totalRaw}`);
+
+  // ── Deduplicate ─────────────────────────────────────────────────────────────
+  let deduped = deduplicateBooks(allEntries);
+  console.log(`[multi-search] After dedup: ${deduped.length}`);
+
+  // ── Expand if fewer than 20 unique books ──────────────────────────────────
+  if (deduped.length < 20) {
+    console.log(`[multi-search] Only ${deduped.length} books found — running AI expansion`);
+    const broadQuery = validKeywords.slice(0, 3).join(" ");
+    try {
+      const extraBooks = await aiBookSearch(broadQuery, 20);
+      const extraEntries = extraBooks.map((b) => ({ book: b, matchedKeywords: [broadQuery] }));
+      const combined = deduplicateBooks([...allEntries, ...extraEntries]);
+      if (combined.length > deduped.length) {
+        deduped = combined;
+        console.log(`[multi-search] After AI expansion: ${deduped.length}`);
+      }
+    } catch (e: any) {
+      console.warn("[multi-search] AI expansion failed:", e.message);
+    }
+  }
+
+  // ── Score and sort ─────────────────────────────────────────────────────────
+  const scored = deduped.map(({ book, matchedKeywords }) => ({
+    ...book,
+    _matchedKeywords: matchedKeywords,
+    _score: scoreBook(book, matchedKeywords.length, validKeywords.length),
+  }));
+
+  scored.sort((a, b) => b._score - a._score);
+
+  // ── Determine primary source label ────────────────────────────────────────
+  const primarySource = Object.entries(sourceCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || "ai_research";
+
+  return res.json({
+    books: scored,
+    totalFound: scored.length,
+    keywordsSearched: validKeywords,
+    source: primarySource,
+    sourceCounts,
+  });
+});
+
 // ─── POST /api/analysis/amazon-search ────────────────────────────────────────
 // Priority: Rainforest → Scale SERP → AI research → Open Library
 
@@ -158,7 +425,6 @@ router.post("/amazon-search", async (req, res) => {
   if (process.env.SCALE_SERP_API_KEY) {
     scaleSerpAttempted = true;
     console.log("[amazon-search] Provider Used: scale_serp");
-    console.log("[amazon-search] Scale SERP Fallback Triggered");
     try {
       const books = await searchBooksWithScaleSerp(q, { maxResults: 20 });
       console.log("[amazon-search] Books Returned:", books.length);
@@ -174,7 +440,6 @@ router.post("/amazon-search", async (req, res) => {
     const books = await aiBookSearch(q, 15);
     console.log("[amazon-search] Books Returned:", books.length);
 
-    // Build a helpful notice based on which keys were tried
     let notice = "Results generated by AI market research.";
     if (rainforestAttempted && scaleSerpAttempted) {
       notice += " Both Rainforest and Scale SERP were tried but unavailable.";
@@ -207,14 +472,12 @@ router.post("/amazon-search", async (req, res) => {
 });
 
 // ─── POST /api/analysis/amazon-product ───────────────────────────────────────
-// Priority: Rainforest → Scale SERP → error
 
 router.post("/amazon-product", async (req, res) => {
   const { amazonDomain } = req.body || {};
   const asin = parseAsinFromBody(req.body);
   if (!asin) return res.status(400).json({ error: "Valid Amazon product URL or ASIN is required." });
 
-  // ── 1. Rainforest ──────────────────────────────────────────────────────────
   if (process.env.RAINFOREST_API_KEY) {
     try {
       const details = await getBookByAsin(asin, { amazonDomain: amazonDomain || "amazon.com" });
@@ -225,19 +488,15 @@ router.post("/amazon-product", async (req, res) => {
       if (e instanceof RainforestError && (e.code === "RATE_LIMIT" || e.code === "ACCOUNT")) {
         return res.status(429).json({ error: e.message });
       }
-      // Fall through to Scale SERP
     }
   }
 
-  // ── 2. Scale SERP ──────────────────────────────────────────────────────────
   if (process.env.SCALE_SERP_API_KEY) {
     try {
       const details = await getProductDetailWithScaleSerp(asin);
       console.log("[amazon-product] Provider Used: scale_serp | ASIN:", asin);
       return res.json({
-        details,
-        asin,
-        source: "scale_serp",
+        details, asin, source: "scale_serp",
         notice: "Basic details loaded via Scale SERP. Bestseller ranks require Rainforest API."
       });
     } catch (e: any) {
@@ -245,7 +504,6 @@ router.post("/amazon-product", async (req, res) => {
     }
   }
 
-  // ── No provider available ──────────────────────────────────────────────────
   if (!process.env.RAINFOREST_API_KEY && !process.env.SCALE_SERP_API_KEY) {
     return res.json({
       needsApiKey: true,
