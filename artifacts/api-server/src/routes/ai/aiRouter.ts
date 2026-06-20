@@ -3,11 +3,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // PROVIDER CHAIN (both normal and low-cost mode — same order, same providers):
-//   1. Gemini     — Google AI Studio (GEMINI_API_KEY)
-//   2. Groq       — Groq Cloud (GROQ_API_KEY)
-//   3. Cerebras   — Cerebras Inference (CEREBRAS_API_KEY)
-//   4. OpenRouter — OpenRouter free tier (OPENROUTER_API_KEY)
-//   5. SambaNova  — SambaNova Cloud (SAMBANOVA_API_KEY)
+//   1. Gemini     — Google AI Studio  (GEMINI_API_KEY)
+//   2. Groq       — Groq Cloud        (GROQ_API_KEY)
+//   3. Cerebras   — Cerebras Cloud    (CEREBRAS_API_KEY)
+//   4. OpenRouter — OpenRouter        (OPENROUTER_API_KEY)
+//   5. SambaNova  — SambaNova Cloud   (SAMBANOVA_API_KEY)
 //
 // QUOTA TRACKING:
 //   On 429 / quota / rate-limit / daily-limit errors:
@@ -24,7 +24,7 @@
 
 // ─── Provider configuration ───────────────────────────────────────────────
 
-export type ProviderId = "gemini" | "grok" | "groq" | "cerebras" | "openrouter" | "sambanova";
+export type ProviderId = "gemini" | "groq" | "cerebras" | "openrouter" | "sambanova";
 
 export interface ProviderConfig {
   id:             ProviderId;
@@ -46,22 +46,13 @@ export const PROVIDERS: ProviderConfig[] = [
     order:  1
   },
   {
-    id:             "grok",
-    label:          "Grok 4 (xAI)",
-    model:          "grok-4",
-    fallbackModels: ["grok-3"],
-    apiUrl:         "https://api.x.ai/v1/chat/completions",
-    apiKey:         () => process.env.GROK_API_KEY,
-    order:          2
-  },
-  {
     id:             "groq",
     label:          "Groq (Llama)",
     model:          "llama-3.3-70b-versatile",
     fallbackModels: ["llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768"],
     apiUrl:         "https://api.groq.com/openai/v1/chat/completions",
     apiKey:         () => process.env.GROQ_API_KEY,
-    order:          3
+    order:          2
   },
   {
     id:             "cerebras",
@@ -70,7 +61,7 @@ export const PROVIDERS: ProviderConfig[] = [
     fallbackModels: ["llama3.1-8b"],
     apiUrl:         "https://api.cerebras.ai/v1/chat/completions",
     apiKey:         () => process.env.CEREBRAS_API_KEY,
-    order:          4
+    order:          3
   },
   {
     id:             "openrouter",
@@ -84,7 +75,7 @@ export const PROVIDERS: ProviderConfig[] = [
     ],
     apiUrl: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY,
-    order:  5
+    order:  4
   },
   {
     id:             "sambanova",
@@ -93,7 +84,7 @@ export const PROVIDERS: ProviderConfig[] = [
     fallbackModels: ["Meta-Llama-3.1-8B-Instruct"],
     apiUrl:         "https://api.sambanova.ai/v1/chat/completions",
     apiKey:         () => process.env.SAMBANOVA_API_KEY,
-    order:          6
+    order:          5
   }
 ];
 
@@ -108,10 +99,10 @@ export const PROVIDERS: ProviderConfig[] = [
 // serve multiple quality tiers (e.g. gemini-2.5-pro → gemini-2.5-flash).
 //
 // PHASE MAP:
-//   idea     → Phase 1: Title / idea generation  (Grok 4 primary)
+//   idea     → Phase 1: Title / idea generation  (Gemini Flash primary)
 //   research → Phase 2: Market / competitor analysis  (DeepSeek R1 primary)
 //   outline  → Phase 3: Structure / outline  (Gemini Pro primary)
-//   write    → Phase 4: Long-form prose  (Gemini Pro + 6-model pool)
+//   write    → Phase 4: Long-form prose  (Gemini Pro + 5-model pool)
 //   edit     → Phase 5: Editing / improvement  (Llama 4 Maverick primary)
 //   metadata → Phase 6: Description / SEO / metadata  (Gemini Flash-Lite primary)
 
@@ -127,9 +118,8 @@ interface ModelSpec {
 export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
 
   // ── Phase 1: Book idea & title generation ──────────────────────────────
-  // Grok 4 leads — best creative ideation and marketable angles.
+  // Gemini Flash leads — fast creative ideation and marketable angles.
   idea: [
-    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
     { providerId: "gemini",     model: "gemini-2.5-flash",                        label: "Gemini Flash" },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
@@ -142,7 +132,6 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   research: [
     { providerId: "openrouter", model: "deepseek/deepseek-r1-0528:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free", "mistralai/mistral-7b-instruct:free"] },
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
@@ -153,18 +142,16 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   outline: [
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
     { providerId: "openrouter", model: "deepseek/deepseek-r1-0528:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free"] },
-    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 
   // ── Phase 4: Main content / prose writing ─────────────────────────────
-  // 7-model pool.  Gemini Pro is the primary author; OpenRouter serves
+  // 5-model pool.  Gemini Pro is the primary author; OpenRouter serves
   // DeepSeek/Qwen/Maverick as an internal fallback pool.
   write: [
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
     { providerId: "openrouter", model: "deepseek/deepseek-r1-0528:free",          label: "DeepSeek R1",      fallbackModels: ["qwen/qwen3-32b:free", "meta-llama/llama-4-maverick:free", "google/gemma-3-27b-it:free"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
@@ -176,7 +163,6 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   edit: [
     { providerId: "openrouter", model: "meta-llama/llama-4-maverick:free",        label: "Llama 4 Maverick", fallbackModels: ["deepseek/deepseek-r1-0528:free", "google/gemma-3-27b-it:free"] },
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
@@ -190,7 +176,6 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
     { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free",  label: "OpenRouter",       fallbackModels: ["google/gemma-3-27b-it:free"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
-    { providerId: "grok",       model: "grok-4",                                  label: "Grok 4",           fallbackModels: ["grok-3"] },
   ],
 };
 

@@ -19,7 +19,6 @@ const NO_CACHE_PATHS = ["/api/ai/improve"];
 
 export const PROVIDER_LABELS = {
   gemini:     "Gemini",
-  grok:       "Grok 4",
   groq:       "Groq",
   cerebras:   "Cerebras",
   openrouter: "OpenRouter",

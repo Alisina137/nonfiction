@@ -19,11 +19,10 @@ Set all of these in Replit Secrets (or `.env` for local dev). See `.env.example`
 |---|---|---|
 | `DATABASE_URL` | **Yes** | PostgreSQL connection string (auto-provisioned on Replit) |
 | `GEMINI_API_KEY` | At least 1 AI key | Gemini 2.5 Flash / Pro / Flash-Lite — primary AI (#1) |
-| `GROK_API_KEY` | At least 1 AI key | Grok 4 (xAI) — creative ideation & idea generation (#2) |
-| `GROQ_API_KEY` | At least 1 AI key | Groq Llama 3.3 70B — fast LPU fallback (#3) |
-| `CEREBRAS_API_KEY` | At least 1 AI key | Cerebras Inference — low-latency fallback (#4) |
-| `OPENROUTER_API_KEY` | At least 1 AI key | OpenRouter (DeepSeek R1, Qwen 3, Llama 4 Maverick) (#5) |
-| `SAMBANOVA_API_KEY` | At least 1 AI key | SambaNova Cloud — last-resort fallback (#6) |
+| `GROQ_API_KEY` | At least 1 AI key | Groq Llama 3.3 70B — fast LPU fallback (#2) |
+| `CEREBRAS_API_KEY` | At least 1 AI key | Cerebras Inference — low-latency fallback (#3) |
+| `OPENROUTER_API_KEY` | At least 1 AI key | OpenRouter (DeepSeek R1, Qwen 3, Llama 4 Maverick) (#4) |
+| `SAMBANOVA_API_KEY` | At least 1 AI key | SambaNova Cloud — last-resort fallback (#5) |
 | `RAINFOREST_API_KEY` | At least 1 Amazon key | Rainforest API — primary Amazon data |
 | `SCALE_SERP_API_KEY` | At least 1 Amazon key | Scale SERP — Amazon data fallback |
 
@@ -55,13 +54,13 @@ The API server validates all variables on startup and will print a clear error i
 ## Architecture decisions
 
 - **Multi-model specialized pipeline**: Each of the 6 book-creation phases uses the model best suited for that task type. `TASK_CHAINS` in `aiRouter.ts` defines the per-phase provider/model order. `CONTENT_TYPE_TO_TASK` in `index.ts` routes each API call to the right phase with zero change to individual route code.
-  - **idea** (titles/subtitles): Grok 4 → Gemini Flash → Groq → Cerebras → OpenRouter → SambaNova
-  - **research** (competitor analysis): DeepSeek R1 → Gemini Pro → Grok 4 → Groq → Cerebras → SambaNova
-  - **outline** (structure/chapters): Gemini Pro → DeepSeek R1 → Grok 4 → Groq → Cerebras → SambaNova
-  - **write** (prose content): Gemini Pro → Grok 4 → OpenRouter (DeepSeek/Qwen/Maverick) → SambaNova → Cerebras → Groq
-  - **edit** (improvement): Llama 4 Maverick → Gemini Pro → Grok 4 → Groq → Cerebras → SambaNova
-  - **metadata** (description/SEO): Gemini Flash-Lite → Gemini Flash → Groq → Cerebras → OpenRouter → SambaNova
-- **6-provider fallback chain**: Gemini → Grok → Groq → Cerebras → OpenRouter → SambaNova. Each provider is independently disabled for 10min/60min/24h on rate-limit/hard/quota errors. This maximises uptime on free-tier keys.
+  - **idea** (titles/subtitles): Gemini Flash → Groq → Cerebras → OpenRouter → SambaNova
+  - **research** (competitor analysis): DeepSeek R1 → Gemini Pro → Groq → Cerebras → SambaNova
+  - **outline** (structure/chapters): Gemini Pro → DeepSeek R1 → Groq → Cerebras → SambaNova
+  - **write** (prose content): Gemini Pro → OpenRouter (DeepSeek/Qwen/Maverick) → SambaNova → Cerebras → Groq
+  - **edit** (improvement): Llama 4 Maverick → Gemini Pro → Groq → Cerebras → SambaNova
+  - **metadata** (description/SEO): Gemini Flash-Lite → Groq → Cerebras → OpenRouter → SambaNova
+- **5-provider fallback chain**: Gemini → Groq → Cerebras → OpenRouter → SambaNova. Each provider is independently disabled for 10min/60min/24h on rate-limit/hard/quota errors. This maximises uptime on free-tier keys.
 - **Model overrides per task**: `callProvider` accepts `modelOverride` + `fallbackModelsOverride`; `callGemini` accepts a `model` param. One API key can serve multiple model tiers (e.g. gemini-2.5-pro → gemini-2.5-flash as fallback).
 - **Dual Amazon provider**: Rainforest (primary) → Scale SERP (fallback). If Rainforest key is absent or returns an error, Scale SERP is tried automatically.
 - **All prompts in source control**: Every AI prompt lives in `prompts.ts` — none are stored in the database or generated dynamically outside Git.
