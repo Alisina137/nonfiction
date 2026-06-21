@@ -595,17 +595,46 @@ Generate 120-180 words book description. Return JSON: {"description":"..."}`;
 export function marketingDescriptionPrompt({ idea, title, audience, tone, genre, usp, authorName, focusTags, shortSample }: any) {
   const tags = Array.isArray(focusTags) && focusTags.length ? focusTags.join(", ") : "(none)";
   const sample = shortSample?.trim() ? shortSample.slice(0, 1200) : "(not provided)";
-  return `Create Amazon/KDP-ready marketing copy.
-TITLE: ${title}
-TOPIC: ${idea}
-NICHE: ${genre || "Nonfiction"}
-AUTHOR: ${authorName || "Author"}
-AUDIENCE: ${audience || "General readers"}
-TONE: ${tone || "Direct and practical"}
-USP: ${usp || "Practical transformation without fluff"}
-FOCUS PILLARS: ${tags}
-MANUSCRIPT SAMPLE: ${sample}
-Return JSON: {"description":"120-200 word description","shortHook":"one sentence hook under 18 words","keywords":"7 comma-separated Amazon keywords"}`;
+  return `You are an expert Amazon KDP copywriter who specializes in back-cover book descriptions that convert browsers into buyers.
+
+Generate Amazon/KDP-ready marketing copy for the book below.
+
+BOOK DETAILS
+============
+Title: ${title || "(untitled)"}
+Topic: ${idea || ""}
+Genre/Niche: ${genre || "Nonfiction"}
+Author: ${authorName || "Author"}
+Target Audience: ${audience || "General readers"}
+Tone: ${tone || "Direct and practical"}
+Unique Selling Proposition: ${usp || "Practical transformation without fluff"}
+Focus Pillars: ${tags}
+${sample && sample !== "(not provided)" ? `\nManuscript Sample:\n${sample}` : ""}
+
+REQUIREMENTS
+============
+description:
+- 120–200 words
+- Open with a powerful hook (question, bold claim, or vivid scenario)
+- Name the reader's pain point clearly
+- Promise the transformation this book delivers
+- List 2–3 specific outcomes the reader will achieve
+- Close with a compelling call to action
+- No generic filler; every sentence must earn its place
+
+shortHook:
+- One sentence, under 18 words
+- The single most compelling reason to buy this book right now
+
+keywords:
+- Exactly 7 Amazon search keywords or phrases, comma-separated
+- Focus on what readers actually type when searching for this topic
+
+OUTPUT RULES
+============
+Return ONLY valid JSON. No explanation, no markdown, no code fences.
+
+{"description":"...","shortHook":"...","keywords":"..."}`;
 }
 
 export function coverConceptsPrompt({ title, subtitle, genre, audience, tone, corePromise, coreThesis, authorName, positioning }: any) {

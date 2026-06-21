@@ -387,6 +387,10 @@ router.post("/description", async (req, res) => {
       : descriptionPrompt(req.body);
     const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "description");
     const data = extractJSON(text);
+    if (!data || typeof data.description !== "string" || !data.description.trim()) {
+      console.error("[description] AI returned no parseable description. Raw:", text.slice(0, 300));
+      return res.status(500).json({ error: "AI returned an empty or unparseable description. Please try again." });
+    }
     return res.json({ ...data, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
