@@ -446,9 +446,12 @@ export default function OutlineStep({
       // Prefer rich objects (new format); fall back to title strings (legacy)
       const richSections = Array.isArray(data.sections) ? data.sections : [];
       const fallbackTitles = Array.isArray(data.titles) ? data.titles : [];
-      const items = richSections.length > 0
+      const raw = richSections.length > 0
         ? richSections
         : fallbackTitles.map((t) => ({ title: t, objective: "" }));
+
+      // Enforce exact count — never let the AI add more sections than the chapter has
+      const items = raw.slice(0, Math.max(1, sectionCount));
 
       if (items.length === 0) return;
 
