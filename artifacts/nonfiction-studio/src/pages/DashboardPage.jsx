@@ -131,14 +131,7 @@ const emptyBookCover = {
   pageCount: 200,
   paperType: "white",
   trimSizeIndex: 4,
-  generatedAt: null,
-  wizardGenre: "",
-  wizardStyle: "",
-  wizardMood: "",
-  wizardColorDir: "Auto",
-  wizardImagery: "AI decides",
-  coverStrategy: null,
-  coverCriticResult: null,
+  generatedAt: null
 };
 
 const emptyResearch = {
@@ -480,14 +473,7 @@ function migrateProject(raw) {
       accentColor: typeof p.bookCover.accentColor === "string" ? p.bookCover.accentColor : emptyBookCover.accentColor,
       textColor: typeof p.bookCover.textColor === "string" ? p.bookCover.textColor : emptyBookCover.textColor,
       designNotes: typeof p.bookCover.designNotes === "string" ? p.bookCover.designNotes : "",
-      generatedAt: p.bookCover.generatedAt ?? null,
-      wizardGenre: typeof p.bookCover.wizardGenre === "string" ? p.bookCover.wizardGenre : "",
-      wizardStyle: typeof p.bookCover.wizardStyle === "string" ? p.bookCover.wizardStyle : "",
-      wizardMood: typeof p.bookCover.wizardMood === "string" ? p.bookCover.wizardMood : "",
-      wizardColorDir: typeof p.bookCover.wizardColorDir === "string" ? p.bookCover.wizardColorDir : "Auto",
-      wizardImagery: typeof p.bookCover.wizardImagery === "string" ? p.bookCover.wizardImagery : "AI decides",
-      coverStrategy: p.bookCover.coverStrategy ?? null,
-      coverCriticResult: p.bookCover.coverCriticResult ?? null,
+      generatedAt: p.bookCover.generatedAt ?? null
     };
   }
 

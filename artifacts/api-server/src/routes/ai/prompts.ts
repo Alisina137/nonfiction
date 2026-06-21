@@ -637,17 +637,10 @@ Return ONLY valid JSON. No explanation, no markdown, no code fences.
 {"description":"...","shortHook":"...","keywords":"..."}`;
 }
 
-export function coverConceptsPrompt({ title, subtitle, genre, audience, tone, corePromise, coreThesis, authorName, positioning, wizardStyle, wizardMood, wizardColorDir, wizardImagery }: any) {
-  const hints = [
-    wizardStyle ? `Preferred style: ${wizardStyle}` : "",
-    wizardMood  ? `Desired mood: ${wizardMood}` : "",
-    wizardColorDir && wizardColorDir !== "Auto" ? `Color direction: ${wizardColorDir}` : "",
-    wizardImagery  && wizardImagery  !== "AI decides" ? `Imagery preference: ${wizardImagery}` : "",
-  ].filter(Boolean).join(". ");
-
+export function coverConceptsPrompt({ title, subtitle, genre, audience, tone, corePromise, coreThesis, authorName, positioning }: any) {
   return `You are a world-class book cover art director who has designed hundreds of Amazon bestsellers across every genre.
 
-Generate 8 COMPLETELY DIFFERENT cover concept briefs for this book. Each concept must feel like a different design agency's take — different color psychology, typography strategy, and visual hierarchy.
+Generate 5 COMPLETELY DIFFERENT cover concept briefs for this book. Each concept must feel like a different design agency's take — different color psychology, typography strategy, and visual hierarchy.
 
 BOOK DETAILS:
 Title: ${title}
@@ -659,44 +652,52 @@ Core Promise: ${corePromise || ""}
 Core Thesis: ${coreThesis || ""}
 Author: ${authorName || ""}
 Market Positioning: ${positioning || ""}
-${hints ? `Designer Preferences: ${hints}` : ""}
 
-THE 8 FIXED CONCEPT TYPES — provide one brief per type, in this exact order:
+THE 5 FIXED CONCEPT TYPES — provide one brief per type, in this exact order:
 
-1. type "authority" — BUSINESS BESTSELLER: Bold, structured, corporate authority. Dark background (navy, charcoal, dark slate). Heavy condensed sans-serif typography. Full-width accent bar or band as structural element. Think $100M Offers, Atomic Habits.
+1. type "authority" — BUSINESS BESTSELLER: Bold, structured, corporate authority. Dark background (navy, charcoal, dark slate). Heavy condensed sans-serif typography. Full-width accent bar or band as structural element. Proven, commercial, safe. Think $100M Offers, Atomic Habits, 12 Rules for Life.
 
-2. type "premium" — PREMIUM EDITORIAL: Elegant, editorial, prestigious. MUST use a LIGHT background (cream, ivory, pale warm white — provide as "secondary" field). Dark text on light background. Thin horizontal rules. Lots of whitespace. Think The Psychology of Money, Stillness Is the Key.
+2. type "premium" — PREMIUM AUTHORITY: Elegant, editorial, prestigious. MUST use a LIGHT background (cream, ivory, pale warm white — provide as "secondary" field). Dark text on light background. Thin horizontal rules framing the title. Lots of whitespace. Understated. Think The Psychology of Money, Stillness Is the Key, Man's Search for Meaning.
 
-3. type "minimal" — MODERN MINIMALIST: Maximum impact from minimum elements. Bold solid color background. Single large geometric circle element. Very few words. Strong negative space. Think The ONE Thing, Essentialism.
+3. type "minimal" — MODERN MINIMALIST: Maximum impact from minimum elements. Bold solid color background. Single large geometric circle element as the dominant visual. Very few words visible. Strong use of negative space. Think The ONE Thing, Start With Why, Essentialism.
 
-4. type "metaphor" — VISUAL METAPHOR: Concept-driven. Gradient or two-tone background. Large central hexagonal/diamond geometric symbol representing the core idea. Title and symbol work together. Think Thinking Fast and Slow, Zero to One.
+4. type "metaphor" — VISUAL METAPHOR: Concept-driven visual. Gradient or two-tone background transitioning between "bg" and "secondary". Large central hexagonal/diamond geometric symbol representing the book's core idea. Title and symbol work together. Think Thinking Fast and Slow, The Lean Startup, Zero to One.
 
-5. type "dynamic" — CREATIVE DYNAMIC: Unexpected, energetic. Dark background with a bold diagonal parallelogram in the accent color cutting across the upper portion. High-risk, high-reward visual impact.
-
-6. type "boldType" — BOLD TYPOGRAPHY: Typography IS the entire design. The title text fills 60–70% of the canvas in giant, oversized display type. Dark gradient background. Accent color as a powerful vertical stripe on the left. Minimal other elements — the word arrangement is the art.
-
-7. type "cinematic" — CINEMATIC: Atmospheric, movie-poster quality. Very dark near-black background. Thin gold/metallic horizontal rules framing a centered serif title. Letterbox-style accent bars at top and bottom. Author in small metallic spaced caps at base. Elegant, high-concept.
-
-8. type "vibrant" — VIBRANT ENERGY: High-energy, saturated, commands immediate attention. Bright, warm, or electric-cool saturated background. Angular geometric accent shapes. Very bold sans-serif title in white. Feels alive and urgent.
+5. type "dynamic" — CREATIVE AI CONCEPT: Unexpected, energetic. Dark background with a bold diagonal parallelogram/band in the accent color cutting across the upper portion. Title overlaid dramatically. Something a traditional designer might not immediately try. High-risk, high-reward visual impact.
 
 For EACH concept provide:
-- Colors calibrated to the book's genre, audience, emotional target, and designer preferences above
+- Colors calibrated to the book's genre, audience, and emotional target
 - A compelling cover tagline (short punchy hook, 4–8 words max)
 - A concise design rationale (1–2 sentences on why this works for THIS book)
 
-CRITICAL: "premium" → secondary must be LIGHT (#f5f0e8 or similar). "boldType" and "cinematic" → use very dark background (#0d0d1a-type). "vibrant" → use a bright saturated bg color.
+CRITICAL: For "premium" concept, "secondary" must be a LIGHT color (cream, ivory, pale white like #f5f0e8 or #faf7f2). For other concepts "secondary" is a darker shade or complementary color.
 
 Return ONLY valid JSON, no markdown:
 {
   "concepts": [
-    {"type":"authority","label":"Business Bestseller","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"4–8 word hook","designNotes":"1–2 sentences"},
-    {"type":"premium","label":"Premium Editorial","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#f5f0e8","tagline":"...","designNotes":"..."},
+    {
+      "type": "authority",
+      "label": "Business Bestseller",
+      "bg": "#hex",
+      "accent": "#hex",
+      "text": "#hex",
+      "secondary": "#hex",
+      "tagline": "4–8 word hook",
+      "designNotes": "1–2 sentences why this works"
+    },
+    {
+      "type": "premium",
+      "label": "Premium Authority",
+      "bg": "#hex",
+      "accent": "#hex",
+      "text": "#hex",
+      "secondary": "#f5f0e8",
+      "tagline": "4–8 word hook",
+      "designNotes": "..."
+    },
     {"type":"minimal","label":"Modern Minimalist","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."},
     {"type":"metaphor","label":"Visual Metaphor","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."},
-    {"type":"dynamic","label":"Creative Dynamic","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."},
-    {"type":"boldType","label":"Bold Typography","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."},
-    {"type":"cinematic","label":"Cinematic","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."},
-    {"type":"vibrant","label":"Vibrant Energy","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."}
+    {"type":"dynamic","label":"Creative AI Concept","bg":"#hex","accent":"#hex","text":"#hex","secondary":"#hex","tagline":"...","designNotes":"..."}
   ]
 }`;
 }
@@ -807,48 +808,6 @@ Return valid JSON only:
   {"variantLabel":"B",...},
   {"variantLabel":"C",...}
 ]}`;
-}
-
-export function coverStrategyPrompt({ title, subtitle, genre, audience, tone, description, themes, positioning, authorPersona }: any) {
-  return `You are a senior book cover art director with 20+ years designing Amazon bestsellers.
-
-Analyze this book and return a complete cover design strategy that a designer can act on immediately.
-
-BOOK:
-Title: ${title}
-Subtitle: ${subtitle || ""}
-Genre: ${genre || "Nonfiction"}
-Target Audience: ${audience || ""}
-Tone: ${tone || ""}
-Description: ${(description || "").slice(0, 500)}
-Themes: ${Array.isArray(themes) ? themes.slice(0, 6).join(", ") : (themes || "")}
-Market Positioning: ${positioning || ""}
-Author Style: ${authorPersona || ""}
-
-Return ONLY valid JSON:
-{
-  "styleRecommendation": "2–3 sentence visual style recommendation specific to this book",
-  "typographyStyle": "specific font personality and typography approach",
-  "recommendedColors": {
-    "primary": "#hex",
-    "secondary": "#hex",
-    "accent": "#hex",
-    "rationale": "1–2 sentences on the color psychology for this book"
-  },
-  "layoutRecommendation": "composition and visual hierarchy guidance",
-  "imageryDirection": "visual elements and imagery that would work",
-  "emotionalTone": "the emotional response this cover should trigger in the reader",
-  "marketInsights": [
-    "what works in this genre/market",
-    "what readers of this category expect from the cover",
-    "a competitive positioning opportunity",
-    "one common mistake to avoid in this genre"
-  ],
-  "topConceptTypes": ["concept1", "concept2", "concept3"],
-  "avoidPatterns": ["visual pattern to avoid 1", "visual pattern to avoid 2"]
-}
-
-topConceptTypes must be 3 values chosen from: authority, premium, minimal, metaphor, dynamic, boldType, cinematic, vibrant`;
 }
 
 export function outlinePrompt({ idea, title, description, audience, tone }: any) {
