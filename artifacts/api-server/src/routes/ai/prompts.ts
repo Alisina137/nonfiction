@@ -2688,12 +2688,17 @@ Chapter Title: ${chapterTitle}
 
 ${purposeLine}
 
-${contextBlock ? `${contextBlock}\n\n` : ""}COMPLEXITY SCORING (mandatory — compute internally before generating):
-Rate the chapter topic complexity on a scale of 1–5:
-  Score 1–2 → generate 3 sections
-  Score 3   → generate 4 sections
-  Score 4–5 → generate 5 sections
-Generate only the number of sections the chapter genuinely needs. Do not pad to reach a higher count.
+${contextBlock ? `${contextBlock}\n\n` : ""}====================================================
+
+CRITICAL REQUIREMENT — EXACT SECTION COUNT
+
+You MUST generate EXACTLY ${sectionCount} section${sectionCount !== 1 ? "s" : ""}.
+
+Not ${sectionCount - 1}. Not ${sectionCount + 1}. Exactly ${sectionCount}.
+
+This number is locked by the book's structural plan and cannot change.
+Do not add sections. Do not remove sections. Do not merge sections.
+Your only job is to generate ${sectionCount} high-quality section titles.
 
 ====================================================
 

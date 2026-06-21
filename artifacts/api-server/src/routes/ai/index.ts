@@ -1035,42 +1035,66 @@ router.post("/generate-sections", async (req, res) => {
       return res.status(400).json({ error: "chapterTitle is required" });
     }
     const count = Math.min(15, Math.max(1, Number(sectionCount) || 3));
-    const prompt = sectionGenerationPrompt(
-      String(bookTitle || ""),
-      String(chapterTitle),
-      count,
-      research,
-      corePromise ? String(corePromise) : undefined,
-      coreThesis  ? String(coreThesis)  : undefined,
-      chapterPurpose ? String(chapterPurpose) : undefined
-    );
-    const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "sectionGen");
-    const raw = extractJSON(text);
 
+    function parseSections(text: string): Array<{ title: string; objective: string }> {
+      const raw = extractJSON(text);
+      if (!raw) return [];
+      if (!Array.isArray(raw) && Array.isArray(raw.sections)) {
+        return raw.sections
+          .filter((s: any) => s && typeof s.sectionTitle === "string" && s.sectionTitle.trim())
+          .map((s: any) => ({
+            title:     stripSectionColon(String(s.sectionTitle).trim()),
+            objective: typeof s.sectionObjective === "string" ? s.sectionObjective.trim() : ""
+          }));
+      }
+      if (Array.isArray(raw)) {
+        return raw
+          .filter((t: any) => typeof t === "string" && t.trim())
+          .map((t: any) => ({ title: stripSectionColon(String(t).trim()), objective: "" }));
+      }
+      return [];
+    }
+
+    const MAX_ATTEMPTS = 3;
     let sections: Array<{ title: string; objective: string }> = [];
+    let usedProvider = "";
+    let lastError = "";
 
-    if (raw && !Array.isArray(raw) && Array.isArray(raw.sections)) {
-      // New format: { sections: [{ sectionTitle, sectionObjective }] }
-      sections = raw.sections
-        .filter((s: any) => s && typeof s.sectionTitle === "string" && s.sectionTitle.trim())
-        .map((s: any) => ({
-          title:     stripSectionColon(String(s.sectionTitle).trim()),
-          objective: typeof s.sectionObjective === "string" ? s.sectionObjective.trim() : ""
-        }));
-    } else if (Array.isArray(raw)) {
-      // Legacy format: string array
-      sections = raw
-        .filter((t: any) => typeof t === "string" && t.trim())
-        .map((t: any) => ({ title: stripSectionColon(String(t).trim()), objective: "" }));
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const prompt = sectionGenerationPrompt(
+        String(bookTitle || ""),
+        String(chapterTitle),
+        count,
+        research,
+        corePromise ? String(corePromise) : undefined,
+        coreThesis  ? String(coreThesis)  : undefined,
+        chapterPurpose ? String(chapterPurpose) : undefined
+      );
+      const result = await runShort(prompt, systemPrompt(), req, res, "sectionGen");
+      usedProvider = result.usedProvider;
+      const parsed = parseSections(result.text);
+
+      if (parsed.length === count) {
+        sections = parsed;
+        break;
+      }
+
+      lastError = `attempt ${attempt}: got ${parsed.length} sections, need ${count}`;
+      console.warn(`[generate-sections] ${lastError} — retrying`);
+
+      // On last attempt, accept if we got something (frontend will slice to exact count)
+      if (attempt === MAX_ATTEMPTS && parsed.length > 0) {
+        sections = parsed;
+      }
     }
 
     if (sections.length === 0) {
-      console.error("[generate-sections] Could not parse sections from:", text.slice(0, 400));
+      console.error("[generate-sections] All attempts failed. Last error:", lastError);
       return res.status(500).json({ error: "AI returned unparseable section data." });
     }
 
     const titles = sections.map((s) => s.title);
-    return res.json({ sections, titles, _provider: usedProvider });
+    return res.json({ sections, titles, _provider: usedProvider, _requestedCount: count });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
