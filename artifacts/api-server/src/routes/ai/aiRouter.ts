@@ -57,7 +57,7 @@ export const PROVIDERS: ProviderConfig[] = [
   {
     id:             "cerebras",
     label:          "Cerebras (Llama)",
-    model:          "llama-3.3-70b",
+    model:          "llama3.3-70b",
     fallbackModels: ["llama3.1-8b"],
     apiUrl:         "https://api.cerebras.ai/v1/chat/completions",
     apiKey:         () => process.env.CEREBRAS_API_KEY,
@@ -66,12 +66,12 @@ export const PROVIDERS: ProviderConfig[] = [
   {
     id:             "openrouter",
     label:          "OpenRouter (fallback)",
-    model:          "meta-llama/llama-3.3-70b-instruct:free",
+    model:          "google/gemma-3-27b-it:free",
     fallbackModels: [
-      "google/gemma-3-27b-it:free",
-      "deepseek/deepseek-r1:free",
       "mistralai/mistral-7b-instruct:free",
-      "qwen/qwen3-30b-a3b:free"
+      "qwen/qwen3-30b-a3b:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "deepseek/deepseek-r1:free"
     ],
     apiUrl: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY,
@@ -122,18 +122,18 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   idea: [
     { providerId: "gemini",     model: "gemini-2.5-flash",                        label: "Gemini Flash" },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
-    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
-    { providerId: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free",  label: "OpenRouter",       fallbackModels: ["google/gemma-3-27b-it:free"] },
+    { providerId: "cerebras",   model: "llama3.3-70b",                            label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "openrouter", model: "google/gemma-3-27b-it:free",              label: "OpenRouter",       fallbackModels: ["mistralai/mistral-7b-instruct:free", "qwen/qwen3-30b-a3b:free"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 
   // ── Phase 2: Market analysis & research ────────────────────────────────
   // DeepSeek R1 leads — deep chain-of-thought reasoning for competitive intel.
   research: [
-    { providerId: "openrouter", model: "deepseek/deepseek-r1:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free", "mistralai/mistral-7b-instruct:free"] },
+    { providerId: "openrouter", model: "deepseek/deepseek-r1:free",               label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free", "mistralai/mistral-7b-instruct:free"] },
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
-    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "cerebras",   model: "llama3.3-70b",                            label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 
@@ -141,30 +141,30 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   // Gemini Pro leads — excellent at hierarchical structure and chapter planning.
   outline: [
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "openrouter", model: "deepseek/deepseek-r1:free",          label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free"] },
+    { providerId: "openrouter", model: "deepseek/deepseek-r1:free",               label: "DeepSeek R1",      fallbackModels: ["google/gemma-3-27b-it:free", "mistralai/mistral-7b-instruct:free"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
-    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "cerebras",   model: "llama3.3-70b",                            label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 
   // ── Phase 4: Main content / prose writing ─────────────────────────────
   // 5-model pool.  Gemini Pro is the primary author; OpenRouter serves
-  // DeepSeek/Qwen/Maverick as an internal fallback pool.
+  // a stable free pool as fallback.
   write: [
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "openrouter", model: "deepseek/deepseek-r1:free",          label: "DeepSeek R1",      fallbackModels: ["qwen/qwen3-32b:free", "meta-llama/llama-4-maverick:free", "google/gemma-3-27b-it:free"] },
+    { providerId: "openrouter", model: "google/gemma-3-27b-it:free",              label: "OpenRouter",       fallbackModels: ["mistralai/mistral-7b-instruct:free", "qwen/qwen3-30b-a3b:free", "deepseek/deepseek-r1:free"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
-    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "cerebras",   model: "llama3.3-70b",                            label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant", "gemma2-9b-it"] },
   ],
 
   // ── Phase 5: Editing & quality improvement ─────────────────────────────
-  // Llama 4 Maverick leads — best at natural, human-like writing improvement.
+  // Gemini Pro leads; OpenRouter stable free pool as fallback.
   edit: [
-    { providerId: "openrouter", model: "meta-llama/llama-4-maverick:free",        label: "Llama 4 Maverick", fallbackModels: ["deepseek/deepseek-r1:free", "google/gemma-3-27b-it:free"] },
     { providerId: "gemini",     model: "gemini-2.5-pro",                          label: "Gemini Pro",       fallbackModels: ["gemini-2.5-flash"] },
+    { providerId: "openrouter", model: "google/gemma-3-27b-it:free",              label: "OpenRouter",       fallbackModels: ["mistralai/mistral-7b-instruct:free", "meta-llama/llama-4-maverick:free", "deepseek/deepseek-r1:free"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
-    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "cerebras",   model: "llama3.3-70b",                            label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 
@@ -173,8 +173,8 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   metadata: [
     { providerId: "gemini",     model: "gemini-2.5-flash-lite-preview-06-17",     label: "Gemini Flash-Lite", fallbackModels: ["gemini-2.5-flash"] },
     { providerId: "groq",       model: "llama-3.3-70b-versatile",                 label: "Groq",             fallbackModels: ["llama-3.1-8b-instant"] },
-    { providerId: "cerebras",   model: "llama-3.3-70b",                           label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
-    { providerId: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free",  label: "OpenRouter",       fallbackModels: ["google/gemma-3-27b-it:free"] },
+    { providerId: "cerebras",   model: "llama3.3-70b",                            label: "Cerebras",         fallbackModels: ["llama3.1-8b"] },
+    { providerId: "openrouter", model: "google/gemma-3-27b-it:free",              label: "OpenRouter",       fallbackModels: ["mistralai/mistral-7b-instruct:free", "qwen/qwen3-30b-a3b:free"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",             label: "SambaNova",        fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 };
@@ -291,8 +291,16 @@ export function resetProviders(): void {
 // ─── Error classification ──────────────────────────────────────────────────
 
 function isQuotaExhausted(msg: string, status?: number): boolean {
-  if (status === 429) return true;
+  // Only treat as true daily credit exhaustion when the error message confirms it.
+  // A bare HTTP 429 on a free model is usually a per-model rate limit, NOT a daily
+  // credit exhaustion — don't burn a 24h cooldown for a simple rate limit.
   return /quota.?exceed|daily.?limit|rate.?limit.?reached|insufficient.?credit|out.?of.?credit|credit.?exhaust|free.?tier.?exhaust|daily.?quota|resource.?exhaust|RESOURCE_EXHAUSTED/i.test(msg || "");
+}
+
+function isRateLimit(msg: string, status?: number): boolean {
+  // HTTP 429 without credit-exhaustion language = transient rate limit (10 min)
+  if (status === 429) return true;
+  return /rate.?limit|too.?many.?request/i.test(msg || "");
 }
 
 function isInvalidKey(msg: string, status?: number): boolean {
@@ -719,8 +727,13 @@ async function runChain(
       }
 
       if (isQuotaExhausted(msg, httpStatus)) {
-        console.log(`[AI] ${label} quota exhausted — disabled 24h, switching to next provider`);
+        console.log(`[AI] ${label} daily quota exhausted — disabled 24h, switching to next provider`);
         disableProvider(provider.id, msg, "credit");
+        exhaustedProviders.push(provider.id);
+      } else if (isRateLimit(msg, httpStatus)) {
+        // HTTP 429 without credit-exhaustion language = transient rate limit
+        console.log(`[AI] ${label} rate limited (429) — disabled 10min, switching to next provider`);
+        disableProvider(provider.id, msg, "rate_limit");
         exhaustedProviders.push(provider.id);
       } else if (isHardUnavailable(msg, httpStatus)) {
         const keyMsg = isInvalidKey(msg, httpStatus)
