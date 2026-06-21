@@ -8,6 +8,7 @@ import {
   coverConceptsPrompt,
   coverBriefPrompt,
   coverCriticPrompt,
+  coverStrategyPrompt,
   coverVariantsPrompt,
   descriptionPrompt,
   generateAuthorPersonaPrompt,
@@ -432,6 +433,16 @@ router.post("/cover-concepts", async (req, res) => {
     const { text, usedProvider } = await runLong(coverConceptsPrompt(req.body), systemPrompt(), req, res, "conceptGen");
     const data = extractJSON(text);
     return res.json({ concepts: Array.isArray(data.concepts) ? data.concepts : [], _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/cover-strategy", async (req, res) => {
+  try {
+    const { text, usedProvider } = await runLong(coverStrategyPrompt(req.body), systemPrompt(), req, res, "metadata");
+    const data = extractJSON(text);
+    return res.json({ ...data, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
