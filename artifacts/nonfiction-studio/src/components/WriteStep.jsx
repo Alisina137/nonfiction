@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   blockHasContent,
+  buildChapterSummaries,
   collectPreviousConcepts,
+  collectUpcomingTopics,
   countDraftedBlocks,
   enumerateWriteBlocks,
   lessonToProse
@@ -220,6 +222,9 @@ export default function WriteStep({
         subsection:          block.subsection,
         chapterContext:      block.chapterContext,
         previousConcepts:    collectPreviousConcepts(blocks, lessonsSnapshot, index),
+        upcomingTopics:      collectUpcomingTopics(blocks, index),
+        chapterSummaries:    buildChapterSummaries(blocks, lessonsSnapshot),
+        subsectionPurpose:   block.subsection?.objective || block.subsection?.description || null,
         audience:            writingAudience(fullProject),
         tone:                writingTone(fullProject),
         resources:           fullProject?.resources ?? null,

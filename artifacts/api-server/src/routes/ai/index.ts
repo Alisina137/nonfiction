@@ -116,7 +116,7 @@ function aiOptsFromReq(req: any, maxTokens?: number) {
 // Context compression for lesson generation — prevents oversized prompts.
 // Only sends fields the model actually needs; drops redundant content.
 function compressLessonBody(body: any): any {
-  const { subsection, chapterContext, previousConcepts, ...rest } = body || {};
+  const { subsection, chapterContext, previousConcepts, upcomingTopics, chapterSummaries, ...rest } = body || {};
 
   const compressedSubsection = subsection ? {
     title:       subsection.title,
@@ -131,12 +131,39 @@ function compressLessonBody(body: any): any {
   } : chapterContext;
 
   const compressedPrev = Array.isArray(previousConcepts)
-    ? previousConcepts.slice(-8).map((c: any) =>
-        typeof c === "string" ? c.slice(0, 120) : { title: c.title, summary: String(c.summary || "").slice(0, 120) }
+    ? previousConcepts.slice(-14).map((c: any) =>
+        typeof c === "string"
+          ? { title: c.slice(0, 100) }
+          : {
+              title:    String(c.title    || "").slice(0, 100),
+              chapter:  String(c.chapter  || "").slice(0, 60),
+              section:  String(c.section  || "").slice(0, 60),
+              takeaway: String(c.takeaway || "").slice(0, 150),
+            }
       )
     : previousConcepts;
 
-  return { ...rest, subsection: compressedSubsection, chapterContext: compressedChapter, previousConcepts: compressedPrev };
+  const compressedUpcoming = Array.isArray(upcomingTopics)
+    ? upcomingTopics.slice(0, 8).map((t: any) => String(t || "").slice(0, 80)).filter(Boolean)
+    : undefined;
+
+  const compressedChSummaries = Array.isArray(chapterSummaries)
+    ? chapterSummaries.slice(0, 6).map((s: any) => ({
+        chapter:  String(s.chapter || "").slice(0, 80),
+        keyIdeas: Array.isArray(s.keyIdeas)
+          ? s.keyIdeas.slice(0, 4).map((k: any) => String(k || "").slice(0, 140))
+          : []
+      })).filter((s: any) => s.keyIdeas.length)
+    : undefined;
+
+  return {
+    ...rest,
+    subsection:       compressedSubsection,
+    chapterContext:   compressedChapter,
+    previousConcepts: compressedPrev,
+    ...(compressedUpcoming?.length    ? { upcomingTopics:   compressedUpcoming    } : {}),
+    ...(compressedChSummaries?.length ? { chapterSummaries: compressedChSummaries } : {}),
+  };
 }
 
 function setProviderHeader(res: any, provider: string, exhausted: string[] = []) {
@@ -502,7 +529,7 @@ router.post("/chapter-strategy", async (req, res) => {
 router.post("/lesson", async (req, res) => {
   try {
     const compressed = compressLessonBody(req.body);
-    const { chapterStrategy, bookStructure, sectionTitle, subsectionPurpose, blueprintComponents } = req.body || {};
+    const { chapterStrategy, bookStructure, sectionTitle, subsectionPurpose, blueprintComponents, upcomingTopics, chapterSummaries } = req.body || {};
     const { text, usedProvider } = await runLong(
       lessonPrompt({
         ...compressed,
@@ -512,7 +539,9 @@ router.post("/lesson", async (req, res) => {
         bookStructure,
         sectionTitle,
         subsectionPurpose,
-        blueprintComponents
+        blueprintComponents,
+        upcomingTopics,
+        chapterSummaries
       }),
       systemPrompt(),
       req,

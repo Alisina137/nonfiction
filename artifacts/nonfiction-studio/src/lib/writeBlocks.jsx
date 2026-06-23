@@ -142,18 +142,57 @@ export function lessonToProse(lesson) {
   return parts.join("\n").trim();
 }
 
-/** Frameworks / titles from blocks before `beforeIndex` for continuity. */
+/** Rich context objects from blocks before `beforeIndex` — used by the AI to avoid repetition. */
 export function collectPreviousConcepts(blocks, lessons, beforeIndex) {
   const concepts = [];
-  for (let i = 0; i < beforeIndex; i += 1) {
-    const id = blocks[i]?.id;
+  for (let i = 0; i < beforeIndex; i++) {
+    const block = blocks[i];
+    const id = block?.id;
     const entry = id ? lessons?.[id] : null;
-    const fw = str(entry?.lesson?.keyTakeaway || entry?.lesson?.framework);
-    const title = str(entry?.lesson?.title) || str(blocks[i]?.label);
-    if (fw) concepts.push(fw);
-    else if (title) concepts.push(title);
+    const takeaway = str(entry?.lesson?.keyTakeaway || entry?.lesson?.framework);
+    const title = str(entry?.lesson?.title) || str(block?.label);
+    concepts.push({
+      title:    title,
+      chapter:  str(block?.chapterContext?.title) || "",
+      section:  str(block?.sectionTitle) || "",
+      takeaway: takeaway || "",
+    });
   }
-  return concepts.slice(-24);
+  return concepts.slice(-20);
+}
+
+/** Titles of not-yet-written blocks after `afterIndex` so the AI knows what to save for later. */
+export function collectUpcomingTopics(blocks, afterIndex, n = 8) {
+  const upcoming = [];
+  for (let i = afterIndex + 1; i < blocks.length && upcoming.length < n; i++) {
+    const b = blocks[i];
+    const label = str(b?.sectionTitle) || str(b?.label);
+    if (label) upcoming.push(label);
+  }
+  return upcoming;
+}
+
+/** Compact per-chapter key-idea summaries for chapters where every block already has content. */
+export function buildChapterSummaries(blocks, lessons) {
+  const chMap = new Map();
+  for (const block of blocks) {
+    const key = block.chapterKey;
+    if (!chMap.has(key)) {
+      chMap.set(key, { title: str(block?.chapterContext?.title) || key, blocks: [] });
+    }
+    chMap.get(key).blocks.push(block);
+  }
+  const summaries = [];
+  for (const ch of chMap.values()) {
+    const allDone = ch.blocks.every((b) => blockHasContent(lessons, b.id));
+    if (!allDone) continue;
+    const keyIdeas = ch.blocks
+      .map((b) => str(lessons?.[b.id]?.lesson?.keyTakeaway || lessons?.[b.id]?.lesson?.framework))
+      .filter(Boolean)
+      .slice(0, 4);
+    if (keyIdeas.length) summaries.push({ chapter: ch.title, keyIdeas });
+  }
+  return summaries;
 }
 
 export function blockHasContent(lessons, blockId) {

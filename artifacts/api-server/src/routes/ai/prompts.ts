@@ -1594,12 +1594,53 @@ export function lessonPrompt({
   bookStructure,
   sectionTitle,
   subsectionPurpose,
-  blueprintComponents
+  blueprintComponents,
+  upcomingTopics,
+  chapterSummaries
 }: any) {
   const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
   const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
-  const prevNote = Array.isArray(previousConcepts) && previousConcepts.length
-    ? `\nConcepts already covered (do NOT repeat): ${previousConcepts.slice(-8).join("; ")}`
+
+  // Rich covered-content block — shows chapter/section context + key takeaway for each prior block
+  const coveredContentBlock = Array.isArray(previousConcepts) && previousConcepts.length
+    ? (() => {
+        const items = (previousConcepts as any[]).slice(-14);
+        const lines = items.map((c: any) => {
+          if (typeof c === "string") return `- ${c}`;
+          const chSec = [c.chapter, c.section].filter(Boolean).join(" › ");
+          const prefix = chSec ? `[${chSec}] ` : "";
+          const take   = c.takeaway ? ` — "${c.takeaway}"` : "";
+          return `- ${prefix}${c.title}${take}`;
+        });
+        return `
+════════════════════════════════════
+COVERED CONTENT (do NOT repeat or re-introduce)
+════════════════════════════════════
+The following subsections have already been written. Do not restate, redefine, or re-illustrate any concept listed here. Build on them — never repeat them:
+${lines.join("\n")}`;
+      })()
+    : "";
+
+  // Completed-chapters summary — key ideas from fully written chapters
+  const chapterSummariesBlock = Array.isArray(chapterSummaries) && chapterSummaries.length
+    ? `
+════════════════════════════════════
+COMPLETED CHAPTERS — KEY IDEAS ALREADY ESTABLISHED
+════════════════════════════════════
+These chapters are complete. Do not restate their core lessons — this book moves forward, not backward:
+${(chapterSummaries as any[]).map((s: any) =>
+    `${s.chapter}:\n${(s.keyIdeas as string[]).map((k: string) => `  • ${k}`).join("\n")}`
+  ).join("\n\n")}`
+    : "";
+
+  // Upcoming topics — what the AI must save for later sections
+  const upcomingBlock = Array.isArray(upcomingTopics) && upcomingTopics.length
+    ? `
+════════════════════════════════════
+UPCOMING SECTIONS (do NOT pre-empt these)
+════════════════════════════════════
+The following topics will be covered in future subsections. Do not introduce, hint at, or partially cover them here — save them for their designated place:
+${(upcomingTopics as string[]).map((t: string) => `→ ${t}`).join("\n")}`
     : "";
 
   const rawStructure = bookStructure || bookContext?.structure || chapterStrategy?.structureType || "";
@@ -1750,7 +1791,7 @@ Subsection: ${subsectionTitle}${purposeNote}
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
-Tone Instruction: ${toneInstr}${prevNote}${strategyBlock}${blueprintBlock}${flowBlock}${antiTemplateRules}
+Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${flowBlock}${antiTemplateRules}
 
 ════════════════════════════════════
 10 NON-NEGOTIABLE WRITING RULES
