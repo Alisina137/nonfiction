@@ -140,11 +140,12 @@ export default function WriteStep({
     return map;
   }, [blocks]);
 
-  const [expandedChapters, setExpandedChapters] = useState({});
-  const [busyId,           setBusyId]           = useState(null);
-  const [batchBusy,        setBatchBusy]        = useState(false);
-  const [status,           setStatus]           = useState("");
+  const [expandedChapters,  setExpandedChapters]  = useState({});
+  const [busyId,            setBusyId]            = useState(null);
+  const [batchBusy,         setBatchBusy]         = useState(false);
+  const [status,            setStatus]            = useState("");
   const [chapterStrategies, setChapterStrategies] = useState({});
+  const [openBriefId,       setOpenBriefId]       = useState(null);
 
   const progress = useMemo(() => countDraftedBlocks(blocks, lessons), [blocks, lessons]);
 
@@ -527,14 +528,74 @@ export default function WriteStep({
                       const secNum    = `${ci + 1}.${si + 1}`;
                       const hasSubs   = subs.length > 0;
 
+                      const briefOpen = openBriefId === (sec.id || `s-${ci}-${si}`);
+                      const secBlueprintComponents = Array.isArray(sec.blueprintComponents) ? sec.blueprintComponents : [];
+                      const secSubTopics = subs.map((s) => s.title).filter(Boolean);
+
                       return (
                         /* ── Section ── 32px top margin */
                         <div key={sec.id || si} className="mt-8 first:mt-6">
                           {/* Section heading */}
-                          <h3 className="text-[18px] font-medium text-slate-800">
-                            <span className="mr-2 text-sky-600">{secNum}</span>
-                            {sec.title || `Section ${secNum}`}
-                          </h3>
+                          <div className="flex items-baseline gap-2">
+                            <h3 className="text-[18px] font-medium text-slate-800">
+                              <span className="mr-2 text-sky-600">{secNum}</span>
+                              {sec.title || `Section ${secNum}`}
+                            </h3>
+                            <button
+                              type="button"
+                              title="Section brief"
+                              onClick={() => setOpenBriefId(briefOpen ? null : (sec.id || `s-${ci}-${si}`))}
+                              className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
+                                briefOpen
+                                  ? "border-sky-300 bg-sky-50 text-sky-700"
+                                  : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                              }`}
+                            >
+                              {briefOpen ? "✕ close" : "ⓘ brief"}
+                            </button>
+                          </div>
+
+                          {/* Section brief panel */}
+                          {briefOpen && (
+                            <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50/60 p-4 text-[13px] space-y-3">
+                              {/* About */}
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 mb-1">What this section is about</p>
+                                <p className="text-slate-700 leading-relaxed">
+                                  {sec.objective || sec.description || <span className="italic text-slate-400">No objective set — add one in the Outline step.</span>}
+                                </p>
+                              </div>
+
+                              {/* Topics */}
+                              {secSubTopics.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 mb-1">Concepts it will cover</p>
+                                  <ul className="space-y-0.5">
+                                    {secSubTopics.map((t, ti) => (
+                                      <li key={ti} className="flex items-start gap-1.5 text-slate-700">
+                                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
+                                        {t}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Blueprint components */}
+                              {secBlueprintComponents.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 mb-1.5">Desired output per subsection</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {secBlueprintComponents.map((c) => (
+                                      <span key={c} className="rounded-full border border-sky-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-sky-700">
+                                        {c}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           {hasSubs ? (
                             /* Subsections */
