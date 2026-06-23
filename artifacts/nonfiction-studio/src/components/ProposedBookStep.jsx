@@ -4,12 +4,6 @@ import { aiFetch } from "@/lib/ai/aiFetch";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CHAPTER_COMPONENTS_ALL = [
-  "Key Takeaways", "Action Plan", "Checklist", "Exercises",
-  "Reflection Questions", "Templates", "Case Studies", "Examples",
-  "Research Highlights", "Resources", "Summary"
-];
-
 const LEGACY_SECTIONS = [
   { key: "title",                  label: "Title",                  multiline: false },
   { key: "uniqueSellingProposition", label: "Unique Selling Proposition", multiline: true },
@@ -31,7 +25,6 @@ const REGEN_LABELS = {
   recommendedStructure:    "Recommended Structure",
   structureExplanation:    "Structure Explanation",
   signatureFramework:      "Signature Framework",
-  chapterComponents:       "Chapter Components",
   bookFlowPreview:         "Book Flow Preview",
   competitiveDifferentiation: "Competitive Differentiation",
   bookPitch:               "Book Pitch",
@@ -313,46 +306,6 @@ function SignatureFrameworkCard({ sf, onRegen, loading, onEdit }) {
   );
 }
 
-function ChapterComponentsCard({ cc, onRegen, loading, onEdit }) {
-  if (!cc?.recommended?.length && !cc?.selected?.length) return null;
-  const selected = Array.isArray(cc.selected) ? cc.selected : (cc.recommended || []);
-
-  function toggle(opt) {
-    const next = selected.includes(opt) ? selected.filter(x => x !== opt) : [...selected, opt];
-    onEdit("chapterComponents", { ...cc, selected: next });
-  }
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <SectionHeader icon="☰" title="Chapter Blueprint Components">
-        <RegenButton section="chapterComponents" loading={loading} onRegen={onRegen} />
-      </SectionHeader>
-      {cc.recommended?.length > 0 && (
-        <p className="mt-2 text-xs text-slate-500">
-          AI recommended: {cc.recommended.join(", ")}. Check or uncheck to customize.
-        </p>
-      )}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {CHAPTER_COMPONENTS_ALL.map(opt => {
-          const isSelected = selected.includes(opt);
-          const isRec = (cc.recommended || []).includes(opt);
-          return (
-            <button key={opt} type="button" onClick={() => toggle(opt)}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                isSelected
-                  ? "border-sky-400 bg-sky-100 text-sky-800"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-              }`}>
-              <span>{isSelected ? "✓" : "○"}</span>
-              {opt}
-              {isRec && !isSelected && <span className="text-[10px] text-amber-500">★</span>}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function BookFlowCard({ bfp, onRegen, loading }) {
   if (!bfp?.parts?.length) return null;
@@ -578,7 +531,6 @@ export default function ProposedBookStep({ proposedBook, setProposedBook, fullPr
           recommendedStructure:      plan.recommendedStructure,
           structureExplanation:      plan.structureExplanation,
           signatureFramework:        plan.signatureFramework,
-          chapterComponents:         plan.chapterComponents,
           bookFlowPreview:           plan.bookFlowPreview,
           competitiveDifferentiation: plan.competitiveDifferentiation,
           bookPitch:                 plan.bookPitch,
@@ -810,9 +762,6 @@ export default function ProposedBookStep({ proposedBook, setProposedBook, fullPr
 
           <SignatureFrameworkCard sf={content.signatureFramework} onRegen={handleRegen}
             loading={regenLoading.signatureFramework} onEdit={editContentField} />
-
-          <ChapterComponentsCard cc={content.chapterComponents} onRegen={handleRegen}
-            loading={regenLoading.chapterComponents} onEdit={editContentField} />
 
           <BookFlowCard bfp={content.bookFlowPreview} onRegen={handleRegen}
             loading={regenLoading.bookFlowPreview} />
