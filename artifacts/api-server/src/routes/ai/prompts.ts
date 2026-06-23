@@ -1619,19 +1619,57 @@ export function lessonPrompt({
     "Resources":           "include 2–3 recommended resources (books, tools, websites) with brief descriptions",
     "Summary":             "end with a concise summary paragraph recapping the main points of this section",
   };
-  const blueprintBlock = Array.isArray(blueprintComponents) && blueprintComponents.length
+
+  // Which flow-step names map to a blueprint component (so we can suppress them when not selected)
+  const FLOW_STEP_TO_COMPONENT: Record<string, string> = {
+    "Action Task":       "Action Plan",
+    "Exercise":          "Exercises",
+    "Reflection Prompt": "Reflection Questions",
+    "Case Study":        "Case Studies",
+    "Research":          "Research Highlights",
+  };
+
+  const ALL_BLUEPRINT_COMPONENTS = [
+    "Key Takeaways", "Action Plan", "Checklist", "Exercises",
+    "Reflection Questions", "Templates", "Case Studies", "Examples",
+    "Research Highlights", "Resources", "Summary",
+  ];
+
+  const hasBlueprint = Array.isArray(blueprintComponents) && blueprintComponents.length > 0;
+
+  // Remove flow steps that correspond to a blueprint component the user did NOT select
+  const effectiveFlow = hasBlueprint
+    ? flow.filter((step: string) => {
+        const mapped = FLOW_STEP_TO_COMPONENT[step];
+        return !mapped || (blueprintComponents as string[]).includes(mapped);
+      })
+    : flow;
+
+  const forbiddenComponents = hasBlueprint
+    ? ALL_BLUEPRINT_COMPONENTS.filter((c: string) => !(blueprintComponents as string[]).includes(c))
+    : [];
+
+  const blueprintBlock = hasBlueprint
     ? `
 ════════════════════════════════════
-SECTION BLUEPRINT COMPONENTS (NON-NEGOTIABLE)
+SECTION BLUEPRINT COMPONENTS — EXCLUSIVE & NON-NEGOTIABLE
 ════════════════════════════════════
-This section's blueprint requires ALL of the following components. Every one MUST appear in the prose:
-${blueprintComponents.map((c: string) => `✓ ${c} — ${COMPONENT_GUIDANCE[c] || `include a ${c.toLowerCase()} element`}`).join("\n")}
+The reader selected the following as the ONLY content elements for this section.
+You MUST include every one of them. You MUST NOT include anything else.
 
-Integration rules:
-- Do NOT add section headers or bold labels for these components inside the prose.
-- Weave each component naturally into the flowing paragraphs.
-- The blueprint components supplement the 6-part structure — they do not replace it.
-- A reader should encounter all selected components before reaching the end of this section.
+${(blueprintComponents as string[]).map((c: string) => `✓ ${c} — ${COMPONENT_GUIDANCE[c] || `include a ${c.toLowerCase()} element`}`).join("\n")}
+
+FORBIDDEN — do NOT generate any of the following, even partially or under an alternate name:
+${forbiddenComponents.map((c: string) => `✗ ${c}`).join("\n")}
+${!(blueprintComponents as string[]).includes("Action Plan") ? "✗ Action Steps / Next Steps / To-Do / Practice Steps" : ""}
+${!(blueprintComponents as string[]).includes("Exercises") ? "✗ Try This / Activity / Practice Exercise / Exercise" : ""}
+${!(blueprintComponents as string[]).includes("Reflection Questions") ? "✗ Reflect / Think About / Self-Assessment questions" : ""}
+
+Critical rules:
+- The blueprint components listed above ARE the structure of this subsection. They REPLACE any default 6-part structure.
+- Do NOT follow the REQUIRED OUTPUT STRUCTURE section below — use the blueprint above instead.
+- Do NOT add headers, bold labels, or section breaks for the components — weave them naturally into flowing prose.
+- Every selected component MUST appear before the end of this subsection.
 ` : "";
 
   const strategyBlock = chapterStrategy ? `
@@ -1657,7 +1695,7 @@ ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAv
     ? `\nSubsection Purpose: ${subsectionPurpose}`
     : "";
 
-  const flowBlock = `
+  const flowBlock = hasBlueprint ? "" : `
 ════════════════════════════════════
 WRITING FLOW — ${structureKey.toUpperCase()} STRUCTURE
 ════════════════════════════════════
@@ -1665,11 +1703,11 @@ Structure: ${rawStructure || structureKey}
 Approach: ${flowDesc}
 
 You MUST write this subsection following this exact internal flow:
-${flow.map((step, i) => `${i + 1}. ${step}`).join("\n")}
+${effectiveFlow.map((step: string, i: number) => `${i + 1}. ${step}`).join("\n")}
 
 This flow determines how you organize and sequence the content.
 Do NOT use a generic introduction → explanation → example → summary template.
-Each section of this flow must be substantively different and add unique value.` ;
+Each section of this flow must be substantively different and add unique value.`;
 
   const antiTemplateRules = `
 ════════════════════════════════════
@@ -1721,7 +1759,7 @@ Tone Instruction: ${toneInstr}${prevNote}${strategyBlock}${blueprintBlock}${flow
 2. NO REPETITION — Every concept, framework, or example used here must be NEW. If previousConcepts lists it, do not repeat it in any form.
 3. TONE — Stay strictly within the selected tone and structure type. No tonal drift.
 4. PRACTICAL EXAMPLES — Include at least one concrete, specific, real-world example. No hypothetical placeholders ("imagine a person who…" without grounding it in reality).
-5. ACTIONABLE ADVICE — Every key point must close with something the reader can DO. Replace generic explanations with specific instructions.
+5. ACTIONABLE ADVICE — ${hasBlueprint && !(blueprintComponents as string[]).some((c: string) => ["Action Plan","Checklist","Exercises"].includes(c)) ? "Make ideas concrete and directly applicable to the reader's situation without forcing action steps." : "Every key point must close with something the reader can DO. Replace generic explanations with specific instructions."}
 6. SMOOTH TRANSITIONS — Open with a bridge that connects to the prior section. Close with a sentence that naturally leads into the next section.
 7. DEPTH — Expand important ideas beyond surface-level explanation. Choose one idea per section and go deep rather than covering many ideas shallowly.
 8. AUDIENCE FIRST — Every sentence must be written with the target reader's exact situation, vocabulary, and goals in mind. No expert jargon without immediate plain-language translation.
@@ -1733,7 +1771,13 @@ ${qualityCheck}${ctxBlock}${resBlock}
 ════════════════════════════════════
 REQUIRED OUTPUT STRUCTURE
 ════════════════════════════════════
-Every section MUST follow this exact 6-part structure internally within the prose:
+${hasBlueprint
+  ? `BLUEPRINT CONTENT STRUCTURE (follows from SECTION BLUEPRINT COMPONENTS above)
+Write the subsection as flowing prose that includes ONLY the blueprint components selected above.
+Do NOT follow a generic 6-part template. The blueprint components ARE the structure.
+Do NOT add any component that is marked FORBIDDEN above.
+The prose must flow as unified paragraphs — no internal headers or bold labels.`
+  : `Every section MUST follow this exact 6-part structure internally within the prose:
 
 1. ENGAGING INTRODUCTION — Hook the reader with a surprising fact, bold claim, short scene, or provocative question specific to this topic. No generic warm-ups.
 2. CLEAR CONCEPT EXPLANATION — Define and explain the core idea with precision. Use plain language. Anchor it to the reader's real situation.
@@ -1742,7 +1786,7 @@ Every section MUST follow this exact 6-part structure internally within the pros
 5. KEY TAKEAWAY — One distilled sentence that captures the single most important lesson. Make it memorable and quotable.
 6. NATURAL TRANSITION — A closing sentence or short paragraph that bridges into the next section without announcing it ("Next, we'll look at…").
 
-The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.
+The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.`}
 
 ════════════════════════════════════
 SUBSECTION UNIQUENESS TEST
@@ -1758,9 +1802,9 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 {
   "title": "The subsection title (publication-ready, specific, compelling)",
   "structureUsed": "${structureKey}",
-  "content": "The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.",
+  "content": "${hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
   "flowSections": [
-    ${flow.map(step => `{"label": "${step}", "text": "2-4 sentences summarizing what this flow section covers in the content"}`).join(",\n    ")}
+    ${(hasBlueprint ? (blueprintComponents as string[]) : effectiveFlow).map((step: string) => `{"label": "${step}", "text": "2-4 sentences summarizing what this section covers in the content"}`).join(",\n    ")}
   ],
   "keyTakeaway": "One sentence — the single most important thing the reader learns (matches part 5 of the prose)",
   "transition": "The exact closing sentence or short paragraph from part 6 — the natural bridge to the next section",
