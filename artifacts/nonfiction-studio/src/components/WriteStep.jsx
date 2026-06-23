@@ -140,12 +140,13 @@ export default function WriteStep({
     return map;
   }, [blocks]);
 
-  const [expandedChapters,  setExpandedChapters]  = useState({});
-  const [busyId,            setBusyId]            = useState(null);
-  const [batchBusy,         setBatchBusy]         = useState(false);
-  const [status,            setStatus]            = useState("");
-  const [chapterStrategies, setChapterStrategies] = useState({});
-  const [openBriefId,       setOpenBriefId]       = useState(null);
+  const [expandedChapters,   setExpandedChapters]   = useState({});
+  const [collapsedSections,  setCollapsedSections]  = useState({});
+  const [busyId,             setBusyId]             = useState(null);
+  const [batchBusy,          setBatchBusy]          = useState(false);
+  const [status,             setStatus]             = useState("");
+  const [chapterStrategies,  setChapterStrategies]  = useState({});
+  const [openBriefId,        setOpenBriefId]        = useState(null);
 
   const progress = useMemo(() => countDraftedBlocks(blocks, lessons), [blocks, lessons]);
 
@@ -528,7 +529,9 @@ export default function WriteStep({
                       const secNum    = `${ci + 1}.${si + 1}`;
                       const hasSubs   = subs.length > 0;
 
-                      const briefOpen = openBriefId === (sec.id || `s-${ci}-${si}`);
+                      const secKey     = sec.id || `s-${ci}-${si}`;
+                      const briefOpen  = openBriefId === secKey;
+                      const secCollapsed = collapsedSections[secKey] === true;
                       const secBlueprintComponents = Array.isArray(sec.blueprintComponents) ? sec.blueprintComponents : [];
                       const secSubTopics = subs.map((s) => s.title).filter(Boolean);
 
@@ -544,7 +547,7 @@ export default function WriteStep({
                             <button
                               type="button"
                               title="Section brief"
-                              onClick={() => setOpenBriefId(briefOpen ? null : (sec.id || `s-${ci}-${si}`))}
+                              onClick={() => setOpenBriefId(briefOpen ? null : secKey)}
                               className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
                                 briefOpen
                                   ? "border-sky-300 bg-sky-50 text-sky-700"
@@ -553,6 +556,16 @@ export default function WriteStep({
                             >
                               {briefOpen ? "✕ close" : "ⓘ brief"}
                             </button>
+                            {hasSubs && (
+                              <button
+                                type="button"
+                                title={secCollapsed ? "Show subsections" : "Hide subsections"}
+                                onClick={() => setCollapsedSections((p) => ({ ...p, [secKey]: !secCollapsed }))}
+                                className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-400 transition hover:border-slate-300 hover:text-slate-600"
+                              >
+                                {secCollapsed ? "▼ show" : "▲ hide"}
+                              </button>
+                            )}
                           </div>
 
                           {/* Section brief panel */}
