@@ -58,6 +58,7 @@ export function enumerateWriteBlocks(bookOutline) {
     const sections = Array.isArray(ch.sections) ? ch.sections : [];
     sections.forEach((sec, si) => {
       const subs = Array.isArray(sec.subsections) ? sec.subsections : [];
+      const sectionBlueprint = Array.isArray(sec.blueprintComponents) ? sec.blueprintComponents : [];
       if (subs.length === 0) {
         blocks.push({
           kind: "section",
@@ -67,6 +68,7 @@ export function enumerateWriteBlocks(bookOutline) {
           chapterKey,
           chapterContext,
           sectionTitle: sec.title || null,
+          blueprintComponents: sectionBlueprint,
           subsection: realSubsection(sec, `Section-level lesson within ${chapterContext.title}.`)
         });
         return;
@@ -80,6 +82,7 @@ export function enumerateWriteBlocks(bookOutline) {
           chapterKey,
           chapterContext,
           sectionTitle: sec.title || null,
+          blueprintComponents: sectionBlueprint,
           subsection: realSubsection(sub, `Subsection in ${sec.title || "section"} — deliver one new framework or tactic.`)
         });
       });

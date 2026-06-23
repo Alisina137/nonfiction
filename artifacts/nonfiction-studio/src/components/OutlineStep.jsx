@@ -110,6 +110,20 @@ function stripAfterColon(title) {
   return right.length > 0 ? right : s;
 }
 
+const BLUEPRINT_COMPONENTS = [
+  "Key Takeaways",
+  "Action Plan",
+  "Checklist",
+  "Exercises",
+  "Reflection Questions",
+  "Templates",
+  "Case Studies",
+  "Examples",
+  "Research Highlights",
+  "Resources",
+  "Summary",
+];
+
 function normalizeSection(s) {
   if (!s || typeof s !== "object") return newSectionSkeleton(650);
   return {
@@ -119,6 +133,7 @@ function normalizeSection(s) {
     words: Number(s.words) || 0,
     expanded: s.expanded !== false,
     subsections: Array.isArray(s.subsections) ? s.subsections.map(normalizeSub) : [],
+    blueprintComponents: Array.isArray(s.blueprintComponents) ? s.blueprintComponents : [],
   };
 }
 
@@ -246,6 +261,46 @@ function RegenBtn({ busy, onClick, title = "Regenerate title" }) {
   );
 }
 
+// ─── Blueprint Picker ─────────────────────────────────────────────────────────
+
+function BlueprintPicker({ selected, onChange }) {
+  return (
+    <div className="rounded-xl border border-violet-100 bg-violet-50/60 px-4 py-3">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+        Section Blueprint Components
+      </p>
+      <p className="mb-3 text-[10px] text-violet-600/80">
+        Selected components will be included in the AI-generated content for this section.
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {BLUEPRINT_COMPONENTS.map((c) => {
+          const checked = Array.isArray(selected) && selected.includes(c);
+          return (
+            <button
+              key={c}
+              type="button"
+              onClick={() =>
+                onChange(
+                  checked
+                    ? selected.filter((x) => x !== c)
+                    : [...(Array.isArray(selected) ? selected : []), c]
+                )
+              }
+              className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
+                checked
+                  ? "border-violet-500 bg-violet-600 text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+              }`}
+            >
+              {checked ? "✓ " : ""}{c}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const COUNT_OPTS = Array.from({ length: 15 }, (_, i) => i + 1);
@@ -260,11 +315,12 @@ export default function OutlineStep({
   currentStep,
   outlineStepIndex,
 }) {
-  const [regenBusy, setRegenBusy]       = useState({});
-  const [genSubsBusy, setGenSubsBusy]   = useState({});
-  const [genSecsBusy, setGenSecsBusy]   = useState({});
+  const [regenBusy, setRegenBusy]             = useState({});
+  const [genSubsBusy, setGenSubsBusy]         = useState({});
+  const [genSecsBusy, setGenSecsBusy]         = useState({});
   const [genChaptersBusy, setGenChaptersBusy] = useState(false);
-  const [genPhase, setGenPhase]         = useState("");
+  const [genPhase, setGenPhase]               = useState("");
+  const [blueprintOpenMap, setBlueprintOpenMap] = useState({});
 
   const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const intro = normalizeIntro(boRaw.introduction);
@@ -463,8 +519,9 @@ export default function OutlineStep({
           expanded: true,
           sections: items.map((item) => normalizeSection({
             ...newSectionSkeleton(secWords),
-            title:     item.title     || "New section",
-            objective: item.objective || "",
+            title:               item.title               || "New section",
+            objective:           item.objective           || "",
+            blueprintComponents: Array.isArray(item.blueprintComponents) ? item.blueprintComponents : [],
           })),
         });
       });
@@ -793,6 +850,24 @@ export default function OutlineStep({
                               />
                             </label>
                             <div className="flex items-center gap-1">
+                              {(() => {
+                                const bc = Array.isArray(sec.blueprintComponents) ? sec.blueprintComponents : [];
+                                const isOpen = !!blueprintOpenMap[sec.id];
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => setBlueprintOpenMap((p) => ({ ...p, [sec.id]: !p[sec.id] }))}
+                                    title="Set section blueprint components"
+                                    className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${
+                                      bc.length > 0
+                                        ? "border-violet-300 bg-violet-100 text-violet-700 hover:bg-violet-200"
+                                        : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-600"
+                                    }`}
+                                  >
+                                    ◆ {bc.length > 0 ? `${bc.length}` : "Blueprint"}
+                                  </button>
+                                );
+                              })()}
                               <button type="button" aria-label="Delete section"
                                 onClick={() => patchChaptersUpdater((cs) =>
                                   cs.map((cx) => cx.id !== ch.id ? cx : { ...cx, sections: (cx.sections || []).filter((s) => s.id !== sec.id) })
@@ -809,6 +884,18 @@ export default function OutlineStep({
                             </div>
                           </div>
                         </div>
+
+                        {/* Blueprint Picker */}
+                        {blueprintOpenMap[sec.id] && (
+                          <div className="mt-1 ml-0">
+                            <BlueprintPicker
+                              selected={sec.blueprintComponents || []}
+                              onChange={(next) =>
+                                updateSectionById(ch.id, sec.id, (s) => ({ ...s, blueprintComponents: next }))
+                              }
+                            />
+                          </div>
+                        )}
 
                         {/* Subsections */}
                         {sec.expanded !== false && (

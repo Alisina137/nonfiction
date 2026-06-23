@@ -1593,7 +1593,8 @@ export function lessonPrompt({
   chapterStrategy,
   bookStructure,
   sectionTitle,
-  subsectionPurpose
+  subsectionPurpose,
+  blueprintComponents
 }: any) {
   const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
   const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
@@ -1604,6 +1605,34 @@ export function lessonPrompt({
   const rawStructure = bookStructure || bookContext?.structure || chapterStrategy?.structureType || "";
   const { key: structureKey, flow, description: flowDesc } = resolveStructureFlow(rawStructure);
   const toneInstr = resolveToneInstruction(tone || bookContext?.tone || "");
+
+  const COMPONENT_GUIDANCE: Record<string, string> = {
+    "Key Takeaways":       "end with 3–5 clearly numbered key takeaways the reader should remember",
+    "Action Plan":         "include a numbered action plan with specific, time-bound steps",
+    "Checklist":           "include a formatted checklist the reader can use immediately",
+    "Exercises":           "include at least one hands-on exercise or practice activity with clear instructions",
+    "Reflection Questions":"include 2–3 thought-provoking reflection questions for the reader",
+    "Templates":           "include a reusable template, fill-in-the-blank framework, or structured format",
+    "Case Studies":        "include a real, named case study with specific details and measurable outcomes",
+    "Examples":            "include multiple concrete, named real-world examples (not hypotheticals)",
+    "Research Highlights": "cite specific research findings, statistics, or named studies with context",
+    "Resources":           "include 2–3 recommended resources (books, tools, websites) with brief descriptions",
+    "Summary":             "end with a concise summary paragraph recapping the main points of this section",
+  };
+  const blueprintBlock = Array.isArray(blueprintComponents) && blueprintComponents.length
+    ? `
+════════════════════════════════════
+SECTION BLUEPRINT COMPONENTS (NON-NEGOTIABLE)
+════════════════════════════════════
+This section's blueprint requires ALL of the following components. Every one MUST appear in the prose:
+${blueprintComponents.map((c: string) => `✓ ${c} — ${COMPONENT_GUIDANCE[c] || `include a ${c.toLowerCase()} element`}`).join("\n")}
+
+Integration rules:
+- Do NOT add section headers or bold labels for these components inside the prose.
+- Weave each component naturally into the flowing paragraphs.
+- The blueprint components supplement the 6-part structure — they do not replace it.
+- A reader should encounter all selected components before reaching the end of this section.
+` : "";
 
   const strategyBlock = chapterStrategy ? `
 ════════════════════════════════════
@@ -1683,7 +1712,7 @@ Subsection: ${subsectionTitle}${purposeNote}
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
-Tone Instruction: ${toneInstr}${prevNote}${strategyBlock}${flowBlock}${antiTemplateRules}
+Tone Instruction: ${toneInstr}${prevNote}${strategyBlock}${blueprintBlock}${flowBlock}${antiTemplateRules}
 
 ════════════════════════════════════
 10 NON-NEGOTIABLE WRITING RULES
@@ -2893,11 +2922,32 @@ Never return duplicate section titles.
 
 ====================================================
 
+====================================================
+
+BLUEPRINT COMPONENTS
+
+For every section, you must recommend 2–4 content components that best fit it from this exact list:
+
+Key Takeaways | Action Plan | Checklist | Exercises | Reflection Questions | Templates | Case Studies | Examples | Research Highlights | Resources | Summary
+
+Rules:
+- Choose components that genuinely match the section's purpose and learning angle.
+- "Key Takeaways" fits almost any section and should be included whenever appropriate.
+- "Research Highlights" fits data-driven or evidence-based sections.
+- "Case Studies" / "Examples" fit application-focused sections.
+- "Exercises" / "Reflection Questions" fit introspective or practice-oriented sections.
+- "Checklist" / "Templates" fit actionable how-to sections.
+- "Action Plan" fits implementation or strategy sections.
+- "Summary" fits complex or dense sections.
+- Do NOT recommend the same 2–3 components for every section. Vary meaningfully.
+
+====================================================
+
 OUTPUT FORMAT
 
 Return ONLY valid JSON — no markdown, no explanations, no code fences, no comments.
 
-{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter"}]}`;
+{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Key Takeaways","Case Studies"]}]}`;
 }
 
 export function subsectionGenerationPrompt(

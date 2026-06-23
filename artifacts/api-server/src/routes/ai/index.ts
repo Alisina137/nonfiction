@@ -502,7 +502,7 @@ router.post("/chapter-strategy", async (req, res) => {
 router.post("/lesson", async (req, res) => {
   try {
     const compressed = compressLessonBody(req.body);
-    const { chapterStrategy, bookStructure, sectionTitle, subsectionPurpose } = req.body || {};
+    const { chapterStrategy, bookStructure, sectionTitle, subsectionPurpose, blueprintComponents } = req.body || {};
     const { text, usedProvider } = await runLong(
       lessonPrompt({
         ...compressed,
@@ -511,7 +511,8 @@ router.post("/lesson", async (req, res) => {
         chapterStrategy,
         bookStructure,
         sectionTitle,
-        subsectionPurpose
+        subsectionPurpose,
+        blueprintComponents
       }),
       systemPrompt(),
       req,
@@ -1040,21 +1041,28 @@ router.post("/generate-sections", async (req, res) => {
     }
     const count = Math.min(15, Math.max(1, Number(sectionCount) || 3));
 
-    function parseSections(text: string): Array<{ title: string; objective: string }> {
+    const VALID_BLUEPRINT_COMPONENTS = new Set([
+      "Key Takeaways","Action Plan","Checklist","Exercises","Reflection Questions",
+      "Templates","Case Studies","Examples","Research Highlights","Resources","Summary"
+    ]);
+    function parseSections(text: string): Array<{ title: string; objective: string; blueprintComponents: string[] }> {
       const raw = extractJSON(text);
       if (!raw) return [];
       if (!Array.isArray(raw) && Array.isArray(raw.sections)) {
         return raw.sections
           .filter((s: any) => s && typeof s.sectionTitle === "string" && s.sectionTitle.trim())
           .map((s: any) => ({
-            title:     stripSectionColon(String(s.sectionTitle).trim()),
-            objective: typeof s.sectionObjective === "string" ? s.sectionObjective.trim() : ""
+            title:               stripSectionColon(String(s.sectionTitle).trim()),
+            objective:           typeof s.sectionObjective === "string" ? s.sectionObjective.trim() : "",
+            blueprintComponents: Array.isArray(s.blueprintComponents)
+              ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c))
+              : []
           }));
       }
       if (Array.isArray(raw)) {
         return raw
           .filter((t: any) => typeof t === "string" && t.trim())
-          .map((t: any) => ({ title: stripSectionColon(String(t).trim()), objective: "" }));
+          .map((t: any) => ({ title: stripSectionColon(String(t).trim()), objective: "", blueprintComponents: [] }));
       }
       return [];
     }

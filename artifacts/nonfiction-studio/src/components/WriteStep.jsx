@@ -217,16 +217,19 @@ export default function WriteStep({
         ? { ...strategyCache, [block.chapterKey]: chapterStrategy }
         : strategyCache;
       const data = await aiFetch("/api/ai/lesson", {
-        subsection:       block.subsection,
-        chapterContext:   block.chapterContext,
-        previousConcepts: collectPreviousConcepts(blocks, lessonsSnapshot, index),
-        audience:         writingAudience(fullProject),
-        tone:             writingTone(fullProject),
-        resources:        fullProject?.resources ?? null,
-        bookContext:      buildBookContext(fullProject),
-        bookStructure:    bookStructureVal(fullProject),
-        sectionTitle:     block.sectionTitle || null,
-        chapterStrategy:  chapterStrategy || null
+        subsection:          block.subsection,
+        chapterContext:      block.chapterContext,
+        previousConcepts:    collectPreviousConcepts(blocks, lessonsSnapshot, index),
+        audience:            writingAudience(fullProject),
+        tone:                writingTone(fullProject),
+        resources:           fullProject?.resources ?? null,
+        bookContext:         buildBookContext(fullProject),
+        bookStructure:       bookStructureVal(fullProject),
+        sectionTitle:        block.sectionTitle || null,
+        chapterStrategy:     chapterStrategy || null,
+        blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
+          ? block.blueprintComponents
+          : undefined
       }, { noCache: true });
       const lesson = data.lesson || data;
       const prose  = lessonToProse(lesson);
