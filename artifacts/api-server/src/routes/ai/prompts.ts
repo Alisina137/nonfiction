@@ -2970,7 +2970,7 @@ Never return duplicate section titles.
 
 BLUEPRINT COMPONENTS
 
-For every section, you must recommend 2–4 content components that best fit it from this exact list:
+For every section, you must recommend exactly 4 content components that best fit it from this exact list:
 
 Key Takeaways | Action Plan | Checklist | Exercises | Reflection Questions | Templates | Case Studies | Examples | Research Highlights | Resources | Summary
 
@@ -2983,7 +2983,7 @@ Rules:
 - "Checklist" / "Templates" fit actionable how-to sections.
 - "Action Plan" fits implementation or strategy sections.
 - "Summary" fits complex or dense sections.
-- Do NOT recommend the same 2–3 components for every section. Vary meaningfully.
+- Do NOT recommend the same 4 components for every section. Vary meaningfully.
 
 ====================================================
 
@@ -2991,7 +2991,7 @@ OUTPUT FORMAT
 
 Return ONLY valid JSON — no markdown, no explanations, no code fences, no comments.
 
-{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Key Takeaways","Case Studies"]}]}`;
+{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Highlights","Case Studies","Key Takeaways","Action Plan"]}]}`;
 }
 
 export function subsectionGenerationPrompt(
