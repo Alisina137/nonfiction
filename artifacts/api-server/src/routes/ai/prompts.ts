@@ -2046,30 +2046,82 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 }`;
 }
 
-export function improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext }: any) {
+export function improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, chapterTitle, sectionTitle, bookContext, customInstruction }: any) {
   const toneInstr = resolveToneInstruction(tone || "");
 
   const contextLines: string[] = [];
-  if (bookContext?.title)        contextLines.push(`Book: "${bookContext.title}"`);
+  if (bookContext?.title)         contextLines.push(`Book: "${bookContext.title}"`);
   if (audience || bookContext?.audience)
     contextLines.push(`Target Reader: ${audience || bookContext.audience}`);
   if (bookStructure || bookContext?.structure)
     contextLines.push(`Book Structure: ${bookStructure || bookContext.structure}`);
-  if (subsectionTitle)           contextLines.push(`Subsection: ${subsectionTitle}`);
-  if (bookContext?.bookTopic)    contextLines.push(`Core Topic: ${bookContext.bookTopic}`);
-  if (bookContext?.usp)          contextLines.push(`USP: ${bookContext.usp}`);
+  if (chapterTitle)               contextLines.push(`Chapter: ${chapterTitle}`);
+  if (sectionTitle)               contextLines.push(`Section: ${sectionTitle}`);
+  if (subsectionTitle)            contextLines.push(`Subsection: ${subsectionTitle}`);
+  if (bookContext?.bookTopic)     contextLines.push(`Core Topic: ${bookContext.bookTopic}`);
+  if (bookContext?.corePromise)   contextLines.push(`Book Promise: ${bookContext.corePromise}`);
+  if (bookContext?.transformationPromise) contextLines.push(`Reader Transformation: ${bookContext.transformationPromise}`);
+  if (bookContext?.usp)           contextLines.push(`USP: ${bookContext.usp}`);
   if (bookContext?.authorSummary) contextLines.push(`Author Voice: ${String(bookContext.authorSummary).slice(0, 200)}`);
   const ctxBlock = contextLines.length ? contextLines.join("\n") + "\n" : "";
 
+  // ── Generate Image — returns only an image prompt, never modifies the text ──
+  if (action === "generate_image") {
+    return `You are creating an image generation prompt for a nonfiction book.
+
+════════════════════════════════════
+BOOK CONTEXT
+════════════════════════════════════
+${ctxBlock}Voice & Tone: ${tone || "Direct & practical"}
+
+════════════════════════════════════
+SUBSECTION CONTENT (use as context)
+════════════════════════════════════
+${currentText}
+
+════════════════════════════════════
+TASK
+════════════════════════════════════
+Generate a detailed image prompt suitable for AI image generation that visually represents the core idea of this subsection.
+
+Requirements:
+- Include subject, setting, style, mood, composition, and important visual elements.
+- Match the educational purpose and tone of the subsection.
+- The image must support the reader's understanding without revealing or replacing the text.
+- Style should match the book's tone (e.g. professional infographic, editorial illustration, photorealistic scene).
+- Do NOT rewrite the subsection content.
+
+Return ONLY the image prompt — no commentary, no explanation.`;
+  }
+
+  // ── All other actions ──
   const ACTION_INSTRUCTIONS: Record<string, string> = {
+    edit_format:
+      "Edit and Format the content. Fix grammatical issues, improve readability, improve flow and transitions, remove awkward phrasing. Maintain the original meaning and do not significantly increase or decrease length.",
+    elaborate:
+      "Elaborate by expanding the content while preserving its intent. Add deeper explanations, supporting details, expanded key concepts, and useful insights. Increase depth without introducing unrelated ideas.",
+    cta:
+      "Include a Call-To-Action. Add a natural, motivating call-to-action near the end of the subsection that encourages the reader to implement what they just learned. Keep it aligned with the subsection topic. Avoid sounding promotional. Example style: 'Take a few minutes today to identify one recurring thought pattern and write down how it influences your decisions.'",
+    historical_fact:
+      "Add a Historical Fact. Insert a relevant historical fact, event, discovery, development, or milestone directly related to the subsection topic. Integrate it naturally into the content so it supports the main idea.",
+    quote:
+      "Support with a Quote. Add a relevant quote from a recognized expert, researcher, thinker, author, leader, or historical figure. Integrate the quote naturally and briefly explain how it supports the concept being discussed. Only use quotes that feel genuinely connected — not forced.",
+    add_source:
+      "Add a Source. Add references to supporting research, studies, books, organizations, institutions, or authoritative sources. Integrate references naturally. Sources must directly support the claims being made. Avoid excessive citations.",
+    strengthen_data:
+      "Strengthen with Data. Add relevant statistics, research findings, survey results, trends, studies, or measurable evidence that supports the subsection's core message. Present data naturally within the narrative to strengthen credibility without overwhelming the reader.",
+    // Legacy actions kept for backward compatibility
     sharpen:     "Rewrite for maximum clarity and precision. Remove vague language, redundancy, and motivational filler. Every sentence must earn its place. Keep the same length.",
     shorten:     "Tighten the writing by at least 20%. Cut redundancy, filler, and over-explanation. Preserve every key insight, example, and named framework.",
     expand:      "Deepen the content — add a concrete example, case study, or nuanced sub-point that the reader can immediately apply. Do NOT add filler or generic summaries. Add genuine depth only.",
     add_example: "Insert a vivid, specific, real-world example that makes the main concept tangible. Place it naturally within the existing flow. The example must be concrete, not hypothetical.",
   };
-  const instruction = ACTION_INSTRUCTIONS[action] || `Apply the following refinement: "${action}".`;
 
-  return `You are a professional nonfiction editor refining a single book section.
+  const instruction = action === "custom" && customInstruction
+    ? `Custom Enhancement — apply the following instruction exactly: "${customInstruction}"`
+    : (ACTION_INSTRUCTIONS[action] || `Apply the following refinement: "${action}".`);
+
+  return `You are editing an existing subsection within a nonfiction book.
 
 ════════════════════════════════════
 BOOK CONTEXT
@@ -2078,26 +2130,40 @@ ${ctxBlock}Voice & Tone: ${tone || "Direct & practical"}
 Tone Instruction: ${toneInstr}
 
 ════════════════════════════════════
-EDITING ACTION
+FLOW ACTION
 ════════════════════════════════════
 ${instruction}
 
 ════════════════════════════════════
-EDITING RULES (non-negotiable)
+GLOBAL RULES (non-negotiable)
 ════════════════════════════════════
-- Match the existing voice, tone, and reading level exactly — do NOT shift register
-- Do NOT change the structural purpose of the section
-- Do NOT add a generic summary paragraph or motivational closer at the end
-- Do NOT introduce markdown headers inside the prose
-- Preserve any specific examples, data points, named frameworks, or statistics already present
-- The refined text must feel like it belongs in a book with the context above
+- Preserve the original meaning unless the selected action explicitly requires expansion.
+- Maintain consistency with the book's tone, audience, and objectives.
+- Maintain consistency with the surrounding chapter, section, and subsection context.
+- Do not introduce unrelated topics.
+- Do not generate new chapter, section, or subsection titles.
+- Do not explain the changes.
+- Return only the updated content.
+- Ensure the content remains publication-ready.
+- Match the existing voice, tone, and reading level exactly — do NOT shift register.
+- Do NOT add a generic summary paragraph or motivational closer at the end.
+- Do NOT introduce markdown headers inside the prose.
 
 ════════════════════════════════════
-TEXT TO IMPROVE
+QUALITY VALIDATION (apply before returning)
+════════════════════════════════════
+Verify that the enhancement:
+- Supports the subsection purpose
+- Aligns with the book promise and desired transformation
+- Integrates naturally into the surrounding content
+- Is publication-ready
+
+════════════════════════════════════
+SUBSECTION CONTENT TO ENHANCE
 ════════════════════════════════════
 ${currentText}
 
-Return ONLY the refined prose — no commentary, no JSON, no metadata.`;
+Return ONLY the enhanced prose — no commentary, no JSON, no metadata.`;
 }
 
 export function architecturePreviewPrompt({
