@@ -147,6 +147,7 @@ export default function WriteStep({
   const [status,             setStatus]             = useState("");
   const [chapterStrategies,  setChapterStrategies]  = useState({});
   const [openBriefId,        setOpenBriefId]        = useState(null);
+  const [briefTexts,         setBriefTexts]         = useState({});
 
   const progress = useMemo(() => countDraftedBlocks(blocks, lessons), [blocks, lessons]);
 
@@ -209,6 +210,32 @@ export default function WriteStep({
       if (strategy) setChapterStrategies((prev) => ({ ...prev, [key]: strategy }));
       return strategy;
     } catch { return null; }
+  }
+
+  async function generateBrief(secKey, { chapterTitle, chapterDesc, sectionTitle, sectionDesc, subsections }) {
+    setBriefTexts((p) => ({ ...p, [secKey]: { status: "loading", text: "" } }));
+    try {
+      const fp  = fullProject || {};
+      const bd  = fp.bookDetails || {};
+      const res = fp.research   || {};
+      const pb  = fp.proposedBook?.content || {};
+      const data = await aiFetch("/api/ai/section-brief", {
+        bookTitle:    bd.title    || res.bookTitle    || "",
+        bookSubtitle: bd.subtitle || res.bookSubtitle || "",
+        niche:        [res.mainNicheLabel, res.subNicheLabel, res.deepNicheLabel].filter(Boolean).join(" › "),
+        audience:     writingAudience(fp),
+        tone:         writingTone(fp),
+        objectives:   bd.corePromise || pb.proposedTransformation || "",
+        chapterTitle: chapterTitle || "",
+        chapterDesc:  chapterDesc  || "",
+        sectionTitle: sectionTitle || "",
+        sectionDesc:  sectionDesc  || "",
+        subsections:  subsections  || []
+      }, { noCache: true });
+      setBriefTexts((p) => ({ ...p, [secKey]: { status: "done", text: data.brief || "" } }));
+    } catch (e) {
+      setBriefTexts((p) => ({ ...p, [secKey]: { status: "error", text: "" } }));
+    }
   }
 
   async function generateBlock(block, lessonsSnapshot = lessons, strategyCache = chapterStrategies) {
@@ -534,6 +561,7 @@ export default function WriteStep({
                       const secCollapsed = collapsedSections[secKey] === true;
                       const secBlueprintComponents = Array.isArray(sec.blueprintComponents) ? sec.blueprintComponents : [];
                       const secSubTopics = subs.map((s) => s.title).filter(Boolean);
+                      const briefEntry = briefTexts[secKey] || { status: "idle", text: "" };
 
                       return (
                         /* ── Section ── 32px top margin */
@@ -547,7 +575,22 @@ export default function WriteStep({
                             <button
                               type="button"
                               title="Section brief"
-                              onClick={() => setOpenBriefId(briefOpen ? null : secKey)}
+                              onClick={() => {
+                                if (briefOpen) {
+                                  setOpenBriefId(null);
+                                } else {
+                                  setOpenBriefId(secKey);
+                                  if (briefEntry.status === "idle") {
+                                    generateBrief(secKey, {
+                                      chapterTitle: ch.title       || "",
+                                      chapterDesc:  ch.description || "",
+                                      sectionTitle: sec.title      || "",
+                                      sectionDesc:  sec.objective  || sec.description || "",
+                                      subsections:  subs.map((s) => ({ title: s.title || "", description: s.description || s.objective || "" }))
+                                    });
+                                  }
+                                }
+                              }}
                               className={`flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-medium transition ${
                                 briefOpen
                                   ? "border-sky-300 bg-sky-50 text-sky-700"
@@ -570,41 +613,48 @@ export default function WriteStep({
 
                           {/* Section brief panel */}
                           {briefOpen && (
-                            <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50/60 p-4 text-[13px] space-y-3">
-                              {/* About */}
-                              <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 mb-1">What this section is about</p>
-                                <p className="text-slate-700 leading-relaxed">
-                                  {sec.objective || sec.description || <span className="italic text-slate-400">No objective set — add one in the Outline step.</span>}
-                                </p>
-                              </div>
-
-                              {/* Topics */}
-                              {secSubTopics.length > 0 && (
-                                <div>
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 mb-1">Concepts it will cover</p>
-                                  <ul className="space-y-0.5">
-                                    {secSubTopics.map((t, ti) => (
-                                      <li key={ti} className="flex items-start gap-1.5 text-slate-700">
-                                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
-                                        {t}
-                                      </li>
-                                    ))}
-                                  </ul>
+                            <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50/60 p-5 text-[13px]">
+                              {briefEntry.status === "loading" && (
+                                <div className="flex items-center gap-2 text-sky-600">
+                                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-200 border-t-sky-500" />
+                                  <span className="text-[12px] font-medium">Generating section brief…</span>
                                 </div>
                               )}
-
-                              {/* Blueprint components */}
-                              {secBlueprintComponents.length > 0 && (
+                              {briefEntry.status === "error" && (
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-[12px] text-red-500">Failed to generate brief.</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => generateBrief(secKey, {
+                                      chapterTitle: ch.title       || "",
+                                      chapterDesc:  ch.description || "",
+                                      sectionTitle: sec.title      || "",
+                                      sectionDesc:  sec.objective  || sec.description || "",
+                                      subsections:  subs.map((s) => ({ title: s.title || "", description: s.description || s.objective || "" }))
+                                    })}
+                                    className="rounded-full border border-red-200 bg-white px-3 py-0.5 text-[11px] font-medium text-red-500 hover:bg-red-50"
+                                  >
+                                    Retry
+                                  </button>
+                                </div>
+                              )}
+                              {briefEntry.status === "done" && (
                                 <div>
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 mb-1.5">Desired output per subsection</p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {secBlueprintComponents.map((c) => (
-                                      <span key={c} className="rounded-full border border-sky-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-sky-700">
-                                        {c}
-                                      </span>
-                                    ))}
-                                  </div>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600 mb-3">Section Brief</p>
+                                  <p className="text-slate-700 leading-relaxed whitespace-pre-line">{briefEntry.text}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => generateBrief(secKey, {
+                                      chapterTitle: ch.title       || "",
+                                      chapterDesc:  ch.description || "",
+                                      sectionTitle: sec.title      || "",
+                                      sectionDesc:  sec.objective  || sec.description || "",
+                                      subsections:  subs.map((s) => ({ title: s.title || "", description: s.description || s.objective || "" }))
+                                    })}
+                                    className="mt-3 rounded-full border border-slate-200 bg-white px-3 py-0.5 text-[11px] font-medium text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                                  >
+                                    ↺ Regenerate
+                                  </button>
                                 </div>
                               )}
                             </div>

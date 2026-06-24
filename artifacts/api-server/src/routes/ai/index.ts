@@ -29,6 +29,7 @@ import {
   outlinePrompt,
   regenTitlePrompt,
   resourcesBlock,
+  sectionBriefPrompt,
   structurePrompt,
   subtitleSuggestPrompt,
   topicSuggestPrompt,
@@ -188,6 +189,7 @@ const CONTENT_TYPE_TO_TASK: Record<string, TaskType> = {
   sectionGen:          "outline",
   subsectionGen:       "outline",
   chapterStrategy:     "outline",
+  sectionBrief:        "write",
   lesson:              "write",
   bookSection:         "write",
   authorPersona:       "write",
@@ -521,6 +523,33 @@ router.post("/chapter-strategy", async (req, res) => {
       return res.status(500).json({ error: "AI returned unparseable chapter strategy." });
     }
     return res.json({ strategy: data, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/section-brief", async (req, res) => {
+  try {
+    const {
+      bookTitle, bookSubtitle, niche, audience, tone, objectives,
+      chapterTitle, chapterDesc, sectionTitle, sectionDesc, subsections
+    } = req.body || {};
+    if (!sectionTitle?.trim()) return res.status(400).json({ error: "sectionTitle is required." });
+    const prompt = sectionBriefPrompt({
+      bookTitle:    bookTitle    || "",
+      bookSubtitle: bookSubtitle || "",
+      niche:        niche        || "",
+      audience:     audience     || "",
+      tone:         tone         || "",
+      objectives:   objectives   || "",
+      chapterTitle: chapterTitle || "",
+      chapterDesc:  chapterDesc  || "",
+      sectionTitle: sectionTitle || "",
+      sectionDesc:  sectionDesc  || "",
+      subsections:  Array.isArray(subsections) ? subsections : []
+    });
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "sectionBrief");
+    return res.json({ brief: text.trim(), _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

@@ -1,3 +1,88 @@
+// ─── Section Brief ───────────────────────────────────────────────────────────
+
+export function sectionBriefPrompt(params: {
+  bookTitle:    string;
+  bookSubtitle: string;
+  niche:        string;
+  audience:     string;
+  tone:         string;
+  objectives:   string;
+  chapterTitle: string;
+  chapterDesc:  string;
+  sectionTitle: string;
+  sectionDesc:  string;
+  subsections:  Array<{ title: string; description?: string }>;
+}): string {
+  const {
+    bookTitle, bookSubtitle, niche, audience, tone, objectives,
+    chapterTitle, chapterDesc, sectionTitle, sectionDesc, subsections
+  } = params;
+
+  const subsectionBlock = subsections.length
+    ? subsections.map((s, i) =>
+        `  ${i + 1}. ${s.title}${s.description ? `\n     → ${s.description}` : ""}`
+      ).join("\n")
+    : "  (no subsections defined)";
+
+  return `You are writing a Section Brief for a nonfiction book.
+
+━━━ BOOK CONTEXT ━━━
+Title:     ${bookTitle}${bookSubtitle ? ` — ${bookSubtitle}` : ""}
+Niche:     ${niche || "(not specified)"}
+Audience:  ${audience || "(not specified)"}
+Tone:      ${tone || "(not specified)"}
+${objectives ? `Book objectives: ${objectives}` : ""}
+
+━━━ CHAPTER ━━━
+Title:       ${chapterTitle}
+${chapterDesc ? `Description: ${chapterDesc}` : ""}
+
+━━━ SECTION ━━━
+Title:       ${sectionTitle}
+${sectionDesc ? `Objective:   ${sectionDesc}` : ""}
+
+━━━ SUBSECTIONS (content planned) ━━━
+${subsectionBlock}
+
+━━━ TASK ━━━
+Generate a concise but engaging Section Brief that serves as an introduction to this section and prepares the reader for the content that follows.
+
+The brief must contain three logical parts:
+
+1. Context & Importance
+   - Explain why this section matters.
+   - Connect it to the chapter and overall book objective.
+   - Create reader interest and establish relevance.
+
+2. What This Section Covers
+   - Naturally introduce the key ideas, concepts, challenges, insights, and themes explored in the subsections.
+   - Use the subsection structure as guidance, but do NOT simply list subsection titles.
+   - Write as a smooth narrative that creates anticipation.
+
+3. Expected Outcome
+   - Explain what the reader will understand, learn, achieve, or be able to do after completing the section.
+   - Outcomes must be directly supported by the actual subsection content.
+
+Coverage Alignment Rules:
+- Every concept, promise, benefit, skill, lesson, or outcome mentioned in the brief must be covered somewhere within the section's subsections.
+- Do not introduce topics that are not planned for the subsection content.
+- Do not promise results or insights that the subsections do not deliver.
+- The brief should act as a roadmap for the section, not as additional content.
+
+Requirements:
+- Length: 150–300 words total.
+- Write in the same tone, voice, and style as the book.
+- Do not use bullet points.
+- Do not repeat the section title excessively.
+- Do not include phrases such as "In subsection 1" or "This section contains."
+- Make the text feel like a professionally written nonfiction book introduction.
+- Build curiosity and momentum while remaining accurate to the actual content.
+- The final paragraph should naturally transition into the first subsection.
+- The brief should never reveal more than the subsections will cover.
+
+Return ONLY the prose text — no JSON, no headings, no labels, no preamble.`;
+}
+
 // ─── Shared project data extractor ───────────────────────────────────────────
 
 function safeStr(v: any): string {
