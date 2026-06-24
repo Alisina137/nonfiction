@@ -611,17 +611,9 @@ router.post("/extract-resource", async (req, res) => {
 
 router.post("/improve", async (req, res) => {
   try {
-    const {
-      action, currentText, tone, audience, bookStructure,
-      subsectionTitle, chapterTitle, sectionTitle,
-      bookContext, customInstruction
-    } = req.body || {};
+    const { action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext } = req.body || {};
     const { text, usedProvider } = await runLong(
-      improvementPrompt({
-        action, currentText, tone, audience, bookStructure,
-        subsectionTitle, chapterTitle, sectionTitle,
-        bookContext, customInstruction
-      }),
+      improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext }),
       systemPrompt(),
       req,
       res,
