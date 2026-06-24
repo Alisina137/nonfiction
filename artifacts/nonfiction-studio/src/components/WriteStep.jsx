@@ -548,7 +548,7 @@ export default function WriteStep({
                               type="button"
                               title="Section brief"
                               onClick={() => setOpenBriefId(briefOpen ? null : secKey)}
-                              className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
+                              className={`flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-medium transition ${
                                 briefOpen
                                   ? "border-sky-300 bg-sky-50 text-sky-700"
                                   : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600"
@@ -561,7 +561,7 @@ export default function WriteStep({
                                 type="button"
                                 title={secCollapsed ? "Show subsections" : "Hide subsections"}
                                 onClick={() => setCollapsedSections((p) => ({ ...p, [secKey]: !secCollapsed }))}
-                                className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-400 transition hover:border-slate-300 hover:text-slate-600"
+                                className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px] font-medium text-slate-400 transition hover:border-slate-300 hover:text-slate-600"
                               >
                                 {secCollapsed ? "▼ show" : "▲ hide"}
                               </button>
@@ -610,7 +610,7 @@ export default function WriteStep({
                             </div>
                           )}
 
-                          {hasSubs ? (
+                          {!secCollapsed && hasSubs ? (
                             /* Subsections */
                             subs.map((sub, qi) => {
                               const subNum  = `${secNum}.${qi + 1}`;
@@ -655,7 +655,7 @@ export default function WriteStep({
                                 </div>
                               );
                             })
-                          ) : (
+                          ) : !secCollapsed && !hasSubs ? (
                             /* Section-level block (no subsections) */
                             (() => {
                               const block = blockById.get(sec.id);
@@ -674,7 +674,7 @@ export default function WriteStep({
                                 </div>
                               ) : null;
                             })()
-                          )}
+                          ) : null}
                         </div>
                       );
                     })
