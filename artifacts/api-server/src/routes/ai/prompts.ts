@@ -898,14 +898,9 @@ Return valid JSON only:
 export function outlinePrompt({ idea, title, description, audience, tone }: any) {
   return `You are an expert nonfiction book architect.
 
-Your task is to create a professional, logically structured book outline that follows the same planning principles used by premium AI book-writing platforms.
+Your task is to generate the book outline as a collection of highly related topics that work together as a structured reader journey.
 
-CORE PRINCIPLES:
-1. Start with the book's central promise, transformation, or desired outcome.
-2. Design the outline as a reader journey from their current state to their desired state.
-3. Every chapter must move the reader closer to the promised outcome.
-4. Chapters must build upon previous chapters and create a natural progression.
-5. Avoid repetitive, overlapping, or filler chapters.
+The purpose of the outline is not simply to organize information. The purpose is to guide the reader from their current situation to the specific transformation promised by the book. Every chapter must contribute to that transformation.
 
 BOOK DETAILS:
 IDEA: ${idea || "(not provided)"}
@@ -913,6 +908,28 @@ TITLE: ${title || "(not provided)"}
 DESCRIPTION: ${description || "(not provided)"}
 AUDIENCE: ${audience || "(not provided)"}
 TONE: ${tone || "(not provided)"}
+
+READER TRANSFORMATION MAPPING:
+Before generating chapters, identify the Reader Starting State and Reader Desired End State from the book details above.
+Use these two states as the foundation of the outline — every chapter must move the reader measurably closer to the desired end state.
+
+CHAPTER PROGRESSION FRAMEWORK:
+Organize chapters into a clear progression: Awareness → Understanding → Foundation → Application → Challenges → Integration → Growth → Transformation.
+Not every stage needs its own chapter, but the outline must show clear movement from the reader's starting state to the promised end state.
+
+CHAPTER PURPOSE RULE:
+Every chapter must have a UNIQUE purpose. No two chapters may serve the same primary purpose.
+Valid purposes: Awareness / Problem Identification / Root Cause Analysis / Perspective Shift /
+Foundation Building / Framework Introduction / Skill Development / Practical Application /
+Obstacle Resolution / Habit Formation / Integration / Optimization / Mastery / Transformation
+
+KNOWLEDGE DEPENDENCY RULE:
+Design chapters with intentional dependencies. Earlier chapters must establish knowledge or frameworks that later chapters build upon.
+A reader should feel that each chapter prepares them for the next and that no chapter could be skipped without losing important context.
+
+BOOK PROMISE ALIGNMENT RULE:
+Every chapter must directly contribute to delivering the book's promised outcome.
+Relevance alone is not sufficient — contribution to the promised transformation is required.
 
 CHAPTER TITLE RULES:
 - Premium, professional, and compelling
@@ -929,7 +946,7 @@ SUBSECTION RULES (per section):
 - Every subsection must deepen the parent section
 
 Return ONLY valid JSON — no markdown, no explanation:
-{"chapters":[{"title":"Chapter title without colons","summary":"2-sentence summary of reader transformation this chapter delivers","sections":[{"title":"Section title","subsections":[{"title":"Subsection title"}]}]}]}`;
+{"chapters":[{"title":"Chapter title without colons","summary":"2-sentence summary of reader transformation this chapter delivers","chapterPurpose":"Exactly one purpose from the Chapter Purpose Rule list","sections":[{"title":"Section title","subsections":[{"title":"Subsection title"}]}]}]}`;
 }
 
 export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }: any) {
@@ -941,20 +958,16 @@ export function nicheOutlinePrompt({ research, architecture, title, description,
     : "direct and authoritative";
   const isStory = ["romance-arc", "romantasy-hybrid", "suspense-escalation", "mystery-procedural", "hero-journey", "narrative-arc"].includes(a.structureType || "");
 
+  const readerBefore = bookContext?.readerTransformationBefore || bookContext?.readerPainProfile || "";
+  const readerAfter  = bookContext?.readerTransformationAfter  || bookContext?.transformationPromise || "";
+
   return `You are an expert nonfiction book architect.
 
-Your task is to create a professional, logically structured book outline that follows the same planning principles used by premium AI book-writing platforms.
+Your task is to generate the book outline as a collection of highly related topics that work together as a structured reader journey.
 
-========================================
-CORE PRINCIPLES
-========================================
-1. Start with the book's central promise, transformation, or desired outcome.
-2. Design the outline as a reader journey from their current state to their desired state.
-3. Every chapter must move the reader closer to the promised outcome.
-4. Chapters must build upon previous chapters and create a natural progression.
-5. Avoid repetitive, overlapping, or filler chapters.
-6. Do not create chapters that feel isolated from the overall transformation.
-7. The outline must feel like it was planned by an experienced author, not generated from a template.
+The purpose of the outline is not simply to organize information. The purpose is to guide the reader from their current situation to the specific transformation promised by the book.
+
+Every chapter must contribute to that transformation and help the reader move one step closer to the desired outcome.
 
 ========================================
 BOOK PROFILE
@@ -971,12 +984,9 @@ DESCRIPTION: ${description || ""}
 ${bookContext ? `USP: ${bookContext.usp || ""}
 DIFFERENTIATION: ${bookContext.differentiation || ""}
 READER PAIN PROFILE: ${bookContext.readerPainProfile || ""}
-READER BEFORE STATE: ${bookContext.readerTransformationBefore || bookContext.readerPainProfile || ""}
-READER AFTER STATE: ${bookContext.readerTransformationAfter || bookContext.transformationPromise || ""}
-READER TRANSFORMATION PROMISE: ${bookContext.transformationPromise || ""}
-MARKET GAP TO FILL: ${bookContext.marketGap || ""}
 CORE PROMISE: ${bookContext.corePromise || ""}
 UNIQUE MECHANISM: ${bookContext.uniqueMechanism || ""}
+MARKET GAP TO FILL: ${bookContext.marketGap || ""}
 WRITING STYLE BENCHMARK: ${bookContext.writingStyleFingerprint || ""}
 POSITIONING STRATEGY: ${bookContext.positioningStrategy || ""}
 EMOTIONAL TRIGGERS: ${bookContext.emotionalTriggers || ""}
@@ -985,6 +995,17 @@ KEY SELLING POINTS:
 ${bookContext.keySellingPoints || ""}
 COMPETING TITLES (differentiate from these): ${bookContext.competitorTitles || ""}` : ""}
 ${resources ? resourcesBlock(resources, "outline") : ""}
+
+========================================
+READER TRANSFORMATION MAPPING
+========================================
+${readerBefore ? `Reader Starting State: ${readerBefore}` : "Reader Starting State: (derive from book context above)"}
+${readerAfter  ? `Reader Desired End State: ${readerAfter}` : "Reader Desired End State: (derive from book context above)"}
+
+Use these two states as the foundation of the entire outline.
+Every chapter must move the reader measurably closer to the desired end state.
+The transformation must occur progressively throughout the book — not only at the conclusion.
+
 ========================================
 STRUCTURAL BLUEPRINT
 ========================================
@@ -999,10 +1020,61 @@ Niche beat flow:
 ${flow || "(apply sub-niche-native escalation — never generic beats)"}
 
 ========================================
+BOOK PROMISE ALIGNMENT RULE (non-negotiable)
+========================================
+The primary promise of the book is the highest priority.
+Every chapter must directly contribute to delivering the promised outcome and desired transformation.
+
+Before finalizing each chapter, verify: "How does this chapter help the reader achieve the book's promised result?"
+
+If a chapter does not clearly contribute to the promise, revise, replace, merge, or remove it.
+Relevance alone is not sufficient. Contribution to the promised transformation is required.
+
+========================================
+CHAPTER PROGRESSION FRAMEWORK
+========================================
+Organize chapters into a logical progression. Common stages include:
+
+- Awareness: Help the reader understand the problem, opportunity, challenge, or desired outcome.
+- Understanding: Explore root causes, psychology, mechanisms, misconceptions, patterns.
+- Foundation: Introduce essential concepts, principles, frameworks, mental models.
+- Application: Teach actionable methods, systems, exercises, strategies, practical implementation.
+- Challenges: Address mistakes, obstacles, resistance, setbacks, common failure reasons.
+- Integration: Show how to apply concepts consistently in real-life situations.
+- Growth: Help the reader improve, optimize, expand, and sustain progress.
+- Transformation: Demonstrate mastery, long-term benefits, future possibilities, final outcome.
+
+Not every book must use these exact stage names, but every outline must contain a clear progression from starting point to transformation.
+
+========================================
+CHAPTER PURPOSE RULE (non-negotiable)
+========================================
+Every chapter must have a UNIQUE purpose within the journey.
+
+Assign each chapter exactly ONE of these purposes (no two chapters may share the same primary purpose):
+Awareness / Problem Identification / Root Cause Analysis / Perspective Shift /
+Foundation Building / Framework Introduction / Skill Development / Practical Application /
+Obstacle Resolution / Habit Formation / Integration / Optimization / Maintenance / Mastery / Transformation
+
+No two chapters should serve the same primary purpose.
+Avoid repetitive chapters that cover similar ground from different angles.
+
+========================================
+KNOWLEDGE DEPENDENCY RULE
+========================================
+Design chapters with intentional dependencies.
+Earlier chapters must establish knowledge, awareness, skills, frameworks, or perspectives that later chapters build upon.
+A reader should feel that each chapter prepares them for the next.
+Avoid chapters that could be moved to a completely different position without affecting the learning experience.
+Each chapter should feel necessary rather than optional.
+
+========================================
 CHAPTER GENERATION RULES
 ========================================
 - Generate exactly ${chapterCount} chapters that cover the complete transformation.
 - Each chapter must have a clear, singular objective.
+- Each chapter must answer an important question the reader needs answered before they can achieve the promised outcome.
+- Each chapter must make the next chapter more valuable.
 - Chapter titles must be premium, professional, and compelling.
 - NEVER use colons (:) in chapter titles.
 - Preferred title formats:
@@ -1016,14 +1088,24 @@ ${isStory ? `STORY/NARRATIVE STRUCTURE — each chapter must contain:
 - Clear narrative purpose in the story arc
 - Subsections represent: turning points, emotional shifts, conflicts, discoveries, climaxes, resolutions
 - Thematic consistency across chapters
-- Character development / emotional progression built into subsection titles` : `NONFICTION CHAPTER CONTENT (each chapter should contain):
-- Opening hook (grabs attention immediately)
-- Core concept (what this chapter teaches)
-- Explanation (why it matters, evidence-backed)
-- Example or case study (real-world grounding)
-- Framework or system (practical model the reader can use)
-- Actionable takeaway (what to do next)
-- Mini summary or reflection prompt`}
+- Character development / emotional progression built into subsection titles` : `NONFICTION CHAPTER CONTENT (each chapter should be broad enough to support):
+- Multiple sections and subsections with room for meaningful expansion
+- Practical examples, stories, or case studies when appropriate
+- Actionable insights and supporting explanations
+- A framework or system the reader can apply
+Avoid chapter concepts that are too narrow, repetitive, or difficult to expand.`}
+
+========================================
+CHAPTER RELATIONSHIP RULES
+========================================
+- Chapters must remain tightly connected to the central book promise.
+- Chapters must complement and reinforce one another.
+- Chapters must build logically upon previous chapters.
+- Avoid disconnected or isolated topics.
+- Avoid unnecessary repetition.
+- Avoid introducing advanced concepts before foundational concepts.
+- Avoid returning to beginner-level topics near the end of the book.
+- Ensure readers can clearly feel their progress as they move through the book.
 
 ========================================
 HIERARCHY RULE
@@ -1031,6 +1113,31 @@ HIERARCHY RULE
 Book Promise → Chapter Objective → Section Objective → Subsection Objective
 Every child element must directly support its parent element.
 Sections and subsections are generated separately per chapter — do NOT include them in this output.
+
+========================================
+NARRATIVE FLOW TEST (apply before finalizing)
+========================================
+When reading only the chapter titles, the reader should feel:
+- Curiosity about what comes next
+- Confidence that the book is leading somewhere meaningful
+- A sense of forward movement
+- Increasing depth and sophistication
+- A clear progression toward the promised transformation
+
+The table of contents should feel like a transformation story, not a list of lessons.
+
+========================================
+READER JOURNEY VALIDATION (apply before finalizing)
+========================================
+Verify each of the following — if any answer is NO, revise the outline:
+- Does the first chapter provide a clear starting point?
+- Does each chapter naturally lead to the next?
+- Does the outline gradually increase in depth and sophistication?
+- Does the middle focus on implementation and practical application?
+- Do later chapters focus on integration, improvement, sustainability, or mastery?
+- Does the final chapter feel like a meaningful destination rather than another beginning?
+- Does every chapter contribute to the promised transformation?
+- Does the progression feel complete from beginning to end?
 
 ========================================
 QUALITY RULES
@@ -1082,7 +1189,7 @@ Do NOT generate sections or subsections.
 Leave every "sections" array completely empty: [].
 
 Return ONLY valid JSON — no markdown, no explanation:
-{"chapters":[{"title":"Chapter title — specific, compelling, no colons","chapterObjective":"1–2 sentence description of what this chapter achieves in the reader's transformation arc","importanceScore":85,"complexityScore":70,"expansionScore":80,"sections":[]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
+{"chapters":[{"title":"Chapter title — specific, compelling, no colons","chapterObjective":"1–2 sentence description of what this chapter achieves in the reader's transformation arc","chapterPurpose":"Exactly one purpose from the Chapter Purpose Rule list","importanceScore":85,"complexityScore":70,"expansionScore":80,"sections":[]}],"readerStartingState":"One sentence describing where the reader begins","readerEndState":"One sentence describing where the reader ends up","architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
 }
 
 export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
