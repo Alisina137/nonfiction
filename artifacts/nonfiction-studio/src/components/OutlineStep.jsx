@@ -320,6 +320,7 @@ export default function OutlineStep({
   const [genSecsBusy, setGenSecsBusy]         = useState({});
   const [genChaptersBusy, setGenChaptersBusy] = useState(false);
   const [genPhase, setGenPhase]               = useState("");
+  const [genError, setGenError]               = useState("");
   const [blueprintOpenMap, setBlueprintOpenMap] = useState({});
 
   const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
@@ -440,8 +441,8 @@ export default function OutlineStep({
   // ─── Generate chapters — dynamic section + word assignment ──────────────────
 
   async function generateChapters() {
-    if (!arch) return;
     setGenChaptersBusy(true);
+    setGenError("");
     setGenPhase("Analyzing book data…");
 
     const phaseTimers = [
@@ -453,28 +454,58 @@ export default function OutlineStep({
     try {
       const bd = fullProject?.bookDetails || {};
       const targetWords = midpointTargetWords(bd.wordCountRange || "");
+      const reserveWords = Math.max(700, Math.round(targetWords * 0.035));
 
-      const data = await aiFetch("/api/ai/niche-outline", {
-        architecture: arch,
-        title:        resolveBookTitle(fullProject),
-        description:  bd.description || bd.positioningStatement || "",
-        research:     fullProject?.research,
-        bookContext:  buildBookContext(fullProject),
-      });
+      let mappedChapters;
 
-      const result = applyDynamicOutlineToBookOutline(data, arch, targetWords);
-      if (!Array.isArray(result?.chapters) || result.chapters.length === 0) return;
-
-      const reserveWords = result.introWords ?? Math.max(700, Math.round(targetWords * 0.035));
+      if (arch) {
+        const data = await aiFetch("/api/ai/niche-outline", {
+          architecture: arch,
+          title:        resolveBookTitle(fullProject),
+          description:  bd.description || bd.positioningStatement || "",
+          research:     fullProject?.research,
+          bookContext:  buildBookContext(fullProject),
+        });
+        const result = applyDynamicOutlineToBookOutline(data, arch, targetWords);
+        if (!Array.isArray(result?.chapters) || result.chapters.length === 0) {
+          setGenError("AI returned an empty chapter list — please try again.");
+          return;
+        }
+        mappedChapters = result.chapters;
+      } else {
+        const data = await aiFetch("/api/ai/outline", {
+          title:       resolveBookTitle(fullProject),
+          description: bd.description || bd.positioningStatement || "",
+          idea:        bd.idea || bd.positioningStatement || "",
+          audience:    bd.targetAudience || bd.audience || "",
+          tone:        bd.tone || "",
+        });
+        const rawChapters = Array.isArray(data?.chapters) ? data.chapters : [];
+        if (rawChapters.length === 0) {
+          setGenError("AI returned an empty chapter list — please try again.");
+          return;
+        }
+        const chapterBudget = Math.max(1000, targetWords - reserveWords * 2);
+        const perCh = Math.max(450, Math.round(chapterBudget / rawChapters.length));
+        mappedChapters = rawChapters.map((ch, ci) => ({
+          id:        safeId(),
+          title:     ch.title || `Chapter ${ci + 1}`,
+          objective: ch.objective || "",
+          words:     perCh,
+          expanded:  true,
+          sections:  [],
+        }));
+      }
 
       commit((draft) => ({
         ...draft,
         introduction: { ...normalizeIntro(draft.introduction), words: reserveWords },
         conclusion:   { ...normalizeConclusion(draft.conclusion), words: reserveWords },
-        chapters:     result.chapters.map(normalizeChapter),
+        chapters:     mappedChapters.map(normalizeChapter),
       }));
     } catch (e) {
       console.error("[generate-chapters]", e?.message);
+      setGenError("Generation failed — please check your connection and try again.");
     } finally {
       phaseTimers.forEach(clearTimeout);
       setGenChaptersBusy(false);
@@ -644,9 +675,9 @@ export default function OutlineStep({
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            disabled={genChaptersBusy || !arch}
+            disabled={genChaptersBusy}
             onClick={generateChapters}
-            title={arch ? "Generate chapters with dynamic sections and word counts" : "Complete the Research step first to enable chapter generation"}
+            title="Generate chapters with AI"
             className="flex items-center gap-2 rounded-lg border border-indigo-300 bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
           >
             {genChaptersBusy ? (
@@ -676,6 +707,16 @@ export default function OutlineStep({
           <div className="flex items-center gap-2.5 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-2.5">
             <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-indigo-400 border-t-indigo-700" />
             <span className="text-xs font-medium text-indigo-800">{genPhase}</span>
+          </div>
+        )}
+        {genError && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
+            <span className="text-xs font-medium text-red-700">{genError}</span>
+            <button
+              type="button"
+              onClick={() => setGenError("")}
+              className="shrink-0 text-xs text-red-400 hover:text-red-600"
+            >✕</button>
           </div>
         )}
       </section>
