@@ -932,9 +932,9 @@ Return ONLY valid JSON — no markdown, no explanation:
 {"chapters":[{"title":"Chapter title without colons","summary":"2-sentence summary of reader transformation this chapter delivers","sections":[{"title":"Section title","subsections":[{"title":"Subsection title"}]}]}]}`;
 }
 
-export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }: any) {
+export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext, chapterCount: chapterCountOverride }: any) {
   const a = architecture || {};
-  const chapterCount = a.recommendedChapters?.default || 10;
+  const chapterCount = Math.max(5, Math.min(15, Number(chapterCountOverride) || a.recommendedChapters?.default || 10));
   const flow = (a.chapterFlow || []).map((beat: string, i: number) => `${i + 1}. ${beat}`).join("\n");
   const tones = Array.isArray(research?.authorTones) && research.authorTones.length
     ? research.authorTones.join(", ")

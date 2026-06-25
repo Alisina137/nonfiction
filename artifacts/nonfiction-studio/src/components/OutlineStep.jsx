@@ -455,11 +455,12 @@ export default function OutlineStep({
       const targetWords = midpointTargetWords(bd.wordCountRange || "");
 
       const data = await aiFetch("/api/ai/niche-outline", {
-        architecture: arch,
-        title:        resolveBookTitle(fullProject),
-        description:  bd.description || bd.positioningStatement || "",
-        research:     fullProject?.research,
-        bookContext:  buildBookContext(fullProject),
+        architecture:  arch,
+        title:         resolveBookTitle(fullProject),
+        description:   bd.description || bd.positioningStatement || "",
+        research:      fullProject?.research,
+        bookContext:   buildBookContext(fullProject),
+        chapterCount:  Number(bd.chapterCount) || 10,
       });
 
       const result = applyDynamicOutlineToBookOutline(data, arch, targetWords);

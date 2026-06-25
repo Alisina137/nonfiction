@@ -15,7 +15,7 @@ export const EXHAUSTED_KEY    = "nonfiction-ai-exhausted-local";   // { [provide
 export const MANUAL_OFF_KEY   = "nonfiction-ai-disabled-manual";   // [provider, ...]
 export const PREFERRED_KEY    = "nonfiction-ai-preferred-provider"; // "gemini"|"groq"|"openrouter"|""
 
-const NO_CACHE_PATHS = ["/api/ai/improve"];
+const NO_CACHE_PATHS = ["/api/ai/improve", "/api/ai/niche-outline", "/api/ai/outline"];
 
 export const PROVIDER_LABELS = {
   gemini:     "Gemini",

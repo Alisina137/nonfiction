@@ -478,19 +478,68 @@ router.post("/outline", async (req, res) => {
 
 router.post("/niche-outline", async (req, res) => {
   try {
-    const { research, architecture, title, description, resources, bookContext } = req.body || {};
+    const { research, architecture, title, description, resources, bookContext, chapterCount: reqChapterCount } = req.body || {};
     if (!architecture?.subNicheLabel)
       return res.status(400).json({ error: "Missing niche architecture" });
+
+    // Client-supplied count wins over architecture default
+    const expectedCount = Math.max(5, Math.min(15, Number(reqChapterCount) || architecture?.recommendedChapters?.default || 10));
+
     const { text, usedProvider } = await runLong(
-      nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }),
+      nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext, chapterCount: expectedCount }),
       nicheSystemPrompt(architecture),
       req,
       res,
       "outline"
     );
-    const data = extractJSON(text);
-    const chapters = sanitizeOutlineSections(data.chapters || []);
-    return res.json({ ...data, chapters, _provider: usedProvider });
+
+    // ── Primary parse ──────────────────────────────────────────────────────
+    let primaryChapters: any[] = [];
+    try {
+      const data = extractJSON(text);
+      primaryChapters = sanitizeOutlineSections(data.chapters || []);
+      // Guard: truncation repair can produce a single chapter — require at least half
+      if (primaryChapters.length >= Math.ceil(expectedCount / 2)) {
+        return res.json({ ...data, chapters: primaryChapters, _provider: usedProvider });
+      }
+      console.warn(`[niche-outline] Primary returned ${primaryChapters.length}/${expectedCount} chapters — truncated, trying rescue`);
+    } catch (parseErr: any) {
+      console.warn(`[niche-outline] Primary parse failed (${usedProvider}): ${String(parseErr?.message).slice(0, 200)}`);
+      console.warn(`[niche-outline] Raw snippet: ${String(text).slice(0, 500)}`);
+    }
+
+    // ── Rescue: compact focused prompt, harder to truncate ────────────────
+    const rescuePrompt = `Generate exactly ${expectedCount} chapters for this nonfiction book.
+
+TITLE: "${title || "Untitled"}"
+TOPIC: ${research?.bookTopic || description || ""}
+NICHE: ${architecture?.mainNicheLabel || ""} › ${architecture?.subNicheLabel || ""}
+AUDIENCE: ${research?.targetAudience || ""}
+
+Scores are integers 1–100. Use the full range — do NOT cluster at the same value.
+importanceScore = how critical this chapter is to the book's core promise
+complexityScore = how dense/demanding the content is
+expansionScore = how much depth, examples, and elaboration it needs
+
+Return ONLY valid JSON, no markdown, no preamble:
+{"chapters":[{"title":"Chapter title","chapterObjective":"One sentence.","chapterPurpose":"Practical Application","importanceScore":80,"complexityScore":65,"expansionScore":75,"sections":[]}]}
+
+All ${expectedCount} chapters:`;
+
+    try {
+      const rescue = await runShort(rescuePrompt, nicheSystemPrompt(architecture), req, res, "outline");
+      const rescueData = extractJSON(rescue.text);
+      const rescueChapters = sanitizeOutlineSections(rescueData.chapters || []);
+      if (rescueChapters.length >= Math.ceil(expectedCount / 2)) {
+        console.log(`[niche-outline] Rescue: ${rescueChapters.length} chapters via ${rescue.usedProvider}`);
+        return res.json({ chapters: rescueChapters, _provider: rescue.usedProvider, _rescued: true });
+      }
+      console.warn(`[niche-outline] Rescue returned only ${rescueChapters.length} chapters`);
+    } catch (rescueErr: any) {
+      console.warn(`[niche-outline] Rescue failed: ${String(rescueErr?.message).slice(0, 200)}`);
+    }
+
+    return res.status(500).json({ error: "Could not generate a complete chapter outline — please try again." });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
@@ -1104,7 +1153,8 @@ router.post("/generate-sections", async (req, res) => {
       "Templates","Case Studies","Examples","Research Highlights","Resources","Summary"
     ]);
     function parseSections(text: string): Array<{ title: string; objective: string; blueprintComponents: string[] }> {
-      const raw = extractJSON(text);
+      let raw: any;
+      try { raw = extractJSON(text); } catch { return []; }
       if (!raw) return [];
       if (!Array.isArray(raw) && Array.isArray(raw.sections)) {
         return raw.sections
