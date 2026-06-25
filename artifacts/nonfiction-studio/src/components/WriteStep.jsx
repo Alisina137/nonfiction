@@ -12,15 +12,10 @@ import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
 
 const IMPROVE_ACTIONS = [
-  { id: "edit_format",     label: "Edit & Format"    },
-  { id: "elaborate",       label: "Elaborate"        },
-  { id: "cta",             label: "Call to Action"   },
-  { id: "historical_fact", label: "Historical Fact"  },
-  { id: "quote",           label: "Add Quote"        },
-  { id: "add_source",      label: "Add Source"       },
-  { id: "strengthen_data", label: "Add Data"         },
-  { id: "generate_image",  label: "Image Prompt"     },
-  { id: "custom",          label: "Custom…"          },
+  { id: "sharpen",     label: "Sharpen clarity" },
+  { id: "shorten",     label: "Tighten length" },
+  { id: "expand",      label: "Add depth" },
+  { id: "add_example", label: "Add example" }
 ];
 
 function writingTone(fp) {
@@ -62,21 +57,11 @@ function GenerateBtn({ busy, hasContent, disabled, onClick, small }) {
 }
 
 /** Renders the content area for one write block. */
-function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove, onSetProse, imagePrompt }) {
+function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove, onSetProse }) {
   const prose      = String(lessons?.[blockId]?.prose || "").trim();
   const hasContent = blockHasContent(lessons, blockId);
   const isThisBusy = busyId === blockId;
   const lesson     = lessons?.[blockId]?.lesson;
-
-  const [customText,    setCustomText]    = useState("");
-  const [showCustom,    setShowCustom]    = useState(false);
-  const [showImagePanel, setShowImagePanel] = useState(false);
-
-  // Auto-show image panel when a new result arrives
-  const prevImagePrompt = useState(imagePrompt)[0];
-  useEffect(() => {
-    if (imagePrompt && imagePrompt !== prevImagePrompt) setShowImagePanel(true);
-  }, [imagePrompt]);
 
   if (isThisBusy && !hasContent) {
     return (
@@ -90,25 +75,15 @@ function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove,
   if (!hasContent) {
     return (
       <div className="mt-3">
-        <GenerateBtn busy={isThisBusy} hasContent={false} disabled={isBusy} onClick={onGenerate} small={false} />
+        <GenerateBtn
+          busy={isThisBusy}
+          hasContent={false}
+          disabled={isBusy}
+          onClick={onGenerate}
+          small={false}
+        />
       </div>
     );
-  }
-
-  function handleActionClick(actionId) {
-    if (actionId === "custom") {
-      setShowCustom((p) => !p);
-    } else {
-      if (actionId === "generate_image") setShowImagePanel(true);
-      onImprove(blockId, actionId);
-    }
-  }
-
-  function submitCustom() {
-    if (!customText.trim()) return;
-    onImprove(blockId, "custom", customText.trim());
-    setShowCustom(false);
-    setCustomText("");
   }
 
   return (
@@ -125,88 +100,21 @@ function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove,
           Key takeaway: <span className="font-medium text-slate-600">{lesson.keyTakeaway}</span>
         </p>
       )}
-
-      {/* Action bar */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <GenerateBtn busy={isThisBusy} hasContent disabled={isBusy} onClick={onGenerate} small />
-        <span className="text-slate-200 select-none">|</span>
+        <span className="text-slate-200">|</span>
         {IMPROVE_ACTIONS.map((action) => (
           <button
             key={action.id}
             type="button"
             disabled={isBusy}
-            onClick={() => handleActionClick(action.id)}
-            className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition disabled:opacity-50 ${
-              action.id === "custom" && showCustom
-                ? "border-violet-300 bg-violet-50 text-violet-700"
-                : action.id === "generate_image"
-                  ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-sky-200 hover:bg-sky-50/60"
-            }`}
+            onClick={() => onImprove(blockId, action.id)}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:border-sky-200 hover:bg-sky-50/60 disabled:opacity-50"
           >
             {action.label}
           </button>
         ))}
       </div>
-
-      {/* Custom instruction input */}
-      {showCustom && (
-        <div className="mt-2 flex items-start gap-2">
-          <textarea
-            className="flex-1 resize-none rounded-lg border border-violet-200 bg-white px-3 py-2 text-[13px] text-slate-700 shadow-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-            rows={2}
-            placeholder="Describe what you want to change or add…"
-            value={customText}
-            onChange={(e) => setCustomText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitCustom(); }}
-            disabled={isBusy}
-            autoFocus
-          />
-          <div className="flex flex-col gap-1">
-            <button
-              type="button"
-              disabled={isBusy || !customText.trim()}
-              onClick={submitCustom}
-              className="rounded-lg bg-violet-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowCustom(false); setCustomText(""); }}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-medium text-slate-500 hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Image prompt panel */}
-      {imagePrompt && showImagePanel && (
-        <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/60 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Image Prompt</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => navigator.clipboard?.writeText(imagePrompt)}
-                className="rounded-full border border-amber-200 bg-white px-2.5 py-0.5 text-[10px] font-medium text-amber-700 hover:bg-amber-50"
-              >
-                Copy
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowImagePanel(false)}
-                className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-          <p className="text-[13px] text-slate-700 leading-relaxed">{imagePrompt}</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -240,7 +148,6 @@ export default function WriteStep({
   const [chapterStrategies,  setChapterStrategies]  = useState({});
   const [openBriefId,        setOpenBriefId]        = useState(null);
   const [briefTexts,         setBriefTexts]         = useState({});
-  const [imagePrompts,       setImagePrompts]       = useState({});
 
   const progress = useMemo(() => countDraftedBlocks(blocks, lessons), [blocks, lessons]);
 
@@ -374,7 +281,7 @@ export default function WriteStep({
     }
   }
 
-  async function improveBlock(blockId, action, customInstruction) {
+  async function improveBlock(blockId, action) {
     const block = blockById.get(blockId);
     const prose = String(lessons?.[blockId]?.prose || "").trim();
     if (!block || !prose) return;
@@ -383,28 +290,19 @@ export default function WriteStep({
     try {
       const data = await aiFetch("/api/ai/improve", {
         action,
-        customInstruction:  customInstruction || "",
-        currentText:        prose,
-        tone:               writingTone(fullProject),
-        audience:           writingAudience(fullProject),
-        bookStructure:      bookStructureVal(fullProject),
-        subsectionTitle:    block.label || "",
-        chapterTitle:       block.chapterContext?.title   || "",
-        sectionTitle:       block.sectionTitle            || "",
-        bookContext:        buildBookContext(fullProject)
+        currentText:     prose,
+        tone:            writingTone(fullProject),
+        audience:        writingAudience(fullProject),
+        bookStructure:   bookStructureVal(fullProject),
+        subsectionTitle: block.label || "",
+        bookContext:     buildBookContext(fullProject)
       });
-      if (action === "generate_image") {
-        if (data.text) {
-          setImagePrompts((p) => ({ ...p, [blockId]: data.text }));
-          setStatus("Image prompt generated.");
-        }
-      } else {
-        if (data.text) { setProse(blockId, data.text); setStatus("Enhancement applied."); }
-        else setStatus("Enhancement returned empty text — your draft was kept.");
-      }
+      if (data.text) setProse(blockId, data.text);
+      else setStatus("Refinement returned empty text — your draft was kept.");
+      if (data.text) setStatus("Applied AI refinement.");
     } catch (e) {
-      if (e instanceof GenerationCanceledError) setStatus("Enhancement canceled.");
-      else setStatus(e.message || "Could not enhance text.");
+      if (e instanceof GenerationCanceledError) setStatus("Refinement canceled.");
+      else setStatus(e.message || "Could not refine text.");
     } finally {
       setBusyId(null);
     }
@@ -523,7 +421,6 @@ export default function WriteStep({
               onGenerate={() => generateBlock(block)}
               onImprove={improveBlock}
               onSetProse={setProse}
-              imagePrompt={imagePrompts[node.id]}
             />
           </div>
         )}
@@ -796,7 +693,6 @@ export default function WriteStep({
                                       onGenerate={() => generateBlock(block)}
                                       onImprove={improveBlock}
                                       onSetProse={setProse}
-                                      imagePrompt={imagePrompts[sub.id]}
                                     />
                                   ) : (
                                     <p className="mt-2 text-xs text-slate-400 italic">
@@ -823,7 +719,6 @@ export default function WriteStep({
                                     onGenerate={() => generateBlock(block)}
                                     onImprove={improveBlock}
                                     onSetProse={setProse}
-                                    imagePrompt={imagePrompts[sec.id]}
                                   />
                                   <div className="mt-6" />
                                 </div>
