@@ -201,7 +201,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
   title:              1500,
   subtitle:           1200,
   regenTitle:          250,
-  outline:            1200,
+  outline:            3000,
   lesson:             6000,
   improve:             900,
   description:         900,

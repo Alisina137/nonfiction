@@ -481,6 +481,7 @@ router.post("/niche-outline", async (req, res) => {
     const { research, architecture, title, description, resources, bookContext } = req.body || {};
     if (!architecture?.subNicheLabel)
       return res.status(400).json({ error: "Missing niche architecture" });
+
     const { text, usedProvider } = await runLong(
       nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext }),
       nicheSystemPrompt(architecture),
@@ -488,13 +489,51 @@ router.post("/niche-outline", async (req, res) => {
       res,
       "outline"
     );
+
+    // ── Primary parse attempt ──────────────────────────────────────────────
     try {
       const data = extractJSON(text);
       const chapters = sanitizeOutlineSections(data.chapters || []);
-      return res.json({ ...data, chapters, _provider: usedProvider });
-    } catch {
-      return res.json({ chapters: [], _provider: usedProvider });
+      if (chapters.length > 0) {
+        return res.json({ ...data, chapters, _provider: usedProvider });
+      }
+    } catch (parseErr: any) {
+      console.warn(`[niche-outline] Primary JSON parse failed (provider: ${usedProvider}): ${String(parseErr?.message).slice(0, 200)}`);
+      console.warn(`[niche-outline] Raw response snippet: ${String(text).slice(0, 600)}`);
     }
+
+    // ── Rescue: simplified prompt — just chapters + scores ─────────────────
+    const chapterCount = architecture?.recommendedChapters?.default || 10;
+    const rescuePrompt = `You are a book architect. Generate exactly ${chapterCount} chapter titles for a nonfiction book.
+
+BOOK: "${title || "Untitled"}"
+TOPIC: ${research?.bookTopic || description || ""}
+NICHE: ${architecture?.mainNicheLabel || ""} › ${architecture?.subNicheLabel || ""}
+AUDIENCE: ${research?.targetAudience || ""}
+
+Rules:
+- importanceScore 1–100: how critical the chapter is to the book's core promise
+- complexityScore 1–100: how conceptually dense or demanding the chapter is
+- expansionScore 1–100: how much content depth and examples the chapter requires
+- Use the full 1–100 range — do NOT cluster all chapters at the same score
+- Sections array must always be empty []
+
+Return ONLY valid JSON — no markdown, no explanation:
+{"chapters":[{"title":"Chapter title","chapterObjective":"1–2 sentences on what this chapter achieves","chapterPurpose":"Practical Application","importanceScore":80,"complexityScore":65,"expansionScore":75,"sections":[]}]}`;
+
+    try {
+      const rescue = await runShort(rescuePrompt, nicheSystemPrompt(architecture), req, res, "outline");
+      const rescueData = extractJSON(rescue.text);
+      const rescueChapters = sanitizeOutlineSections(rescueData.chapters || []);
+      if (rescueChapters.length > 0) {
+        console.log(`[niche-outline] Rescue succeeded with ${rescueChapters.length} chapters via ${rescue.usedProvider}`);
+        return res.json({ chapters: rescueChapters, _provider: rescue.usedProvider, _rescued: true });
+      }
+    } catch (rescueErr: any) {
+      console.warn(`[niche-outline] Rescue parse also failed: ${String(rescueErr?.message).slice(0, 200)}`);
+    }
+
+    return res.status(500).json({ error: "Could not parse chapter outline from AI response after rescue attempt" });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
