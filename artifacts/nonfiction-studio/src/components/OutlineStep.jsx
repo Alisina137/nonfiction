@@ -458,24 +458,31 @@ export default function OutlineStep({
 
       let mappedChapters;
 
+      const bookTitle  = resolveBookTitle(fullProject);
+      const bookDesc   = bd.description || bd.positioningStatement || "";
+
       if (arch) {
-        const data = await aiFetch("/api/ai/niche-outline", {
-          architecture: arch,
-          title:        resolveBookTitle(fullProject),
-          description:  bd.description || bd.positioningStatement || "",
-          research:     fullProject?.research,
-          bookContext:  buildBookContext(fullProject),
-        });
-        const result = applyDynamicOutlineToBookOutline(data, arch, targetWords);
-        if (!Array.isArray(result?.chapters) || result.chapters.length === 0) {
-          setGenError("AI returned an empty chapter list — please try again.");
-          return;
+        try {
+          const data = await aiFetch("/api/ai/niche-outline", {
+            architecture: arch,
+            title:        bookTitle,
+            description:  bookDesc,
+            research:     fullProject?.research,
+            bookContext:  buildBookContext(fullProject),
+          });
+          const result = applyDynamicOutlineToBookOutline(data, arch, targetWords);
+          if (Array.isArray(result?.chapters) && result.chapters.length > 0) {
+            mappedChapters = result.chapters;
+          }
+        } catch (e) {
+          console.warn("[generate-chapters] niche-outline failed, using generic fallback:", e?.message);
         }
-        mappedChapters = result.chapters;
-      } else {
+      }
+
+      if (!mappedChapters) {
         const data = await aiFetch("/api/ai/outline", {
-          title:       resolveBookTitle(fullProject),
-          description: bd.description || bd.positioningStatement || "",
+          title:       bookTitle,
+          description: bookDesc,
           idea:        bd.idea || bd.positioningStatement || "",
           audience:    bd.targetAudience || bd.audience || "",
           tone:        bd.tone || "",

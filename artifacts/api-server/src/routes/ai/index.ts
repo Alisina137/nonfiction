@@ -488,9 +488,13 @@ router.post("/niche-outline", async (req, res) => {
       res,
       "outline"
     );
-    const data = extractJSON(text);
-    const chapters = sanitizeOutlineSections(data.chapters || []);
-    return res.json({ ...data, chapters, _provider: usedProvider });
+    try {
+      const data = extractJSON(text);
+      const chapters = sanitizeOutlineSections(data.chapters || []);
+      return res.json({ ...data, chapters, _provider: usedProvider });
+    } catch {
+      return res.json({ chapters: [], _provider: usedProvider });
+    }
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
