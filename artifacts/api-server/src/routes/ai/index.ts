@@ -26,6 +26,7 @@ import {
   marketingDescriptionPrompt,
   nicheOutlinePrompt,
   nicheSystemPrompt,
+  transformationPlanPrompt,
   outlinePrompt,
   regenTitlePrompt,
   resourcesBlock,
@@ -478,19 +479,57 @@ router.post("/outline", async (req, res) => {
 
 router.post("/niche-outline", async (req, res) => {
   try {
-    const { research, architecture, title, description, resources, bookContext, chapterCount: reqChapterCount } = req.body || {};
+    const {
+      research, architecture, title, description, resources,
+      bookContext, chapterCount: reqChapterCount, proposedBook
+    } = req.body || {};
+
     if (!architecture?.subNicheLabel)
       return res.status(400).json({ error: "Missing niche architecture" });
 
-    // Client-supplied count wins over architecture default
     const expectedCount = Math.max(5, Math.min(15, Number(reqChapterCount) || architecture?.recommendedChapters?.default || 10));
 
+    // ── Phase 1: Transformation Engine ────────────────────────────────────
+    // Build an internal transformation plan when the user has completed
+    // the Proposed Book step (Book Flow Preview exists with ≥2 parts).
+    // This plan becomes the canonical blueprint for chapter generation.
+    let transformationPlan: any = null;
+    const bookFlowParts = proposedBook?.content?.bookFlowPreview?.parts;
+
+    if (Array.isArray(bookFlowParts) && bookFlowParts.length >= 2) {
+      try {
+        const planResult = await runShort(
+          transformationPlanPrompt({
+            parts: bookFlowParts,
+            title, description, research, architecture, bookContext,
+            chapterCount: expectedCount
+          }),
+          nicheSystemPrompt(architecture),
+          req, res, "transformationPlan"
+        );
+        const planData = extractJSON(planResult.text);
+        if (Array.isArray(planData?.parts) && planData.parts.length > 0) {
+          // Validate total chapter count from plan — clamp if AI drifted
+          const planTotal = planData.parts.reduce((sum: number, p: any) => sum + (Number(p.chapterCount) || 0), 0);
+          transformationPlan = planData;
+          console.log(
+            `[niche-outline] Transformation plan: ${planData.parts.map((p: any) =>
+              `${p.partSubtitle || p.partTitle}(${p.chapterCount})`
+            ).join(" → ")} = ${planTotal} chapters (expected ${expectedCount})`
+          );
+        }
+      } catch (planErr: any) {
+        console.warn(`[niche-outline] Transformation plan failed: ${String(planErr?.message).slice(0, 120)} — continuing without plan`);
+      }
+    }
+
+    // ── Phase 2: Chapter Generation ────────────────────────────────────────
+    // The transformation plan (when available) is woven into the prompt as
+    // the PRIMARY blueprint — driving Part-anchored, sequential generation.
     const { text, usedProvider } = await runLong(
-      nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext, chapterCount: expectedCount }),
+      nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext, chapterCount: expectedCount, transformationPlan }),
       nicheSystemPrompt(architecture),
-      req,
-      res,
-      "outline"
+      req, res, "outline"
     );
 
     // ── Primary parse ──────────────────────────────────────────────────────
@@ -498,9 +537,8 @@ router.post("/niche-outline", async (req, res) => {
     try {
       const data = extractJSON(text);
       primaryChapters = sanitizeOutlineSections(data.chapters || []);
-      // Guard: truncation repair can produce a single chapter — require at least half
       if (primaryChapters.length >= Math.ceil(expectedCount / 2)) {
-        return res.json({ ...data, chapters: primaryChapters, _provider: usedProvider });
+        return res.json({ ...data, chapters: primaryChapters, _provider: usedProvider, _hasTransformationPlan: !!transformationPlan });
       }
       console.warn(`[niche-outline] Primary returned ${primaryChapters.length}/${expectedCount} chapters — truncated, trying rescue`);
     } catch (parseErr: any) {
@@ -515,14 +553,17 @@ TITLE: "${title || "Untitled"}"
 TOPIC: ${research?.bookTopic || description || ""}
 NICHE: ${architecture?.mainNicheLabel || ""} › ${architecture?.subNicheLabel || ""}
 AUDIENCE: ${research?.targetAudience || ""}
-
+${transformationPlan ? `
+BOOK FLOW PARTS:
+${(transformationPlan.parts || []).map((p: any, i: number) => `Part ${i + 1} "${p.partSubtitle || ""}" → ${p.chapterCount} chapters`).join("\n")}
+` : ""}
 Scores are integers 1–100. Use the full range — do NOT cluster at the same value.
 importanceScore = how critical this chapter is to the book's core promise
 complexityScore = how dense/demanding the content is
 expansionScore = how much depth, examples, and elaboration it needs
 
 Return ONLY valid JSON, no markdown, no preamble:
-{"chapters":[{"title":"Chapter title","chapterObjective":"One sentence.","chapterPurpose":"Practical Application","importanceScore":80,"complexityScore":65,"expansionScore":75,"sections":[]}]}
+{"chapters":[{"title":"Chapter title","chapterObjective":"One sentence.","arcRole":"Part N — Subtitle","importanceScore":80,"complexityScore":65,"expansionScore":75,"sections":[]}]}
 
 All ${expectedCount} chapters:`;
 

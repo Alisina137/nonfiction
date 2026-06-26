@@ -461,6 +461,7 @@ export default function OutlineStep({
         research:      fullProject?.research,
         bookContext:   buildBookContext(fullProject),
         chapterCount:  Number(bd.chapterCount) || 10,
+        proposedBook:  fullProject?.proposedBook ?? null,
       });
 
       const result = applyDynamicOutlineToBookOutline(data, arch, targetWords);

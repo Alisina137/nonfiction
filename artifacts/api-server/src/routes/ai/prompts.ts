@@ -932,7 +932,65 @@ Return ONLY valid JSON — no markdown, no explanation:
 {"chapters":[{"title":"Chapter title without colons","summary":"2-sentence summary of reader transformation this chapter delivers","sections":[{"title":"Section title","subsections":[{"title":"Subsection title"}]}]}]}`;
 }
 
-export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext, chapterCount: chapterCountOverride }: any) {
+export function transformationPlanPrompt({ parts, title, description, research, architecture, bookContext, chapterCount }: any) {
+  const a = architecture || {};
+  const partLines = (Array.isArray(parts) ? parts : [])
+    .map((p: any, i: number) => `${i + 1}. ${p.title || `Part ${i + 1}`}: ${p.subtitle || ""}`)
+    .join("\n");
+
+  return `You are a nonfiction transformation architect.
+
+Plan the reader's transformation journey across these Book Flow stages.
+
+TITLE: ${title || ""}
+TOPIC: ${research?.bookTopic || description || ""}
+NICHE: ${a.mainNicheLabel || ""} › ${a.subNicheLabel || ""}
+AUDIENCE: ${research?.targetAudience || ""}
+PROMISE: ${bookContext?.corePromise || bookContext?.transformationPromise || research?.publishingGoal || ""}
+READER NOW: ${bookContext?.readerPainProfile || ""}
+READER GOAL: ${bookContext?.transformationPromise || ""}
+
+BOOK FLOW STAGES (transformation Acts — NOT individual chapters):
+${partLines}
+
+Total chapters to plan: ${chapterCount}
+
+ADAPTIVE DISTRIBUTION RULES:
+- Allocate chapters to each Part based on transformation complexity — NOT evenly
+- Orientation/awareness Parts: 1–2 chapters
+- Foundation/core-building Parts: 3–5 chapters (typically get the most)
+- Implementation/practice Parts: 3–5 chapters
+- Mastery/sustaining Parts: 1–2 chapters (they are the payoff, not the bulk)
+- Total chapterCount across all parts MUST equal exactly ${chapterCount}
+- Every Part must get at least 1 chapter
+
+For each Part: define the reader transformation arc.
+For each chapter SLOT within a Part: define the micro-transformation chain.
+Each chapter's "afterState" MUST become the next chapter's "beforeState".
+
+Return ONLY valid JSON — no markdown, no explanation:
+{
+  "parts": [
+    {
+      "partIndex": 0,
+      "partTitle": "Part 1",
+      "partSubtitle": "Understand",
+      "partObjective": "one sentence — the transformation this Part achieves",
+      "readerStartsAs": "reader state at Part entry",
+      "readerEndsAs": "reader state at Part exit",
+      "milestone": "one concrete achievement reader has at Part end",
+      "transitionToNext": "one sentence on why the next Part is the natural next step",
+      "chapterCount": 2,
+      "chapterSlots": [
+        { "slotIndex": 0, "beforeState": "...", "action": "...", "afterState": "..." },
+        { "slotIndex": 1, "beforeState": "...", "action": "...", "afterState": "..." }
+      ]
+    }
+  ]
+}`;
+}
+
+export function nicheOutlinePrompt({ research, architecture, title, description, resources, bookContext, chapterCount: chapterCountOverride, transformationPlan }: any) {
   const a = architecture || {};
   const chapterCount = Math.max(5, Math.min(15, Number(chapterCountOverride) || a.recommendedChapters?.default || 10));
   const flow = (a.chapterFlow || []).map((beat: string, i: number) => `${i + 1}. ${beat}`).join("\n");
@@ -940,6 +998,95 @@ export function nicheOutlinePrompt({ research, architecture, title, description,
     ? research.authorTones.join(", ")
     : "direct and authoritative";
   const isStory = ["romance-arc", "romantasy-hybrid", "suspense-escalation", "mystery-procedural", "hero-journey", "narrative-arc"].includes(a.structureType || "");
+
+  // ── Transformation Engine — built when a Book Flow plan is available ────────
+  let transformationBlueprintSection = "";
+  let partAnchorRules = "";
+  let progressionVocabSection = "";
+  let placementValidationSection = "";
+
+  if (transformationPlan && Array.isArray(transformationPlan.parts) && transformationPlan.parts.length > 0) {
+    let globalChapterIndex = 0;
+    const partBlocks: string[] = [];
+
+    for (const part of transformationPlan.parts) {
+      const slots = Array.isArray(part.chapterSlots) ? part.chapterSlots : [];
+      const chapterLines: string[] = [];
+      for (const slot of slots) {
+        globalChapterIndex++;
+        chapterLines.push(
+          `  Chapter ${globalChapterIndex} of ${chapterCount}:\n` +
+          `    Before: ${slot.beforeState || ""}\n` +
+          `    Action: ${slot.action || ""}\n` +
+          `    After:  ${slot.afterState || ""}`
+        );
+      }
+      const partNum = (typeof part.partIndex === "number" ? part.partIndex : partBlocks.length) + 1;
+      partBlocks.push(
+        `── Part ${partNum}: "${part.partSubtitle || part.partTitle || ""}" [${part.chapterCount || slots.length} chapter(s)] ──\n` +
+        `Reader enters: ${part.readerStartsAs || ""}\n` +
+        `Reader exits:  ${part.readerEndsAs || ""}\n` +
+        `Part objective: ${part.partObjective || ""}\n\n` +
+        chapterLines.join("\n")
+      );
+    }
+
+    transformationBlueprintSection = `
+========================================
+TRANSFORMATION BLUEPRINT — YOUR PRIMARY GUIDE
+========================================
+The book flows through ${transformationPlan.parts.length} transformation stages (Parts).
+Think of Parts as Acts, and Chapters as Scenes within each Act.
+Generate chapters IN PART ORDER, sequentially advancing the reader's state.
+Each chapter's ending reader state becomes the next chapter's starting state.
+
+${partBlocks.join("\n\n")}
+
+PART CONSTRAINTS:
+- Generate only chapters that belong inside each Part's objective
+- A later Part's chapters must NEVER sound like awareness/introductory content
+- Every chapter must clearly belong at its exact position — not earlier, not later
+- The arcRole field MUST identify the Part (e.g., "Part 2 — Build Foundation")
+`;
+
+    partAnchorRules = `
+- FOLLOW THE TRANSFORMATION BLUEPRINT above — generate chapters in strict Part order
+- The arcRole field must match the Part label exactly (e.g., "Part 1 — Understand")
+- Never allow a late-book chapter to regress to beginner vocabulary or framing`;
+
+    progressionVocabSection = `
+========================================
+PROGRESSION VOCABULARY
+========================================
+Chapter title language must evolve throughout the book to reflect the reader's progress.
+
+EARLY chapters (first 1–2 Parts):
+  Preferred: Understanding, Recognizing, Discovering, Identifying, Seeing, Facing, Realizing
+
+MIDDLE chapters (middle Parts):
+  Preferred: Building, Creating, Developing, Applying, Practicing, Strengthening, Establishing
+
+LATE chapters (final 1–2 Parts):
+  Preferred: Mastering, Refining, Optimizing, Sustaining, Maintaining, Scaling, Protecting, Automating
+
+A reader must be able to identify a chapter's position in the book just from reading its title.
+Late chapters must NEVER use vocabulary that sounds like early-stage content.
+
+`;
+
+    placementValidationSection = `
+========================================
+PLACEMENT VALIDATION (self-review before output)
+========================================
+Before returning your JSON, mentally review every chapter:
+1. Could this title/objective appear EARLIER without feeling out of place? → Rewrite with more advanced framing.
+2. Could this title/objective belong LATER without skipping groundwork? → Simplify to match the current stage.
+3. Does each chapter flow naturally from the one before it? → It should feel like the inevitable next step.
+
+The Table of Contents must read as a complete transformation story from first to last chapter.
+
+`
+  }
 
   return `You are an expert nonfiction book architect.
 
@@ -997,7 +1144,7 @@ Hook style: ${a.hookStyle || "strong opening"}
 Ending style: ${a.endingStyle || "satisfying close"}
 Niche beat flow:
 ${flow || "(apply sub-niche-native escalation — never generic beats)"}
-
+${transformationBlueprintSection}
 ========================================
 CHAPTER GENERATION RULES
 ========================================
@@ -1010,7 +1157,7 @@ CHAPTER GENERATION RULES
   "Building a Focus System That Lasts"
   "Mastering Deep Work in a Distracted World"
 - Titles must expand the book topic naturally and logically.
-- FORBIDDEN titles: "Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder", "Chapter N", "Key Point", "Emotional Theme", "Untitled", any numbered generic label.
+- FORBIDDEN titles: "Beat 1", "Beat 2", "Scene 1", "Section 1", "Section A", "Topic 1", "Subtopic", "Placeholder", "Chapter N", "Key Point", "Emotional Theme", "Untitled", any numbered generic label.${partAnchorRules}
 
 ${isStory ? `STORY/NARRATIVE STRUCTURE — each chapter must contain:
 - Clear narrative purpose in the story arc
@@ -1040,7 +1187,7 @@ QUALITY RULES
 - Do not create artificial structure merely to reach a target count.
 - Prioritize clarity, progression, and reader transformation.
 - The final chapter list must feel like the table of contents of a professionally published nonfiction book.
-
+${progressionVocabSection}${placementValidationSection}
 ========================================
 CHAPTER SCORING (required for every chapter)
 ========================================
@@ -1082,7 +1229,7 @@ Do NOT generate sections or subsections.
 Leave every "sections" array completely empty: [].
 
 Return ONLY valid JSON — no markdown, no explanation:
-{"chapters":[{"title":"Chapter title — specific, compelling, no colons","chapterObjective":"1–2 sentence description of what this chapter achieves in the reader's transformation arc","importanceScore":85,"complexityScore":70,"expansionScore":80,"sections":[]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
+{"chapters":[{"title":"Chapter title — specific, compelling, no colons","chapterObjective":"1–2 sentence description of what this chapter achieves in the reader's transformation arc","arcRole":"Part N — PartSubtitle","importanceScore":85,"complexityScore":70,"expansionScore":80,"sections":[]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
 }
 
 export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
