@@ -1006,27 +1006,25 @@ export function nicheOutlinePrompt({ research, architecture, title, description,
   let placementValidationSection = "";
 
   if (transformationPlan && Array.isArray(transformationPlan.parts) && transformationPlan.parts.length > 0) {
+    // Cap each slot string to keep the prompt under MAX_INPUT_CHARS
+    const cap80 = (s: string) => (String(s || "").slice(0, 80));
     let globalChapterIndex = 0;
     const partBlocks: string[] = [];
 
     for (const part of transformationPlan.parts) {
       const slots = Array.isArray(part.chapterSlots) ? part.chapterSlots : [];
+      const partNum = (typeof part.partIndex === "number" ? part.partIndex : partBlocks.length) + 1;
+      // Compact single-line format per chapter slot to minimise prompt length
       const chapterLines: string[] = [];
       for (const slot of slots) {
         globalChapterIndex++;
-        chapterLines.push(
-          `  Chapter ${globalChapterIndex} of ${chapterCount}:\n` +
-          `    Before: ${slot.beforeState || ""}\n` +
-          `    Action: ${slot.action || ""}\n` +
-          `    After:  ${slot.afterState || ""}`
-        );
+        const before = cap80(slot.beforeState);
+        const action = cap80(slot.action);
+        const after  = cap80(slot.afterState);
+        chapterLines.push(`  Ch${globalChapterIndex}: ${before} → ${action} → ${after}`);
       }
-      const partNum = (typeof part.partIndex === "number" ? part.partIndex : partBlocks.length) + 1;
       partBlocks.push(
-        `── Part ${partNum}: "${part.partSubtitle || part.partTitle || ""}" [${part.chapterCount || slots.length} chapter(s)] ──\n` +
-        `Reader enters: ${part.readerStartsAs || ""}\n` +
-        `Reader exits:  ${part.readerEndsAs || ""}\n` +
-        `Part objective: ${part.partObjective || ""}\n\n` +
+        `Part ${partNum} "${part.partSubtitle || part.partTitle || ""}" [${part.chapterCount || slots.length} ch] — ${cap80(part.partObjective || "")}\n` +
         chapterLines.join("\n")
       );
     }
@@ -1035,18 +1033,13 @@ export function nicheOutlinePrompt({ research, architecture, title, description,
 ========================================
 TRANSFORMATION BLUEPRINT — YOUR PRIMARY GUIDE
 ========================================
-The book flows through ${transformationPlan.parts.length} transformation stages (Parts).
-Think of Parts as Acts, and Chapters as Scenes within each Act.
-Generate chapters IN PART ORDER, sequentially advancing the reader's state.
-Each chapter's ending reader state becomes the next chapter's starting state.
+Parts = Acts · Chapters = Scenes. Generate in Part order. Each chapter's end-state feeds the next.
 
 ${partBlocks.join("\n\n")}
 
-PART CONSTRAINTS:
-- Generate only chapters that belong inside each Part's objective
-- A later Part's chapters must NEVER sound like awareness/introductory content
-- Every chapter must clearly belong at its exact position — not earlier, not later
-- The arcRole field MUST identify the Part (e.g., "Part 2 — Build Foundation")
+RULES: Only generate chapters that belong inside each Part's objective.
+Later Parts must NEVER use introductory/awareness framing.
+arcRole = "Part N — Subtitle" for every chapter.
 `;
 
     partAnchorRules = `

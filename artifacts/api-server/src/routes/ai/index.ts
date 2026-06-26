@@ -70,7 +70,49 @@ function stripSectionColon(title: string): string {
   return right.length > 0 ? right : s;
 }
 
-/** Apply stripSectionColon to every section AND subsection title in a chapters array. */
+/**
+ * Force the transformation plan's part chapterCounts to sum exactly to `target`.
+ * Also pads/trims chapterSlots arrays to match the adjusted count.
+ * The AI consistently under- or over-counts — this makes the blueprint authoritative.
+ */
+function normalizePlanCounts(parts: any[], target: number): any[] {
+  const n = parts.length;
+  if (n === 0) return parts;
+
+  // Start with AI-provided counts, floor to at least 1
+  const counts = parts.map((p: any) => Math.max(1, Math.round(Number(p.chapterCount) || 1)));
+  let total = counts.reduce((a: number, b: number) => a + b, 0);
+  let diff = target - total;
+
+  // Distribute the difference one unit at a time
+  let guard = 0;
+  while (diff !== 0 && guard++ < 50) {
+    if (diff > 0) {
+      // Add to the part that currently has the most chapters (middle parts)
+      const maxIdx = counts.indexOf(Math.max(...counts));
+      counts[maxIdx]++;
+      diff--;
+    } else {
+      // Remove from the largest part, never below 1
+      const eligible = counts.map((c: number, i: number) => (c > 1 ? i : -1)).filter((i: number) => i !== -1);
+      if (eligible.length === 0) break;
+      const maxIdx = eligible.reduce((a: number, b: number) => (counts[a] >= counts[b] ? a : b));
+      counts[maxIdx]--;
+      diff++;
+    }
+  }
+
+  // Rebuild parts with corrected counts + synced chapterSlots
+  return parts.map((p: any, i: number) => {
+    const newCount = counts[i];
+    const slots: any[] = Array.isArray(p.chapterSlots) ? p.chapterSlots : [];
+    const newSlots = Array.from({ length: newCount }, (_: any, si: number) =>
+      slots[si] || { slotIndex: si, beforeState: "", action: "", afterState: "" }
+    );
+    return { ...p, chapterCount: newCount, chapterSlots: newSlots };
+  });
+}
+
 function sanitizeOutlineSections(chapters: any[]): any[] {
   if (!Array.isArray(chapters)) return chapters;
   return chapters.map((ch: any) => ({
@@ -509,13 +551,15 @@ router.post("/niche-outline", async (req, res) => {
         );
         const planData = extractJSON(planResult.text);
         if (Array.isArray(planData?.parts) && planData.parts.length > 0) {
-          // Validate total chapter count from plan — clamp if AI drifted
-          const planTotal = planData.parts.reduce((sum: number, p: any) => sum + (Number(p.chapterCount) || 0), 0);
-          transformationPlan = planData;
+          // Force plan chapter counts to sum exactly to expectedCount.
+          // The AI often drifts (returns 8 when asked for 10, etc.).
+          const normalizedParts = normalizePlanCounts(planData.parts, expectedCount);
+          const planTotal = normalizedParts.reduce((s: number, p: any) => s + p.chapterCount, 0);
+          transformationPlan = { ...planData, parts: normalizedParts };
           console.log(
-            `[niche-outline] Transformation plan: ${planData.parts.map((p: any) =>
+            `[niche-outline] Transformation plan: ${normalizedParts.map((p: any) =>
               `${p.partSubtitle || p.partTitle}(${p.chapterCount})`
-            ).join(" → ")} = ${planTotal} chapters (expected ${expectedCount})`
+            ).join(" → ")} = ${planTotal} chapters`
           );
         }
       } catch (planErr: any) {
