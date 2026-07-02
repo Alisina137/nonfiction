@@ -491,6 +491,8 @@ export default function OutlineStep({
     try {
       const bd = fullProject?.bookDetails || {};
       const ch = chapters.find((c) => c.id === chId);
+      const chapterIndex    = chapters.findIndex((c) => c.id === chId);
+      const chapterPosition = chapterIndex >= 0 ? chapterIndex + 1 : 1;
       const data = await aiFetch("/api/ai/generate-sections", {
         bookTitle:      resolveBookTitle(fullProject),
         chapterTitle,
@@ -499,6 +501,8 @@ export default function OutlineStep({
         coreThesis:     bd.coreThesis     || "",
         chapterPurpose: ch?.objective     || ch?.summary || "",
         research:       fullProject?.research,
+        chapterNumber:  chapterPosition,
+        totalChapters:  chapters.length,
       });
 
       // Prefer rich objects (new format); fall back to title strings (legacy)

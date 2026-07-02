@@ -1873,17 +1873,27 @@ ${(upcomingTopics as string[]).map((t: string) => `→ ${t}`).join("\n")}`
   const toneInstr = resolveToneInstruction(tone || bookContext?.tone || "");
 
   const COMPONENT_GUIDANCE: Record<string, string> = {
-    "Key Takeaways":       "end with 3–5 clearly numbered key takeaways the reader should remember",
-    "Action Plan":         "include a numbered action plan with specific, time-bound steps",
-    "Checklist":           "include a formatted checklist the reader can use immediately",
-    "Exercises":           "include at least one hands-on exercise or practice activity with clear instructions",
-    "Reflection Questions":"include 2–3 thought-provoking reflection questions for the reader",
-    "Templates":           "include a reusable template, fill-in-the-blank framework, or structured format",
-    "Case Studies":        "include a real, named case study with specific details and measurable outcomes",
-    "Examples":            "include multiple concrete, named real-world examples (not hypotheticals)",
-    "Research Highlights": "cite specific research findings, statistics, or named studies with context",
-    "Resources":           "include 2–3 recommended resources (books, tools, websites) with brief descriptions",
-    "Summary":             "end with a concise summary paragraph recapping the main points of this section",
+    "Key Takeaways":          "end with 3–5 clearly numbered key takeaways the reader should remember",
+    "Action Plan":            "include a numbered action plan with specific, time-bound steps",
+    "Checklist":              "include a formatted checklist the reader can use immediately",
+    "Exercises":              "include at least one hands-on exercise or practice activity with clear instructions",
+    "Reflection Questions":   "include 2–3 thought-provoking reflection questions for the reader",
+    "Templates":              "include a reusable template, fill-in-the-blank framework, or structured format",
+    "Case Studies":           "include a real, named case study with specific details and measurable outcomes",
+    "Examples":               "include multiple concrete, named real-world examples (not hypotheticals)",
+    "Research Highlights":    "cite specific research findings, statistics, or named studies with context",
+    "Resources":              "include 2–3 recommended resources (books, tools, websites) with brief descriptions",
+    "Summary":                "end with a concise summary paragraph recapping the main points of this section",
+    "Quick Win":              "include a Quick Win — one specific action the reader can take in under 5 minutes right now to build immediate momentum",
+    "Common Mistakes":        "include a Common Mistakes section listing 3–4 specific, named pitfalls that derail implementation of this concept",
+    "Pro Tips":               "include 2–3 Pro Tips with advanced, expert-level optimization advice for readers who have already mastered the basics",
+    "Progress Check":         "include a Progress Check with 2–3 honest self-assessment questions (e.g. 'Have I done X? Am I consistently Y?')",
+    "Chapter Challenge":      "end with a Chapter Challenge — a specific, clearly defined commitment or mini-project the reader must complete before proceeding",
+    "Habit Tracker":          "include a Habit Tracker — a simple daily or weekly table/format the reader can use to track the behavior or habit being taught",
+    "FAQ":                    "include 3–4 Frequently Asked Questions that address the most common doubts, objections, or confusions readers have at this exact point",
+    "Myth vs Reality":        "include 2–3 Myth vs Reality comparisons that name common false beliefs and replace them with accurate, evidence-based reframes",
+    "Before & After Snapshot":"include a Before & After Snapshot showing a concrete comparison of the reader's state before and after applying what this section teaches",
+    "Success Story":          "include a brief Success Story (150–200 words) about a real or realistic person who applied these concepts and achieved a meaningful transformation",
   };
 
   // Which flow-step names map to a blueprint component (so we can suppress them when not selected)
@@ -1899,6 +1909,9 @@ ${(upcomingTopics as string[]).map((t: string) => `→ ${t}`).join("\n")}`
     "Key Takeaways", "Action Plan", "Checklist", "Exercises",
     "Reflection Questions", "Templates", "Case Studies", "Examples",
     "Research Highlights", "Resources", "Summary",
+    "Quick Win", "Common Mistakes", "Pro Tips", "Progress Check",
+    "Chapter Challenge", "Habit Tracker", "FAQ", "Myth vs Reality",
+    "Before & After Snapshot", "Success Story",
   ];
 
   const hasBlueprint = Array.isArray(blueprintComponents) && blueprintComponents.length > 0;
@@ -3017,12 +3030,58 @@ export function sectionGenerationPrompt(
   research?: any,
   corePromise?: string,
   coreThesis?: string,
-  chapterPurpose?: string
+  chapterPurpose?: string,
+  chapterNumber?: number,
+  totalChapters?: number
 ): string {
   const niche    = research?.mainNicheLabel || "";
   const subNiche = research?.subNicheLabel  || "";
   const audience = research?.targetAudience || "";
   const topic    = research?.bookTopic      || "";
+
+  // ── Learning phase computation ─────────────────────────────────────────────
+  const chNum   = chapterNumber && chapterNumber > 0 ? chapterNumber : 1;
+  const chTotal = totalChapters && totalChapters > 0 ? totalChapters : 10;
+  const ratio   = chTotal > 1 ? (chNum - 1) / (chTotal - 1) : 0;
+
+  let learningPhase: number;
+  let phaseName: string;
+  let phaseGoal: string;
+  let phasePreferred: string[];
+  let phaseOccasional: string[];
+  let phaseAvoid: string[];
+
+  if (ratio <= 0.20) {
+    learningPhase = 1; phaseName = "Understanding";
+    phaseGoal     = "Build trust, teach foundational concepts, and create awareness.";
+    phasePreferred  = ["Research Highlights","Examples","Case Studies","Resources","Summary","Myth vs Reality","Success Story"];
+    phaseOccasional = ["Key Takeaways","FAQ"];
+    phaseAvoid      = ["Action Plan","Checklist","Exercises","Templates","Chapter Challenge","Pro Tips","Common Mistakes","Progress Check","Habit Tracker"];
+  } else if (ratio <= 0.40) {
+    learningPhase = 2; phaseName = "Foundation";
+    phaseGoal     = "Build self-awareness and help readers deeply understand themselves and the problem.";
+    phasePreferred  = ["Examples","Case Studies","Reflection Questions","Research Highlights","Summary","Key Takeaways","Quick Win","Myth vs Reality"];
+    phaseOccasional = ["Exercises","Success Story","FAQ","Before & After Snapshot"];
+    phaseAvoid      = ["Action Plan","Templates","Checklist","Pro Tips","Chapter Challenge","Habit Tracker"];
+  } else if (ratio <= 0.65) {
+    learningPhase = 3; phaseName = "Implementation";
+    phaseGoal     = "Get the reader doing. Apply concepts through concrete action and practice.";
+    phasePreferred  = ["Action Plan","Checklist","Exercises","Templates","Examples","Reflection Questions","Key Takeaways","Common Mistakes","Chapter Challenge","Quick Win"];
+    phaseOccasional = ["Research Highlights","Resources","FAQ","Success Story","Habit Tracker"];
+    phaseAvoid      = ["Myth vs Reality"];
+  } else if (ratio <= 0.80) {
+    learningPhase = 4; phaseName = "Mastery";
+    phaseGoal     = "Optimize performance and build advanced capabilities beyond the basics.";
+    phasePreferred  = ["Templates","Exercises","Reflection Questions","Action Plan","Key Takeaways","Checklist","Pro Tips","Progress Check"];
+    phaseOccasional = ["Case Studies","Success Story","Common Mistakes","Habit Tracker"];
+    phaseAvoid      = ["Resources","Myth vs Reality","Quick Win","FAQ"];
+  } else {
+    learningPhase = 5; phaseName = "Long-Term Success";
+    phaseGoal     = "Sustain transformation and maintain long-term change.";
+    phasePreferred  = ["Reflection Questions","Summary","Action Plan","Checklist","Key Takeaways","Progress Check","Before & After Snapshot"];
+    phaseOccasional = ["Success Story","Habit Tracker"];
+    phaseAvoid      = ["Research Highlights","Case Studies","Myth vs Reality","Quick Win","FAQ","Chapter Challenge"];
+  }
 
   const purposeLine = chapterPurpose?.trim()
     ? `Chapter Purpose:\n${chapterPurpose.trim()}`
@@ -3234,22 +3293,85 @@ Never return duplicate section titles.
 
 ====================================================
 
-BLUEPRINT COMPONENTS
+LEARNING COMPONENTS — PROGRESSION-AWARE SELECTION
 
-For every section, you must recommend exactly 4 content components that best fit it from this exact list:
+====================================================
 
-Key Takeaways | Action Plan | Checklist | Exercises | Reflection Questions | Templates | Case Studies | Examples | Research Highlights | Resources | Summary
+COMPONENT LEARNING ROLES
+(Each component has one specific pedagogical purpose)
 
-Rules:
-- Choose components that genuinely match the section's purpose and learning angle.
-- "Key Takeaways" fits almost any section and should be included whenever appropriate.
-- "Research Highlights" fits data-driven or evidence-based sections.
-- "Case Studies" / "Examples" fit application-focused sections.
-- "Exercises" / "Reflection Questions" fit introspective or practice-oriented sections.
-- "Checklist" / "Templates" fit actionable how-to sections.
-- "Action Plan" fits implementation or strategy sections.
-- "Summary" fits complex or dense sections.
-- Do NOT recommend the same 4 components for every section. Vary meaningfully.
+Research Highlights      → Explain: build credibility through data, studies, and evidence
+Case Studies             → Prove: real-world evidence the concept works
+Examples                 → Demonstrate: concrete, visual illustrations of the concept
+Resources                → Explore: encourage deeper learning beyond this chapter
+Summary                  → Reinforce: consolidate and solidify what was just taught
+Key Takeaways            → Retain: memorable points the reader keeps forever
+Reflection Questions     → Internalize: guided introspection and self-awareness
+Exercises                → Practice: hands-on skill-building activities
+Checklist                → Execute: step-by-step consistency and action tools
+Templates                → Apply: reusable frameworks the reader fills in themselves
+Action Plan              → Commit: specific, time-bound next steps
+Quick Win                → Momentum: something the reader can do in under 5 minutes right now
+Common Mistakes          → Guard: prevent implementation failures and wrong turns
+Pro Tips                 → Advance: expert-level optimization advice for experienced readers
+Progress Check           → Assess: "How am I doing?" self-evaluation at this point
+Chapter Challenge        → Challenge: a commitment task to complete before moving on
+Habit Tracker            → Track: a simple daily/weekly format for building the taught behavior
+FAQ                      → Clarify: answers to the most common doubts at this stage
+Myth vs Reality          → Reframe: dismantle false beliefs and replace them with truth
+Before & After Snapshot  → Transform: show the reader's concrete before/after state
+Success Story            → Motivate: a brief, relatable win to sustain momentum
+
+====================================================
+
+READER'S CURRENT LEARNING STAGE
+
+Chapter ${chNum} of ${chTotal} → Phase ${learningPhase} — ${phaseName}
+Stage Goal: ${phaseGoal}
+
+PREFERRED for this phase — prioritize these:
+${phasePreferred.map((c: string) => `✅ ${c}`).join("\n")}
+
+OCCASIONAL — use only when the section purpose clearly warrants it:
+${phaseOccasional.map((c: string) => `⚪ ${c}`).join("\n")}
+
+AVOID at this stage — reader is not ready for these:
+${phaseAvoid.length ? phaseAvoid.map((c: string) => `❌ ${c}`).join("\n") : "(none — all components are available at this stage)"}
+
+====================================================
+
+COMPONENT SELECTION RULES (NON-NEGOTIABLE)
+
+1. Choose EXACTLY 4 components per section.
+
+2. Prioritize PREFERRED components for Phase ${learningPhase} (${phaseName}).
+   The reader needs components that: ${phaseGoal}
+
+3. AVOID components must NOT be used. The reader is not ready for them at this stage.
+
+4. Select COMPLEMENTARY components — each must serve a DIFFERENT learning purpose.
+   Never combine two components with the same pedagogical role.
+
+   ❌ WEAK (all explain/prove — redundant): Research Highlights + Case Studies + Examples
+   ❌ WEAK (all action — one-dimensional): Action Plan + Checklist + Exercises + Templates
+   ❌ WEAK (all passive — no active element): Summary + Key Takeaways + Resources + Reflection Questions
+
+   ✅ STRONG: Research Highlights + Example + Reflection Questions + Key Takeaways
+   ✅ STRONG: Action Plan + Checklist + Common Mistakes + Reflection Questions
+   ✅ STRONG: Case Study + Exercise + Key Takeaways + Summary
+   ✅ STRONG: Myth vs Reality + Examples + Reflection Questions + Summary
+   ✅ STRONG: Template + Exercise + Pro Tips + Progress Check
+   ✅ STRONG: Quick Win + Action Plan + Common Mistakes + Key Takeaways
+
+5. Match component to section type:
+   Conceptual section     → prefer Research Highlights, Examples, Case Studies, Summary, Myth vs Reality
+   Framework section      → prefer Examples, Templates, Checklists, Action Plans, Exercises
+   Implementation section → prefer Action Plans, Templates, Exercises, Checklists, Common Mistakes
+   Optimization section   → prefer Key Takeaways, Templates, Reflection Questions, Pro Tips, Checklists
+   Conclusion section     → prefer Summary, Reflection Questions, Key Takeaways, Action Plan, Before & After Snapshot
+
+6. Vary combinations across sections in this chapter.
+   No two consecutive sections should share the same 4-component set.
 
 ====================================================
 

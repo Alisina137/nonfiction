@@ -1227,7 +1227,7 @@ router.post("/generate-details", async (req, res) => {
 /** POST /api/ai/generate-sections — generate all section titles for a chapter at once */
 router.post("/generate-sections", async (req, res) => {
   try {
-    const { bookTitle, chapterTitle, sectionCount, research, corePromise, coreThesis, chapterPurpose } = req.body || {};
+    const { bookTitle, chapterTitle, sectionCount, research, corePromise, coreThesis, chapterPurpose, chapterNumber, totalChapters } = req.body || {};
     if (!chapterTitle) {
       return res.status(400).json({ error: "chapterTitle is required" });
     }
@@ -1235,7 +1235,9 @@ router.post("/generate-sections", async (req, res) => {
 
     const VALID_BLUEPRINT_COMPONENTS = new Set([
       "Key Takeaways","Action Plan","Checklist","Exercises","Reflection Questions",
-      "Templates","Case Studies","Examples","Research Highlights","Resources","Summary"
+      "Templates","Case Studies","Examples","Research Highlights","Resources","Summary",
+      "Quick Win","Common Mistakes","Pro Tips","Progress Check","Chapter Challenge",
+      "Habit Tracker","FAQ","Myth vs Reality","Before & After Snapshot","Success Story",
     ]);
     function parseSections(text: string): Array<{ title: string; objective: string; blueprintComponents: string[] }> {
       let raw: any;
@@ -1271,9 +1273,11 @@ router.post("/generate-sections", async (req, res) => {
         String(chapterTitle),
         count,
         research,
-        corePromise ? String(corePromise) : undefined,
-        coreThesis  ? String(coreThesis)  : undefined,
-        chapterPurpose ? String(chapterPurpose) : undefined
+        corePromise    ? String(corePromise)    : undefined,
+        coreThesis     ? String(coreThesis)     : undefined,
+        chapterPurpose ? String(chapterPurpose) : undefined,
+        chapterNumber  ? Number(chapterNumber)  : undefined,
+        totalChapters  ? Number(totalChapters)  : undefined
       );
       const result = await runShort(prompt, systemPrompt(), req, res, "sectionGen");
       usedProvider = result.usedProvider;
