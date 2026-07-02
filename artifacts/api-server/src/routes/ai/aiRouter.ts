@@ -433,9 +433,11 @@ async function callOpenAICompat(
 
   // OpenRouter supports a `models` array for provider-level fallback routing.
   // When the primary model is rate-limited, OpenRouter automatically tries the next.
+  // NOTE: OpenRouter rejects requests where `models` has more than 3 entries
+  // ("'models' array must have 3 items or fewer"), so cap it here.
   const requestBody = provider.id === "openrouter" && provider.fallbackModels?.length
     ? {
-        models:      [provider.model, ...provider.fallbackModels],
+        models:      [provider.model, ...provider.fallbackModels].slice(0, 3),
         route:       "fallback",
         messages,
         temperature: 0.7,
