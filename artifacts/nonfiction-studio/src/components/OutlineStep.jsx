@@ -712,7 +712,10 @@ export default function OutlineStep({
               {/* Chapter row */}
               <div className={rowShell}>
                 <div className="min-w-0 flex-[2] md:max-w-xl">
-                  <div className="flex items-start gap-1">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 shrink-0 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-600">
+                      {ci + 1}
+                    </span>
                     <EditableTitle
                       dense
                       value={ch.title}
