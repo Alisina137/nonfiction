@@ -1239,30 +1239,72 @@ router.post("/generate-sections", async (req, res) => {
       "Quick Win","Common Mistakes","Pro Tips","Progress Check","Chapter Challenge",
       "Habit Tracker","FAQ","Myth vs Reality","Before & After Snapshot","Success Story",
     ]);
+    // Fallback for models (e.g. Groq/Llama) that ignore "JSON only" and return a
+    // markdown numbered/bulleted list instead — parse that shape directly.
+    function parseMarkdownSections(text: string): Array<{ title: string; objective: string; blueprintComponents: string[]; suggestedSubsectionCount: number }> {
+      const lines = String(text || "").split(/\r?\n/);
+      const items: Array<{ title: string; objective: string; blueprintComponents: string[]; suggestedSubsectionCount: number }> = [];
+      let current: any = null;
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        const numberedMatch = line.match(/^\d+[\.\)]\s*\*{0,2}(.+?)\*{0,2}\s*$/);
+        if (numberedMatch) {
+          let title = numberedMatch[1].replace(/\*+/g, "").trim().replace(/^["']|["']$/g, "");
+          if (title) {
+            current = { title: stripSectionColon(title), objective: "", blueprintComponents: [], suggestedSubsectionCount: 3 };
+            items.push(current);
+          }
+          continue;
+        }
+        if (!current) continue;
+        const countMatch = line.match(/suggested\s*subsection\s*count[:\s]*['"]?(\d)/i);
+        if (countMatch) {
+          const n = Number(countMatch[1]);
+          if ([2, 3, 4].includes(n)) current.suggestedSubsectionCount = n;
+          continue;
+        }
+        const compMatch = line.match(/components?[:\s]+(.+)/i);
+        if (compMatch) {
+          current.blueprintComponents = compMatch[1]
+            .split(",")
+            .map((c: string) => c.replace(/[-*•]/g, "").trim())
+            .filter((c: string) => VALID_BLUEPRINT_COMPONENTS.has(c));
+          continue;
+        }
+        const objMatch = line.match(/objective[:\s]+(.+)/i);
+        if (objMatch && !current.objective) current.objective = objMatch[1].replace(/[-*•]/g, "").trim();
+      }
+      return items;
+    }
+
     function parseSections(text: string): Array<{ title: string; objective: string; blueprintComponents: string[] }> {
-      let raw: any;
-      try { raw = extractJSON(text); } catch { return []; }
-      if (!raw) return [];
-      if (!Array.isArray(raw) && Array.isArray(raw.sections)) {
-        return raw.sections
-          .filter((s: any) => s && typeof s.sectionTitle === "string" && s.sectionTitle.trim())
-          .map((s: any) => ({
-            title:                    stripSectionColon(String(s.sectionTitle).trim()),
-            objective:                typeof s.sectionObjective === "string" ? s.sectionObjective.trim() : "",
-            blueprintComponents:      Array.isArray(s.blueprintComponents)
-              ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c))
-              : [],
-            suggestedSubsectionCount: [2, 3, 4].includes(Number(s.suggestedSubsectionCount))
-              ? Number(s.suggestedSubsectionCount)
-              : 3,
-          }));
+      let raw: any = null;
+      try { raw = extractJSON(text); } catch { raw = null; }
+      if (raw) {
+        if (!Array.isArray(raw) && Array.isArray(raw.sections)) {
+          const parsed = raw.sections
+            .filter((s: any) => s && typeof s.sectionTitle === "string" && s.sectionTitle.trim())
+            .map((s: any) => ({
+              title:                    stripSectionColon(String(s.sectionTitle).trim()),
+              objective:                typeof s.sectionObjective === "string" ? s.sectionObjective.trim() : "",
+              blueprintComponents:      Array.isArray(s.blueprintComponents)
+                ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c))
+                : [],
+              suggestedSubsectionCount: [2, 3, 4].includes(Number(s.suggestedSubsectionCount))
+                ? Number(s.suggestedSubsectionCount)
+                : 3,
+            }));
+          if (parsed.length > 0) return parsed;
+        }
+        if (Array.isArray(raw)) {
+          const parsed = raw
+            .filter((t: any) => typeof t === "string" && t.trim())
+            .map((t: any) => ({ title: stripSectionColon(String(t).trim()), objective: "", blueprintComponents: [], suggestedSubsectionCount: 3 }));
+          if (parsed.length > 0) return parsed;
+        }
       }
-      if (Array.isArray(raw)) {
-        return raw
-          .filter((t: any) => typeof t === "string" && t.trim())
-          .map((t: any) => ({ title: stripSectionColon(String(t).trim()), objective: "", blueprintComponents: [] }));
-      }
-      return [];
+      // JSON parse failed or produced nothing usable — try markdown list fallback.
+      return parseMarkdownSections(text);
     }
 
     const MAX_ATTEMPTS = 3;
@@ -1321,29 +1363,72 @@ router.post("/generate-subsections", async (req, res) => {
       return res.status(400).json({ error: "chapterTitle and sectionTitle are required" });
     }
     const count = Math.min(15, Math.max(1, Number(subsectionCount) || 3));
-    const prompt = subsectionGenerationPrompt(String(chapterTitle), String(sectionTitle), count, research);
-    const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "subsectionGen");
-    const raw = extractJSON(text);
 
+    // Fallback for models (e.g. Groq/Llama) that ignore "JSON only" and return a
+    // markdown numbered/bulleted list instead — parse that shape directly.
+    function parseMarkdownSubsections(text: string): Array<{ title: string; purpose: string }> {
+      const lines = String(text || "").split(/\r?\n/);
+      const items: Array<{ title: string; purpose: string }> = [];
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        const numberedMatch = line.match(/^(?:\d+[\.\)]|[-*•])\s*\*{0,2}(.+?)\*{0,2}\s*$/);
+        if (numberedMatch) {
+          const title = numberedMatch[1].replace(/\*+/g, "").trim().replace(/^["']|["']$/g, "");
+          if (title && !/^suggested|^components?[:\s]/i.test(title)) {
+            items.push({ title: stripSectionColon(title), purpose: "" });
+          }
+        }
+      }
+      return items;
+    }
+
+    function parseSubsections(text: string): Array<{ title: string; purpose: string }> {
+      let raw: any = null;
+      try { raw = extractJSON(text); } catch { raw = null; }
+      if (raw) {
+        if (!Array.isArray(raw) && Array.isArray(raw.subsections)) {
+          const parsed = raw.subsections
+            .filter((s: any) => s && typeof s.subsectionTitle === "string" && s.subsectionTitle.trim())
+            .map((s: any) => ({
+              title:   stripSectionColon(String(s.subsectionTitle).trim()),
+              purpose: typeof s.subsectionPurpose === "string" ? s.subsectionPurpose.trim() : ""
+            }));
+          if (parsed.length > 0) return parsed;
+        }
+        if (Array.isArray(raw)) {
+          const parsed = raw
+            .filter((t: any) => typeof t === "string" && t.trim())
+            .map((t: any) => ({ title: stripSectionColon(String(t).trim()), purpose: "" }));
+          if (parsed.length > 0) return parsed;
+        }
+      }
+      return parseMarkdownSubsections(text);
+    }
+
+    const MAX_ATTEMPTS = 3;
     let subsections: Array<{ title: string; purpose: string }> = [];
+    let usedProvider = "";
+    let lastError = "";
+    let lastText = "";
 
-    if (raw && !Array.isArray(raw) && Array.isArray(raw.subsections)) {
-      // New format: { subsections: [{ subsectionTitle, subsectionPurpose }] }
-      subsections = raw.subsections
-        .filter((s: any) => s && typeof s.subsectionTitle === "string" && s.subsectionTitle.trim())
-        .map((s: any) => ({
-          title:   stripSectionColon(String(s.subsectionTitle).trim()),
-          purpose: typeof s.subsectionPurpose === "string" ? s.subsectionPurpose.trim() : ""
-        }));
-    } else if (Array.isArray(raw)) {
-      // Legacy format: string array
-      subsections = raw
-        .filter((t: any) => typeof t === "string" && t.trim())
-        .map((t: any) => ({ title: stripSectionColon(String(t).trim()), purpose: "" }));
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const prompt = subsectionGenerationPrompt(String(chapterTitle), String(sectionTitle), count, research);
+      const result = await runShort(prompt, systemPrompt(), req, res, "subsectionGen");
+      usedProvider = result.usedProvider;
+      lastText = result.text || "";
+      const parsed = parseSubsections(lastText);
+
+      if (parsed.length > 0) {
+        subsections = parsed.slice(0, count);
+        break;
+      }
+
+      lastError = `attempt ${attempt}: got 0 subsections, need ${count}`;
+      console.warn(`[generate-subsections] ${lastError} — retrying`);
     }
 
     if (subsections.length === 0) {
-      console.error("[generate-subsections] Could not parse subsections from:", text.slice(0, 300));
+      console.error("[generate-subsections] All attempts failed. Last error:", lastError, "raw:", lastText.slice(0, 300));
       return res.status(500).json({ error: "AI returned unparseable subsection data." });
     }
 
