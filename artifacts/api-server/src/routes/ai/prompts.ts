@@ -3359,7 +3359,7 @@ ${phaseAvoid.length ? phaseAvoid.map((c: string) => `❌ ${c}`).join("\n") : "(n
 
 COMPONENT SELECTION RULES (NON-NEGOTIABLE)
 
-1. Choose EXACTLY 4 components per section.
+1. Choose EXACTLY 3 components per section.
 
 2. Prioritize PREFERRED components for Phase ${learningPhase} (${phaseName}).
    The reader needs components that: ${phaseGoal}
@@ -3370,15 +3370,15 @@ COMPONENT SELECTION RULES (NON-NEGOTIABLE)
    Never combine two components with the same pedagogical role.
 
    ❌ WEAK (all explain/prove — redundant): Research Highlights + Case Studies + Examples
-   ❌ WEAK (all action — one-dimensional): Action Plan + Checklist + Exercises + Templates
-   ❌ WEAK (all passive — no active element): Summary + Key Takeaways + Resources + Reflection Questions
+   ❌ WEAK (all action — one-dimensional): Action Plan + Checklist + Exercises
+   ❌ WEAK (all passive — no active element): Summary + Key Takeaways + Reflection Questions
 
-   ✅ STRONG: Research Highlights + Example + Reflection Questions + Key Takeaways
-   ✅ STRONG: Action Plan + Checklist + Common Mistakes + Reflection Questions
-   ✅ STRONG: Case Study + Exercise + Key Takeaways + Summary
-   ✅ STRONG: Myth vs Reality + Examples + Reflection Questions + Summary
-   ✅ STRONG: Template + Exercise + Pro Tips + Progress Check
-   ✅ STRONG: Quick Win + Action Plan + Common Mistakes + Key Takeaways
+   ✅ STRONG: Research Highlights + Reflection Questions + Key Takeaways
+   ✅ STRONG: Action Plan + Common Mistakes + Reflection Questions
+   ✅ STRONG: Case Study + Exercise + Key Takeaways
+   ✅ STRONG: Myth vs Reality + Examples + Summary
+   ✅ STRONG: Template + Exercise + Progress Check
+   ✅ STRONG: Quick Win + Action Plan + Common Mistakes
 
 5. Match component to section type:
    Conceptual section     → prefer Research Highlights, Examples, Case Studies, Summary, Myth vs Reality
@@ -3388,7 +3388,7 @@ COMPONENT SELECTION RULES (NON-NEGOTIABLE)
    Conclusion section     → prefer Summary, Reflection Questions, Key Takeaways, Action Plan, Before & After Snapshot
 
 6. Vary combinations across sections in this chapter.
-   No two consecutive sections should share the same 4-component set.
+   No two consecutive sections should share the same 3-component set.
 
 ====================================================
 
@@ -3396,7 +3396,7 @@ OUTPUT FORMAT
 
 Return ONLY valid JSON — no markdown, no explanations, no code fences, no comments.
 
-{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Highlights","Case Studies","Key Takeaways","Action Plan"]}]}`;
+{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Highlights","Key Takeaways","Reflection Questions"]}]}`;
 }
 
 export function subsectionGenerationPrompt(
