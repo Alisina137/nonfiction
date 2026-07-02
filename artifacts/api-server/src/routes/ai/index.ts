@@ -1247,11 +1247,14 @@ router.post("/generate-sections", async (req, res) => {
         return raw.sections
           .filter((s: any) => s && typeof s.sectionTitle === "string" && s.sectionTitle.trim())
           .map((s: any) => ({
-            title:               stripSectionColon(String(s.sectionTitle).trim()),
-            objective:           typeof s.sectionObjective === "string" ? s.sectionObjective.trim() : "",
-            blueprintComponents: Array.isArray(s.blueprintComponents)
+            title:                    stripSectionColon(String(s.sectionTitle).trim()),
+            objective:                typeof s.sectionObjective === "string" ? s.sectionObjective.trim() : "",
+            blueprintComponents:      Array.isArray(s.blueprintComponents)
               ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c))
-              : []
+              : [],
+            suggestedSubsectionCount: [2, 3, 4].includes(Number(s.suggestedSubsectionCount))
+              ? Number(s.suggestedSubsectionCount)
+              : 3,
           }));
       }
       if (Array.isArray(raw)) {

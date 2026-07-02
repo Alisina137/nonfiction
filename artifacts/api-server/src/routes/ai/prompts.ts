@@ -3392,11 +3392,27 @@ COMPONENT SELECTION RULES (NON-NEGOTIABLE)
 
 ====================================================
 
+SUBSECTION COUNT PER SECTION
+
+For every section, assign a suggestedSubsectionCount (2, 3, or 4) based on the section's importance and how much expansion it needs.
+
+Distribution rule — apply this EXACTLY across all sections in this chapter:
+- EXACTLY 1 section gets 2 subsections (the lightest section — introductory, transitional, or summary-style)
+- EXACTLY 1 section gets 4 subsections (the most important section — the core concept, the deepest topic, or the one with the most practical value)
+- ALL remaining sections get 3 subsections
+
+Assignment logic:
+- Score each section on importance (how central is it to the chapter's main lesson?) and expansion need (how much depth does it genuinely require?).
+- Give 4 to the highest-scoring section. Give 2 to the lowest-scoring section. Give 3 to everything else.
+- If there is only 1 section total: assign 3. If there are only 2: assign 2 and 4.
+
+====================================================
+
 OUTPUT FORMAT
 
 Return ONLY valid JSON — no markdown, no explanations, no code fences, no comments.
 
-{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Highlights","Key Takeaways","Reflection Questions"]}]}`;
+{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Highlights","Key Takeaways","Reflection Questions"],"suggestedSubsectionCount":3}]}`;
 }
 
 export function subsectionGenerationPrompt(

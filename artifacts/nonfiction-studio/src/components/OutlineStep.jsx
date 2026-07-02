@@ -523,12 +523,18 @@ export default function OutlineStep({
         return normalizeChapter({
           ...chapter,
           expanded: true,
-          sections: items.map((item) => normalizeSection({
-            ...newSectionSkeleton(secWords),
-            title:               item.title               || "New section",
-            objective:           item.objective           || "",
-            blueprintComponents: Array.isArray(item.blueprintComponents) ? item.blueprintComponents : [],
-          })),
+          sections: items.map((item) => {
+            const subCount = [2, 3, 4].includes(Number(item.suggestedSubsectionCount))
+              ? Number(item.suggestedSubsectionCount)
+              : 3;
+            const skeleton = { ...newSectionSkeleton(secWords), subsections: [] };
+            return normalizeSection(resizeSectionSubs({
+              ...skeleton,
+              title:               item.title               || "New section",
+              objective:           item.objective           || "",
+              blueprintComponents: Array.isArray(item.blueprintComponents) ? item.blueprintComponents : [],
+            }, subCount));
+          }),
         });
       });
     } catch (e) {
