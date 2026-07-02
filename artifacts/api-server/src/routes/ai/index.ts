@@ -662,6 +662,46 @@ router.post("/chapter-strategy", async (req, res) => {
   }
 });
 
+const SECTION_BRIEF_MIN_WORDS = 130;
+const SECTION_BRIEF_MAX_WORDS = 180;
+
+function countWords(text: string): number {
+  return String(text || "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+/**
+ * Reasoning models (e.g. Nemotron via OpenRouter) sometimes leak their visible
+ * chain-of-thought into the response instead of just the final answer, often
+ * ending in a "Draft:" / "Final:" marker followed by the actual text. Strip
+ * that preamble when detected so downstream word-count checks operate on the
+ * real answer, not the model's internal monologue.
+ */
+function stripReasoningLeak(text: string): string {
+  const t = String(text || "").trim();
+  const quoted = t.match(/(?:draft|final(?:\s*(?:answer|brief|version))?)\s*:\s*"([\s\S]+)"\s*$/i);
+  if (quoted) return quoted[1].trim();
+  const unquoted = t.match(/(?:draft|final(?:\s*(?:answer|brief|version))?)\s*:\s*([\s\S]+)$/i);
+  if (unquoted && unquoted[1].trim().length > 40) {
+    return unquoted[1].trim().replace(/^["']|["']$/g, "");
+  }
+  return t;
+}
+
+/** Truncate text to at most `maxWords` words, ending on a sentence boundary when possible. */
+function truncateToWordRange(text: string, maxWords: number): string {
+  const words = String(text || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text.trim();
+  const truncated = words.slice(0, maxWords).join(" ");
+  const lastSentenceEnd = Math.max(
+    truncated.lastIndexOf(". "), truncated.lastIndexOf("! "), truncated.lastIndexOf("? ")
+  );
+  // Only snap to a sentence boundary if we don't lose too much length doing so.
+  if (lastSentenceEnd > truncated.length * 0.6) {
+    return truncated.slice(0, lastSentenceEnd + 1).trim();
+  }
+  return truncated.trim() + ".";
+}
+
 router.post("/section-brief", async (req, res) => {
   try {
     const {
@@ -669,7 +709,7 @@ router.post("/section-brief", async (req, res) => {
       chapterTitle, chapterDesc, sectionTitle, sectionDesc, subsections
     } = req.body || {};
     if (!sectionTitle?.trim()) return res.status(400).json({ error: "sectionTitle is required." });
-    const prompt = sectionBriefPrompt({
+    const basePrompt = sectionBriefPrompt({
       bookTitle:    bookTitle    || "",
       bookSubtitle: bookSubtitle || "",
       niche:        niche        || "",
@@ -682,8 +722,28 @@ router.post("/section-brief", async (req, res) => {
       sectionDesc:  sectionDesc  || "",
       subsections:  Array.isArray(subsections) ? subsections : []
     });
-    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "sectionBrief");
-    return res.json({ brief: text.trim(), _provider: usedProvider });
+
+    let brief = "";
+    let usedProvider: string | undefined;
+    const MAX_LENGTH_ATTEMPTS = 2;
+
+    for (let attempt = 0; attempt <= MAX_LENGTH_ATTEMPTS; attempt++) {
+      const prompt = attempt === 0
+        ? basePrompt
+        : `${basePrompt}\n\n━━━ LENGTH CORRECTION ━━━\nYour previous attempt was ${countWords(brief)} words, which is outside the required ${SECTION_BRIEF_MIN_WORDS}–${SECTION_BRIEF_MAX_WORDS} word range. Rewrite the brief so its total length falls strictly between ${SECTION_BRIEF_MIN_WORDS} and ${SECTION_BRIEF_MAX_WORDS} words.`;
+      const result = await runLong(prompt, systemPrompt(), req, res, "sectionBrief");
+      brief = stripReasoningLeak(result.text.trim());
+      usedProvider = result.usedProvider;
+      const wc = countWords(brief);
+      if (wc >= SECTION_BRIEF_MIN_WORDS && wc <= SECTION_BRIEF_MAX_WORDS) break;
+    }
+
+    // Guarantee the hard cap even if the model still overshoots after retries.
+    if (countWords(brief) > SECTION_BRIEF_MAX_WORDS) {
+      brief = truncateToWordRange(brief, SECTION_BRIEF_MAX_WORDS);
+    }
+
+    return res.json({ brief, wordCount: countWords(brief), _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

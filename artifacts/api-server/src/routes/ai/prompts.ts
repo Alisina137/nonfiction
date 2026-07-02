@@ -70,7 +70,7 @@ Coverage Alignment Rules:
 - The brief should act as a roadmap for the section, not as additional content.
 
 Requirements:
-- Length: 150–300 words total.
+- Length: 130–180 words total. This is a hard limit — do not go below 130 or above 180 words.
 - Write in the same tone, voice, and style as the book.
 - Do not use bullet points.
 - Do not repeat the section title excessively.
