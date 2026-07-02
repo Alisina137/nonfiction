@@ -201,6 +201,9 @@ export function buildBookContext(project) {
       .map((b) => b.title)
       .filter(Boolean)
       .join("; "),
+    bestCompetitorInsights: Array.isArray(intel.bestCompetitorInsights)
+      ? intel.bestCompetitorInsights.slice(0, 10)
+      : undefined,
 
     // Progressive chapter context (grows as the book is written)
     previousChapterSummaries: buildChapterSummaries(project)

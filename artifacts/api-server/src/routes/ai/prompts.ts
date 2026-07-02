@@ -1611,6 +1611,14 @@ export function bookContextBlock(ctx: any): string {
   if (ctx.positioningStrategy) lines.push(`Positioning Strategy: ${ctx.positioningStrategy}`);
   if (ctx.emotionalTriggers) lines.push(`Emotional Triggers: ${ctx.emotionalTriggers}`);
   if (ctx.competitorTitles) lines.push(`Competing Titles: ${ctx.competitorTitles}`);
+  if (Array.isArray(ctx.bestCompetitorInsights) && ctx.bestCompetitorInsights.length) {
+    const insights = ctx.bestCompetitorInsights
+      .map((ins: any, i: number) =>
+        `  ${i + 1}. "${ins.sourceBook}": ${ins.coreIdea} → Adapt as: ${ins.howToAdapt}`
+      )
+      .join("\n");
+    lines.push(`Best Competitor Ideas to Adapt (paraphrase — never copy verbatim):\n${insights}`);
+  }
 
   if (!lines.length) return "";
 
@@ -2042,7 +2050,9 @@ Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${up
 6. SMOOTH TRANSITIONS — Open with a bridge that connects to the prior section. Close with a sentence that naturally leads into the next section.
 7. DEPTH — Expand important ideas beyond surface-level explanation. Choose one idea per section and go deep rather than covering many ideas shallowly.
 8. AUDIENCE FIRST — Every sentence must be written with the target reader's exact situation, vocabulary, and goals in mind. No expert jargon without immediate plain-language translation.
-9. COMPETITOR GAPS — If competing titles are listed in the book context, this section must deliver something those books miss, handle superficially, or get wrong. Name the gap internally and fill it.
+9. COMPETITOR STRATEGY — Use the competitor data in BOOK MEMORY in two ways:
+   a) FILL GAPS: Deliver something the competing books miss, handle superficially, or get wrong. Identify the gap internally and fill it with depth.
+   b) ADAPT BEST IDEAS: If "Best Competitor Ideas to Adapt" are listed in BOOK MEMORY, draw on the ones most relevant to this section. Take the core idea and present it through a completely fresh angle — new framing, stronger evidence, a different example, a deeper exploration, or a more actionable version. Never copy phrasing. Always restate in your own voice. The goal is to take the best of what already works in the market and make it better.
 10. STANDALONE VALUE — This section must be valuable even if read in isolation. A reader who sees only this section should gain a complete, usable insight.
 
 ${qualityCheck}${ctxBlock}${resBlock}
@@ -2818,6 +2828,13 @@ Return ONLY valid JSON with this exact structure. No markdown, no code fences, n
     "credibilityStyle": "e.g. personal experience + research citations",
     "writingApproach": "e.g. practical frameworks with real-world examples"
   },
+  "bestCompetitorInsights": [
+    {
+      "sourceBook": "Title of the competitor book this idea comes from",
+      "coreIdea": "The strongest idea, argument, or angle this book makes on this topic — 1-2 sentences capturing its essence",
+      "howToAdapt": "How to present this same idea differently — a new framing, stronger evidence, a fresh metaphor, a deeper exploration, or a more actionable version"
+    }
+  ],
   "outlineGenerationBrief": "A concise 2-4 sentence blueprint: what transformation arc this book should follow, what core topics it must cover, how it should be structured to outperform competitors, and what unique angle it should take."
 }`;
 }
