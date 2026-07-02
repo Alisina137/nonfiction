@@ -629,8 +629,11 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         });
         chBodyY -= P.sectionSz + 14;
 
-        // Section introduction (italic, before main content)
-        const secIntro = buildSectionIntro(sec.title, ch.title);
+        // Section introduction (italic, before main content) — prefer the
+        // real AI-generated brief from the Write step, fall back to the
+        // templated bridging paragraph when no brief was generated.
+        const secBrief = String(lessons[sec.id]?.brief || "").trim();
+        const secIntro = secBrief || buildSectionIntro(sec.title, ch.title);
         const introResult = drawIntroBlock(currentChPage!, secIntro, chBodyY, ch.chNum, 10);
         currentChPage = introResult.page;
         chBodyY = introResult.y;
@@ -676,7 +679,9 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
             chBodyY -= P.sectionSz + 14;
 
             // Section introduction (shown once per section, before its subsections)
-            const secIntro = buildSectionIntro(sec.title, ch.title);
+            // — prefer the real AI-generated brief from the Write step.
+            const secBrief = String(lessons[sec.id]?.brief || "").trim();
+            const secIntro = secBrief || buildSectionIntro(sec.title, ch.title);
             const introResult = drawIntroBlock(currentChPage!, secIntro, chBodyY, ch.chNum, 10);
             currentChPage = introResult.page;
             chBodyY = introResult.y;
@@ -1170,8 +1175,13 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
         if (!prose) continue;
         hasContent = true;
         chChildren.push(h2Para(secLabel));
-        // Section introduction — italic bridging paragraph before the main content
-        chChildren.push(sectionIntroPara(buildSectionIntro(sec.title, ch.title)));
+        // Section introduction — italic bridging paragraph before the main content.
+        // Prefer the real AI-generated brief from the Write step, falling back
+        // to the templated bridging paragraph when no brief was generated.
+        {
+          const secBrief = String(lessons[sec.id]?.brief || "").trim();
+          chChildren.push(sectionIntroPara(secBrief || buildSectionIntro(sec.title, ch.title)));
+        }
         addProseBlocks(chChildren, prose);
 
       } else {
@@ -1184,7 +1194,8 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
           if (!secAdded) {
             chChildren.push(h2Para(secLabel));
             // Section introduction shown once, before the first subsection
-            chChildren.push(sectionIntroPara(buildSectionIntro(sec.title, ch.title)));
+            const secBrief = String(lessons[sec.id]?.brief || "").trim();
+            chChildren.push(sectionIntroPara(secBrief || buildSectionIntro(sec.title, ch.title)));
             secAdded = true;
           }
           chChildren.push(h3Para(subLabel));

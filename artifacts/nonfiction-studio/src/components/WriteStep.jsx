@@ -232,7 +232,11 @@ export default function WriteStep({
         sectionDesc:  sectionDesc  || "",
         subsections:  subsections  || []
       }, { noCache: true });
-      setBriefTexts((p) => ({ ...p, [secKey]: { status: "done", text: data.brief || "" } }));
+      const briefText = data.brief || "";
+      setBriefTexts((p) => ({ ...p, [secKey]: { status: "done", text: briefText } }));
+      // Persist the brief onto the section's lesson so it's saved with the
+      // project and can be included in exported output files.
+      patchLesson(secKey, { brief: briefText });
     } catch (e) {
       setBriefTexts((p) => ({ ...p, [secKey]: { status: "error", text: "" } }));
     }
