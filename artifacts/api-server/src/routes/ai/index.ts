@@ -1284,6 +1284,7 @@ router.post("/generate-sections", async (req, res) => {
       );
       const result = await runShort(prompt, systemPrompt(), req, res, "sectionGen");
       usedProvider = result.usedProvider;
+      console.log(`[generate-sections] raw (attempt ${attempt}, first 600 chars):`, result.text?.slice(0, 600));
       const parsed = parseSections(result.text);
 
       if (parsed.length === count) {
