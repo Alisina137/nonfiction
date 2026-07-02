@@ -122,6 +122,16 @@ const BLUEPRINT_COMPONENTS = [
   "Research Highlights",
   "Resources",
   "Summary",
+  "Quick Win",
+  "Common Mistakes",
+  "Pro Tips",
+  "Progress Check",
+  "Chapter Challenge",
+  "Habit Tracker",
+  "FAQ",
+  "Myth vs Reality",
+  "Before & After Snapshot",
+  "Success Story",
 ];
 
 function normalizeSection(s) {
