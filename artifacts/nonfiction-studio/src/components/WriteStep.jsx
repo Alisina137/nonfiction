@@ -18,6 +18,9 @@ const IMPROVE_ACTIONS = [
   { id: "add_example", label: "Add example" }
 ];
 
+// Front-matter sections that must wait until every chapter + section is fully written.
+const FRONT_MATTER_KINDS = ["introduction", "howToUseThisBook", "whatYouWillLearn", "whoThisBookIsFor"];
+
 function writingTone(fp) {
   const d = fp?.bookDetails || {};
   const r = fp?.research || {};
@@ -57,7 +60,7 @@ function GenerateBtn({ busy, hasContent, disabled, onClick, small }) {
 }
 
 /** Renders the content area for one write block. */
-function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove, onSetProse }) {
+function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove, onSetProse, locked, lockMessage }) {
   const prose      = String(lessons?.[blockId]?.prose || "").trim();
   const hasContent = blockHasContent(lessons, blockId);
   const isThisBusy = busyId === blockId;
@@ -73,6 +76,15 @@ function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove,
   }
 
   if (!hasContent) {
+    if (locked) {
+      return (
+        <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-center">
+          <p className="text-xs font-medium text-slate-400">
+            🔒 {lockMessage || "Complete all chapter generation before creating this section."}
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="mt-3">
         <GenerateBtn
@@ -101,7 +113,7 @@ function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove,
         </p>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <GenerateBtn busy={isThisBusy} hasContent disabled={isBusy} onClick={onGenerate} small />
+        <GenerateBtn busy={isThisBusy} hasContent disabled={isBusy || locked} onClick={onGenerate} small />
         <span className="text-slate-200">|</span>
         {IMPROVE_ACTIONS.map((action) => (
           <button
@@ -152,16 +164,36 @@ export default function WriteStep({
   const progress = useMemo(() => countDraftedBlocks(blocks, lessons), [blocks, lessons]);
 
   // Outline nodes
-  const outline     = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
-  const intro       = outline.introduction;
-  const conclusion  = outline.conclusion;
-  const chapters    = Array.isArray(outline.chapters) ? outline.chapters : [];
+  const outline           = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
+  const intro             = outline.introduction;
+  const howToUse          = outline.howToUseThisBook;
+  const whatYouWillLearn  = outline.whatYouWillLearn;
+  const whoThisBookIsFor  = outline.whoThisBookIsFor;
+  const conclusion        = outline.conclusion;
+  const chapters          = Array.isArray(outline.chapters) ? outline.chapters : [];
+
+  // Chapter body blocks (sections/subsections) — the actual manuscript that must be
+  // fully written before the Introduction and front matter can be generated.
+  const chapterBodyBlocks = useMemo(
+    () => blocks.filter((b) => b.kind === "section" || b.kind === "subsection"),
+    [blocks]
+  );
+  const chapterBodyDone = useMemo(
+    () => chapterBodyBlocks.filter((b) => blockHasContent(lessons, b.id)).length,
+    [chapterBodyBlocks, lessons]
+  );
+  const manuscriptComplete = chapterBodyBlocks.length > 0 && chapterBodyDone === chapterBodyBlocks.length;
+  const frontMatterLocked  = !manuscriptComplete;
+  const frontMatterLockMessage = chapterBodyBlocks.length === 0
+    ? "Add chapters and sections in the Outline step before generating the Introduction and front matter."
+    : `Finish generating every chapter and section to unlock the Introduction and Front Matter (${chapterBodyDone}/${chapterBodyBlocks.length} sections drafted).`;
 
   // Auto-expand first chapter that has empty blocks on entering Write step
   useEffect(() => {
     if (currentStep !== writeStepIndex) return;
     if (!blocks.length) return;
-    const firstEmpty = blocks.find((b) => !blockHasContent(lessons, b.id));
+    const searchable = manuscriptComplete ? blocks : blocks.filter((b) => !FRONT_MATTER_KINDS.includes(b.kind));
+    const firstEmpty = searchable.find((b) => !blockHasContent(lessons, b.id));
     if (!firstEmpty?.chapterKey) return;
     setExpandedChapters((prev) => {
       if (prev[firstEmpty.chapterKey] !== undefined) return prev;
@@ -172,8 +204,11 @@ export default function WriteStep({
   function setAllExpanded(expanded) {
     const next = {};
     chapters.forEach((ch, ci) => { next[ch.id || `ch-${ci}`] = expanded; });
-    if (intro?.id)      next["__intro__"]      = expanded;
-    if (conclusion?.id) next["__conclusion__"] = expanded;
+    if (intro?.id)             next["__intro__"]             = expanded;
+    if (howToUse?.id)          next["__howToUse__"]          = expanded;
+    if (whatYouWillLearn?.id)  next["__whatYouWillLearn__"]  = expanded;
+    if (whoThisBookIsFor?.id)  next["__whoThisBookIsFor__"]  = expanded;
+    if (conclusion?.id)        next["__conclusion__"]        = expanded;
     setExpandedChapters(next);
   }
 
@@ -193,7 +228,7 @@ export default function WriteStep({
 
   async function fetchChapterStrategy(block, strategyCache) {
     const key = block.chapterKey;
-    if (!key || key === "__intro__" || key === "__conclusion__") return null;
+    if (!key || FRONT_MATTER_KINDS.includes(block.kind) || key === "__conclusion__") return null;
     if (strategyCache[key]) return strategyCache[key];
     try {
       setStatus(`Building writing strategy for "${block.chapterContext?.title}"…`);
@@ -242,7 +277,18 @@ export default function WriteStep({
     }
   }
 
+  /** True if this front-matter block is still locked given a lessons snapshot. */
+  function isFrontMatterLockedFor(block, lessonsSnapshot) {
+    if (!FRONT_MATTER_KINDS.includes(block.kind)) return false;
+    if (!chapterBodyBlocks.length) return true;
+    return !chapterBodyBlocks.every((b) => blockHasContent(lessonsSnapshot, b.id));
+  }
+
   async function generateBlock(block, lessonsSnapshot = lessons, strategyCache = chapterStrategies) {
+    if (isFrontMatterLockedFor(block, lessonsSnapshot)) {
+      setStatus("Finish generating every chapter and section before creating the Introduction and Front Matter.");
+      return { snapshot: lessonsSnapshot, strategyCache };
+    }
     const index = blocks.findIndex((b) => b.id === block.id);
     setBusyId(block.id);
     setStatus("");
@@ -339,10 +385,19 @@ export default function WriteStep({
     let snapshot      = lessons && typeof lessons === "object" ? { ...lessons } : {};
     let strategyCache = { ...chapterStrategies };
     const failed      = [];
+    // Chapters and sections must be fully drafted before the Introduction and
+    // front matter (How to Use / What You Will Learn / Who This Is For) are
+    // generated, since they need the finished manuscript as context.
+    const orderedBlocks = [
+      ...blocks.filter((b) => !FRONT_MATTER_KINDS.includes(b.kind) && b.kind !== "conclusion"),
+      ...blocks.filter((b) => FRONT_MATTER_KINDS.includes(b.kind)),
+      ...blocks.filter((b) => b.kind === "conclusion"),
+    ];
     try {
-      for (let i = 0; i < blocks.length; i++) {
-        const block = blocks[i];
+      for (let i = 0; i < orderedBlocks.length; i++) {
+        const block = orderedBlocks[i];
         if (blockHasContent(snapshot, block.id)) continue;
+        if (isFrontMatterLockedFor(block, snapshot)) continue;
         setExpandedChapters((p) => ({ ...p, [block.chapterKey]: true }));
         const before = snapshot;
         const result = await generateBlock(block, snapshot, strategyCache);
@@ -383,7 +438,8 @@ export default function WriteStep({
   // ─── Render helpers ────────────────────────────────────────────────────────
 
   /** Renders intro or conclusion as a standalone manuscript section. */
-  function renderFrontBackMatter(node, chKey, label) {
+  function renderFrontBackMatter(node, chKey, label, opts = {}) {
+    const { locked = false, lockMessage } = opts;
     if (!node?.id) return null;
     const block      = blockById.get(node.id);
     if (!block) return null;
@@ -399,11 +455,15 @@ export default function WriteStep({
             <h2 className="mt-1 text-[20px] font-semibold leading-snug text-slate-900">{node.title || label}</h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {hasContent && (
+            {hasContent ? (
               <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
                 Drafted
               </span>
-            )}
+            ) : locked ? (
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
+                🔒 Locked
+              </span>
+            ) : null}
             <button
               type="button"
               onClick={() => setExpandedChapters((p) => ({ ...p, [chKey]: p[chKey] === false ? true : !isExpanded }))}
@@ -425,6 +485,8 @@ export default function WriteStep({
               onGenerate={() => generateBlock(block)}
               onImprove={improveBlock}
               onSetProse={setProse}
+              locked={locked}
+              lockMessage={lockMessage}
             />
           </div>
         )}
@@ -492,11 +554,33 @@ export default function WriteStep({
         </p>
       )}
 
+      {/* Front matter lock banner */}
+      {chapterBodyBlocks.length > 0 && (
+        frontMatterLocked ? (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-700">
+            🔒 {frontMatterLockMessage}
+          </div>
+        ) : (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium text-emerald-700">
+            ✓ All chapters and sections are complete — the Introduction and Front Matter are ready to generate.
+          </div>
+        )
+      )}
+
       {/* ── Manuscript ──────────────────────────────────────────────────── */}
       <div className="mt-8 space-y-6">
 
         {/* Introduction */}
-        {renderFrontBackMatter(intro, "__intro__", "Introduction")}
+        {renderFrontBackMatter(intro, "__intro__", "Introduction", { locked: frontMatterLocked, lockMessage: frontMatterLockMessage })}
+
+        {/* How to Use This Book */}
+        {renderFrontBackMatter(howToUse, "__howToUse__", "How to Use This Book", { locked: frontMatterLocked, lockMessage: frontMatterLockMessage })}
+
+        {/* What You Will Learn */}
+        {renderFrontBackMatter(whatYouWillLearn, "__whatYouWillLearn__", "What You Will Learn", { locked: frontMatterLocked, lockMessage: frontMatterLockMessage })}
+
+        {/* Who This Book Is For */}
+        {renderFrontBackMatter(whoThisBookIsFor, "__whoThisBookIsFor__", "Who This Book Is For", { locked: frontMatterLocked, lockMessage: frontMatterLockMessage })}
 
         {/* Chapters */}
         {chapters.map((ch, ci) => {
