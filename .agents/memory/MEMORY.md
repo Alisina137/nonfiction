@@ -2,3 +2,4 @@
 - [Amazon Book Search Provider Chain](amazon-provider-chain.md) — Rainforest → Scale SERP → AI research → Open Library; Rainforest account is suspended; Scale SERP uses site:amazon.com/dp query.
 - [Title Normalizer System](title-normalizer.md) — titleNormalizer.ts guarantees exactly 3 TitleItem objects; token limits for title routes must be 1500 to avoid Gemini truncation.
 - [Multi-Model AI Pipeline](multi-model-pipeline.md) — 6 task phases each with a specialized model chain; TASK_CHAINS + CONTENT_TYPE_TO_TASK + callProvider model overrides; GROK_API_KEY needed for Grok 4.
+- [PDF Pagination Orphan Headings](pdf-pagination-orphan-headings.md) — never page-break a whole prose block at once; check room per-line or headings get stranded alone at page bottom.

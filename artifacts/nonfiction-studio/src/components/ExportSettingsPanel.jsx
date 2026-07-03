@@ -1,4 +1,4 @@
-import { TRIM_SIZES, FONT_CHOICES, FONT_SIZE_CHOICES, LINE_SPACING_CHOICES, fontCssFamily } from "@/lib/exportSettings";
+import { TRIM_SIZES, FONT_CHOICES, FONT_SIZE_CHOICES, FIXED_LINE_SPACING, fontCssFamily } from "@/lib/exportSettings";
 
 const TRIM_ASPECT = {
   "5x8": "5/8",
@@ -111,27 +111,18 @@ export default function ExportSettingsPanel({ settings, onChange }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
-          <div>
-            <label className="text-xs font-bold text-slate-800">Font size</label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {FONT_SIZE_CHOICES.map((sz) => (
-                <Pill key={sz} active={settings.fontSize === sz} onClick={() => set({ fontSize: sz })}>
-                  {sz}pt
-                </Pill>
-              ))}
-            </div>
+        <div>
+          <label className="text-xs font-bold text-slate-800">Font size</label>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {FONT_SIZE_CHOICES.map((sz) => (
+              <Pill key={sz} active={settings.fontSize === sz} onClick={() => set({ fontSize: sz })}>
+                {sz}pt
+              </Pill>
+            ))}
           </div>
-          <div>
-            <label className="text-xs font-bold text-slate-800">Line spacing</label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {LINE_SPACING_CHOICES.map((ls) => (
-                <Pill key={ls.value} active={settings.lineSpacing === ls.value} onClick={() => set({ lineSpacing: ls.value })}>
-                  {ls.label}
-                </Pill>
-              ))}
-            </div>
-          </div>
+          <p className="mt-1.5 text-[10px] text-slate-400">
+            Line spacing is fixed at 1.15 for professional, KDP-ready formatting.
+          </p>
         </div>
 
         <div>
@@ -188,10 +179,10 @@ export default function ExportSettingsPanel({ settings, onChange }) {
               className="text-slate-800"
               style={{
                 fontSize: `${5 + settings.fontSize / 6}px`,
-                lineHeight: settings.lineSpacing,
+                lineHeight: FIXED_LINE_SPACING,
                 textAlign: settings.alignment === "justified" ? "justify" : "left",
                 textIndent: "1.2em",
-                marginBottom: settings.lineSpacing >= 1.5 ? "0.3em" : "0",
+                marginBottom: "0",
               }}
             >
               {sampleParaOne}
@@ -200,7 +191,7 @@ export default function ExportSettingsPanel({ settings, onChange }) {
               className="mt-1 text-slate-800"
               style={{
                 fontSize: `${5 + settings.fontSize / 6}px`,
-                lineHeight: settings.lineSpacing,
+                lineHeight: FIXED_LINE_SPACING,
                 textAlign: settings.alignment === "justified" ? "justify" : "left",
                 textIndent: "1.2em",
               }}

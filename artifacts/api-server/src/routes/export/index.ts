@@ -36,7 +36,19 @@ const router = Router();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
-const FONTS_DIR  = path.join(__dirname, "..", "..", "assets", "fonts");
+// In dev (running from src/routes/export) this file sits two levels below
+// src/, so ../../assets/fonts resolves correctly. Once esbuild bundles
+// everything into a single dist/index.mjs, __dirname becomes the dist/
+// folder itself (one level below the package root), so we resolve against
+// whichever assets/fonts directory actually exists on disk.
+function resolveFontsDir(): string {
+  const devPath   = path.join(__dirname, "..", "..", "assets", "fonts");
+  const distPath  = path.join(__dirname, "..", "src", "assets", "fonts");
+  if (fs.existsSync(devPath)) return devPath;
+  if (fs.existsSync(distPath)) return distPath;
+  return devPath;
+}
+const FONTS_DIR = resolveFontsDir();
 
 function loadFontBytes(fileName: string): Buffer {
   return fs.readFileSync(path.join(FONTS_DIR, fileName));
@@ -61,7 +73,9 @@ function buildLayout(settings: ExportSettings, wordCount: number) {
     pageW: W, pageH: H,
     mTop: margins.top * 72, mBot: margins.bottom * 72,
     mLeft: margins.inside * 72, mRight: margins.outside * 72,
-    titleSz: 28, chapterSz: 18, sectionSz: 14, subsectionSz: 13, bodySz: BODY,
+    // Chapter/section/subsection sizes are fixed per KDP typography rules —
+    // 16pt / 14pt / 13pt bold — regardless of the chosen body font/size.
+    titleSz: 28, chapterSz: 16, sectionSz: 14, subsectionSz: 13, bodySz: BODY,
     lineH: LH, paraGap: 0, indent,
     chapterPrefix: "Chapter",
     docxBody: DOCX_FONT_NAME[settings.font], docxHead: DOCX_FONT_NAME[settings.font],
@@ -398,6 +412,11 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   const ML = P.mLeft, MR = P.mRight, MT = P.mTop, MB = P.mBot;
   const textW = W - ML - MR;
   const BODY = P.bodySz, LH = P.lineH, PG = P.paraGap;
+  // Minimum vertical room (in pt) required before a section/subsection heading
+  // may start — enough for the heading itself plus a few lines of body text,
+  // so headings never get orphaned alone at the bottom of a page.
+  const SEC_MIN_ROOM = 130;
+  const SUB_MIN_ROOM = 110;
 
   const black     = rgb(0,    0,    0);
   const darkGray  = rgb(0.15, 0.15, 0.15);
@@ -608,15 +627,18 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
       page.drawText(chLabelText, { x: ML + (textW - clw) / 2, y, size: 10, font: regular, color: accent });
       y -= 18;
     }
+    // Chapter title: 16pt bold, centered. Per KDP typography rules there must
+    // be exactly 24pt of space after the title block before the next element.
     const tLines = wrapTextPdf(chTitle, bold, P.chapterSz, textW);
-    for (const tl of tLines) {
+    for (let i = 0; i < tLines.length; i++) {
+      const tl = tLines[i];
       const tw = bold.widthOfTextAtSize(sanitize(tl), P.chapterSz);
       page.drawText(sanitize(tl), { x: ML + (textW - tw) / 2, y, size: P.chapterSz, font: bold, color: black });
-      y -= P.chapterSz + 6;
+      if (i < tLines.length - 1) y -= P.chapterSz + 4; // inter-line leading for wrapped titles only
     }
-    y -= 6;
+    y -= 24; // fixed 24pt space-after chapter title
     page.drawRectangle({ x: ML + (textW - 48) / 2, y, width: 48, height: 2, color: accent });
-    y -= 22;
+    y -= 14;
 
     // Chapter introduction — italic, separated from the first section by extra whitespace
     if (chapterIntro) {
@@ -637,8 +659,12 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
     let currentPage = page;
     let firstPara = indentFirst;
 
-    function ensureRoom(needed: number) {
-      if (y - needed < MB + 20) {
+    // Page-break check performed per LINE (not per block) so a long paragraph
+    // flows naturally across a page boundary instead of the whole block being
+    // shoved to a fresh page — which would otherwise strand a heading alone
+    // at the bottom of the previous page with none of its body text.
+    function ensureLineRoom() {
+      if (y - LH < MB + 20) {
         arabicPageNum++;
         currentPage = newPage();
         const label = chNum > 0 ? `${P.chapterPrefix} ${chNum}` : "";
@@ -654,8 +680,8 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         firstPara = false;
         const bulletText = `\u2022  ${sanitize(block.text)}`;
         const lines = wrapTextPdf(bulletText, regular, BODY, textW - 18);
-        ensureRoom(LH * lines.length + 4);
         for (let i = 0; i < lines.length; i++) {
+          ensureLineRoom();
           drawAlignedLine(currentPage, lines[i], ML + 14, y, BODY, regular, black, textW - 18, justify, i === lines.length - 1);
           y -= LH;
         }
@@ -664,8 +690,8 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         firstPara = false;
         const numText = `${block.num}.  ${sanitize(block.text)}`;
         const lines = wrapTextPdf(numText, regular, BODY, textW - 18);
-        ensureRoom(LH * lines.length + 4);
         for (let i = 0; i < lines.length; i++) {
+          ensureLineRoom();
           drawAlignedLine(currentPage, lines[i], ML + 14, y, BODY, regular, black, textW - 18, justify, i === lines.length - 1);
           y -= LH;
         }
@@ -674,8 +700,8 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         const indent = firstPara ? P.indent : 0;
         firstPara = false;
         const lines = wrapTextPdf(sanitize(block.text), regular, BODY, textW - indent);
-        ensureRoom(LH * lines.length + PG);
         for (let i = 0; i < lines.length; i++) {
+          ensureLineRoom();
           const lineIndent = i === 0 ? indent : 0;
           drawAlignedLine(currentPage, lines[i], ML + lineIndent, y, BODY, regular, black, textW - lineIndent, justify, i === lines.length - 1);
           y -= LH;
@@ -723,7 +749,11 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
           });
         }
 
-        if (chBodyY < MB + 80) {
+        // Section heading — 18pt space before (skipped when the heading is the
+        // first thing on a fresh page) and orphan protection: don't leave a
+        // heading alone at the bottom of a page with no room for its content.
+        if (chBodyY < H - MT - 10) chBodyY -= 18;
+        if (chBodyY < MB + SEC_MIN_ROOM) {
           arabicPageNum++;
           currentChPage = newPage();
           drawHeader(currentChPage, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
@@ -738,7 +768,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         currentChPage!.drawText(`${secLabel}  ${sanitize(sec.title)}`, {
           x: ML, y: chBodyY, size: P.sectionSz, font: bold, color: black
         });
-        chBodyY -= P.sectionSz + 14;
+        chBodyY -= P.sectionSz + 10;
 
         // Section introduction (italic, before main content) — prefer the
         // real AI-generated brief from the Write step, fall back to the
@@ -774,7 +804,8 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 
           if (!secStarted) {
             secStarted = true;
-            if (chBodyY < MB + 80) {
+            if (chBodyY < H - MT - 10) chBodyY -= 18;
+            if (chBodyY < MB + SEC_MIN_ROOM) {
               arabicPageNum++;
               currentChPage = newPage();
               drawHeader(currentChPage!, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
@@ -787,7 +818,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
             currentChPage!.drawText(`${secLabel}  ${sanitize(sec.title)}`, {
               x: ML, y: chBodyY, size: P.sectionSz, font: bold, color: black
             });
-            chBodyY -= P.sectionSz + 14;
+            chBodyY -= P.sectionSz + 10;
 
             // Section introduction (shown once per section, before its subsections)
             // — prefer the real AI-generated brief from the Write step.
@@ -798,7 +829,10 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
             chBodyY = introResult.y;
           }
 
-          if (chBodyY < MB + 80) {
+          // Subsection heading — 12pt space before / 6pt after, with the same
+          // orphan protection as section headings.
+          if (chBodyY < H - MT - 10) chBodyY -= 12;
+          if (chBodyY < MB + SUB_MIN_ROOM) {
             arabicPageNum++;
             currentChPage = newPage();
             drawHeader(currentChPage!, `${P.chapterPrefix} ${ch.chNum}`, arabicPageNum, false);
@@ -811,7 +845,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
           currentChPage!.drawText(`${subLabel}  ${sanitize(sub.title)}`, {
             x: ML, y: chBodyY, size: P.subsectionSz, font: bold, color: midGray
           });
-          chBodyY -= P.subsectionSz + 12;
+          chBodyY -= P.subsectionSz + 6;
 
           const result = drawProseBlocks(currentChPage!, parseProseBlocks(prose), chBodyY, ch.chNum, true);
           currentChPage = result.page;
@@ -1069,20 +1103,25 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   // Heading 2 = section     "N.M  Section Title"    (appears as level 2)
   // Heading 3 = subsection  "N.M.P  Sub Title"      (appears as level 3)
   function h1Para(text: string, extra?: any): Paragraph {
-    return new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 480, after: 200 }, ...extra });
+    return new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 480, after: 480 }, keepNext: true, keepLines: true, ...extra });
   }
-  // Chapter titles are centered per KDP typography rules (18pt bold, new page).
+  // Chapter titles: 16pt bold, centered, always on a new page, with exactly
+  // 24pt (480 twips) of space after and keep-with-next so the title never
+  // gets separated from the paragraph that follows it.
   function chapterTitlePara(text: string, extra?: any): Paragraph {
     return new Paragraph({
       text, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER,
-      spacing: { before: 480, after: 200 }, ...extra
+      spacing: { before: 480, after: 480 }, keepNext: true, keepLines: true, ...extra
     });
   }
+  // Section (H2) headings: 14pt bold left-aligned, 18pt before / 10pt after.
+  // keepNext + keepLines prevent an orphaned heading at the bottom of a page.
   function h2Para(text: string, extra?: any): Paragraph {
-    return new Paragraph({ text, heading: HeadingLevel.HEADING_2, spacing: { before: 360, after: 160 }, ...extra });
+    return new Paragraph({ text, heading: HeadingLevel.HEADING_2, spacing: { before: 360, after: 200 }, keepNext: true, keepLines: true, ...extra });
   }
+  // Subsection (H3) headings: 13pt bold left-aligned, 12pt before / 6pt after.
   function h3Para(text: string, extra?: any): Paragraph {
-    return new Paragraph({ text, heading: HeadingLevel.HEADING_3, spacing: { before: 280, after: 120 }, ...extra });
+    return new Paragraph({ text, heading: HeadingLevel.HEADING_3, spacing: { before: 240, after: 120 }, keepNext: true, keepLines: true, ...extra });
   }
   function h4Para(text: string, extra?: any): Paragraph {
     return new Paragraph({ text, heading: HeadingLevel.HEADING_4 as any, spacing: { before: 200, after: 80 }, ...extra });
@@ -1392,17 +1431,17 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
         {
           id: "Heading1", name: "Heading 1",
           run:       { font: headFont, size: HP(P.chapterSz), bold: true, color: "000000" },
-          paragraph: { spacing: { before: 480, after: 240 } }
+          paragraph: { spacing: { before: 480, after: 480 }, keepNext: true, keepLines: true }
         },
         {
           id: "Heading2", name: "Heading 2",
           run:       { font: headFont, size: HP(P.sectionSz), bold: true, color: "0D0D0D" },
-          paragraph: { spacing: { before: 360, after: 160 } }
+          paragraph: { spacing: { before: 360, after: 200 }, keepNext: true, keepLines: true }
         },
         {
           id: "Heading3", name: "Heading 3",
           run:       { font: headFont, size: HP(P.subsectionSz), bold: true, color: "1A1A1A" },
-          paragraph: { spacing: { before: 280, after: 120 } }
+          paragraph: { spacing: { before: 240, after: 120 }, keepNext: true, keepLines: true }
         },
         {
           id: "Heading4", name: "Heading 4",

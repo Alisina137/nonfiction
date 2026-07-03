@@ -15,12 +15,11 @@ export const FONT_CHOICES = [
 ];
 
 export const FONT_SIZE_CHOICES = [11, 12, 13];
-export const LINE_SPACING_CHOICES = [
-  { value: 1.0, label: "1.0" },
-  { value: 1.15, label: "1.15" },
-  { value: 1.5, label: "1.5" },
-  { value: 2.0, label: "Double" },
-];
+
+// Line spacing is fixed per KDP typography rules — always 1.15, regardless of
+// the chosen font family/size. It is intentionally not user-configurable, so
+// there is no picker for it in the export settings UI.
+export const FIXED_LINE_SPACING = 1.15;
 
 export const DEFAULT_EXPORT_SETTINGS = {
   trimSize: DEFAULT_TRIM_SIZE,

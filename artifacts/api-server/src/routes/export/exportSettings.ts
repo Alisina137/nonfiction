@@ -23,8 +23,11 @@ export const DEFAULT_TRIM_SIZE = "6x9";
 export type FontChoice = "Garamond" | "Georgia" | "Times New Roman";
 export const FONT_CHOICES: FontChoice[] = ["Garamond", "Georgia", "Times New Roman"];
 
-export type LineSpacingChoice = 1.0 | 1.15 | 1.5 | 2.0;
-export const LINE_SPACING_CHOICES: LineSpacingChoice[] = [1.0, 1.15, 1.5, 2.0];
+// Line spacing is fixed per KDP typography rules — always 1.15 regardless of
+// the chosen font family/size. This is intentionally not user-configurable.
+export const FIXED_LINE_SPACING = 1.15;
+export type LineSpacingChoice = 1.15;
+export const LINE_SPACING_CHOICES: LineSpacingChoice[] = [1.15];
 
 export type FontSizeChoice = 11 | 12 | 13;
 export const FONT_SIZE_CHOICES: FontSizeChoice[] = [11, 12, 13];
@@ -59,7 +62,9 @@ export function normalizeExportSettings(input: any): ExportSettings {
   const trimSize = TRIM_SIZES.some((t) => t.id === s.trimSize) ? s.trimSize : DEFAULT_TRIM_SIZE;
   const font: FontChoice = FONT_CHOICES.includes(s.font) ? s.font : "Garamond";
   const fontSize: FontSizeChoice = FONT_SIZE_CHOICES.includes(Number(s.fontSize)) ? Number(s.fontSize) : 12;
-  const lineSpacing: LineSpacingChoice = LINE_SPACING_CHOICES.includes(Number(s.lineSpacing)) ? Number(s.lineSpacing) : 1.15;
+  // Fixed per KDP typography rules — not user-configurable, always 1.15
+  // regardless of what (if anything) the caller sends.
+  const lineSpacing: LineSpacingChoice = FIXED_LINE_SPACING;
   const alignment = s.alignment === "justified" ? "justified" : "left";
   const pageNumbers = s.pageNumbers !== false;
   const headers = s.headers === true;
