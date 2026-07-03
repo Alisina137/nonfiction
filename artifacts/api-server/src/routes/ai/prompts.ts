@@ -1971,6 +1971,8 @@ Uniqueness Directive: ${chapterStrategy.uniquenessDirective || ""}
 Reader Outcome for Chapter: ${chapterStrategy.readerOutcome || ""}
 ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAvoid.length ? `Concepts to Avoid (already in prior chapters): ${chapterStrategy.conceptsToAvoid.join("; ")}` : ""}` : "";
 
+  const isBookIntroduction = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "introduction");
+
   const chapterInfo = chapterContext
     ? `Chapter: ${typeof chapterContext === "string" ? chapterContext : (chapterContext.title || JSON.stringify(chapterContext))}`
     : "";
@@ -1982,7 +1984,36 @@ ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAv
     ? `\nSubsection Purpose: ${subsectionPurpose}`
     : "";
 
-  const flowBlock = hasBlueprint ? "" : `
+  // ── Book-level "Introduction" — dedicated instruction set (not a generic subsection) ──
+  const bookIntroBlock = isBookIntroduction ? `
+════════════════════════════════════
+BOOK INTRODUCTION INSTRUCTIONS
+════════════════════════════════════
+This is the book's front-matter Introduction, not a chapter subsection. Follow these rules exactly:
+
+1. START WITH A STRONG HOOK — Begin with a compelling question, short story, surprising fact, or thought-provoking statement that immediately captures the reader's attention.
+2. PROVIDE BACKGROUND AND CONTEXT — Explain why the topic is important and what inspired or motivated the book. Help readers understand the problem, challenge, or opportunity the book addresses.
+3. CLEARLY STATE THE PURPOSE OF THE BOOK — Explain what readers will learn, gain, or achieve by reading it. Keep the purpose concise and easy to understand.
+4. GIVE A BRIEF OVERVIEW OF THE BOOK — Summarize the major themes or topics covered. Do not reveal all details or conclusions.
+5. IDENTIFY THE INTENDED AUDIENCE — Briefly explain who the book is written for and why it will benefit them.
+6. END WITH AN INVITATION TO CONTINUE READING — Finish with an encouraging, engaging transition into Chapter 1.
+
+Writing style requirements:
+- Write in a natural, engaging, and professional tone.
+- Use smooth transitions between paragraphs.
+- Avoid repetitive phrases and clichés.
+- Make the introduction inspiring and reader-focused.
+- Show the value of the book without overselling it.
+- Match the tone and style of the rest of the book.
+- Do NOT include chapter summaries or spoilers.
+- Do NOT use generic filler text.
+- Ensure the introduction feels original and specific to the book's topic.
+
+Length: target approximately 500–1,000 words, organized into clear, readable paragraphs.
+
+Quality standard: this should read like an introduction written by a professional author or editor — making readers curious, establishing credibility, and naturally encouraging them to continue reading the rest of the book.` : "";
+
+  const flowBlock = (hasBlueprint || isBookIntroduction) ? "" : `
 ════════════════════════════════════
 WRITING FLOW — ${structureKey.toUpperCase()} STRUCTURE
 ════════════════════════════════════
@@ -1996,7 +2027,7 @@ This flow determines how you organize and sequence the content.
 Do NOT use a generic introduction → explanation → example → summary template.
 Each section of this flow must be substantively different and add unique value.`;
 
-  const antiTemplateRules = `
+  const antiTemplateRules = isBookIntroduction ? "" : `
 ════════════════════════════════════
 ANTI-TEMPLATE RULES (non-negotiable)
 ════════════════════════════════════
@@ -2010,7 +2041,18 @@ ANTI-TEMPLATE RULES (non-negotiable)
 ✅ Let the structure type shape the pacing, not a universal template
 ✅ Make this subsection feel DISTINCTLY different from its siblings`;
 
-  const qualityCheck = `
+  const qualityCheck = isBookIntroduction ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does the opening hook the reader immediately (question, story, fact, or bold statement)?
+2. Does the tone match: ${toneInstr.slice(0, 120)}
+3. Is the book's purpose and value to the reader clearly and concisely stated?
+4. Does it give a brief overview of themes without revealing chapter details or conclusions?
+5. Does it identify the intended audience and end with an inviting transition into Chapter 1?
+6. Is the length approximately 500–1,000 words?
+
+If any answer is NO — rewrite.` : `
 ════════════════════════════════════
 QUALITY CHECK (verify before returning)
 ════════════════════════════════════
@@ -2037,7 +2079,7 @@ Subsection: ${subsectionTitle}${purposeNote}
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
-Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${flowBlock}${antiTemplateRules}
+Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${flowBlock}${antiTemplateRules}
 
 ════════════════════════════════════
 10 NON-NEGOTIABLE WRITING RULES
@@ -2060,7 +2102,11 @@ ${qualityCheck}${ctxBlock}${resBlock}
 ════════════════════════════════════
 REQUIRED OUTPUT STRUCTURE
 ════════════════════════════════════
-${hasBlueprint
+${isBookIntroduction
+  ? `Follow the BOOK INTRODUCTION INSTRUCTIONS above exactly — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading.
+Target length: approximately 500–1,000 words.
+The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content, and do NOT include chapter summaries or spoilers.`
+  : hasBlueprint
   ? `BLUEPRINT CONTENT STRUCTURE (follows from SECTION BLUEPRINT COMPONENTS above)
 Write the subsection as flowing prose that includes ONLY the blueprint components selected above.
 Do NOT follow a generic 6-part template. The blueprint components ARE the structure.
@@ -2077,11 +2123,15 @@ The prose must flow as unified paragraphs — no internal headers or bold labels
 
 The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.`}
 
+${isBookIntroduction ? `════════════════════════════════════
+INTRODUCTION QUALITY TEST
 ════════════════════════════════════
+Before writing, answer internally: "Does this introduction hook the reader, establish the book's purpose and value, and make them want to keep reading — without giving away the content of the chapters?"
+If the answer is no — rewrite.` : `════════════════════════════════════
 SUBSECTION UNIQUENESS TEST
 ════════════════════════════════════
 Before writing, answer internally: "What unique value does this subsection provide that no other subsection provides?"
-If the answer overlaps with another subsection — reframe the angle until it is genuinely distinct.
+If the answer overlaps with another subsection — reframe the angle until it is genuinely distinct.`}
 
 ════════════════════════════════════
 OUTPUT FORMAT
@@ -2091,14 +2141,17 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 {
   "title": "The subsection title (publication-ready, specific, compelling)",
   "structureUsed": "${structureKey}",
-  "content": "${hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
+  "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
   "flowSections": [
-    ${(hasBlueprint ? (blueprintComponents as string[]) : effectiveFlow).map((step: string) => `{"label": "${step}", "text": "2-4 sentences summarizing what this section covers in the content"}`).join(",\n    ")}
+    ${(isBookIntroduction
+        ? ["Hook", "Background & Context", "Purpose of the Book", "Overview of the Book", "Intended Audience", "Invitation to Continue Reading"]
+        : hasBlueprint ? (blueprintComponents as string[]) : effectiveFlow
+      ).map((step: string) => `{"label": "${step}", "text": "2-4 sentences summarizing what this section covers in the content"}`).join(",\n    ")}
   ],
-  "keyTakeaway": "One sentence — the single most important thing the reader learns (matches part 5 of the prose)",
-  "transition": "The exact closing sentence or short paragraph from part 6 — the natural bridge to the next section",
+  "keyTakeaway": "One sentence — the single most important thing the reader ${isBookIntroduction ? "should take away about what this book offers them" : "learns (matches part 5 of the prose)"}",
+  "transition": "The exact closing sentence or short paragraph that bridges into ${isBookIntroduction ? "Chapter 1" : "the next section"}",
   "teachingMethod": "The primary teaching method used (e.g. anecdote, data-led, analogy, direct instruction, case study, exercise)",
-  "competitorGap": "One sentence describing what competing books miss that this section addresses (or 'N/A' if no competitor data provided)"
+  "competitorGap": "One sentence describing what competing books miss that this ${isBookIntroduction ? "introduction" : "section"} addresses (or 'N/A' if no competitor data provided)"
 }`;
 }
 

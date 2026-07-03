@@ -172,7 +172,8 @@ function compressLessonBody(body: any): any {
 
   const compressedChapter = chapterContext ? {
     title:       chapterContext.title,
-    description: String(chapterContext.description || "").slice(0, 200)
+    description: String(chapterContext.description || "").slice(0, 200),
+    ...(chapterContext.role ? { role: chapterContext.role } : {})
   } : chapterContext;
 
   const compressedPrev = Array.isArray(previousConcepts)
