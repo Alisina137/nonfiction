@@ -843,7 +843,9 @@ export default function OutlineStep({
                             {(() => {
                               const subKey = `${ch.id}::${sec.id}`;
                               const busy   = !!genSubsBusy[subKey];
-                              const count  = Math.max(1, Math.min(subs.length, 15)) || 3;
+                              const count  = subs.length > 0
+                                ? Math.max(1, Math.min(subs.length, 15))
+                                : ([2, 3, 4].includes(Number(sec.suggestedSubsectionCount)) ? Number(sec.suggestedSubsectionCount) : 3);
                               return (
                                 <button
                                   type="button"

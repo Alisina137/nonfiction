@@ -3399,6 +3399,30 @@ Return ONLY valid JSON — no markdown, no explanations, no code fences, no comm
 {"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Highlights","Key Takeaways","Reflection Questions"]}]}`;
 }
 
+// Simplified fallback used when the full sectionGenerationPrompt fails to
+// produce parseable JSON (weaker/smaller models can choke on the long prompt).
+export function sectionGenerationFallbackPrompt(
+  bookTitle: string,
+  chapterTitle: string,
+  sectionCount: number,
+  chapterPurpose?: string
+): string {
+  return `Generate exactly ${sectionCount} section titles for a nonfiction book chapter.
+
+Book Title: ${bookTitle || "(not set)"}
+Chapter Title: ${chapterTitle}
+${chapterPurpose?.trim() ? `Chapter Purpose: ${chapterPurpose.trim()}` : ""}
+
+Rules:
+- Exactly ${sectionCount} sections, each covering a distinct major aspect of the chapter.
+- No colons in titles. No generic titles like "Introduction" or "Summary".
+- Each section needs a one-sentence objective and 3 blueprint components picked from this list: Research Highlights, Examples, Case Studies, Resources, Summary, Myth vs Reality, Success Story, Key Takeaways, FAQ, Reflection Questions, Quick Win, Exercises, Before & After Snapshot, Action Plan, Checklist, Templates, Common Mistakes, Chapter Challenge, Pro Tips, Progress Check, Habit Tracker.
+- Assign suggestedSubsectionCount as 2, 3, or 4 (vary it across sections).
+
+Return ONLY this JSON with no markdown, no code fences, no extra text:
+{"sections":[{"sectionTitle":"...","sectionObjective":"...","blueprintComponents":["...","...","..."],"suggestedSubsectionCount":3}]}`;
+}
+
 export function subsectionGenerationPrompt(
   chapterTitle: string,
   sectionTitle: string,

@@ -17,6 +17,7 @@ import {
   generateFieldSuggestionPrompt,
   generateFocusAreasPrompt,
   sectionGenerationPrompt,
+  sectionGenerationFallbackPrompt,
   subsectionGenerationPrompt,
   generateFindingPrompt,
   generateResourcePrompt,
@@ -1328,17 +1329,27 @@ router.post("/generate-sections", async (req, res) => {
     let lastError = "";
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      const prompt = sectionGenerationPrompt(
-        String(bookTitle || ""),
-        String(chapterTitle),
-        count,
-        research,
-        corePromise    ? String(corePromise)    : undefined,
-        coreThesis     ? String(coreThesis)     : undefined,
-        chapterPurpose ? String(chapterPurpose) : undefined,
-        chapterNumber  ? Number(chapterNumber)  : undefined,
-        totalChapters  ? Number(totalChapters)  : undefined
-      );
+      // Attempt 1 uses the full, richly-guided prompt. If that fails to parse
+      // (weaker/smaller fallback models can choke on its length), later
+      // attempts switch to a much shorter prompt that's easier to follow.
+      const prompt = attempt === 1
+        ? sectionGenerationPrompt(
+            String(bookTitle || ""),
+            String(chapterTitle),
+            count,
+            research,
+            corePromise    ? String(corePromise)    : undefined,
+            coreThesis     ? String(coreThesis)     : undefined,
+            chapterPurpose ? String(chapterPurpose) : undefined,
+            chapterNumber  ? Number(chapterNumber)  : undefined,
+            totalChapters  ? Number(totalChapters)  : undefined
+          )
+        : sectionGenerationFallbackPrompt(
+            String(bookTitle || ""),
+            String(chapterTitle),
+            count,
+            chapterPurpose ? String(chapterPurpose) : undefined
+          );
       const result = await runShort(prompt, systemPrompt(), req, res, "sectionGen");
       usedProvider = result.usedProvider;
       const parsed = parseSections(result.text);

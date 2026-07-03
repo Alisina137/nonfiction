@@ -2,19 +2,14 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { countManuscriptWords, buildPublishingBundle } from "@/lib/manuscript";
 import { resolveAuthorName, resolveBookTitle } from "@/lib/projectMeta";
-
-const PRESETS = [
-  { id: "kdp_pro",  label: "KDP Professional Nonfiction", desc: "6×9\", Times New Roman 12pt, 1.15 spacing, KDP margins — recommended for Amazon publishing" },
-  { id: "thesis",   label: "Thesis Style",                desc: "Letter, Times Roman, 1.25\" margins, chapter numbering, academic structure" },
-  { id: "academic", label: "Academic Research",           desc: "A4, Times Roman, generous margins, formal paragraph structure" },
-  { id: "kdp",      label: "KDP Print Layout (Compact)",  desc: "6×9\" with gutter margins, print-ready, slightly smaller type" }
-];
+import { DEFAULT_EXPORT_SETTINGS } from "@/lib/exportSettings";
+import ExportSettingsPanel from "@/components/ExportSettingsPanel";
 
 export default function FinishStep({ project, onMarkComplete }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [docxBusy, setDocxBusy] = useState(false);
   const [status, setStatus] = useState("");
-  const [preset, setPreset] = useState("kdp_pro");
+  const [settings, setSettings] = useState(DEFAULT_EXPORT_SETTINGS);
   const [dedication, setDedication] = useState("");
   const [acknowledgments, setAcknowledgments] = useState("");
   const [preface, setPreface] = useState("");
@@ -26,7 +21,7 @@ export default function FinishStep({ project, onMarkComplete }) {
   const bundle = buildPublishingBundle(project);
   const slug = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "book";
 
-  const exportPayload = { project, preset, dedication, acknowledgments, preface };
+  const exportPayload = { project, settings, dedication, acknowledgments, preface };
 
   async function downloadFromApi(endpoint, filename, mimeType, setBusy, label) {
     setBusy(true);
@@ -64,8 +59,6 @@ export default function FinishStep({ project, onMarkComplete }) {
     downloadFromApi("/api/export/docx", `${slug}.docx`, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", setDocxBusy, "Word document");
   }
 
-  const activePreset = PRESETS.find((p) => p.id === preset);
-
   return (
     <section className="mx-auto max-w-3xl space-y-6">
 
@@ -95,32 +88,14 @@ export default function FinishStep({ project, onMarkComplete }) {
         </article>
       </section>
 
-      {/* Export preset selector */}
+      {/* Export settings */}
       <section className="book-panel space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Export Format</h3>
-          <p className="mt-1 text-xs text-slate-500">Choose how your book is structured and formatted in the exported file.</p>
+          <h3 className="text-sm font-bold text-slate-900">Manuscript layout</h3>
+          <p className="mt-1 text-xs text-slate-500">Configure a KDP-ready layout — trim size, margins, typography, and page elements. The preview updates live.</p>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setPreset(p.id)}
-              className={`rounded-xl border px-3 py-3 text-left transition ${preset === p.id ? "border-indigo-400 bg-indigo-50 ring-1 ring-indigo-300" : "border-slate-200 bg-white hover:border-slate-300"}`}
-            >
-              <div className={`text-xs font-bold ${preset === p.id ? "text-indigo-800" : "text-slate-800"}`}>{p.label}</div>
-              <div className="mt-0.5 text-[10px] leading-tight text-slate-500">{p.desc}</div>
-            </button>
-          ))}
-        </div>
-
-        {activePreset && (
-          <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
-            <span className="font-semibold">{activePreset.label}:</span> Includes cover page, abstract, table of contents (auto-generated), chapter numbering (1, 1.1, 1.1.1), running headers, page numbers, and professional margins.
-          </div>
-        )}
+        <ExportSettingsPanel settings={settings} onChange={setSettings} />
       </section>
 
       {/* Optional front matter */}
@@ -184,10 +159,11 @@ export default function FinishStep({ project, onMarkComplete }) {
             "Abstract (from your book description)",
             "Table of contents (auto-generated)",
             "Thesis-style chapter numbering: 1 / 1.1 / 1.1.1",
-            "Each chapter on a new page",
-            "Running headers (book title + chapter)",
-            "Page numbers in footer",
-            "Professional typography & margins",
+            "Each chapter starts on a new page",
+            "KDP-compliant margins with gutter",
+            settings.headers && "Running headers",
+            settings.pageNumbers && "Page numbers in footer",
+            "Professional typography",
             dedication && "Dedication page",
             acknowledgments && "Acknowledgments page",
             preface && "Preface page"

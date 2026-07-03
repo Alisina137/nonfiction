@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { PDFDocument, PDFPage, StandardFonts, rgb, PDFName, PDFArray } from "pdf-lib";
+import { PDFDocument, PDFPage, PDFFont, StandardFonts, rgb, PDFName, PDFArray } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import {
   Document,
   Paragraph,
@@ -18,8 +22,58 @@ import {
 } from "docx";
 import { generateContent, extractJSON } from "../ai/aiRouter.js";
 import { chapterArchitecturePrompt } from "../ai/prompts.js";
+import {
+  ExportSettings,
+  normalizeExportSettings,
+  getTrimSize,
+  resolveMargins,
+  estimatePageCount,
+  DOCX_FONT_NAME,
+  PDF_FONT_FILES,
+} from "./exportSettings.js";
 
 const router = Router();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+const FONTS_DIR  = path.join(__dirname, "..", "..", "assets", "fonts");
+
+function loadFontBytes(fileName: string): Buffer {
+  return fs.readFileSync(path.join(FONTS_DIR, fileName));
+}
+
+// Builds a fully-resolved layout object (page geometry, margins, typography,
+// and page-numbering rules) from user-facing ExportSettings + an estimated
+// word count (used only to size the KDP gutter before pagination is known).
+function buildLayout(settings: ExportSettings, wordCount: number) {
+  const trim = getTrimSize(settings.trimSize);
+  const estPages = estimatePageCount(wordCount, settings.fontSize);
+  const margins = resolveMargins(settings, estPages); // inches
+  const W = trim.widthIn * 72;
+  const H = trim.heightIn * 72;
+
+  const BODY = settings.fontSize;
+  const LH = Math.round(BODY * settings.lineSpacing * 10) / 10;
+  const indent = 0.3 * 72; // fixed 0.3in first-line indent per spec
+
+  return {
+    name: `${trim.label} — ${settings.font} ${settings.fontSize}pt`,
+    pageW: W, pageH: H,
+    mTop: margins.top * 72, mBot: margins.bottom * 72,
+    mLeft: margins.inside * 72, mRight: margins.outside * 72,
+    titleSz: 28, chapterSz: 18, sectionSz: 14, subsectionSz: 13, bodySz: BODY,
+    lineH: LH, paraGap: 0, indent,
+    chapterPrefix: "Chapter",
+    docxBody: DOCX_FONT_NAME[settings.font], docxHead: DOCX_FONT_NAME[settings.font],
+    docxMLeft: Math.round(margins.inside * 1440), docxMRight: Math.round(margins.outside * 1440),
+    docxMTop: Math.round(margins.top * 1440), docxMBot: Math.round(margins.bottom * 1440),
+    docxLineSpacing: Math.round(240 * settings.lineSpacing),
+    alignment: settings.alignment,
+    pageNumbers: settings.pageNumbers,
+    headers: settings.headers,
+    headerContent: settings.headerContent,
+  };
+}
 
 // ─── Presets ──────────────────────────────────────────────────────────────────
 
@@ -239,6 +293,32 @@ function wrapTextPdf(text: string, font: any, size: number, maxWidth: number): s
   return lines;
 }
 
+// Draws one line of text, justifying inter-word spacing to fill `lineWidth`
+// unless `isLastLine` (last line of a paragraph is always left-aligned).
+function drawAlignedLine(
+  page: PDFPage, line: string, x: number, y: number, size: number, font: any,
+  color: any, lineWidth: number, justify: boolean, isLastLine: boolean
+) {
+  if (!justify || isLastLine) {
+    page.drawText(line, { x, y, size, font, color });
+    return;
+  }
+  const words = line.split(" ");
+  if (words.length < 2) { page.drawText(line, { x, y, size, font, color }); return; }
+  const naturalWidth = font.widthOfTextAtSize(line, size);
+  const extraSpace = Math.max(0, lineWidth - naturalWidth);
+  const gapCount = words.length - 1;
+  const extraPerGap = extraSpace / gapCount;
+  let cx = x;
+  for (let i = 0; i < words.length; i++) {
+    page.drawText(words[i], { x: cx, y, size, font, color });
+    cx += font.widthOfTextAtSize(words[i], size);
+    if (i < words.length - 1) {
+      cx += font.widthOfTextAtSize(" ", size) + extraPerGap;
+    }
+  }
+}
+
 // Add a GoTo link annotation on a PDF page
 function addLinkAnnotation(
   onPage: PDFPage,
@@ -277,12 +357,29 @@ interface TocEntry {
 }
 
 async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array> {
-  const P = PRESETS[options.preset] || PRESETS.kdp_pro;
-  const pdf = await PDFDocument.create();
+  const settings = normalizeExportSettings(options.settings);
+  const lessonsForCount = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
+  const estWordCount = Object.values(lessonsForCount).reduce(
+    (acc: number, l: any) => acc + String(l?.prose || "").split(/\s+/).filter(Boolean).length, 0
+  );
+  const P = buildLayout(settings, estWordCount || 30000);
 
-  const regular = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRoman      : StandardFonts.Helvetica);
-  const bold    = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRomanBold   : StandardFonts.HelveticaBold);
-  const italic  = await pdf.embedFont(P.useTimesRoman ? StandardFonts.TimesRomanItalic : StandardFonts.HelveticaOblique);
+  const pdf = await PDFDocument.create();
+  pdf.registerFontkit(fontkit as any);
+
+  const fontFiles = PDF_FONT_FILES[settings.font];
+  let regular: PDFFont, bold: PDFFont, italic: PDFFont, boldItalic: PDFFont;
+  if (fontFiles) {
+    regular    = await pdf.embedFont(loadFontBytes(fontFiles.regular), { subset: true });
+    bold       = await pdf.embedFont(loadFontBytes(fontFiles.bold), { subset: true });
+    italic     = await pdf.embedFont(loadFontBytes(fontFiles.italic), { subset: true });
+    boldItalic = await pdf.embedFont(loadFontBytes(fontFiles.boldItalic), { subset: true });
+  } else {
+    regular    = await pdf.embedFont(StandardFonts.TimesRoman);
+    bold       = await pdf.embedFont(StandardFonts.TimesRomanBold);
+    italic     = await pdf.embedFont(StandardFonts.TimesRomanItalic);
+    boldItalic = await pdf.embedFont(StandardFonts.TimesRomanBoldItalic);
+  }
 
   const bookTitle   = sanitize(resolveBookTitle(project));
   const subtitle    = sanitize(project?.bookCover?.subtitle || project?.bookDetails?.subtitle || "");
@@ -314,17 +411,24 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 
   let arabicPageNum = 0; // counts only main-content pages
 
-  function drawHeader(page: PDFPage, chLabel: string, pageN: number, isRoman = false) {
+  function drawHeader(page: PDFPage, chLabel: string, pageN: number, isRoman = false, isChapterOpening = false) {
     const num     = isRoman ? toRoman(pageN) : String(pageN);
     const headerY = H - MT + 22;
     const footerY = MB - 18;
 
-    page.drawLine({ start: { x: ML, y: headerY - 3 }, end: { x: W - MR, y: headerY - 3 }, thickness: 0.4, color: lightGray });
-    page.drawText(bookTitle.slice(0, 48), { x: ML, y: headerY + 3, size: 7, font: italic, color: lightGray });
-    if (chLabel) {
-      const cw = italic.widthOfTextAtSize(chLabel.slice(0, 40), 7);
-      page.drawText(chLabel.slice(0, 40), { x: W - MR - cw, y: headerY + 3, size: 7, font: italic, color: lightGray });
+    // Running header — hidden on chapter-opening pages and when disabled in settings.
+    if (P.headers && !isChapterOpening) {
+      const headerText = P.headerContent === "author" ? author
+        : P.headerContent === "chapter" ? chLabel
+        : bookTitle;
+      page.drawLine({ start: { x: ML, y: headerY - 3 }, end: { x: W - MR, y: headerY - 3 }, thickness: 0.4, color: lightGray });
+      page.drawText(String(headerText || "").slice(0, 48), { x: ML, y: headerY + 3, size: 7, font: italic, color: lightGray });
+      if (chLabel && P.headerContent !== "chapter") {
+        const cw = italic.widthOfTextAtSize(chLabel.slice(0, 40), 7);
+        page.drawText(chLabel.slice(0, 40), { x: W - MR - cw, y: headerY + 3, size: 7, font: italic, color: lightGray });
+      }
     }
+    if (!P.pageNumbers) return;
     page.drawLine({ start: { x: ML, y: footerY + 3 }, end: { x: W - MR, y: footerY + 3 }, thickness: 0.4, color: lightGray });
     const pw = regular.widthOfTextAtSize(num, 8);
     page.drawText(num, { x: ML + textW / 2 - pw / 2, y: footerY - 10, size: 8, font: regular, color: midGray });
@@ -490,24 +594,28 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   }
 
   // Returns the page and the Y position ready for the first section heading/content.
+  // Chapter titles always start a new page and are centered per KDP typography rules.
   function drawChapterPage(chTitle: string, chNum: number, chapterIntro = ""): { page: PDFPage; y: number } {
     arabicPageNum++;
     const page = newPage();
     const label = chNum > 0 ? `${P.chapterPrefix} ${chNum}` : "";
-    drawHeader(page, label, arabicPageNum, false);
+    drawHeader(page, label, arabicPageNum, false, true);
 
-    let y = H - MT - 46;
+    let y = H - MT - 60;
     if (chNum > 0) {
-      page.drawText(`${P.chapterPrefix} ${chNum}`, { x: ML, y, size: 10, font: regular, color: accent });
-      y -= 16;
+      const chLabelText = `${P.chapterPrefix} ${chNum}`;
+      const clw = regular.widthOfTextAtSize(chLabelText, 10);
+      page.drawText(chLabelText, { x: ML + (textW - clw) / 2, y, size: 10, font: regular, color: accent });
+      y -= 18;
     }
     const tLines = wrapTextPdf(chTitle, bold, P.chapterSz, textW);
     for (const tl of tLines) {
-      page.drawText(sanitize(tl), { x: ML, y, size: P.chapterSz, font: bold, color: black });
+      const tw = bold.widthOfTextAtSize(sanitize(tl), P.chapterSz);
+      page.drawText(sanitize(tl), { x: ML + (textW - tw) / 2, y, size: P.chapterSz, font: bold, color: black });
       y -= P.chapterSz + 6;
     }
     y -= 6;
-    page.drawRectangle({ x: ML, y, width: 48, height: 2, color: accent });
+    page.drawRectangle({ x: ML + (textW - 48) / 2, y, width: 48, height: 2, color: accent });
     y -= 22;
 
     // Chapter introduction — italic, separated from the first section by extra whitespace
@@ -539,14 +647,16 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
       }
     }
 
+    const justify = P.alignment === "justified";
+
     for (const block of blocks) {
       if (block.kind === "bullet") {
         firstPara = false;
         const bulletText = `\u2022  ${sanitize(block.text)}`;
         const lines = wrapTextPdf(bulletText, regular, BODY, textW - 18);
         ensureRoom(LH * lines.length + 4);
-        for (const ln of lines) {
-          currentPage.drawText(ln, { x: ML + 14, y, size: BODY, font: regular, color: black });
+        for (let i = 0; i < lines.length; i++) {
+          drawAlignedLine(currentPage, lines[i], ML + 14, y, BODY, regular, black, textW - 18, justify, i === lines.length - 1);
           y -= LH;
         }
         y -= 3;
@@ -555,8 +665,8 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         const numText = `${block.num}.  ${sanitize(block.text)}`;
         const lines = wrapTextPdf(numText, regular, BODY, textW - 18);
         ensureRoom(LH * lines.length + 4);
-        for (const ln of lines) {
-          currentPage.drawText(ln, { x: ML + 14, y, size: BODY, font: regular, color: black });
+        for (let i = 0; i < lines.length; i++) {
+          drawAlignedLine(currentPage, lines[i], ML + 14, y, BODY, regular, black, textW - 18, justify, i === lines.length - 1);
           y -= LH;
         }
         y -= 3;
@@ -565,8 +675,9 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         firstPara = false;
         const lines = wrapTextPdf(sanitize(block.text), regular, BODY, textW - indent);
         ensureRoom(LH * lines.length + PG);
-        for (const ln of lines) {
-          currentPage.drawText(ln, { x: ML + indent, y, size: BODY, font: regular, color: black });
+        for (let i = 0; i < lines.length; i++) {
+          const lineIndent = i === 0 ? indent : 0;
+          drawAlignedLine(currentPage, lines[i], ML + lineIndent, y, BODY, regular, black, textW - lineIndent, justify, i === lines.length - 1);
           y -= LH;
         }
         y -= PG;
@@ -847,7 +958,12 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 // ─── DOCX BUILDER ─────────────────────────────────────────────────────────────
 
 async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
-  const P = PRESETS[options.preset] || PRESETS.kdp_pro;
+  const settings = normalizeExportSettings(options.settings);
+  const lessonsForCount = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
+  const estWordCount = Object.values(lessonsForCount).reduce(
+    (acc: number, l: any) => acc + String(l?.prose || "").split(/\s+/).filter(Boolean).length, 0
+  );
+  const P = buildLayout(settings, estWordCount || 30000);
 
   const bookTitle   = resolveBookTitle(project);
   const subtitle    = project?.bookCover?.subtitle || project?.bookDetails?.subtitle || "";
@@ -920,12 +1036,14 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
 
   // ── Paragraph factories ────────────────────────────────────────────────────
 
+  const docxAlignment = P.alignment === "justified" ? AlignmentType.BOTH : AlignmentType.LEFT;
+
   function bodyPara(text: string, firstPara = false): Paragraph {
     return new Paragraph({
       children: [new TextRun({ text, font: bodyFont, size: HP(P.bodySz), color: "000000" })],
-      alignment: AlignmentType.BOTH,
+      alignment: docxAlignment,
       indent: { firstLine: firstPara && P.indent > 0 ? convertInchesToTwip(P.indent / 72) : 0 },
-      spacing: { before: firstPara ? 0 : 60, after: 60, line: LINE, lineRule: "auto" as any }
+      spacing: { before: 0, after: 0, line: LINE, lineRule: "auto" as any }
     });
   }
 
@@ -952,6 +1070,13 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   // Heading 3 = subsection  "N.M.P  Sub Title"      (appears as level 3)
   function h1Para(text: string, extra?: any): Paragraph {
     return new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 480, after: 200 }, ...extra });
+  }
+  // Chapter titles are centered per KDP typography rules (18pt bold, new page).
+  function chapterTitlePara(text: string, extra?: any): Paragraph {
+    return new Paragraph({
+      text, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER,
+      spacing: { before: 480, after: 200 }, ...extra
+    });
   }
   function h2Para(text: string, extra?: any): Paragraph {
     return new Paragraph({ text, heading: HeadingLevel.HEADING_2, spacing: { before: 360, after: 160 }, ...extra });
@@ -1160,7 +1285,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     const chChildren: Paragraph[] = [];
 
     const chH1Label = `${P.chapterPrefix} ${ch.chNum}: ${ch.title}`;
-    chChildren.push(h1Para(chH1Label, { pageBreakBefore: !firstChapter }));
+    chChildren.push(chapterTitlePara(chH1Label, { pageBreakBefore: !firstChapter }));
 
     // Chapter introduction — italic overview paragraph after the chapter title
     chChildren.push(chapterIntroPara(
@@ -1226,14 +1351,17 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   }
 
   // ── Running header + footer ────────────────────────────────────────────────
+  // Headers and page numbers are optional and driven by the export settings.
 
+  const headerLabel = P.headerContent === "author" ? author : bookTitle;
   const runningHeader = new Header({
     children: [new Paragraph({
-      children: [new TextRun({ text: bookTitle.slice(0, 60), font: bodyFont, size: HP(8), italics: true, color: "888888" })],
+      children: [new TextRun({ text: String(headerLabel).slice(0, 60), font: bodyFont, size: HP(8), italics: true, color: "888888" })],
       alignment: AlignmentType.RIGHT,
       border: { bottom: { color: "CCCCCC", space: 1, style: "single", size: 4 } }
     })]
   });
+  const emptyHeader = new Header({ children: [new Paragraph({ children: [] })] });
 
   const runningFooter = new Footer({
     children: [new Paragraph({
@@ -1242,6 +1370,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
       border: { top: { color: "CCCCCC", space: 1, style: "single", size: 4 } }
     })]
   });
+  const emptyFooter = new Footer({ children: [new Paragraph({ children: [] })] });
 
   // ── DOCX Document ─────────────────────────────────────────────────────────
   // Define TOC paragraph styles (TOC 1, TOC 2, TOC 3) so Word renders
@@ -1301,7 +1430,10 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     sections: [
       {
         properties: {
-          page: { margin: { top: P.docxMTop, bottom: P.docxMBot, left: P.docxMLeft, right: P.docxMRight } }
+          page: {
+            size: { width: Math.round(P.pageW * 20), height: Math.round(P.pageH * 20) },
+            margin: { top: P.docxMTop, bottom: P.docxMBot, left: P.docxMLeft, right: P.docxMRight }
+          }
         },
         children: frontChildren
       },
@@ -1309,12 +1441,13 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
         properties: {
           type: SectionType.NEXT_PAGE,
           page: {
+            size: { width: Math.round(P.pageW * 20), height: Math.round(P.pageH * 20) },
             margin: { top: P.docxMTop, bottom: P.docxMBot, left: P.docxMLeft, right: P.docxMRight },
-            pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL }
+            ...(P.pageNumbers ? { pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } } : {})
           }
         },
-        headers: { default: runningHeader },
-        footers: { default: runningFooter },
+        headers: { default: P.headers ? runningHeader : emptyHeader },
+        footers: { default: P.pageNumbers ? runningFooter : emptyFooter },
         children: mainChildren
       }
     ]
@@ -1329,10 +1462,10 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
 
 router.post("/book", async (req, res) => {
   try {
-    const { project, preset, dedication, acknowledgments, preface } = req.body;
+    const { project, preset, settings, dedication, acknowledgments, preface } = req.body;
     if (!project || typeof project !== "object")
       return res.status(400).json({ error: "Missing project payload" });
-    const bytes = await buildBookPdf(project, { preset, dedication, acknowledgments, preface });
+    const bytes = await buildBookPdf(project, { preset, settings, dedication, acknowledgments, preface });
     const slug = (project.bookDetails?.title || project.title || "book").replace(/[^a-z0-9]/gi, "-");
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${slug || "book"}.pdf"`);
@@ -1345,10 +1478,10 @@ router.post("/book", async (req, res) => {
 
 router.post("/docx", async (req, res) => {
   try {
-    const { project, preset, dedication, acknowledgments, preface } = req.body;
+    const { project, preset, settings, dedication, acknowledgments, preface } = req.body;
     if (!project || typeof project !== "object")
       return res.status(400).json({ error: "Missing project payload" });
-    const buf = await buildBookDocx(project, { preset, dedication, acknowledgments, preface });
+    const buf = await buildBookDocx(project, { preset, settings, dedication, acknowledgments, preface });
     const slug = (project.bookDetails?.title || project.title || "book").replace(/[^a-z0-9]/gi, "-");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     res.setHeader("Content-Disposition", `attachment; filename="${slug || "book"}.docx"`);
