@@ -44,6 +44,57 @@ export function enumerateWriteBlocks(bookOutline) {
     });
   }
 
+  const howToUse = o.howToUseThisBook;
+  if (howToUse?.id) {
+    blocks.push({
+      kind: "howToUseThisBook",
+      id: howToUse.id,
+      label: howToUse.title || "How to Use This Book",
+      breadcrumb: "Front matter",
+      chapterKey: "__howToUse__",
+      chapterContext: { title: howToUse.title || "How to Use This Book", role: "howToUseThisBook" },
+      sectionTitle: null,
+      subsection: syntheticSubsection(
+        howToUse.title || "How to Use This Book",
+        "Explain the best way to read the book, how to engage with exercises/action steps, and how to get maximum value from it."
+      )
+    });
+  }
+
+  const whatYouWillLearn = o.whatYouWillLearn;
+  if (whatYouWillLearn?.id) {
+    blocks.push({
+      kind: "whatYouWillLearn",
+      id: whatYouWillLearn.id,
+      label: whatYouWillLearn.title || "What You Will Learn",
+      breadcrumb: "Front matter",
+      chapterKey: "__whatYouWillLearn__",
+      chapterContext: { title: whatYouWillLearn.title || "What You Will Learn", role: "whatYouWillLearn" },
+      sectionTitle: null,
+      subsection: syntheticSubsection(
+        whatYouWillLearn.title || "What You Will Learn",
+        "Summarize the main knowledge, skills, and outcomes readers will gain, in concise bullet points, without revealing all details."
+      )
+    });
+  }
+
+  const whoThisBookIsFor = o.whoThisBookIsFor;
+  if (whoThisBookIsFor?.id) {
+    blocks.push({
+      kind: "whoThisBookIsFor",
+      id: whoThisBookIsFor.id,
+      label: whoThisBookIsFor.title || "Who This Book Is For",
+      breadcrumb: "Front matter",
+      chapterKey: "__whoThisBookIsFor__",
+      chapterContext: { title: whoThisBookIsFor.title || "Who This Book Is For", role: "whoThisBookIsFor" },
+      sectionTitle: null,
+      subsection: syntheticSubsection(
+        whoThisBookIsFor.title || "Who This Book Is For",
+        "Identify the intended audience, experience level, and reassure readers the content is practical and valuable for them."
+      )
+    });
+  }
+
   const chapters = Array.isArray(o.chapters) ? o.chapters : [];
   chapters.forEach((ch, ci) => {
     const chapterKey = ch.id || `ch-${ci}`;

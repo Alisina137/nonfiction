@@ -1972,6 +1972,10 @@ Reader Outcome for Chapter: ${chapterStrategy.readerOutcome || ""}
 ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAvoid.length ? `Concepts to Avoid (already in prior chapters): ${chapterStrategy.conceptsToAvoid.join("; ")}` : ""}` : "";
 
   const isBookIntroduction = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "introduction");
+  const isHowToUseThisBook = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "howToUseThisBook");
+  const isWhatYouWillLearn = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "whatYouWillLearn");
+  const isWhoThisBookIsFor = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "whoThisBookIsFor");
+  const isFrontMatterSpecial = isBookIntroduction || isHowToUseThisBook || isWhatYouWillLearn || isWhoThisBookIsFor;
 
   const chapterInfo = chapterContext
     ? `Chapter: ${typeof chapterContext === "string" ? chapterContext : (chapterContext.title || JSON.stringify(chapterContext))}`
@@ -2013,7 +2017,69 @@ Length: target approximately 500–1,000 words, organized into clear, readable p
 
 Quality standard: this should read like an introduction written by a professional author or editor — making readers curious, establishing credibility, and naturally encouraging them to continue reading the rest of the book.` : "";
 
-  const flowBlock = (hasBlueprint || isBookIntroduction) ? "" : `
+  // ── Book-level "How to Use This Book" — dedicated instruction set ──
+  const howToUseBlock = isHowToUseThisBook ? `
+════════════════════════════════════
+HOW TO USE THIS BOOK — INSTRUCTIONS
+════════════════════════════════════
+This is a mandatory front-matter section that appears after the Introduction and before Chapter 1. Follow these rules exactly:
+
+1. EXPLAIN THE BEST WAY TO READ THE BOOK — Recommend reading from beginning to end unless there is a genuinely better approach for this specific book's topic.
+2. CLARIFY ENGAGEMENT WITH EXERCISES — Tell readers whether (and how) to complete exercises, reflection questions, or action steps as they go, rather than skipping them.
+3. EXPLAIN HOW TO GET MAXIMUM VALUE — Give concrete guidance for absorbing and applying the material (pacing, environment, mindset).
+4. ENCOURAGE NOTE-TAKING AND APPLICATION — Explicitly encourage the reader to take notes, apply the lessons as they read, and revisit important concepts later.
+5. TONE — Encouraging and practical throughout. This is a warm, helpful guide to the reading experience, not a summary of content.
+
+Writing style requirements:
+- Write in a natural, encouraging, and practical tone.
+- Do NOT summarize or reveal the book's specific chapters or arguments — this section is about HOW to read, not WHAT the book says.
+- Do NOT use generic filler text ("This book is designed to help you..." repeated without substance).
+- Make it feel tailored to this specific book's topic and format, not a generic template usable in any book.
+
+Length: target approximately 250–450 words, organized into clear, readable paragraphs.` : "";
+
+  // ── Book-level "What You Will Learn" — dedicated instruction set ──
+  const whatYouWillLearnBlock = isWhatYouWillLearn ? `
+════════════════════════════════════
+WHAT YOU WILL LEARN — INSTRUCTIONS
+════════════════════════════════════
+This is a mandatory front-matter section that appears after the Introduction and before Chapter 1. Follow these rules exactly:
+
+1. SUMMARIZE OUTCOMES — Summarize the main knowledge, skills, and outcomes the reader will gain from this specific book.
+2. USE CONCISE BULLET POINTS — Present the outcomes as a scannable list of bullet points (aim for 6–10 bullets), each one short, specific, and benefit-oriented.
+3. HIGHLIGHT PRACTICAL BENEFITS — Focus on tangible, practical benefits the reader will walk away with. Do NOT reveal the specific frameworks, stories, or details found inside individual chapters.
+4. BUILD EXCITEMENT — The bullets and any surrounding framing should build genuine anticipation for the chapters ahead.
+
+Writing style requirements:
+- Open with 1–2 short sentences framing the list, then present the bullet points.
+- Each bullet should start with a strong action verb or clear outcome (e.g. "How to...", "A simple framework for...", "Why...").
+- Keep bullets tight — one line or two at most each.
+- Do NOT pad with vague, generic bullets ("You will learn valuable insights").
+- Make it feel tailored to this specific book's topic, not a generic template.
+
+Length: target approximately 200–400 words total including the bullet list.` : "";
+
+  // ── Book-level "Who This Book Is For" — dedicated instruction set ──
+  const whoThisBookIsForBlock = isWhoThisBookIsFor ? `
+════════════════════════════════════
+WHO THIS BOOK IS FOR — INSTRUCTIONS
+════════════════════════════════════
+This is a mandatory front-matter section that appears after the Introduction and before Chapter 1. Follow these rules exactly:
+
+1. CLEARLY IDENTIFY THE INTENDED AUDIENCE — Name the specific type of reader this book is written for.
+2. EXPLAIN WHO BENEFITS MOST — Describe the situations, goals, or pain points that make someone an ideal reader.
+3. MENTION EXPERIENCE LEVEL — State what background or experience level the book is designed for (e.g. complete beginners, people with some experience, advanced practitioners), so readers can self-select accurately.
+4. REASSURE THE READER — Close by reassuring readers that the content is practical, accessible, and valuable for the intended audience, regardless of where they are starting from.
+
+Writing style requirements:
+- Write in a warm, direct, second-person voice that helps the reader see themselves in the description.
+- Be specific rather than trying to appeal to "everyone" — a book for everyone convinces no one.
+- Do NOT reveal specific chapter content or frameworks — this section is about the READER, not the book's contents.
+- Make it feel tailored to this specific book's topic and audience, not a generic template.
+
+Length: target approximately 200–350 words, organized into clear, readable paragraphs.` : "";
+
+  const flowBlock = (hasBlueprint || isFrontMatterSpecial) ? "" : `
 ════════════════════════════════════
 WRITING FLOW — ${structureKey.toUpperCase()} STRUCTURE
 ════════════════════════════════════
@@ -2027,7 +2093,7 @@ This flow determines how you organize and sequence the content.
 Do NOT use a generic introduction → explanation → example → summary template.
 Each section of this flow must be substantively different and add unique value.`;
 
-  const antiTemplateRules = isBookIntroduction ? "" : `
+  const antiTemplateRules = isFrontMatterSpecial ? "" : `
 ════════════════════════════════════
 ANTI-TEMPLATE RULES (non-negotiable)
 ════════════════════════════════════
@@ -2051,6 +2117,37 @@ QUALITY CHECK (verify before returning)
 4. Does it give a brief overview of themes without revealing chapter details or conclusions?
 5. Does it identify the intended audience and end with an inviting transition into Chapter 1?
 6. Is the length approximately 500–1,000 words?
+
+If any answer is NO — rewrite.` : isHowToUseThisBook ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does it clearly explain the best way to read the book?
+2. Does it clarify whether/how to engage with exercises, reflection questions, or action steps?
+3. Does it explain how to get maximum value from the book?
+4. Does it encourage note-taking, application, and revisiting concepts?
+5. Is the tone encouraging and practical, without revealing chapter content?
+6. Is the length approximately 250–450 words?
+
+If any answer is NO — rewrite.` : isWhatYouWillLearn ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does it summarize the main knowledge, skills, and outcomes readers will gain?
+2. Is the core content presented as concise, scannable bullet points?
+3. Does it highlight practical benefits without revealing chapter-level details?
+4. Does it build excitement for the chapters ahead?
+5. Is the length approximately 200–400 words?
+
+If any answer is NO — rewrite.` : isWhoThisBookIsFor ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does it clearly identify the intended audience?
+2. Does it explain who benefits most from reading the book?
+3. Does it mention the experience level or background the book is designed for?
+4. Does it reassure readers the content is practical, accessible, and valuable for them?
+5. Is the length approximately 200–350 words?
 
 If any answer is NO — rewrite.` : `
 ════════════════════════════════════
@@ -2079,7 +2176,7 @@ Subsection: ${subsectionTitle}${purposeNote}
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
-Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${flowBlock}${antiTemplateRules}
+Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${howToUseBlock}${whatYouWillLearnBlock}${whoThisBookIsForBlock}${flowBlock}${antiTemplateRules}
 
 ════════════════════════════════════
 10 NON-NEGOTIABLE WRITING RULES
@@ -2106,6 +2203,18 @@ ${isBookIntroduction
   ? `Follow the BOOK INTRODUCTION INSTRUCTIONS above exactly — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading.
 Target length: approximately 500–1,000 words.
 The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content, and do NOT include chapter summaries or spoilers.`
+  : isHowToUseThisBook
+  ? `Follow the HOW TO USE THIS BOOK INSTRUCTIONS above exactly — best way to read, engagement with exercises/action steps, how to get maximum value, encouragement to take notes and revisit concepts.
+Target length: approximately 250–450 words.
+The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.`
+  : isWhatYouWillLearn
+  ? `Follow the WHAT YOU WILL LEARN INSTRUCTIONS above exactly — a short framing intro followed by 6–10 concise, benefit-oriented bullet points summarizing outcomes.
+Target length: approximately 200–400 words total.
+Use a short framing paragraph, then plain-text bullet points (each starting with "- ") — this is the one front-matter section where bullet points are required instead of unified prose.`
+  : isWhoThisBookIsFor
+  ? `Follow the WHO THIS BOOK IS FOR INSTRUCTIONS above exactly — identify the audience, who benefits most, experience level, and reassurance the content is practical and accessible.
+Target length: approximately 200–350 words.
+The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.`
   : hasBlueprint
   ? `BLUEPRINT CONTENT STRUCTURE (follows from SECTION BLUEPRINT COMPONENTS above)
 Write the subsection as flowing prose that includes ONLY the blueprint components selected above.
@@ -2127,6 +2236,18 @@ ${isBookIntroduction ? `══════════════════�
 INTRODUCTION QUALITY TEST
 ════════════════════════════════════
 Before writing, answer internally: "Does this introduction hook the reader, establish the book's purpose and value, and make them want to keep reading — without giving away the content of the chapters?"
+If the answer is no — rewrite.` : isHowToUseThisBook ? `════════════════════════════════════
+HOW TO USE THIS BOOK QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Does this genuinely help the reader engage with THIS book — its exercises, pacing, and format — without repeating what the Introduction already said?"
+If the answer is no — rewrite.` : isWhatYouWillLearn ? `════════════════════════════════════
+WHAT YOU WILL LEARN QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Would a skimming reader immediately grasp the concrete outcomes of this book from the bullet points alone, without needing the rest of the book?"
+If the answer is no — rewrite.` : isWhoThisBookIsFor ? `════════════════════════════════════
+WHO THIS BOOK IS FOR QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Would the ideal reader recognize themselves in this description within the first two sentences?"
 If the answer is no — rewrite.` : `════════════════════════════════════
 SUBSECTION UNIQUENESS TEST
 ════════════════════════════════════
@@ -2141,17 +2262,23 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 {
   "title": "The subsection title (publication-ready, specific, compelling)",
   "structureUsed": "${structureKey}",
-  "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
+  "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : isHowToUseThisBook ? `The full How to Use This Book section following the instructions above — best way to read, exercises/action steps guidance, maximum value tips, encouragement to take notes and revisit concepts. Flowing prose with no internal headers. Approximately 250-450 words.` : isWhatYouWillLearn ? `A short framing intro followed by 6-10 concise bullet points (each line starting with "- ") summarizing knowledge, skills, and outcomes the reader will gain. Approximately 200-400 words total.` : isWhoThisBookIsFor ? `The full Who This Book Is For section following the instructions above — intended audience, who benefits most, experience level, reassurance. Flowing prose with no internal headers. Approximately 200-350 words.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
   "flowSections": [
     ${(isBookIntroduction
         ? ["Hook", "Background & Context", "Purpose of the Book", "Overview of the Book", "Intended Audience", "Invitation to Continue Reading"]
+        : isHowToUseThisBook
+        ? ["Best Way to Read", "Engaging with Exercises", "Getting Maximum Value", "Notes & Revisiting Concepts"]
+        : isWhatYouWillLearn
+        ? ["Framing Intro", "Key Outcomes"]
+        : isWhoThisBookIsFor
+        ? ["Intended Audience", "Who Benefits Most", "Experience Level", "Reassurance"]
         : hasBlueprint ? (blueprintComponents as string[]) : effectiveFlow
       ).map((step: string) => `{"label": "${step}", "text": "2-4 sentences summarizing what this section covers in the content"}`).join(",\n    ")}
   ],
-  "keyTakeaway": "One sentence — the single most important thing the reader ${isBookIntroduction ? "should take away about what this book offers them" : "learns (matches part 5 of the prose)"}",
-  "transition": "The exact closing sentence or short paragraph that bridges into ${isBookIntroduction ? "Chapter 1" : "the next section"}",
+  "keyTakeaway": "One sentence — the single most important thing the reader ${isBookIntroduction ? "should take away about what this book offers them" : isHowToUseThisBook ? "should remember about how to engage with this book" : isWhatYouWillLearn ? "should feel excited to gain from this book" : isWhoThisBookIsFor ? "should understand about whether this book is right for them" : "learns (matches part 5 of the prose)"}",
+  "transition": "The exact closing sentence or short paragraph that bridges into ${isBookIntroduction ? "Chapter 1" : isHowToUseThisBook ? "the next front-matter section" : isWhatYouWillLearn ? "the next front-matter section" : isWhoThisBookIsFor ? "Chapter 1" : "the next section"}",
   "teachingMethod": "The primary teaching method used (e.g. anecdote, data-led, analogy, direct instruction, case study, exercise)",
-  "competitorGap": "One sentence describing what competing books miss that this ${isBookIntroduction ? "introduction" : "section"} addresses (or 'N/A' if no competitor data provided)"
+  "competitorGap": "One sentence describing what competing books miss that this ${isBookIntroduction ? "introduction" : isFrontMatterSpecial ? "front-matter section" : "section"} addresses (or 'N/A' if no competitor data provided)"
 }`;
 }
 

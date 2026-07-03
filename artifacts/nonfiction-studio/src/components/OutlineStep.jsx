@@ -35,6 +35,9 @@ export function seedBookOutline(previous, chapterCountFromDetails, wordCountRang
   if (Array.isArray(prev.chapters) && prev.chapters.length > 0) {
     return {
       introduction: normalizeIntro(prev.introduction),
+      howToUseThisBook: normalizeHowToUse(prev.howToUseThisBook),
+      whatYouWillLearn: normalizeWhatYouWillLearn(prev.whatYouWillLearn),
+      whoThisBookIsFor: normalizeWhoThisBookIsFor(prev.whoThisBookIsFor),
       chapters: prev.chapters.map(normalizeChapter),
       conclusion: normalizeConclusion(prev.conclusion),
     };
@@ -45,6 +48,7 @@ export function seedBookOutline(previous, chapterCountFromDetails, wordCountRang
   const reserve = Math.max(700, Math.round(budget * 0.035));
   const introW = reserve;
   const outroW = reserve;
+  const frontMatterW = 300;
   const rest = Math.max(200 * n, budget - introW - outroW);
   const perCh = Math.max(450, Math.round(rest / n));
 
@@ -70,6 +74,24 @@ export function seedBookOutline(previous, chapterCountFromDetails, wordCountRang
       title: (prev.introduction && prev.introduction.title) || "Introduction",
       words: introW,
     },
+    howToUseThisBook: {
+      ...(prev.howToUseThisBook && typeof prev.howToUseThisBook === "object" ? prev.howToUseThisBook : {}),
+      id: (prev.howToUseThisBook && prev.howToUseThisBook.id) || "howToUse",
+      title: (prev.howToUseThisBook && prev.howToUseThisBook.title) || "How to Use This Book",
+      words: frontMatterW,
+    },
+    whatYouWillLearn: {
+      ...(prev.whatYouWillLearn && typeof prev.whatYouWillLearn === "object" ? prev.whatYouWillLearn : {}),
+      id: (prev.whatYouWillLearn && prev.whatYouWillLearn.id) || "whatYouWillLearn",
+      title: (prev.whatYouWillLearn && prev.whatYouWillLearn.title) || "What You Will Learn",
+      words: frontMatterW,
+    },
+    whoThisBookIsFor: {
+      ...(prev.whoThisBookIsFor && typeof prev.whoThisBookIsFor === "object" ? prev.whoThisBookIsFor : {}),
+      id: (prev.whoThisBookIsFor && prev.whoThisBookIsFor.id) || "whoThisBookIsFor",
+      title: (prev.whoThisBookIsFor && prev.whoThisBookIsFor.title) || "Who This Book Is For",
+      words: frontMatterW,
+    },
     chapters,
     conclusion: {
       ...(prev.conclusion && typeof prev.conclusion === "object" ? prev.conclusion : {}),
@@ -83,6 +105,21 @@ export function seedBookOutline(previous, chapterCountFromDetails, wordCountRang
 function normalizeIntro(i) {
   const x = i && typeof i === "object" ? i : {};
   return { id: x.id || "intro", title: x.title || "Introduction", words: Number(x.words) || 0, expanded: x.expanded };
+}
+
+function normalizeHowToUse(i) {
+  const x = i && typeof i === "object" ? i : {};
+  return { id: x.id || "howToUse", title: x.title || "How to Use This Book", words: Number(x.words) || 300, expanded: x.expanded };
+}
+
+function normalizeWhatYouWillLearn(i) {
+  const x = i && typeof i === "object" ? i : {};
+  return { id: x.id || "whatYouWillLearn", title: x.title || "What You Will Learn", words: Number(x.words) || 300, expanded: x.expanded };
+}
+
+function normalizeWhoThisBookIsFor(i) {
+  const x = i && typeof i === "object" ? i : {};
+  return { id: x.id || "whoThisBookIsFor", title: x.title || "Who This Book Is For", words: Number(x.words) || 300, expanded: x.expanded };
 }
 
 function normalizeConclusion(c) {
@@ -161,6 +198,9 @@ function normalizedBookOutline(raw) {
   const r = raw && typeof raw === "object" ? raw : {};
   return {
     introduction: normalizeIntro(r.introduction),
+    howToUseThisBook: normalizeHowToUse(r.howToUseThisBook),
+    whatYouWillLearn: normalizeWhatYouWillLearn(r.whatYouWillLearn),
+    whoThisBookIsFor: normalizeWhoThisBookIsFor(r.whoThisBookIsFor),
     chapters: Array.isArray(r.chapters) ? r.chapters.map(normalizeChapter) : [],
     conclusion: normalizeConclusion(r.conclusion),
   };
@@ -334,6 +374,9 @@ export default function OutlineStep({
 
   const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const intro = normalizeIntro(boRaw.introduction);
+  const howToUse = normalizeHowToUse(boRaw.howToUseThisBook);
+  const whatYouWillLearn = normalizeWhatYouWillLearn(boRaw.whatYouWillLearn);
+  const whoThisBookIsFor = normalizeWhoThisBookIsFor(boRaw.whoThisBookIsFor);
   const conclusion = normalizeConclusion(boRaw.conclusion);
   const chapters = Array.isArray(boRaw.chapters) ? boRaw.chapters.map(normalizeChapter) : [];
   const seededRef = useRef(false);
@@ -366,6 +409,18 @@ export default function OutlineStep({
 
   function patchIntro(patch) {
     commit((draft) => ({ ...draft, introduction: { ...intro, ...patch } }));
+  }
+
+  function patchHowToUse(patch) {
+    commit((draft) => ({ ...draft, howToUseThisBook: { ...howToUse, ...patch } }));
+  }
+
+  function patchWhatYouWillLearn(patch) {
+    commit((draft) => ({ ...draft, whatYouWillLearn: { ...whatYouWillLearn, ...patch } }));
+  }
+
+  function patchWhoThisBookIsFor(patch) {
+    commit((draft) => ({ ...draft, whoThisBookIsFor: { ...whoThisBookIsFor, ...patch } }));
   }
 
   function patchConclusion(patch) {
@@ -710,6 +765,54 @@ export default function OutlineStep({
               className="input-light w-[6.25rem] py-2 text-xs"
               value={Number(intro.words) || 0}
               onChange={(e) => patchIntro({ words: Math.max(0, Number(e.target.value) || 0) })}
+            />
+          </label>
+        </div>
+
+        {/* How to Use This Book */}
+        <div className={rowShell}>
+          <div className="flex min-w-0 flex-[2] gap-3">
+            <EditableTitle dense value={howToUse.title} onCommit={(t) => patchHowToUse({ title: t || "How to Use This Book" })} />
+          </div>
+          <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-600">
+            Words
+            <input
+              type="number" min={0}
+              className="input-light w-[6.25rem] py-2 text-xs"
+              value={Number(howToUse.words) || 0}
+              onChange={(e) => patchHowToUse({ words: Math.max(0, Number(e.target.value) || 0) })}
+            />
+          </label>
+        </div>
+
+        {/* What You Will Learn */}
+        <div className={rowShell}>
+          <div className="flex min-w-0 flex-[2] gap-3">
+            <EditableTitle dense value={whatYouWillLearn.title} onCommit={(t) => patchWhatYouWillLearn({ title: t || "What You Will Learn" })} />
+          </div>
+          <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-600">
+            Words
+            <input
+              type="number" min={0}
+              className="input-light w-[6.25rem] py-2 text-xs"
+              value={Number(whatYouWillLearn.words) || 0}
+              onChange={(e) => patchWhatYouWillLearn({ words: Math.max(0, Number(e.target.value) || 0) })}
+            />
+          </label>
+        </div>
+
+        {/* Who This Book Is For */}
+        <div className={rowShell}>
+          <div className="flex min-w-0 flex-[2] gap-3">
+            <EditableTitle dense value={whoThisBookIsFor.title} onCommit={(t) => patchWhoThisBookIsFor({ title: t || "Who This Book Is For" })} />
+          </div>
+          <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-600">
+            Words
+            <input
+              type="number" min={0}
+              className="input-light w-[6.25rem] py-2 text-xs"
+              value={Number(whoThisBookIsFor.words) || 0}
+              onChange={(e) => patchWhoThisBookIsFor({ words: Math.max(0, Number(e.target.value) || 0) })}
             />
           </label>
         </div>
