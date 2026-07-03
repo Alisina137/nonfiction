@@ -1383,7 +1383,19 @@ export default function Dashboard() {
           )}
 
           {currentStep === FINISH_STEP && (
-            <FinishStep project={project} onMarkComplete={markProjectComplete} />
+            <FinishStep
+              project={project}
+              onMarkComplete={markProjectComplete}
+              bookOutline={project.bookOutline}
+              lessons={project.lessons}
+              setLessons={(partial) =>
+                setProject((p) => ({
+                  ...p,
+                  lessons: typeof partial === "function" ? partial(p.lessons || {}) : { ...(p.lessons || {}), ...partial }
+                }))
+              }
+              fullProject={project}
+            />
           )}
         </main>
       </div>

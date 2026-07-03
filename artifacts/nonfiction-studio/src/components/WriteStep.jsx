@@ -18,8 +18,12 @@ const IMPROVE_ACTIONS = [
   { id: "add_example", label: "Add example" }
 ];
 
+// These front-matter kinds now live in the Finish step, alongside Dedication/
+// Acknowledgments/Preface — they're excluded from the Write step entirely.
+const FINISH_STEP_KINDS = ["howToUseThisBook", "whatYouWillLearn", "whoThisBookIsFor"];
+
 // Front-matter sections that must wait until every chapter + section is fully written.
-const FRONT_MATTER_KINDS = ["introduction", "howToUseThisBook", "whatYouWillLearn", "whoThisBookIsFor"];
+const FRONT_MATTER_KINDS = ["introduction"];
 
 function writingTone(fp) {
   const d = fp?.bookDetails || {};
@@ -142,8 +146,13 @@ export default function WriteStep({
   writeStepIndex,
   errors
 }) {
-  // Flat block list — used ONLY for AI generation logic and progress counting
-  const blocks = useMemo(() => enumerateWriteBlocks(bookOutline), [bookOutline]);
+  // Flat block list — used ONLY for AI generation logic and progress counting.
+  // How to Use This Book / What You Will Learn / Who This Book Is For are
+  // generated from the Finish step now, so they're excluded here entirely.
+  const blocks = useMemo(
+    () => enumerateWriteBlocks(bookOutline).filter((b) => !FINISH_STEP_KINDS.includes(b.kind)),
+    [bookOutline]
+  );
 
   // Fast lookup: subsection/section/intro/conclusion ID → block object
   const blockById = useMemo(() => {
@@ -166,9 +175,6 @@ export default function WriteStep({
   // Outline nodes
   const outline           = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const intro             = outline.introduction;
-  const howToUse          = outline.howToUseThisBook;
-  const whatYouWillLearn  = outline.whatYouWillLearn;
-  const whoThisBookIsFor  = outline.whoThisBookIsFor;
   const conclusion        = outline.conclusion;
   const chapters          = Array.isArray(outline.chapters) ? outline.chapters : [];
 
@@ -205,9 +211,6 @@ export default function WriteStep({
     const next = {};
     chapters.forEach((ch, ci) => { next[ch.id || `ch-${ci}`] = expanded; });
     if (intro?.id)             next["__intro__"]             = expanded;
-    if (howToUse?.id)          next["__howToUse__"]          = expanded;
-    if (whatYouWillLearn?.id)  next["__whatYouWillLearn__"]  = expanded;
-    if (whoThisBookIsFor?.id)  next["__whoThisBookIsFor__"]  = expanded;
     if (conclusion?.id)        next["__conclusion__"]        = expanded;
     setExpandedChapters(next);
   }
@@ -385,9 +388,8 @@ export default function WriteStep({
     let snapshot      = lessons && typeof lessons === "object" ? { ...lessons } : {};
     let strategyCache = { ...chapterStrategies };
     const failed      = [];
-    // Chapters and sections must be fully drafted before the Introduction and
-    // front matter (How to Use / What You Will Learn / Who This Is For) are
-    // generated, since they need the finished manuscript as context.
+    // Chapters and sections must be fully drafted before the Introduction is
+    // generated, since it needs the finished manuscript as context.
     const orderedBlocks = [
       ...blocks.filter((b) => !FRONT_MATTER_KINDS.includes(b.kind) && b.kind !== "conclusion"),
       ...blocks.filter((b) => FRONT_MATTER_KINDS.includes(b.kind)),
@@ -554,7 +556,7 @@ export default function WriteStep({
         </p>
       )}
 
-      {/* Front matter lock banner */}
+      {/* Introduction lock banner */}
       {chapterBodyBlocks.length > 0 && (
         frontMatterLocked ? (
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-700">
@@ -562,7 +564,7 @@ export default function WriteStep({
           </div>
         ) : (
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium text-emerald-700">
-            ✓ All chapters and sections are complete — the Introduction and Front Matter are ready to generate.
+            ✓ All chapters and sections are complete — the Introduction is ready to generate.
           </div>
         )
       )}
@@ -572,15 +574,6 @@ export default function WriteStep({
 
         {/* Introduction */}
         {renderFrontBackMatter(intro, "__intro__", "Introduction", { locked: frontMatterLocked, lockMessage: frontMatterLockMessage })}
-
-        {/* How to Use This Book */}
-        {renderFrontBackMatter(howToUse, "__howToUse__", "How to Use This Book", { locked: frontMatterLocked, lockMessage: frontMatterLockMessage })}
-
-        {/* What You Will Learn */}
-        {renderFrontBackMatter(whatYouWillLearn, "__whatYouWillLearn__", "What You Will Learn", { locked: frontMatterLocked, lockMessage: frontMatterLockMessage })}
-
-        {/* Who This Book Is For */}
-        {renderFrontBackMatter(whoThisBookIsFor, "__whoThisBookIsFor__", "Who This Book Is For", { locked: frontMatterLocked, lockMessage: frontMatterLockMessage })}
 
         {/* Chapters */}
         {chapters.map((ch, ci) => {

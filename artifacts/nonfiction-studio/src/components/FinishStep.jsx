@@ -1,11 +1,37 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { countManuscriptWords, buildPublishingBundle } from "@/lib/manuscript";
 import { resolveAuthorName, resolveBookTitle } from "@/lib/projectMeta";
 import { DEFAULT_EXPORT_SETTINGS } from "@/lib/exportSettings";
 import ExportSettingsPanel from "@/components/ExportSettingsPanel";
+import { blockHasContent, enumerateWriteBlocks, lessonToProse } from "@/lib/writeBlocks";
+import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
+import { buildBookContext } from "@/lib/bookContext";
 
-export default function FinishStep({ project, onMarkComplete }) {
+// The three front-matter sections generated from this step. They must wait
+// until every chapter + section is fully drafted, since they summarize the
+// finished manuscript.
+const FRONT_MATTER_KINDS = ["howToUseThisBook", "whatYouWillLearn", "whoThisBookIsFor"];
+const FRONT_MATTER_LABELS = {
+  howToUseThisBook: "How to Use This Book",
+  whatYouWillLearn: "What You Will Learn",
+  whoThisBookIsFor: "Who This Book Is For"
+};
+
+function writingTone(fp) {
+  const d = fp?.bookDetails || {};
+  const r = fp?.research || {};
+  if (d.tone?.trim()) return d.tone.trim();
+  if (Array.isArray(r.authorTones) && r.authorTones.length) return r.authorTones.join("; ");
+  return fp?.tone || "Direct & practical";
+}
+function writingAudience(fp) {
+  const d = fp?.bookDetails || {};
+  const r = fp?.research || {};
+  return d.audience?.trim() || r.targetAudience?.trim() || fp?.audience || "";
+}
+
+export default function FinishStep({ project, onMarkComplete, bookOutline, lessons, setLessons, fullProject }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [docxBusy, setDocxBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -14,6 +40,8 @@ export default function FinishStep({ project, onMarkComplete }) {
   const [acknowledgments, setAcknowledgments] = useState("");
   const [preface, setPreface] = useState("");
   const [showOptional, setShowOptional] = useState(false);
+  const [busyId, setBusyId] = useState(null);
+  const [fmStatus, setFmStatus] = useState("");
 
   const title = resolveBookTitle(project);
   const author = resolveAuthorName(project);
@@ -22,6 +50,74 @@ export default function FinishStep({ project, onMarkComplete }) {
   const slug = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "book";
 
   const exportPayload = { project, settings, dedication, acknowledgments, preface };
+
+  // ─── Front matter generation (How to Use / What You Will Learn / Who This Is For) ──
+  // These need the full manuscript as context, so they stay locked until every
+  // chapter and section is drafted.
+  const allBlocks = useMemo(() => enumerateWriteBlocks(bookOutline), [bookOutline]);
+  const chapterBodyBlocks = useMemo(
+    () => allBlocks.filter((b) => b.kind === "section" || b.kind === "subsection"),
+    [allBlocks]
+  );
+  const frontMatterBlocks = useMemo(
+    () => allBlocks.filter((b) => FRONT_MATTER_KINDS.includes(b.kind)),
+    [allBlocks]
+  );
+  const chapterBodyDone = useMemo(
+    () => chapterBodyBlocks.filter((b) => blockHasContent(lessons, b.id)).length,
+    [chapterBodyBlocks, lessons]
+  );
+  const manuscriptComplete = chapterBodyBlocks.length > 0 && chapterBodyDone === chapterBodyBlocks.length;
+  const frontMatterLocked = !manuscriptComplete;
+  const frontMatterLockMessage = chapterBodyBlocks.length === 0
+    ? "Add chapters and sections in the Outline step, then write your manuscript before generating these sections."
+    : `Finish generating every chapter and section in the Write step to unlock these sections (${chapterBodyDone}/${chapterBodyBlocks.length} sections drafted).`;
+
+  function patchLesson(blockId, patch) {
+    setLessons((prev) => {
+      const base = prev && typeof prev === "object" ? prev : {};
+      const cur  = base[blockId] && typeof base[blockId] === "object" ? base[blockId] : {};
+      return { ...base, [blockId]: { ...cur, ...patch, updatedAt: new Date().toISOString() } };
+    });
+  }
+
+  async function generateFrontMatterBlock(block) {
+    if (frontMatterLocked) {
+      setFmStatus(frontMatterLockMessage);
+      return;
+    }
+    setBusyId(block.id);
+    setFmStatus("");
+    try {
+      const data = await aiFetch("/api/ai/lesson", {
+        subsection:        block.subsection,
+        chapterContext:    block.chapterContext,
+        previousConcepts:  [],
+        upcomingTopics:    [],
+        chapterSummaries:  [],
+        subsectionPurpose: block.subsection?.objective || block.subsection?.description || null,
+        audience:          writingAudience(fullProject),
+        tone:              writingTone(fullProject),
+        resources:         fullProject?.resources ?? null,
+        bookContext:       buildBookContext(fullProject),
+        bookStructure:     fullProject?.bookDetails?.structure || fullProject?.research?.structure || "",
+        sectionTitle:      block.sectionTitle || null
+      }, { noCache: true });
+      const lesson = data.lesson || data;
+      const prose  = lessonToProse(lesson);
+      patchLesson(block.id, { lesson, prose, generatedAt: new Date().toISOString() });
+      setFmStatus(`Drafted "${block.label}".`);
+    } catch (e) {
+      if (e instanceof GenerationCanceledError) setFmStatus("Generation canceled.");
+      else setFmStatus(e.message || "Could not generate this section.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function setFrontMatterProse(blockId, prose) {
+    patchLesson(blockId, { prose });
+  }
 
   async function downloadFromApi(endpoint, filename, mimeType, setBusy, label) {
     setBusy(true);
@@ -144,8 +240,95 @@ export default function FinishStep({ project, onMarkComplete }) {
               />
             </div>
             <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-[11px] text-slate-600">
-              <span className="font-semibold">Front matter page order:</span> Cover → Abstract → Dedication → Acknowledgments → Table of Contents → Preface → Chapter 1…
+              <span className="font-semibold">Front matter page order:</span> Cover → Abstract → Dedication → Acknowledgments → Table of Contents → Preface → How to Use This Book → What You Will Learn → Who This Book Is For → Chapter 1…
             </div>
+
+            {/* AI-generated front matter sections */}
+            {frontMatterBlocks.length > 0 && (
+              <div className="space-y-3 border-t border-slate-100 pt-4">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">AI-generated sections</h4>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    Written from your finished manuscript, so they only unlock once every chapter and section is drafted.
+                  </p>
+                </div>
+
+                {frontMatterLocked ? (
+                  <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-700">
+                    🔒 {frontMatterLockMessage}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-medium text-emerald-700">
+                    ✓ Manuscript complete — these sections are ready to generate.
+                  </div>
+                )}
+
+                {fmStatus && (
+                  <p className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-[11px] text-slate-500">
+                    {fmStatus}
+                  </p>
+                )}
+
+                {frontMatterBlocks.map((block) => {
+                  const prose = String(lessons?.[block.id]?.prose || "").trim();
+                  const hasContent = blockHasContent(lessons, block.id);
+                  const isThisBusy = busyId === block.id;
+                  const label = FRONT_MATTER_LABELS[block.kind] || block.label;
+
+                  return (
+                    <div key={block.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <label className="text-xs font-semibold text-slate-700">{label}</label>
+                        {hasContent && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                            Drafted
+                          </span>
+                        )}
+                      </div>
+
+                      {isThisBusy && !hasContent ? (
+                        <div className="mt-2 flex items-center gap-2 text-slate-400">
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
+                          <span className="text-xs">Writing…</span>
+                        </div>
+                      ) : !hasContent ? (
+                        frontMatterLocked ? (
+                          <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-center">
+                            <p className="text-[11px] font-medium text-slate-400">🔒 Locked until the manuscript is complete.</p>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={Boolean(busyId)}
+                            onClick={() => generateFrontMatterBlock(block)}
+                            className="mt-2 flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-[11px] font-semibold text-violet-700 shadow-sm transition hover:bg-violet-100 disabled:opacity-50"
+                          >
+                            ✦ Generate
+                          </button>
+                        )
+                      ) : (
+                        <div className="mt-2">
+                          <textarea
+                            className="input-light min-h-[100px] w-full resize-y text-sm"
+                            value={prose}
+                            onChange={(e) => setFrontMatterProse(block.id, e.target.value)}
+                            disabled={isThisBusy}
+                          />
+                          <button
+                            type="button"
+                            disabled={Boolean(busyId) || frontMatterLocked}
+                            onClick={() => generateFrontMatterBlock(block)}
+                            className="mt-2 flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            ↻ Regenerate
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </section>
