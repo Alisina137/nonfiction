@@ -6,6 +6,7 @@ import { DEFAULT_EXPORT_SETTINGS } from "@/lib/exportSettings";
 import ExportSettingsPanel from "@/components/ExportSettingsPanel";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
+import { lessonToProse } from "@/lib/writeBlocks";
 
 function writingTone(fp) {
   const d = fp?.bookDetails || {};
