@@ -1,22 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { countManuscriptWords, buildPublishingBundle } from "@/lib/manuscript";
 import { resolveAuthorName, resolveBookTitle } from "@/lib/projectMeta";
 import { DEFAULT_EXPORT_SETTINGS } from "@/lib/exportSettings";
 import ExportSettingsPanel from "@/components/ExportSettingsPanel";
-import { blockHasContent, enumerateWriteBlocks, lessonToProse } from "@/lib/writeBlocks";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
-
-// The three front-matter sections generated from this step. They must wait
-// until every chapter + section is fully drafted, since they summarize the
-// finished manuscript.
-const FRONT_MATTER_KINDS = ["howToUseThisBook", "whatYouWillLearn", "whoThisBookIsFor"];
-const FRONT_MATTER_LABELS = {
-  howToUseThisBook: "How to Use This Book",
-  whatYouWillLearn: "What You Will Learn",
-  whoThisBookIsFor: "Who This Book Is For"
-};
 
 function writingTone(fp) {
   const d = fp?.bookDetails || {};
@@ -31,11 +20,15 @@ function writingAudience(fp) {
   return d.audience?.trim() || r.targetAudience?.trim() || fp?.audience || "";
 }
 
-// Simple (non-manuscript-dependent) front-matter fields with their own AI prompt roles.
+// Simple front-matter fields with their own AI prompt roles. Each renders as a
+// freely-editable textarea and is always included in exports when filled in.
 const SIMPLE_FRONT_MATTER = [
-  { kind: "dedication",     label: "Dedication",     hint: "Explain the best way readers should approach this book’s dedication…" },
-  { kind: "acknowledgments", label: "Acknowledgments", hint: "Thank the people who helped make this book possible…" },
-  { kind: "preface",        label: "Preface",        hint: "Share the personal story behind why you wrote this book…" }
+  { kind: "dedication",       label: "Dedication",           hint: "Explain the best way readers should approach this book’s dedication…" },
+  { kind: "acknowledgments",  label: "Acknowledgments",      hint: "Thank the people who helped make this book possible…" },
+  { kind: "preface",          label: "Preface",              hint: "Share the personal story behind why you wrote this book…" },
+  { kind: "howToUseThisBook", label: "How to Use This Book", hint: "Explain how readers should approach the book and its exercises…" },
+  { kind: "whatYouWillLearn", label: "What You Will Learn",  hint: "Summarize the key knowledge and outcomes readers will gain…" },
+  { kind: "whoThisBookIsFor", label: "Who This Book Is For", hint: "Describe the intended audience and who benefits most from this book…" }
 ];
 
 function syntheticFrontMatterSubsection(title, role) {
@@ -55,6 +48,9 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [dedication, setDedication] = useState("");
   const [acknowledgments, setAcknowledgments] = useState("");
   const [preface, setPreface] = useState("");
+  const [howToUseThisBook, setHowToUseThisBook] = useState("");
+  const [whatYouWillLearn, setWhatYouWillLearn] = useState("");
+  const [whoThisBookIsFor, setWhoThisBookIsFor] = useState("");
   const [showOptional, setShowOptional] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [fmStatus, setFmStatus] = useState("");
@@ -66,80 +62,19 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const bundle = buildPublishingBundle(project);
   const slug = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "book";
 
-  const exportPayload = { project, settings, dedication, acknowledgments, preface };
-
-  // ─── Front matter generation (How to Use / What You Will Learn / Who This Is For) ──
-  // These need the full manuscript as context, so they stay locked until every
-  // chapter and section is drafted.
-  const allBlocks = useMemo(() => enumerateWriteBlocks(bookOutline), [bookOutline]);
-  const chapterBodyBlocks = useMemo(
-    () => allBlocks.filter((b) => b.kind === "section" || b.kind === "subsection"),
-    [allBlocks]
-  );
-  const frontMatterBlocks = useMemo(
-    () => allBlocks.filter((b) => FRONT_MATTER_KINDS.includes(b.kind)),
-    [allBlocks]
-  );
-  const chapterBodyDone = useMemo(
-    () => chapterBodyBlocks.filter((b) => blockHasContent(lessons, b.id)).length,
-    [chapterBodyBlocks, lessons]
-  );
-  const manuscriptComplete = chapterBodyBlocks.length > 0 && chapterBodyDone === chapterBodyBlocks.length;
-  const frontMatterLocked = !manuscriptComplete;
-  const frontMatterLockMessage = chapterBodyBlocks.length === 0
-    ? "Add chapters and sections in the Outline step, then write your manuscript before generating these sections."
-    : `Finish generating every chapter and section in the Write step to unlock these sections (${chapterBodyDone}/${chapterBodyBlocks.length} sections drafted).`;
-
-  function patchLesson(blockId, patch) {
-    setLessons((prev) => {
-      const base = prev && typeof prev === "object" ? prev : {};
-      const cur  = base[blockId] && typeof base[blockId] === "object" ? base[blockId] : {};
-      return { ...base, [blockId]: { ...cur, ...patch, updatedAt: new Date().toISOString() } };
-    });
-  }
-
-  async function generateFrontMatterBlock(block) {
-    if (frontMatterLocked) {
-      setFmStatus(frontMatterLockMessage);
-      return;
-    }
-    setBusyId(block.id);
-    setFmStatus("");
-    try {
-      const data = await aiFetch("/api/ai/lesson", {
-        subsection:        block.subsection,
-        chapterContext:    block.chapterContext,
-        previousConcepts:  [],
-        upcomingTopics:    [],
-        chapterSummaries:  [],
-        subsectionPurpose: block.subsection?.objective || block.subsection?.description || null,
-        audience:          writingAudience(fullProject),
-        tone:              writingTone(fullProject),
-        resources:         fullProject?.resources ?? null,
-        bookContext:       buildBookContext(fullProject),
-        bookStructure:     fullProject?.bookDetails?.structure || fullProject?.research?.structure || "",
-        sectionTitle:      block.sectionTitle || null
-      }, { noCache: true });
-      const lesson = data.lesson || data;
-      const prose  = lessonToProse(lesson);
-      patchLesson(block.id, { lesson, prose, generatedAt: new Date().toISOString() });
-      setFmStatus(`Drafted "${block.label}".`);
-    } catch (e) {
-      if (e instanceof GenerationCanceledError) setFmStatus("Generation canceled.");
-      else setFmStatus(e.message || "Could not generate this section.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  function setFrontMatterProse(blockId, prose) {
-    patchLesson(blockId, { prose });
-  }
+  const exportPayload = {
+    project, settings,
+    dedication, acknowledgments, preface,
+    howToUseThisBook, whatYouWillLearn, whoThisBookIsFor
+  };
 
   const SIMPLE_FIELD_STATE = {
-    dedication:     [dedication, setDedication],
-    acknowledgments: [acknowledgments, setAcknowledgments],
-    preface:        [preface, setPreface]
+    dedication:       [dedication, setDedication],
+    acknowledgments:  [acknowledgments, setAcknowledgments],
+    preface:          [preface, setPreface],
+    howToUseThisBook: [howToUseThisBook, setHowToUseThisBook],
+    whatYouWillLearn: [whatYouWillLearn, setWhatYouWillLearn],
+    whoThisBookIsFor: [whoThisBookIsFor, setWhoThisBookIsFor]
   };
 
   async function generateSimpleFrontMatter(kind, label) {
@@ -182,15 +117,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         setFmStatus(`Generating "${label}"…`);
         await generateSimpleFrontMatter(kind, label);
       }
-      if (frontMatterLocked) {
-        setFmStatus(`Dedication, Acknowledgments, and Preface drafted. ${frontMatterLockMessage}`);
-      } else {
-        for (const block of frontMatterBlocks) {
-          setFmStatus(`Generating "${block.label}"…`);
-          await generateFrontMatterBlock(block);
-        }
-        setFmStatus("All 6 front-matter sections drafted.");
-      }
+      setFmStatus("All 6 front-matter sections drafted.");
     } finally {
       setGeneratingAll(false);
       setBusyId(null);
@@ -359,76 +286,6 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
             <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-[11px] text-slate-600">
               <span className="font-semibold">Front matter page order:</span> Cover → Abstract → Dedication → Acknowledgments → Table of Contents → Preface → How to Use This Book → What You Will Learn → Who This Book Is For → Chapter 1…
             </div>
-
-            {/* AI-generated front matter sections */}
-            {frontMatterBlocks.length > 0 && (
-              <div className="space-y-3 border-t border-slate-100 pt-4">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900">Manuscript-based sections</h4>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
-                    Written from your finished manuscript, so generation only unlocks once every chapter and section is drafted. You can still type your own text below at any time.
-                  </p>
-                </div>
-
-                {frontMatterLocked ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-700">
-                    🔒 {frontMatterLockMessage}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-medium text-emerald-700">
-                    ✓ Manuscript complete — these sections are ready to generate.
-                  </div>
-                )}
-
-                {frontMatterBlocks.map((block) => {
-                  const prose = String(lessons?.[block.id]?.prose || "").trim();
-                  const hasContent = blockHasContent(lessons, block.id);
-                  const isThisBusy = busyId === block.id;
-                  const label = FRONT_MATTER_LABELS[block.kind] || block.label;
-
-                  return (
-                    <div key={block.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <label className="text-xs font-semibold text-slate-700">{label}</label>
-                        <div className="flex items-center gap-2">
-                          {hasContent && (
-                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                              Drafted
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            disabled={Boolean(busyId) || generatingAll || frontMatterLocked}
-                            onClick={() => generateFrontMatterBlock(block)}
-                            title={frontMatterLocked ? frontMatterLockMessage : undefined}
-                            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {isThisBusy ? (
-                              <>
-                                <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
-                                Writing…
-                              </>
-                            ) : hasContent ? (
-                              <>↻ Regenerate</>
-                            ) : (
-                              <>✦ Generate</>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <textarea
-                        className="input-light mt-2 min-h-[100px] w-full resize-y text-sm"
-                        value={prose}
-                        onChange={(e) => setFrontMatterProse(block.id, e.target.value)}
-                        placeholder={frontMatterLocked ? `🔒 ${frontMatterLockMessage}` : `Write or generate "${label}"…`}
-                        disabled={isThisBusy}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         )}
       </section>
@@ -449,7 +306,10 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
             "Professional typography",
             dedication && "Dedication page",
             acknowledgments && "Acknowledgments page",
-            preface && "Preface page"
+            preface && "Preface page",
+            howToUseThisBook && "How to Use This Book page",
+            whatYouWillLearn && "What You Will Learn page",
+            whoThisBookIsFor && "Who This Book Is For page"
           ].filter(Boolean).map((item, i) => (
             <div key={i} className="flex items-start gap-2">
               <span className="mt-0.5 text-emerald-500">✓</span>

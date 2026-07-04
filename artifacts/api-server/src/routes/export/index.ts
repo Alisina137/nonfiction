@@ -407,6 +407,9 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   const dedication      = sanitize(options.dedication      || "");
   const acknowledgments = sanitize(options.acknowledgments || "");
   const preface         = sanitize(options.preface         || "");
+  const howToUseThisBook = sanitize(options.howToUseThisBook || "");
+  const whatYouWillLearn = sanitize(options.whatYouWillLearn || "");
+  const whoThisBookIsFor = sanitize(options.whoThisBookIsFor || "");
 
   const W = P.pageW, H = P.pageH;
   const ML = P.mLeft, MR = P.mRight, MT = P.mTop, MB = P.mBot;
@@ -585,6 +588,29 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
     }
     tocEntries.push({ label: "Preface", displayNum: toRoman(romanPage), level: 0, pdfPageRef: page });
   }
+
+  // Renders a titled prose front-matter page (used for How to Use This Book,
+  // What You Will Learn, Who This Book Is For) — mirrors the Preface layout.
+  function renderFrontMatterProsePage(pageTitle: string, text: string) {
+    romanPage++;
+    const page = newPage();
+    drawHeader(page, pageTitle, romanPage, true);
+    let y = H - MT - 10;
+    page.drawText(pageTitle, { x: ML, y, size: P.chapterSz, font: bold, color: black });
+    y -= P.chapterSz + 24;
+    for (const line of wrapTextPdf(text, regular, BODY, textW)) {
+      if (!line) { y -= PG; continue; }
+      if (y < MB + 20) { y = H - MT - 10; }
+      page.drawText(line, { x: ML, y, size: BODY, font: regular, color: black });
+      y -= LH;
+    }
+    tocEntries.push({ label: pageTitle, displayNum: toRoman(romanPage), level: 0, pdfPageRef: page });
+  }
+
+  // ── HOW TO USE THIS BOOK / WHAT YOU WILL LEARN / WHO THIS BOOK IS FOR ────────
+  if (howToUseThisBook) renderFrontMatterProsePage("How to Use This Book", howToUseThisBook);
+  if (whatYouWillLearn) renderFrontMatterProsePage("What You Will Learn", whatYouWillLearn);
+  if (whoThisBookIsFor) renderFrontMatterProsePage("Who This Book Is For", whoThisBookIsFor);
 
   // ── MAIN CONTENT ─────────────────────────────────────────────────────────────
   const lessons = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
@@ -1009,6 +1035,9 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   const dedication      = options.dedication      || "";
   const acknowledgments = options.acknowledgments || "";
   const preface         = options.preface         || "";
+  const howToUseThisBook = options.howToUseThisBook || "";
+  const whatYouWillLearn = options.whatYouWillLearn || "";
+  const whoThisBookIsFor = options.whoThisBookIsFor || "";
   const lessons = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
   const hier    = buildHierarchy(project?.bookOutline);
 
@@ -1017,8 +1046,11 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   interface DocxTocEntry { label: string; level: number }
   const tocDocxEntries: DocxTocEntry[] = [];
 
-  if (options.acknowledgments) tocDocxEntries.push({ label: "Acknowledgments", level: 0 });
-  if (options.preface)         tocDocxEntries.push({ label: "Preface",          level: 0 });
+  if (options.acknowledgments)   tocDocxEntries.push({ label: "Acknowledgments",      level: 0 });
+  if (options.preface)           tocDocxEntries.push({ label: "Preface",              level: 0 });
+  if (options.howToUseThisBook)  tocDocxEntries.push({ label: "How to Use This Book", level: 0 });
+  if (options.whatYouWillLearn)  tocDocxEntries.push({ label: "What You Will Learn",  level: 0 });
+  if (options.whoThisBookIsFor)  tocDocxEntries.push({ label: "Who This Book Is For", level: 0 });
 
   if (hier.introduction) {
     const introProse = String(lessons[hier.introduction.id]?.prose || "").trim();
@@ -1303,6 +1335,23 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     frontChildren.push(pageBreak());
   }
 
+  // How to Use This Book / What You Will Learn / Who This Book Is For
+  if (howToUseThisBook) {
+    frontChildren.push(h1Para("How to Use This Book", { pageBreakBefore: false }));
+    addProseBlocks(frontChildren, howToUseThisBook);
+    frontChildren.push(pageBreak());
+  }
+  if (whatYouWillLearn) {
+    frontChildren.push(h1Para("What You Will Learn", { pageBreakBefore: false }));
+    addProseBlocks(frontChildren, whatYouWillLearn);
+    frontChildren.push(pageBreak());
+  }
+  if (whoThisBookIsFor) {
+    frontChildren.push(h1Para("Who This Book Is For", { pageBreakBefore: false }));
+    addProseBlocks(frontChildren, whoThisBookIsFor);
+    frontChildren.push(pageBreak());
+  }
+
   // ── Main content ──────────────────────────────────────────────────────────
 
   const mainChildren: Paragraph[] = [];
@@ -1501,10 +1550,10 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
 
 router.post("/book", async (req, res) => {
   try {
-    const { project, preset, settings, dedication, acknowledgments, preface } = req.body;
+    const { project, preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor } = req.body;
     if (!project || typeof project !== "object")
       return res.status(400).json({ error: "Missing project payload" });
-    const bytes = await buildBookPdf(project, { preset, settings, dedication, acknowledgments, preface });
+    const bytes = await buildBookPdf(project, { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
     const slug = (project.bookDetails?.title || project.title || "book").replace(/[^a-z0-9]/gi, "-");
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${slug || "book"}.pdf"`);
@@ -1517,10 +1566,10 @@ router.post("/book", async (req, res) => {
 
 router.post("/docx", async (req, res) => {
   try {
-    const { project, preset, settings, dedication, acknowledgments, preface } = req.body;
+    const { project, preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor } = req.body;
     if (!project || typeof project !== "object")
       return res.status(400).json({ error: "Missing project payload" });
-    const buf = await buildBookDocx(project, { preset, settings, dedication, acknowledgments, preface });
+    const buf = await buildBookDocx(project, { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
     const slug = (project.bookDetails?.title || project.title || "book").replace(/[^a-z0-9]/gi, "-");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     res.setHeader("Content-Disposition", `attachment; filename="${slug || "book"}.docx"`);

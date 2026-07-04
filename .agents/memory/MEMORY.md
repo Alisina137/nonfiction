@@ -1,4 +1,5 @@
 - [Book Cover System Architecture](book-cover-system.md) — 5-concept cover system with buildCoverData() source of truth; SVG builders match React renderers exactly.
+- [Nonfiction Studio front matter](nonfiction-studio-front-matter.md) — front-matter fields must be manually wired into both exportPayload and the export builders; nothing is automatic.
 - [Amazon Book Search Provider Chain](amazon-provider-chain.md) — Rainforest → Scale SERP → AI research → Open Library; Rainforest account is suspended; Scale SERP uses site:amazon.com/dp query.
 - [Title Normalizer System](title-normalizer.md) — titleNormalizer.ts guarantees exactly 3 TitleItem objects; token limits for title routes must be 1500 to avoid Gemini truncation.
 - [Multi-Model AI Pipeline](multi-model-pipeline.md) — 6 task phases each with a specialized model chain; TASK_CHAINS + CONTENT_TYPE_TO_TASK + callProvider model overrides; GROK_API_KEY needed for Grok 4.
