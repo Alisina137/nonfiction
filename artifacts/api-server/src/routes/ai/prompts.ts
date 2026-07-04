@@ -1975,7 +1975,10 @@ ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAv
   const isHowToUseThisBook = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "howToUseThisBook");
   const isWhatYouWillLearn = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "whatYouWillLearn");
   const isWhoThisBookIsFor = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "whoThisBookIsFor");
-  const isFrontMatterSpecial = isBookIntroduction || isHowToUseThisBook || isWhatYouWillLearn || isWhoThisBookIsFor;
+  const isDedication = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "dedication");
+  const isAcknowledgments = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "acknowledgments");
+  const isPreface = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "preface");
+  const isFrontMatterSpecial = isBookIntroduction || isHowToUseThisBook || isWhatYouWillLearn || isWhoThisBookIsFor || isDedication || isAcknowledgments || isPreface;
 
   const chapterInfo = chapterContext
     ? `Chapter: ${typeof chapterContext === "string" ? chapterContext : (chapterContext.title || JSON.stringify(chapterContext))}`
@@ -2079,6 +2082,54 @@ Writing style requirements:
 
 Length: target approximately 200–350 words, organized into clear, readable paragraphs.` : "";
 
+  // ── Book-level "Dedication" — dedicated instruction set ──
+  const dedicationBlock = isDedication ? `
+════════════════════════════════════
+DEDICATION — INSTRUCTIONS
+════════════════════════════════════
+This is the book's short, personal dedication page — the very first page a reader sees. Follow these rules exactly:
+
+1. KEEP IT SHORT — A dedication is 1–4 sentences at most. It is never a full page of prose.
+2. MAKE IT PERSONAL AND SINCERE — Address it to a person, group, or cause connected to the book's subject or the author's motivation for writing it (e.g. family, mentors, a community, readers who share the struggle the book addresses). Infer a plausible, fitting dedication from the book's topic and purpose — do not use a placeholder name.
+3. MATCH THE BOOK'S TONE — Warm and heartfelt for personal/self-help topics; can be slightly more restrained and professional for business/technical topics.
+4. NO BOOK CONTENT — Do NOT summarize or reference the book's chapters, arguments, or teachings. This page is purely a personal gesture.
+5. NO GENERIC FILLER — Avoid clichés like "To everyone who believed in me" without any specificity tied to this book's subject.
+
+Length: 1–4 sentences (roughly 15–60 words). Never longer.` : "";
+
+  // ── Book-level "Acknowledgments" — dedicated instruction set ──
+  const acknowledgmentsBlock = isAcknowledgments ? `
+════════════════════════════════════
+ACKNOWLEDGMENTS — INSTRUCTIONS
+════════════════════════════════════
+This is the book's Acknowledgments page — a short front-matter section thanking those who contributed to the book. Follow these rules exactly:
+
+1. THANK RELEVANT CONTRIBUTORS — Plausibly thank categories of people connected to writing and publishing a book like this: e.g. mentors or experts in the book's field, early readers/reviewers, editors, family or colleagues for support and patience, and the reader for picking up the book. Tailor the specific people/groups thanked to the book's topic and audience.
+2. KEEP IT WARM BUT CONCISE — Genuine and gracious in tone, not overly long or gushing.
+3. NO BOOK CONTENT — Do NOT summarize the book's arguments or teachings here. This is purely gratitude.
+4. NO GENERIC FILLER OR FAKE SPECIFIC NAMES — Never invent a specific real-sounding personal name (e.g. do not write "Thank you to Jane Smith"). Refer to roles/relationships instead (e.g. "my early readers," "my mentors in this field," "my family").
+
+Length: target approximately 100–200 words, organized into 1–3 short paragraphs.` : "";
+
+  // ── Book-level "Preface" — dedicated instruction set ──
+  const prefaceBlock = isPreface ? `
+════════════════════════════════════
+PREFACE — INSTRUCTIONS
+════════════════════════════════════
+This is the book's Preface — distinct from the Introduction. Follow these rules exactly:
+
+1. EXPLAIN THE AUTHOR'S "WHY" — Focus on the author's personal journey, motivation, or story behind why they wrote this specific book, not on what the book teaches (that belongs in the Introduction).
+2. ESTABLISH CREDIBILITY AND CONNECTION — Give the reader a sense of the author's relationship to the topic (experience, curiosity, struggle, expertise) so they trust the voice behind the book.
+3. DO NOT DUPLICATE THE INTRODUCTION — Do NOT restate the book's purpose, structure, audience, or overview of chapters — that is the Introduction's job. The Preface is about the author and the origin story of the book, not about the book's contents.
+4. TONE — Personal, honest, and reflective; first-person voice.
+
+Writing style requirements:
+- Write in first person, as the author speaking directly and personally to the reader.
+- Do NOT use generic filler ("I have always been passionate about...") without grounding it in something specific to this book's actual subject.
+- Make it feel like a genuine, specific origin story tied to this exact book's topic.
+
+Length: target approximately 250–450 words, organized into clear, readable paragraphs.` : "";
+
   const flowBlock = (hasBlueprint || isFrontMatterSpecial) ? "" : `
 ════════════════════════════════════
 WRITING FLOW — ${structureKey.toUpperCase()} STRUCTURE
@@ -2149,6 +2200,33 @@ QUALITY CHECK (verify before returning)
 4. Does it reassure readers the content is practical, accessible, and valuable for them?
 5. Is the length approximately 200–350 words?
 
+If any answer is NO — rewrite.` : isDedication ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Is it short — 1 to 4 sentences only?
+2. Is it personal, sincere, and plausibly tied to this book's subject or the author's motivation?
+3. Does it avoid summarizing or referencing the book's actual content?
+4. Does it avoid generic, unspecific clichés?
+
+If any answer is NO — rewrite.` : isAcknowledgments ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does it warmly thank plausible categories of contributors relevant to this book (mentors, early readers, family, the reader)?
+2. Is it concise — roughly 100–200 words?
+3. Does it avoid inventing specific fake personal names?
+4. Does it avoid summarizing the book's content?
+
+If any answer is NO — rewrite.` : isPreface ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Is it written in first person, focused on the author's personal journey or motivation?
+2. Does it avoid duplicating the Introduction's purpose/overview/audience content?
+3. Is the tone personal, honest, and reflective?
+4. Is the length approximately 250–450 words?
+
 If any answer is NO — rewrite.` : `
 ════════════════════════════════════
 QUALITY CHECK (verify before returning)
@@ -2176,7 +2254,7 @@ Subsection: ${subsectionTitle}${purposeNote}
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
-Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${howToUseBlock}${whatYouWillLearnBlock}${whoThisBookIsForBlock}${flowBlock}${antiTemplateRules}
+Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${howToUseBlock}${whatYouWillLearnBlock}${whoThisBookIsForBlock}${dedicationBlock}${acknowledgmentsBlock}${prefaceBlock}${flowBlock}${antiTemplateRules}
 
 ════════════════════════════════════
 10 NON-NEGOTIABLE WRITING RULES
@@ -2215,6 +2293,18 @@ Use a short framing paragraph, then plain-text bullet points (each starting with
   ? `Follow the WHO THIS BOOK IS FOR INSTRUCTIONS above exactly — identify the audience, who benefits most, experience level, and reassurance the content is practical and accessible.
 Target length: approximately 200–350 words.
 The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.`
+  : isDedication
+  ? `Follow the DEDICATION INSTRUCTIONS above exactly — short, personal, sincere, tied to the book's subject or the author's motivation.
+Target length: 1–4 sentences (roughly 15–60 words). Never longer.
+No headers or labels — just the dedication text itself.`
+  : isAcknowledgments
+  ? `Follow the ACKNOWLEDGMENTS INSTRUCTIONS above exactly — warmly thank plausible categories of contributors relevant to this book.
+Target length: approximately 100–200 words.
+The prose must flow as 1–3 short paragraphs — do NOT use section headers or labels inside the content.`
+  : isPreface
+  ? `Follow the PREFACE INSTRUCTIONS above exactly — the author's personal journey and motivation for writing this specific book, first-person voice.
+Target length: approximately 250–450 words.
+The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.`
   : hasBlueprint
   ? `BLUEPRINT CONTENT STRUCTURE (follows from SECTION BLUEPRINT COMPONENTS above)
 Write the subsection as flowing prose that includes ONLY the blueprint components selected above.
@@ -2248,6 +2338,18 @@ If the answer is no — rewrite.` : isWhoThisBookIsFor ? `═══════�
 WHO THIS BOOK IS FOR QUALITY TEST
 ════════════════════════════════════
 Before writing, answer internally: "Would the ideal reader recognize themselves in this description within the first two sentences?"
+If the answer is no — rewrite.` : isDedication ? `════════════════════════════════════
+DEDICATION QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Is this short, sincere, and specific to this book's subject or the author's motivation — not a generic template dedication?"
+If the answer is no — rewrite.` : isAcknowledgments ? `════════════════════════════════════
+ACKNOWLEDGMENTS QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Does this feel like genuine, warm gratitude tied to this specific book, without inventing fake personal names?"
+If the answer is no — rewrite.` : isPreface ? `════════════════════════════════════
+PREFACE QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Does this reveal the author's personal story and motivation for this book, without repeating what the Introduction already covers?"
 If the answer is no — rewrite.` : `════════════════════════════════════
 SUBSECTION UNIQUENESS TEST
 ════════════════════════════════════
@@ -2262,7 +2364,7 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 {
   "title": "The subsection title (publication-ready, specific, compelling)",
   "structureUsed": "${structureKey}",
-  "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : isHowToUseThisBook ? `The full How to Use This Book section following the instructions above — best way to read, exercises/action steps guidance, maximum value tips, encouragement to take notes and revisit concepts. Flowing prose with no internal headers. Approximately 250-450 words.` : isWhatYouWillLearn ? `A short framing intro followed by 6-10 concise bullet points (each line starting with "- ") summarizing knowledge, skills, and outcomes the reader will gain. Approximately 200-400 words total.` : isWhoThisBookIsFor ? `The full Who This Book Is For section following the instructions above — intended audience, who benefits most, experience level, reassurance. Flowing prose with no internal headers. Approximately 200-350 words.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
+  "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : isHowToUseThisBook ? `The full How to Use This Book section following the instructions above — best way to read, exercises/action steps guidance, maximum value tips, encouragement to take notes and revisit concepts. Flowing prose with no internal headers. Approximately 250-450 words.` : isWhatYouWillLearn ? `A short framing intro followed by 6-10 concise bullet points (each line starting with "- ") summarizing knowledge, skills, and outcomes the reader will gain. Approximately 200-400 words total.` : isWhoThisBookIsFor ? `The full Who This Book Is For section following the instructions above — intended audience, who benefits most, experience level, reassurance. Flowing prose with no internal headers. Approximately 200-350 words.` : isDedication ? `The full dedication text following the instructions above — short, personal, sincere. 1-4 sentences, roughly 15-60 words. No headers or labels.` : isAcknowledgments ? `The full acknowledgments text following the instructions above — warm thanks to plausible categories of contributors. 1-3 short paragraphs, approximately 100-200 words.` : isPreface ? `The full Preface text following the instructions above — the author's personal journey and motivation for writing this book, first-person voice. Flowing prose with no internal headers. Approximately 250-450 words.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
   "flowSections": [
     ${(isBookIntroduction
         ? ["Hook", "Background & Context", "Purpose of the Book", "Overview of the Book", "Intended Audience", "Invitation to Continue Reading"]
@@ -2272,11 +2374,17 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
         ? ["Framing Intro", "Key Outcomes"]
         : isWhoThisBookIsFor
         ? ["Intended Audience", "Who Benefits Most", "Experience Level", "Reassurance"]
+        : isDedication
+        ? ["Dedication"]
+        : isAcknowledgments
+        ? ["Thanks & Gratitude"]
+        : isPreface
+        ? ["Author's Motivation", "Origin Story", "Connection to the Reader"]
         : hasBlueprint ? (blueprintComponents as string[]) : effectiveFlow
       ).map((step: string) => `{"label": "${step}", "text": "2-4 sentences summarizing what this section covers in the content"}`).join(",\n    ")}
   ],
-  "keyTakeaway": "One sentence — the single most important thing the reader ${isBookIntroduction ? "should take away about what this book offers them" : isHowToUseThisBook ? "should remember about how to engage with this book" : isWhatYouWillLearn ? "should feel excited to gain from this book" : isWhoThisBookIsFor ? "should understand about whether this book is right for them" : "learns (matches part 5 of the prose)"}",
-  "transition": "The exact closing sentence or short paragraph that bridges into ${isBookIntroduction ? "Chapter 1" : isHowToUseThisBook ? "the next front-matter section" : isWhatYouWillLearn ? "the next front-matter section" : isWhoThisBookIsFor ? "Chapter 1" : "the next section"}",
+  "keyTakeaway": "One sentence — the single most important thing the reader ${isBookIntroduction ? "should take away about what this book offers them" : isHowToUseThisBook ? "should remember about how to engage with this book" : isWhatYouWillLearn ? "should feel excited to gain from this book" : isWhoThisBookIsFor ? "should understand about whether this book is right for them" : isDedication ? "should feel about the sincerity of this dedication" : isAcknowledgments ? "should feel about the author's gratitude" : isPreface ? "should understand about the author's motivation for writing this book" : "learns (matches part 5 of the prose)"}",
+  "transition": "The exact closing sentence or short paragraph that bridges into ${isBookIntroduction ? "Chapter 1" : isHowToUseThisBook ? "the next front-matter section" : isWhatYouWillLearn ? "the next front-matter section" : isWhoThisBookIsFor ? "Chapter 1" : isDedication ? "the next front-matter section (or leave as a standalone closing line, since a dedication does not need a transition)" : isAcknowledgments ? "the next front-matter section" : isPreface ? "the Introduction" : "the next section"}",
   "teachingMethod": "The primary teaching method used (e.g. anecdote, data-led, analogy, direct instruction, case study, exercise)",
   "competitorGap": "One sentence describing what competing books miss that this ${isBookIntroduction ? "introduction" : isFrontMatterSpecial ? "front-matter section" : "section"} addresses (or 'N/A' if no competitor data provided)"
 }`;

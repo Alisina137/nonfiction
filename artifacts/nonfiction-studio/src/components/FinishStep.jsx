@@ -31,6 +31,22 @@ function writingAudience(fp) {
   return d.audience?.trim() || r.targetAudience?.trim() || fp?.audience || "";
 }
 
+// Simple (non-manuscript-dependent) front-matter fields with their own AI prompt roles.
+const SIMPLE_FRONT_MATTER = [
+  { kind: "dedication",     label: "Dedication",     hint: "Explain the best way readers should approach this book’s dedication…" },
+  { kind: "acknowledgments", label: "Acknowledgments", hint: "Thank the people who helped make this book possible…" },
+  { kind: "preface",        label: "Preface",        hint: "Share the personal story behind why you wrote this book…" }
+];
+
+function syntheticFrontMatterSubsection(title, role) {
+  return {
+    title,
+    strategy: role,
+    explanation: `Write the ${title} for this book.`,
+    application: ""
+  };
+}
+
 export default function FinishStep({ project, onMarkComplete, bookOutline, lessons, setLessons, fullProject }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [docxBusy, setDocxBusy] = useState(false);
@@ -42,6 +58,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [showOptional, setShowOptional] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [fmStatus, setFmStatus] = useState("");
+  const [generatingAll, setGeneratingAll] = useState(false);
 
   const title = resolveBookTitle(project);
   const author = resolveAuthorName(project);
@@ -117,6 +134,67 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
 
   function setFrontMatterProse(blockId, prose) {
     patchLesson(blockId, { prose });
+  }
+
+  const SIMPLE_FIELD_STATE = {
+    dedication:     [dedication, setDedication],
+    acknowledgments: [acknowledgments, setAcknowledgments],
+    preface:        [preface, setPreface]
+  };
+
+  async function generateSimpleFrontMatter(kind, label) {
+    const [, setValue] = SIMPLE_FIELD_STATE[kind];
+    setBusyId(kind);
+    setFmStatus("");
+    try {
+      const data = await aiFetch("/api/ai/lesson", {
+        subsection:        syntheticFrontMatterSubsection(label, kind),
+        chapterContext:    { title: label, role: kind },
+        previousConcepts:  [],
+        upcomingTopics:    [],
+        chapterSummaries:  [],
+        subsectionPurpose: null,
+        audience:          writingAudience(fullProject),
+        tone:              writingTone(fullProject),
+        resources:         fullProject?.resources ?? null,
+        bookContext:       buildBookContext(fullProject),
+        bookStructure:     fullProject?.bookDetails?.structure || fullProject?.research?.structure || "",
+        sectionTitle:      null
+      }, { noCache: true });
+      const lesson = data.lesson || data;
+      const prose  = lessonToProse(lesson);
+      setValue(prose);
+      setFmStatus(`Drafted "${label}".`);
+    } catch (e) {
+      if (e instanceof GenerationCanceledError) setFmStatus("Generation canceled.");
+      else setFmStatus(e.message || `Could not generate ${label}.`);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function generateAllFrontMatter() {
+    setGeneratingAll(true);
+    setShowOptional(true);
+    setFmStatus("Generating all 6 front-matter sections…");
+    try {
+      for (const { kind, label } of SIMPLE_FRONT_MATTER) {
+        setFmStatus(`Generating "${label}"…`);
+        await generateSimpleFrontMatter(kind, label);
+      }
+      if (frontMatterLocked) {
+        setFmStatus(`Dedication, Acknowledgments, and Preface drafted. ${frontMatterLockMessage}`);
+      } else {
+        for (const block of frontMatterBlocks) {
+          setFmStatus(`Generating "${block.label}"…`);
+          await generateFrontMatterBlock(block);
+        }
+        setFmStatus("All 6 front-matter sections drafted.");
+      }
+    } finally {
+      setGeneratingAll(false);
+      setBusyId(null);
+    }
   }
 
   async function downloadFromApi(endpoint, filename, mimeType, setBusy, label) {
@@ -212,33 +290,72 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
 
         {showOptional && (
           <div className="space-y-4 pt-1">
-            <div>
-              <label className="text-xs font-semibold text-slate-700">Dedication</label>
-              <textarea
-                className="input-light mt-1 min-h-[60px] resize-y text-sm"
-                value={dedication}
-                onChange={(e) => setDedication(e.target.value)}
-                placeholder={`To everyone who believed this book was possible…`}
-              />
+            <div className="flex flex-col gap-2 rounded-xl border border-violet-200 bg-violet-50/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold text-violet-900">Generate all 6 front-matter sections</p>
+                <p className="mt-0.5 text-[11px] text-violet-700">
+                  Drafts Dedication, Acknowledgments, Preface, How to Use This Book, What You Will Learn, and Who This Book Is For using your outline and manuscript content.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={generatingAll || Boolean(busyId)}
+                onClick={generateAllFrontMatter}
+                className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:from-violet-700 disabled:opacity-50"
+              >
+                {generatingAll ? (
+                  <>
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/60 border-t-white" />
+                    Generating…
+                  </>
+                ) : (
+                  <>✦ Generate all front matter</>
+                )}
+              </button>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700">Acknowledgments</label>
-              <textarea
-                className="input-light mt-1 min-h-[80px] resize-y text-sm"
-                value={acknowledgments}
-                onChange={(e) => setAcknowledgments(e.target.value)}
-                placeholder="Thank you to…"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700">Preface</label>
-              <textarea
-                className="input-light mt-1 min-h-[100px] resize-y text-sm"
-                value={preface}
-                onChange={(e) => setPreface(e.target.value)}
-                placeholder="A note from the author…"
-              />
-            </div>
+
+            {fmStatus && (
+              <p className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-[11px] text-slate-500">
+                {fmStatus}
+              </p>
+            )}
+
+            {SIMPLE_FRONT_MATTER.map(({ kind, label, hint }) => {
+              const [value, setValue] = SIMPLE_FIELD_STATE[kind];
+              const isThisBusy = busyId === kind;
+              return (
+                <div key={kind}>
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-xs font-semibold text-slate-700">{label}</label>
+                    <button
+                      type="button"
+                      disabled={Boolean(busyId) || generatingAll}
+                      onClick={() => generateSimpleFrontMatter(kind, label)}
+                      className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isThisBusy ? (
+                        <>
+                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
+                          Writing…
+                        </>
+                      ) : value.trim() ? (
+                        <>↻ Regenerate</>
+                      ) : (
+                        <>✦ Generate</>
+                      )}
+                    </button>
+                  </div>
+                  <textarea
+                    className="input-light mt-1 min-h-[80px] w-full resize-y text-sm"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    placeholder={hint}
+                    disabled={isThisBusy}
+                  />
+                </div>
+              );
+            })}
+
             <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-[11px] text-slate-600">
               <span className="font-semibold">Front matter page order:</span> Cover → Abstract → Dedication → Acknowledgments → Table of Contents → Preface → How to Use This Book → What You Will Learn → Who This Book Is For → Chapter 1…
             </div>
@@ -247,9 +364,9 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
             {frontMatterBlocks.length > 0 && (
               <div className="space-y-3 border-t border-slate-100 pt-4">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">AI-generated sections</h4>
+                  <h4 className="text-xs font-bold text-slate-900">Manuscript-based sections</h4>
                   <p className="mt-0.5 text-[11px] text-slate-500">
-                    Written from your finished manuscript, so they only unlock once every chapter and section is drafted.
+                    Written from your finished manuscript, so generation only unlocks once every chapter and section is drafted. You can still type your own text below at any time.
                   </p>
                 </div>
 
@@ -263,12 +380,6 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
                   </div>
                 )}
 
-                {fmStatus && (
-                  <p className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-[11px] text-slate-500">
-                    {fmStatus}
-                  </p>
-                )}
-
                 {frontMatterBlocks.map((block) => {
                   const prose = String(lessons?.[block.id]?.prose || "").trim();
                   const hasContent = blockHasContent(lessons, block.id);
@@ -279,51 +390,40 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
                     <div key={block.id} className="rounded-xl border border-slate-200 bg-white p-4">
                       <div className="flex items-center justify-between gap-3">
                         <label className="text-xs font-semibold text-slate-700">{label}</label>
-                        {hasContent && (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                            Drafted
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {hasContent && (
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                              Drafted
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            disabled={Boolean(busyId) || generatingAll || frontMatterLocked}
+                            onClick={() => generateFrontMatterBlock(block)}
+                            title={frontMatterLocked ? frontMatterLockMessage : undefined}
+                            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isThisBusy ? (
+                              <>
+                                <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
+                                Writing…
+                              </>
+                            ) : hasContent ? (
+                              <>↻ Regenerate</>
+                            ) : (
+                              <>✦ Generate</>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
-                      {isThisBusy && !hasContent ? (
-                        <div className="mt-2 flex items-center gap-2 text-slate-400">
-                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-sky-500" />
-                          <span className="text-xs">Writing…</span>
-                        </div>
-                      ) : !hasContent ? (
-                        frontMatterLocked ? (
-                          <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-center">
-                            <p className="text-[11px] font-medium text-slate-400">🔒 Locked until the manuscript is complete.</p>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={Boolean(busyId)}
-                            onClick={() => generateFrontMatterBlock(block)}
-                            className="mt-2 flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-[11px] font-semibold text-violet-700 shadow-sm transition hover:bg-violet-100 disabled:opacity-50"
-                          >
-                            ✦ Generate
-                          </button>
-                        )
-                      ) : (
-                        <div className="mt-2">
-                          <textarea
-                            className="input-light min-h-[100px] w-full resize-y text-sm"
-                            value={prose}
-                            onChange={(e) => setFrontMatterProse(block.id, e.target.value)}
-                            disabled={isThisBusy}
-                          />
-                          <button
-                            type="button"
-                            disabled={Boolean(busyId) || frontMatterLocked}
-                            onClick={() => generateFrontMatterBlock(block)}
-                            className="mt-2 flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            ↻ Regenerate
-                          </button>
-                        </div>
-                      )}
+                      <textarea
+                        className="input-light mt-2 min-h-[100px] w-full resize-y text-sm"
+                        value={prose}
+                        onChange={(e) => setFrontMatterProse(block.id, e.target.value)}
+                        placeholder={frontMatterLocked ? `🔒 ${frontMatterLockMessage}` : `Write or generate "${label}"…`}
+                        disabled={isThisBusy}
+                      />
                     </div>
                   );
                 })}
