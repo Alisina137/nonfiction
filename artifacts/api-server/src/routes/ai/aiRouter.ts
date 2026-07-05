@@ -218,7 +218,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
   sectionGen:         1800,
   conceptGen:         2000,
   fieldSuggestion:    1200,
-  subsectionGen:       900,
+  subsectionGen:      3500,
   chapterStrategy:    1200,
   competitiveIntel:   4000,
   default:             800
