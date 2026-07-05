@@ -314,7 +314,6 @@ export default function WriteStep({
         bookStructure:       bookStructureVal(fullProject),
         sectionTitle:        block.sectionTitle || null,
         chapterStrategy:     chapterStrategy || null,
-        targetWords:         Number(block.targetWords) > 0 ? Number(block.targetWords) : undefined,
         blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
           ? block.blueprintComponents
           : undefined
