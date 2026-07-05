@@ -1420,7 +1420,7 @@ router.post("/generate-subsections", async (req, res) => {
           title:   stripSectionColon(String(s.subsectionTitle).trim()),
           purpose: typeof s.subsectionPurpose === "string" ? s.subsectionPurpose.trim() : "",
           blueprintComponents: Array.isArray(s.blueprintComponents)
-            ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c))
+            ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c)).slice(0, 4)
             : []
         }));
     } else if (Array.isArray(raw)) {

@@ -3921,8 +3921,9 @@ ${phaseAvoid.length ? phaseAvoid.map((c: string) => `❌ ${c}`).join("\n") : "(n
 
 COMPONENT SELECTION RULES (NON-NEGOTIABLE)
 
-1. Choose EXACTLY 3 components for EACH subsection, independently.
-   Do not reuse one fixed set of 3 for every subsection in this section — evaluate each subsection on its own merits.
+1. Choose 3 OR 4 components for EACH subsection, independently.
+   Default to 3. Only use 4 when the subsection is unusually dense or multi-faceted and a 4th component would meaningfully round it out (e.g. it needs both a proof element and an action element, or the topic spans two distinct sub-ideas).
+   Do not reuse one fixed set for every subsection in this section — evaluate each subsection on its own merits, and vary the count (not just the components) across subsections where warranted.
 
 2. Base the choice on: this specific subsection's title, its purpose/description, the parent section title, the parent chapter context, and the reader's current learning phase (below).
 
@@ -3945,7 +3946,9 @@ COMPONENT SELECTION RULES (NON-NEGOTIABLE)
    ✅ STRONG: Templates + Exercise + Self-Assessment
    ✅ STRONG: One Small Step + Action Plan + Common Mistakes
 
-6. Vary combinations across subsections in this section — no two subsections should share the exact same 3-component set unless their purposes genuinely call for it.
+6. Vary combinations (and counts) across subsections in this section — no two subsections should share the exact same component set unless their purposes genuinely call for it.
+
+7. Never use fewer than 3 or more than 4 components for any subsection.
 
 ====================================================
 
@@ -3953,7 +3956,7 @@ OUTPUT FORMAT
 
 Output ONLY valid JSON — no explanations, no markdown, no code fences, no comments.
 
-{"subsections":[{"subsectionTitle":"Subsection title — precise, specific, no colons","subsectionPurpose":"1 sentence: what insight or action this subsection delivers","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"]}]}`;
+{"subsections":[{"subsectionTitle":"Subsection title — precise, specific, no colons","subsectionPurpose":"1 sentence: what insight or action this subsection delivers","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"]},{"subsectionTitle":"Another subsection title","subsectionPurpose":"1 sentence","blueprintComponents":["Action Plan","Common Mistakes","Reflection Questions","Case Study"]}]}`;
 }
 
 // ─── Generate Field-Level Suggestion ──────────────────────────────────────────
