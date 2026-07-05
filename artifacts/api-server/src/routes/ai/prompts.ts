@@ -1829,8 +1829,20 @@ export function lessonPrompt({
   subsectionPurpose,
   blueprintComponents,
   upcomingTopics,
-  chapterSummaries
+  chapterSummaries,
+  targetWords
 }: any) {
+  // Resolve the word-count target set by the author on this specific subsection/
+  // section in the Outline step. Falls back to the subsection's own `words`
+  // field (in case the caller only passed it inside `subsection`), then to no
+  // target at all (the generic minimum-length instruction is used instead).
+  const resolvedTargetWords = Number(targetWords) > 0
+    ? Number(targetWords)
+    : Number(subsection?.words) > 0
+      ? Number(subsection.words)
+      : 0;
+  const targetWordsLow  = resolvedTargetWords ? Math.max(50, Math.round(resolvedTargetWords * 0.9)) : 0;
+  const targetWordsHigh = resolvedTargetWords ? Math.round(resolvedTargetWords * 1.1) : 0;
   const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
   const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
 
@@ -2236,6 +2248,7 @@ QUALITY CHECK (verify before returning)
 3. Does this subsection provide unique value not found in other subsections?
 4. Is the opening varied and engaging (not a definition)?
 5. Would a reader immediately notice this is a ${structureKey} book rather than a generic one?
+${resolvedTargetWords ? `6. Is the length within ${targetWordsLow}–${targetWordsHigh} words (the author's specified target of ${resolvedTargetWords} words for this subsection)?` : ""}
 
 If any answer is NO — rewrite.`;
 
@@ -2310,7 +2323,8 @@ The prose must flow as unified paragraphs — do NOT use section headers or labe
 Write the subsection as flowing prose that includes ONLY the blueprint components selected above.
 Do NOT follow a generic 6-part template. The blueprint components ARE the structure.
 Do NOT add any component that is marked FORBIDDEN above.
-The prose must flow as unified paragraphs — no internal headers or bold labels.`
+The prose must flow as unified paragraphs — no internal headers or bold labels.
+${resolvedTargetWords ? `Target length: approximately ${targetWordsLow}–${targetWordsHigh} words (author-specified target for this subsection in the Outline step: ${resolvedTargetWords} words). Treat this as a hard requirement, not a suggestion.` : "Minimum 400 words."}`
   : `Every section MUST follow this exact 6-part structure internally within the prose:
 
 1. ENGAGING INTRODUCTION — Hook the reader with a surprising fact, bold claim, short scene, or provocative question specific to this topic. No generic warm-ups.
@@ -2320,7 +2334,8 @@ The prose must flow as unified paragraphs — no internal headers or bold labels
 5. KEY TAKEAWAY — One distilled sentence that captures the single most important lesson. Make it memorable and quotable.
 6. NATURAL TRANSITION — A closing sentence or short paragraph that bridges into the next section without announcing it ("Next, we'll look at…").
 
-The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.`}
+The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.
+${resolvedTargetWords ? `Target length: approximately ${targetWordsLow}–${targetWordsHigh} words (author-specified target for this subsection in the Outline step: ${resolvedTargetWords} words). Treat this as a hard requirement, not a suggestion — expand or tighten the 6 parts above as needed to land in this range.` : "Minimum 400 words."}`}
 
 ${isBookIntroduction ? `════════════════════════════════════
 INTRODUCTION QUALITY TEST

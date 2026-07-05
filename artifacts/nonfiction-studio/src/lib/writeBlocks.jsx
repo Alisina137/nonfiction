@@ -20,6 +20,7 @@ function realSubsection(sub, fallbackRole) {
     ...(Array.isArray(sub.keyPoints) && sub.keyPoints.length ? { keyPoints: sub.keyPoints } : {}),
     ...(sub.application ? { application: sub.application } : {}),
     ...(sub.intent      ? { intent: sub.intent }            : {}),
+    ...(Number(sub.words) > 0 ? { words: Number(sub.words) } : {}),
   };
 }
 
@@ -120,6 +121,7 @@ export function enumerateWriteBlocks(bookOutline) {
           chapterContext,
           sectionTitle: sec.title || null,
           blueprintComponents: sectionBlueprint,
+          targetWords: Number(sec.words) || 0,
           subsection: realSubsection(sec, `Section-level lesson within ${chapterContext.title}.`)
         });
         return;
@@ -134,6 +136,7 @@ export function enumerateWriteBlocks(bookOutline) {
           chapterContext,
           sectionTitle: sec.title || null,
           blueprintComponents: sectionBlueprint,
+          targetWords: Number(sub.words) || 0,
           subsection: realSubsection(sub, `Subsection in ${sec.title || "section"} — deliver one new framework or tactic.`)
         });
       });

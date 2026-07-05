@@ -167,7 +167,8 @@ function compressLessonBody(body: any): any {
     title:       subsection.title,
     description: String(subsection.description || subsection.objective || "").slice(0, 300),
     keyPoints:   Array.isArray(subsection.keyPoints)   ? subsection.keyPoints.slice(0, 4)   : undefined,
-    sections:    Array.isArray(subsection.sections)    ? subsection.sections.slice(0, 3).map((s: any) => s.title) : undefined
+    sections:    Array.isArray(subsection.sections)    ? subsection.sections.slice(0, 3).map((s: any) => s.title) : undefined,
+    ...(Number(subsection.words) > 0 ? { words: Number(subsection.words) } : {})
   } : subsection;
 
   const compressedChapter = chapterContext ? {
