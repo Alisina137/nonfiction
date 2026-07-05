@@ -221,7 +221,7 @@ Return ONLY valid JSON — no commentary, no markdown fences:
     ]
   },
   "chapterComponents": {
-    "recommended": ["4–6 values from: Key Takeaways, Action Plan, Checklist, Exercises, Reflection Questions, Templates, Case Studies, Examples, Research Highlights, Resources, Summary"]
+    "recommended": ["4–6 values from: Key Takeaways, Action Plan, Checklist, Exercise, Reflection Questions, Templates, Case Study, Real-Life Example, Research Insight, Resources, One Small Step"]
   },
   "bookFlowPreview": {
     "parts": [
@@ -285,7 +285,7 @@ const SECTION_SCHEMAS: Record<string, string> = {
 }`,
   chapterComponents: `{
   "chapterComponents": {
-    "recommended": ["4–6 from: Key Takeaways, Action Plan, Checklist, Exercises, Reflection Questions, Templates, Case Studies, Examples, Research Highlights, Resources, Summary"]
+    "recommended": ["4–6 from: Key Takeaways, Action Plan, Checklist, Exercise, Reflection Questions, Templates, Case Study, Real-Life Example, Research Insight, Resources, One Small Step"]
   }
 }`,
   bookFlowPreview: `{
@@ -1884,42 +1884,46 @@ ${(upcomingTopics as string[]).map((t: string) => `→ ${t}`).join("\n")}`
     "Key Takeaways":          "end with 3–5 clearly numbered key takeaways the reader should remember",
     "Action Plan":            "include a numbered action plan with specific, time-bound steps",
     "Checklist":              "include a formatted checklist the reader can use immediately",
-    "Exercises":              "include at least one hands-on exercise or practice activity with clear instructions",
+    "Exercise":               "include at least one hands-on exercise or practice activity with clear instructions",
     "Reflection Questions":   "include 2–3 thought-provoking reflection questions for the reader",
     "Templates":              "include a reusable template, fill-in-the-blank framework, or structured format",
-    "Case Studies":           "include a real, named case study with specific details and measurable outcomes",
-    "Examples":               "include multiple concrete, named real-world examples (not hypotheticals)",
-    "Research Highlights":    "cite specific research findings, statistics, or named studies with context",
+    "Case Study":             "include a real, named case study with specific details and measurable outcomes",
+    "Real-Life Example":      "include multiple concrete, named real-world examples (not hypotheticals)",
+    "Research Insight":       "cite specific research findings, statistics, or named studies with context",
     "Resources":              "include 2–3 recommended resources (books, tools, websites) with brief descriptions",
-    "Summary":                "end with a concise summary paragraph recapping the main points of this section",
-    "Quick Win":              "include a Quick Win — one specific action the reader can take in under 5 minutes right now to build immediate momentum",
+    "One Small Step":         "include a One Small Step — one specific action the reader can take in under 5 minutes right now to build immediate momentum",
     "Common Mistakes":        "include a Common Mistakes section listing 3–4 specific, named pitfalls that derail implementation of this concept",
     "Pro Tips":               "include 2–3 Pro Tips with advanced, expert-level optimization advice for readers who have already mastered the basics",
-    "Progress Check":         "include a Progress Check with 2–3 honest self-assessment questions (e.g. 'Have I done X? Am I consistently Y?')",
-    "Chapter Challenge":      "end with a Chapter Challenge — a specific, clearly defined commitment or mini-project the reader must complete before proceeding",
-    "Habit Tracker":          "include a Habit Tracker — a simple daily or weekly table/format the reader can use to track the behavior or habit being taught",
+    "7-Day Challenge":        "end with a 7-Day Challenge — a specific, clearly defined commitment or mini-project the reader must complete before proceeding",
     "FAQ":                    "include 3–4 Frequently Asked Questions that address the most common doubts, objections, or confusions readers have at this exact point",
     "Myth vs Reality":        "include 2–3 Myth vs Reality comparisons that name common false beliefs and replace them with accurate, evidence-based reframes",
-    "Before & After Snapshot":"include a Before & After Snapshot showing a concrete comparison of the reader's state before and after applying what this section teaches",
     "Success Story":          "include a brief Success Story (150–200 words) about a real or realistic person who applied these concepts and achieved a meaningful transformation",
+    "Brain Science":          "explain the underlying neuroscience or psychology driving this behavior or concept, in plain language",
+    "Statistics":             "cite 1–2 specific, credible statistics or data points that quantify the scale or impact of this concept",
+    "Why This Happens":       "explain the root cause or mechanism behind why this problem or pattern occurs",
+    "Practical Technique":    "include a specific, named technique or method the reader can apply directly",
+    "Self-Assessment":        "include a short Self-Assessment with 2–3 honest questions the reader can use to evaluate where they currently stand",
+    "Common Traps":           "include a Common Traps section naming 2–3 subtle pitfalls readers fall into when attempting this",
+    "Expert Quote":           "include a plausible, attributed expert quote that reinforces the point being made",
+    "Story":                  "open or illustrate the point with a short, specific narrative story that brings the concept to life",
   };
 
   // Which flow-step names map to a blueprint component (so we can suppress them when not selected)
   const FLOW_STEP_TO_COMPONENT: Record<string, string> = {
     "Action Task":       "Action Plan",
-    "Exercise":          "Exercises",
+    "Exercise":          "Exercise",
     "Reflection Prompt": "Reflection Questions",
-    "Case Study":        "Case Studies",
-    "Research":          "Research Highlights",
+    "Case Study":        "Case Study",
+    "Research":          "Research Insight",
   };
 
   const ALL_BLUEPRINT_COMPONENTS = [
-    "Key Takeaways", "Action Plan", "Checklist", "Exercises",
-    "Reflection Questions", "Templates", "Case Studies", "Examples",
-    "Research Highlights", "Resources", "Summary",
-    "Quick Win", "Common Mistakes", "Pro Tips", "Progress Check",
-    "Chapter Challenge", "Habit Tracker", "FAQ", "Myth vs Reality",
-    "Before & After Snapshot", "Success Story",
+    "Key Takeaways", "Action Plan", "Checklist", "Exercise",
+    "Reflection Questions", "Templates", "Case Study", "Real-Life Example",
+    "Research Insight", "Resources", "One Small Step",
+    "Common Mistakes", "Pro Tips", "7-Day Challenge", "FAQ", "Myth vs Reality",
+    "Success Story", "Brain Science", "Statistics", "Why This Happens",
+    "Practical Technique", "Self-Assessment", "Common Traps", "Expert Quote", "Story",
   ];
 
   const hasBlueprint = Array.isArray(blueprintComponents) && blueprintComponents.length > 0;
@@ -1949,7 +1953,7 @@ ${(blueprintComponents as string[]).map((c: string) => `✓ ${c} — ${COMPONENT
 FORBIDDEN — do NOT generate any of the following, even partially or under an alternate name:
 ${forbiddenComponents.map((c: string) => `✗ ${c}`).join("\n")}
 ${!(blueprintComponents as string[]).includes("Action Plan") ? "✗ Action Steps / Next Steps / To-Do / Practice Steps" : ""}
-${!(blueprintComponents as string[]).includes("Exercises") ? "✗ Try This / Activity / Practice Exercise / Exercise" : ""}
+${!(blueprintComponents as string[]).includes("Exercise") ? "✗ Try This / Activity / Practice Exercise / Exercise" : ""}
 ${!(blueprintComponents as string[]).includes("Reflection Questions") ? "✗ Reflect / Think About / Self-Assessment questions" : ""}
 
 Critical rules:
@@ -2263,7 +2267,7 @@ Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${up
 2. NO REPETITION — Every concept, framework, or example used here must be NEW. If previousConcepts lists it, do not repeat it in any form.
 3. TONE — Stay strictly within the selected tone and structure type. No tonal drift.
 4. PRACTICAL EXAMPLES — Include at least one concrete, specific, real-world example. No hypothetical placeholders ("imagine a person who…" without grounding it in reality).
-5. ACTIONABLE ADVICE — ${hasBlueprint && !(blueprintComponents as string[]).some((c: string) => ["Action Plan","Checklist","Exercises"].includes(c)) ? "Make ideas concrete and directly applicable to the reader's situation without forcing action steps." : "Every key point must close with something the reader can DO. Replace generic explanations with specific instructions."}
+5. ACTIONABLE ADVICE — ${hasBlueprint && !(blueprintComponents as string[]).some((c: string) => ["Action Plan","Checklist","Exercise"].includes(c)) ? "Make ideas concrete and directly applicable to the reader's situation without forcing action steps." : "Every key point must close with something the reader can DO. Replace generic explanations with specific instructions."}
 6. SMOOTH TRANSITIONS — Open with a bridge that connects to the prior section. Close with a sentence that naturally leads into the next section.
 7. DEPTH — Expand important ideas beyond surface-level explanation. Choose one idea per section and go deep rather than covering many ideas shallowly.
 8. AUDIENCE FIRST — Every sentence must be written with the target reader's exact situation, vocabulary, and goals in mind. No expert jargon without immediate plain-language translation.
@@ -3359,33 +3363,33 @@ export function sectionGenerationPrompt(
   if (ratio <= 0.20) {
     learningPhase = 1; phaseName = "Understanding";
     phaseGoal     = "Build trust, teach foundational concepts, and create awareness.";
-    phasePreferred  = ["Research Highlights","Examples","Case Studies","Resources","Summary","Myth vs Reality","Success Story"];
+    phasePreferred  = ["Research Insight","Real-Life Example","Case Study","Resources","Myth vs Reality","Success Story"];
     phaseOccasional = ["Key Takeaways","FAQ"];
-    phaseAvoid      = ["Action Plan","Checklist","Exercises","Templates","Chapter Challenge","Pro Tips","Common Mistakes","Progress Check","Habit Tracker"];
+    phaseAvoid      = ["Action Plan","Checklist","Exercise","Templates","7-Day Challenge","Pro Tips","Common Mistakes"];
   } else if (ratio <= 0.40) {
     learningPhase = 2; phaseName = "Foundation";
     phaseGoal     = "Build self-awareness and help readers deeply understand themselves and the problem.";
-    phasePreferred  = ["Examples","Case Studies","Reflection Questions","Research Highlights","Summary","Key Takeaways","Quick Win","Myth vs Reality"];
-    phaseOccasional = ["Exercises","Success Story","FAQ","Before & After Snapshot"];
-    phaseAvoid      = ["Action Plan","Templates","Checklist","Pro Tips","Chapter Challenge","Habit Tracker"];
+    phasePreferred  = ["Real-Life Example","Case Study","Reflection Questions","Research Insight","Key Takeaways","One Small Step","Myth vs Reality"];
+    phaseOccasional = ["Exercise","Success Story","FAQ"];
+    phaseAvoid      = ["Action Plan","Templates","Checklist","Pro Tips","7-Day Challenge"];
   } else if (ratio <= 0.65) {
     learningPhase = 3; phaseName = "Implementation";
     phaseGoal     = "Get the reader doing. Apply concepts through concrete action and practice.";
-    phasePreferred  = ["Action Plan","Checklist","Exercises","Templates","Examples","Reflection Questions","Key Takeaways","Common Mistakes","Chapter Challenge","Quick Win"];
-    phaseOccasional = ["Research Highlights","Resources","FAQ","Success Story","Habit Tracker"];
+    phasePreferred  = ["Action Plan","Checklist","Exercise","Templates","Real-Life Example","Reflection Questions","Key Takeaways","Common Mistakes","7-Day Challenge","One Small Step"];
+    phaseOccasional = ["Research Insight","Resources","FAQ","Success Story"];
     phaseAvoid      = ["Myth vs Reality"];
   } else if (ratio <= 0.80) {
     learningPhase = 4; phaseName = "Mastery";
     phaseGoal     = "Optimize performance and build advanced capabilities beyond the basics.";
-    phasePreferred  = ["Templates","Exercises","Reflection Questions","Action Plan","Key Takeaways","Checklist","Pro Tips","Progress Check"];
-    phaseOccasional = ["Case Studies","Success Story","Common Mistakes","Habit Tracker"];
-    phaseAvoid      = ["Resources","Myth vs Reality","Quick Win","FAQ"];
+    phasePreferred  = ["Templates","Exercise","Reflection Questions","Action Plan","Key Takeaways","Checklist","Pro Tips","Self-Assessment"];
+    phaseOccasional = ["Case Study","Success Story","Common Mistakes"];
+    phaseAvoid      = ["Resources","Myth vs Reality","One Small Step","FAQ"];
   } else {
     learningPhase = 5; phaseName = "Long-Term Success";
     phaseGoal     = "Sustain transformation and maintain long-term change.";
-    phasePreferred  = ["Reflection Questions","Summary","Action Plan","Checklist","Key Takeaways","Progress Check","Before & After Snapshot"];
-    phaseOccasional = ["Success Story","Habit Tracker"];
-    phaseAvoid      = ["Research Highlights","Case Studies","Myth vs Reality","Quick Win","FAQ","Chapter Challenge"];
+    phasePreferred  = ["Reflection Questions","Action Plan","Checklist","Key Takeaways","Self-Assessment"];
+    phaseOccasional = ["Success Story"];
+    phaseAvoid      = ["Research Insight","Case Study","Myth vs Reality","One Small Step","FAQ","7-Day Challenge"];
   }
 
   const purposeLine = chapterPurpose?.trim()
@@ -3605,27 +3609,31 @@ LEARNING COMPONENTS — PROGRESSION-AWARE SELECTION
 COMPONENT LEARNING ROLES
 (Each component has one specific pedagogical purpose)
 
-Research Highlights      → Explain: build credibility through data, studies, and evidence
-Case Studies             → Prove: real-world evidence the concept works
-Examples                 → Demonstrate: concrete, visual illustrations of the concept
+Research Insight         → Explain: build credibility through data, studies, and evidence
+Case Study               → Prove: real-world evidence the concept works
+Real-Life Example        → Demonstrate: concrete, visual illustrations of the concept
 Resources                → Explore: encourage deeper learning beyond this chapter
-Summary                  → Reinforce: consolidate and solidify what was just taught
 Key Takeaways            → Retain: memorable points the reader keeps forever
 Reflection Questions     → Internalize: guided introspection and self-awareness
-Exercises                → Practice: hands-on skill-building activities
+Exercise                 → Practice: hands-on skill-building activities
 Checklist                → Execute: step-by-step consistency and action tools
 Templates                → Apply: reusable frameworks the reader fills in themselves
 Action Plan              → Commit: specific, time-bound next steps
-Quick Win                → Momentum: something the reader can do in under 5 minutes right now
+One Small Step           → Momentum: something the reader can do in under 5 minutes right now
 Common Mistakes          → Guard: prevent implementation failures and wrong turns
 Pro Tips                 → Advance: expert-level optimization advice for experienced readers
-Progress Check           → Assess: "How am I doing?" self-evaluation at this point
-Chapter Challenge        → Challenge: a commitment task to complete before moving on
-Habit Tracker            → Track: a simple daily/weekly format for building the taught behavior
+7-Day Challenge          → Challenge: a commitment task to complete before moving on
 FAQ                      → Clarify: answers to the most common doubts at this stage
 Myth vs Reality          → Reframe: dismantle false beliefs and replace them with truth
-Before & After Snapshot  → Transform: show the reader's concrete before/after state
 Success Story            → Motivate: a brief, relatable win to sustain momentum
+Brain Science            → Explain: ground the concept in neuroscience or psychology
+Statistics               → Explain: quantify the scale or impact with hard data
+Why This Happens         → Explain: reveal the root cause or mechanism behind a pattern
+Practical Technique      → Apply: a specific, named method the reader can use directly
+Self-Assessment          → Assess: "How am I doing?" self-evaluation at this point
+Common Traps             → Guard: subtle pitfalls readers fall into when attempting this
+Expert Quote             → Prove: an authoritative voice reinforcing the point
+Story                    → Demonstrate: a short narrative that brings the concept to life
 
 ====================================================
 
@@ -3657,23 +3665,23 @@ COMPONENT SELECTION RULES (NON-NEGOTIABLE)
 4. Select COMPLEMENTARY components — each must serve a DIFFERENT learning purpose.
    Never combine two components with the same pedagogical role.
 
-   ❌ WEAK (all explain/prove — redundant): Research Highlights + Case Studies + Examples
-   ❌ WEAK (all action — one-dimensional): Action Plan + Checklist + Exercises
-   ❌ WEAK (all passive — no active element): Summary + Key Takeaways + Reflection Questions
+   ❌ WEAK (all explain/prove — redundant): Research Insight + Case Study + Real-Life Example
+   ❌ WEAK (all action — one-dimensional): Action Plan + Checklist + Exercise
+   ❌ WEAK (all passive — no active element): Key Takeaways + Reflection Questions + FAQ
 
-   ✅ STRONG: Research Highlights + Reflection Questions + Key Takeaways
+   ✅ STRONG: Research Insight + Reflection Questions + Key Takeaways
    ✅ STRONG: Action Plan + Common Mistakes + Reflection Questions
    ✅ STRONG: Case Study + Exercise + Key Takeaways
-   ✅ STRONG: Myth vs Reality + Examples + Summary
-   ✅ STRONG: Template + Exercise + Progress Check
-   ✅ STRONG: Quick Win + Action Plan + Common Mistakes
+   ✅ STRONG: Myth vs Reality + Real-Life Example + Key Takeaways
+   ✅ STRONG: Templates + Exercise + Self-Assessment
+   ✅ STRONG: One Small Step + Action Plan + Common Mistakes
 
 5. Match component to section type:
-   Conceptual section     → prefer Research Highlights, Examples, Case Studies, Summary, Myth vs Reality
-   Framework section      → prefer Examples, Templates, Checklists, Action Plans, Exercises
-   Implementation section → prefer Action Plans, Templates, Exercises, Checklists, Common Mistakes
-   Optimization section   → prefer Key Takeaways, Templates, Reflection Questions, Pro Tips, Checklists
-   Conclusion section     → prefer Summary, Reflection Questions, Key Takeaways, Action Plan, Before & After Snapshot
+   Conceptual section     → prefer Research Insight, Real-Life Example, Case Study, Statistics, Myth vs Reality
+   Framework section      → prefer Real-Life Example, Templates, Checklist, Action Plan, Exercise
+   Implementation section → prefer Action Plan, Templates, Exercise, Checklist, Common Mistakes
+   Optimization section   → prefer Key Takeaways, Templates, Reflection Questions, Pro Tips, Checklist
+   Conclusion section     → prefer Reflection Questions, Key Takeaways, Action Plan, Self-Assessment
 
 6. Vary combinations across sections in this chapter.
    No two consecutive sections should share the same 3-component set.
@@ -3684,7 +3692,7 @@ OUTPUT FORMAT
 
 Return ONLY valid JSON — no markdown, no explanations, no code fences, no comments.
 
-{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Highlights","Key Takeaways","Reflection Questions"]}]}`;
+{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"]}]}`;
 }
 
 // Simplified fallback used when the full sectionGenerationPrompt fails to
@@ -3704,7 +3712,7 @@ ${chapterPurpose?.trim() ? `Chapter Purpose: ${chapterPurpose.trim()}` : ""}
 Rules:
 - Exactly ${sectionCount} sections, each covering a distinct major aspect of the chapter.
 - No colons in titles. No generic titles like "Introduction" or "Summary".
-- Each section needs a one-sentence objective and 3 blueprint components picked from this list: Research Highlights, Examples, Case Studies, Resources, Summary, Myth vs Reality, Success Story, Key Takeaways, FAQ, Reflection Questions, Quick Win, Exercises, Before & After Snapshot, Action Plan, Checklist, Templates, Common Mistakes, Chapter Challenge, Pro Tips, Progress Check, Habit Tracker.
+- Each section needs a one-sentence objective and 3 blueprint components picked from this list: Key Takeaways, Action Plan, Checklist, Exercise, Reflection Questions, Templates, Case Study, Real-Life Example, Research Insight, Resources, One Small Step, Common Mistakes, Pro Tips, 7-Day Challenge, FAQ, Myth vs Reality, Success Story, Brain Science, Statistics, Why This Happens, Practical Technique, Self-Assessment, Common Traps, Expert Quote, Story.
 - Assign suggestedSubsectionCount as 2, 3, or 4 (vary it across sections).
 
 Return ONLY this JSON with no markdown, no code fences, no extra text:
