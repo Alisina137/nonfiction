@@ -125,6 +125,7 @@ export function enumerateWriteBlocks(bookOutline) {
         return;
       }
       subs.forEach((sub) => {
+        const subBlueprint = Array.isArray(sub.blueprintComponents) ? sub.blueprintComponents : sectionBlueprint;
         blocks.push({
           kind: "subsection",
           id: sub.id,
@@ -133,7 +134,7 @@ export function enumerateWriteBlocks(bookOutline) {
           chapterKey,
           chapterContext,
           sectionTitle: sec.title || null,
-          blueprintComponents: sectionBlueprint,
+          blueprintComponents: subBlueprint,
           subsection: realSubsection(sub, `Subsection in ${sec.title || "section"} — deliver one new framework or tactic.`)
         });
       });

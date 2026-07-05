@@ -3723,12 +3723,69 @@ export function subsectionGenerationPrompt(
   chapterTitle: string,
   sectionTitle: string,
   subsectionCount: number,
-  research?: any
+  research?: any,
+  sectionObjective?: string,
+  chapterPurpose?: string,
+  corePromise?: string,
+  coreThesis?: string,
+  chapterNumber?: number,
+  totalChapters?: number
 ): string {
   const niche    = research?.mainNicheLabel || "";
   const subNiche = research?.subNicheLabel  || "";
   const audience = research?.targetAudience || "";
   const topic    = research?.bookTopic      || "";
+
+  // ── Learning phase computation (mirrors sectionGenerationPrompt) ───────────
+  const chNum   = chapterNumber && chapterNumber > 0 ? chapterNumber : 1;
+  const chTotal = totalChapters && totalChapters > 0 ? totalChapters : 10;
+  const ratio   = chTotal > 1 ? (chNum - 1) / (chTotal - 1) : 0;
+
+  let learningPhase: number;
+  let phaseName: string;
+  let phaseGoal: string;
+  let phasePreferred: string[];
+  let phaseOccasional: string[];
+  let phaseAvoid: string[];
+
+  if (ratio <= 0.20) {
+    learningPhase = 1; phaseName = "Understanding";
+    phaseGoal     = "Build trust, teach foundational concepts, and create awareness.";
+    phasePreferred  = ["Research Insight","Real-Life Example","Case Study","Resources","Myth vs Reality","Success Story"];
+    phaseOccasional = ["Key Takeaways","FAQ"];
+    phaseAvoid      = ["Action Plan","Checklist","Exercise","Templates","7-Day Challenge","Pro Tips","Common Mistakes"];
+  } else if (ratio <= 0.40) {
+    learningPhase = 2; phaseName = "Foundation";
+    phaseGoal     = "Build self-awareness and help readers deeply understand themselves and the problem.";
+    phasePreferred  = ["Real-Life Example","Case Study","Reflection Questions","Research Insight","Key Takeaways","One Small Step","Myth vs Reality"];
+    phaseOccasional = ["Exercise","Success Story","FAQ"];
+    phaseAvoid      = ["Action Plan","Templates","Checklist","Pro Tips","7-Day Challenge"];
+  } else if (ratio <= 0.65) {
+    learningPhase = 3; phaseName = "Implementation";
+    phaseGoal     = "Get the reader doing. Apply concepts through concrete action and practice.";
+    phasePreferred  = ["Action Plan","Checklist","Exercise","Templates","Real-Life Example","Reflection Questions","Key Takeaways","Common Mistakes","7-Day Challenge","One Small Step"];
+    phaseOccasional = ["Research Insight","Resources","FAQ","Success Story"];
+    phaseAvoid      = ["Myth vs Reality"];
+  } else if (ratio <= 0.80) {
+    learningPhase = 4; phaseName = "Mastery";
+    phaseGoal     = "Optimize performance and build advanced capabilities beyond the basics.";
+    phasePreferred  = ["Templates","Exercise","Reflection Questions","Action Plan","Key Takeaways","Checklist","Pro Tips","Self-Assessment"];
+    phaseOccasional = ["Case Study","Success Story","Common Mistakes"];
+    phaseAvoid      = ["Resources","Myth vs Reality","One Small Step","FAQ"];
+  } else {
+    learningPhase = 5; phaseName = "Long-Term Success";
+    phaseGoal     = "Sustain transformation and maintain long-term change.";
+    phasePreferred  = ["Reflection Questions","Action Plan","Checklist","Key Takeaways","Self-Assessment"];
+    phaseOccasional = ["Success Story"];
+    phaseAvoid      = ["Research Insight","Case Study","Myth vs Reality","One Small Step","FAQ","7-Day Challenge"];
+  }
+
+  const contextLines = [
+    corePromise?.trim()      ? `Book Core Promise: ${corePromise.trim()}` : "",
+    coreThesis?.trim()       ? `Book Core Thesis: ${coreThesis.trim()}` : "",
+    chapterPurpose?.trim()   ? `Chapter Purpose: ${chapterPurpose.trim()}` : "",
+    sectionObjective?.trim() ? `Section Objective: ${sectionObjective.trim()}` : "",
+  ].filter(Boolean).join("\n");
 
   return `You are an elite nonfiction book architect.
 Your task is to generate ALL subsection titles for a section at the same time.
@@ -3741,7 +3798,7 @@ Chapter
 INPUTS
 Chapter Title: ${chapterTitle}
 Section Title: ${sectionTitle}
-${topic ? `Book Topic: ${topic}\n` : ""}${niche ? `Niche: ${niche}${subNiche ? ` › ${subNiche}` : ""}\n` : ""}${audience ? `Target Audience: ${audience}\n` : ""}
+${contextLines ? `${contextLines}\n` : ""}${topic ? `Book Topic: ${topic}\n` : ""}${niche ? `Niche: ${niche}${subNiche ? ` › ${subNiche}` : ""}\n` : ""}${audience ? `Target Audience: ${audience}\n` : ""}
 COMPLEXITY SCORING (mandatory — compute internally before generating):
 Rate the section topic complexity on a scale of 1–5:
   Score 1–2 → generate 3 subsections
@@ -3809,7 +3866,94 @@ No repetition. No filler or decorative titles.
 RULE 10 — RETURN ONLY FINAL RESULTS
 Output ONLY valid JSON — no explanations, no markdown, no code fences, no comments.
 
-{"subsections":[{"subsectionTitle":"Subsection title — precise, specific, no colons","subsectionPurpose":"1 sentence: what insight or action this subsection delivers"}]}`;
+====================================================
+
+LEARNING COMPONENTS — PROGRESSION-AWARE SELECTION (PER SUBSECTION)
+
+====================================================
+
+COMPONENT LEARNING ROLES
+(Each component has one specific pedagogical purpose)
+
+Research Insight         → Explain: build credibility through data, studies, and evidence
+Case Study               → Prove: real-world evidence the concept works
+Real-Life Example        → Demonstrate: concrete, visual illustrations of the concept
+Resources                → Explore: encourage deeper learning beyond this chapter
+Key Takeaways            → Retain: memorable points the reader keeps forever
+Reflection Questions     → Internalize: guided introspection and self-awareness
+Exercise                 → Practice: hands-on skill-building activities
+Checklist                → Execute: step-by-step consistency and action tools
+Templates                → Apply: reusable frameworks the reader fills in themselves
+Action Plan              → Commit: specific, time-bound next steps
+One Small Step           → Momentum: something the reader can do in under 5 minutes right now
+Common Mistakes          → Guard: prevent implementation failures and wrong turns
+Pro Tips                 → Advance: expert-level optimization advice for experienced readers
+7-Day Challenge          → Challenge: a commitment task to complete before moving on
+FAQ                      → Clarify: answers to the most common doubts at this stage
+Myth vs Reality          → Reframe: dismantle false beliefs and replace them with truth
+Success Story            → Motivate: a brief, relatable win to sustain momentum
+Brain Science            → Explain: ground the concept in neuroscience or psychology
+Statistics               → Explain: quantify the scale or impact with hard data
+Why This Happens         → Explain: reveal the root cause or mechanism behind a pattern
+Practical Technique      → Apply: a specific, named method the reader can use directly
+Self-Assessment          → Assess: "How am I doing?" self-evaluation at this point
+Common Traps             → Guard: subtle pitfalls readers fall into when attempting this
+Expert Quote             → Prove: an authoritative voice reinforcing the point
+Story                    → Demonstrate: a short narrative that brings the concept to life
+
+====================================================
+
+READER'S CURRENT LEARNING STAGE
+
+Chapter ${chNum} of ${chTotal} → Phase ${learningPhase} — ${phaseName}
+Stage Goal: ${phaseGoal}
+
+PREFERRED for this phase — prioritize these:
+${phasePreferred.map((c: string) => `✅ ${c}`).join("\n")}
+
+OCCASIONAL — use only when the subsection purpose clearly warrants it:
+${phaseOccasional.map((c: string) => `⚪ ${c}`).join("\n")}
+
+AVOID at this stage — reader is not ready for these:
+${phaseAvoid.length ? phaseAvoid.map((c: string) => `❌ ${c}`).join("\n") : "(none — all components are available at this stage)"}
+
+====================================================
+
+COMPONENT SELECTION RULES (NON-NEGOTIABLE)
+
+1. Choose EXACTLY 3 components for EACH subsection, independently.
+   Do not reuse one fixed set of 3 for every subsection in this section — evaluate each subsection on its own merits.
+
+2. Base the choice on: this specific subsection's title, its purpose/description, the parent section title, the parent chapter context, and the reader's current learning phase (below).
+
+3. Prioritize PREFERRED components for Phase ${learningPhase} (${phaseName}).
+   The reader needs components that: ${phaseGoal}
+
+4. AVOID components must NOT be used. The reader is not ready for them at this stage.
+
+5. Select COMPLEMENTARY components — each must serve a DIFFERENT learning purpose.
+   Never combine two components with the same pedagogical role.
+
+   ❌ WEAK (all explain/prove — redundant): Research Insight + Case Study + Real-Life Example
+   ❌ WEAK (all action — one-dimensional): Action Plan + Checklist + Exercise
+   ❌ WEAK (all passive — no active element): Key Takeaways + Reflection Questions + FAQ
+
+   ✅ STRONG: Research Insight + Reflection Questions + Key Takeaways
+   ✅ STRONG: Action Plan + Common Mistakes + Reflection Questions
+   ✅ STRONG: Case Study + Exercise + Key Takeaways
+   ✅ STRONG: Myth vs Reality + Real-Life Example + Key Takeaways
+   ✅ STRONG: Templates + Exercise + Self-Assessment
+   ✅ STRONG: One Small Step + Action Plan + Common Mistakes
+
+6. Vary combinations across subsections in this section — no two subsections should share the exact same 3-component set unless their purposes genuinely call for it.
+
+====================================================
+
+OUTPUT FORMAT
+
+Output ONLY valid JSON — no explanations, no markdown, no code fences, no comments.
+
+{"subsections":[{"subsectionTitle":"Subsection title — precise, specific, no colons","subsectionPurpose":"1 sentence: what insight or action this subsection delivers","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"]}]}`;
 }
 
 // ─── Generate Field-Level Suggestion ──────────────────────────────────────────

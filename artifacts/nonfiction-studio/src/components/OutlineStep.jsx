@@ -194,7 +194,8 @@ function normalizeSub(su) {
     id: su.id || safeId(),
     title: stripAfterColon(su.title || "Subsection"),
     purpose: typeof su.purpose === "string" ? su.purpose : "",
-    words: Number(su.words) || 0
+    words: Number(su.words) || 0,
+    blueprintComponents: Array.isArray(su.blueprintComponents) ? su.blueprintComponents : [],
   };
 }
 
@@ -613,11 +614,22 @@ export default function OutlineStep({
     const key = `${chId}::${secId}`;
     setGenSubsBusy((p) => ({ ...p, [key]: true }));
     try {
+      const bd = fullProject?.bookDetails || {};
+      const ch = chapters.find((c) => c.id === chId);
+      const sec = ch?.sections?.find((s) => s.id === secId);
+      const chapterIndex    = chapters.findIndex((c) => c.id === chId);
+      const chapterPosition = chapterIndex >= 0 ? chapterIndex + 1 : 1;
       const data = await aiFetch("/api/ai/generate-subsections", {
         chapterTitle,
         sectionTitle,
-        subsectionCount: Math.max(1, subsectionCount),
-        research: fullProject?.research,
+        subsectionCount:  Math.max(1, subsectionCount),
+        research:         fullProject?.research,
+        sectionObjective: sec?.objective     || "",
+        chapterPurpose:   ch?.objective      || ch?.summary || "",
+        corePromise:      bd.corePromise     || "",
+        coreThesis:       bd.coreThesis      || "",
+        chapterNumber:    chapterPosition,
+        totalChapters:    chapters.length,
       });
 
       // Prefer rich objects (new format); fall back to title strings (legacy)
@@ -637,6 +649,7 @@ export default function OutlineStep({
           title:   item.title   || "New subsection",
           purpose: item.purpose || "",
           words:   Math.max(80, Math.round(Number(s.words || 400) / Math.max(items.length, 1))),
+          blueprintComponents: Array.isArray(item.blueprintComponents) ? item.blueprintComponents : [],
         })),
       }));
     } catch (e) {
@@ -978,9 +991,8 @@ export default function OutlineStep({
                               />
                             </label>
                             <div className="flex items-center gap-1">
-                              {(() => {
+                              {subs.length === 0 && (() => {
                                 const bc = Array.isArray(sec.blueprintComponents) ? sec.blueprintComponents : [];
-                                const isOpen = !!blueprintOpenMap[sec.id];
                                 return (
                                   <button
                                     type="button"
@@ -1013,8 +1025,8 @@ export default function OutlineStep({
                           </div>
                         </div>
 
-                        {/* Blueprint Picker */}
-                        {blueprintOpenMap[sec.id] && (
+                        {/* Blueprint Picker (section-level — only used when the section has no subsections) */}
+                        {subs.length === 0 && blueprintOpenMap[sec.id] && (
                           <div className="mt-1 ml-0">
                             <BlueprintPicker
                               selected={sec.blueprintComponents || []}
@@ -1039,6 +1051,8 @@ export default function OutlineStep({
                             <>
                               {subs.map((su, qi) => {
                                 const slug = `${ci + 1}.${si + 1}.${qi + 1}`;
+                                const subBc = Array.isArray(su.blueprintComponents) ? su.blueprintComponents : [];
+                                const subBlueprintKey = `${sec.id}::${su.id}`;
                                 return (
                                   <div key={su.id} className="relative mt-2 ml-8 md:ml-12">
                                     <div className={`${rowShell} border-sky-100/85 py-3`}>
@@ -1087,6 +1101,18 @@ export default function OutlineStep({
                                           }
                                         />
                                       </label>
+                                      <button
+                                        type="button"
+                                        onClick={() => setBlueprintOpenMap((p) => ({ ...p, [subBlueprintKey]: !p[subBlueprintKey] }))}
+                                        title="Set subsection blueprint components"
+                                        className={`flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${
+                                          subBc.length > 0
+                                            ? "border-violet-300 bg-violet-100 text-violet-700 hover:bg-violet-200"
+                                            : "border-slate-200 bg-white text-slate-500 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-600"
+                                        }`}
+                                      >
+                                        ◆ {subBc.length > 0 ? `${subBc.length}` : "Blueprint"}
+                                      </button>
                                       <button type="button" aria-label="Delete subsection"
                                         onClick={() =>
                                           updateSectionById(ch.id, sec.id, () => ({
@@ -1096,6 +1122,21 @@ export default function OutlineStep({
                                         }
                                         className="rounded-lg px-2 py-1.5 text-sm text-red-600 transition hover:bg-red-50">🗑</button>
                                     </div>
+                                    {blueprintOpenMap[subBlueprintKey] && (
+                                      <div className="mt-1 ml-0">
+                                        <BlueprintPicker
+                                          selected={su.blueprintComponents || []}
+                                          onChange={(next) =>
+                                            updateSectionById(ch.id, sec.id, (s0) => ({
+                                              ...s0,
+                                              subsections: (s0.subsections || []).map((x) =>
+                                                x.id === su.id ? { ...x, blueprintComponents: next } : x
+                                              ),
+                                            }))
+                                          }
+                                        />
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}

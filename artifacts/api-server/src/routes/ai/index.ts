@@ -58,6 +58,14 @@ import {
 
 const router = Router();
 
+const VALID_BLUEPRINT_COMPONENTS = new Set([
+  "Key Takeaways","Action Plan","Checklist","Exercise","Reflection Questions",
+  "Templates","Case Study","Real-Life Example","Research Insight","Resources",
+  "One Small Step","Common Mistakes","Pro Tips","7-Day Challenge","FAQ",
+  "Myth vs Reality","Success Story","Brain Science","Statistics","Why This Happens",
+  "Practical Technique","Self-Assessment","Common Traps","Expert Quote","Story",
+]);
+
 /**
  * Strip the "Label: " prefix from section titles.
  * "The Productivity Trap: Why Being Busy..." → "Why Being Busy..."
@@ -1295,12 +1303,6 @@ router.post("/generate-sections", async (req, res) => {
     }
     const count = Math.min(15, Math.max(1, Number(sectionCount) || 3));
 
-    const VALID_BLUEPRINT_COMPONENTS = new Set([
-      "Key Takeaways","Action Plan","Checklist","Exercises","Reflection Questions",
-      "Templates","Case Studies","Examples","Research Highlights","Resources","Summary",
-      "Quick Win","Common Mistakes","Pro Tips","Progress Check","Chapter Challenge",
-      "Habit Tracker","FAQ","Myth vs Reality","Before & After Snapshot","Success Story",
-    ]);
     function parseSections(text: string): Array<{ title: string; objective: string; blueprintComponents: string[] }> {
       let raw: any;
       try { raw = extractJSON(text); } catch { return []; }
@@ -1384,30 +1386,48 @@ router.post("/generate-sections", async (req, res) => {
 /** POST /api/ai/generate-subsections — generate all subsection titles for a section at once */
 router.post("/generate-subsections", async (req, res) => {
   try {
-    const { chapterTitle, sectionTitle, subsectionCount, research } = req.body || {};
+    const {
+      chapterTitle, sectionTitle, subsectionCount, research,
+      sectionObjective, chapterPurpose, corePromise, coreThesis,
+      chapterNumber, totalChapters,
+    } = req.body || {};
     if (!chapterTitle || !sectionTitle) {
       return res.status(400).json({ error: "chapterTitle and sectionTitle are required" });
     }
     const count = Math.min(15, Math.max(1, Number(subsectionCount) || 3));
-    const prompt = subsectionGenerationPrompt(String(chapterTitle), String(sectionTitle), count, research);
+    const prompt = subsectionGenerationPrompt(
+      String(chapterTitle),
+      String(sectionTitle),
+      count,
+      research,
+      sectionObjective   ? String(sectionObjective)   : undefined,
+      chapterPurpose     ? String(chapterPurpose)     : undefined,
+      corePromise        ? String(corePromise)        : undefined,
+      coreThesis         ? String(coreThesis)         : undefined,
+      chapterNumber      ? Number(chapterNumber)      : undefined,
+      totalChapters      ? Number(totalChapters)      : undefined
+    );
     const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "subsectionGen");
     const raw = extractJSON(text);
 
-    let subsections: Array<{ title: string; purpose: string }> = [];
+    let subsections: Array<{ title: string; purpose: string; blueprintComponents: string[] }> = [];
 
     if (raw && !Array.isArray(raw) && Array.isArray(raw.subsections)) {
-      // New format: { subsections: [{ subsectionTitle, subsectionPurpose }] }
+      // New format: { subsections: [{ subsectionTitle, subsectionPurpose, blueprintComponents }] }
       subsections = raw.subsections
         .filter((s: any) => s && typeof s.subsectionTitle === "string" && s.subsectionTitle.trim())
         .map((s: any) => ({
           title:   stripSectionColon(String(s.subsectionTitle).trim()),
-          purpose: typeof s.subsectionPurpose === "string" ? s.subsectionPurpose.trim() : ""
+          purpose: typeof s.subsectionPurpose === "string" ? s.subsectionPurpose.trim() : "",
+          blueprintComponents: Array.isArray(s.blueprintComponents)
+            ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c))
+            : []
         }));
     } else if (Array.isArray(raw)) {
       // Legacy format: string array
       subsections = raw
         .filter((t: any) => typeof t === "string" && t.trim())
-        .map((t: any) => ({ title: stripSectionColon(String(t).trim()), purpose: "" }));
+        .map((t: any) => ({ title: stripSectionColon(String(t).trim()), purpose: "", blueprintComponents: [] }));
     }
 
     if (subsections.length === 0) {
