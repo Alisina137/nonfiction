@@ -649,9 +649,15 @@ export default function OutlineStep({
       // Prefer rich objects (new format); fall back to title strings (legacy)
       const richSubs = Array.isArray(data.subsections) ? data.subsections : [];
       const fallbackTitles = Array.isArray(data.titles) ? data.titles : [];
-      const items = richSubs.length > 0
+      const raw = richSubs.length > 0
         ? richSubs
         : fallbackTitles.map((t) => ({ title: t, purpose: "" }));
+
+      // Enforce exact count — never let the response silently change the
+      // subsection count that was already assigned based on importance/expansion.
+      const requestedCount = Math.max(1, subsectionCount);
+      const items = raw.slice(0, requestedCount);
+      while (items.length < requestedCount) items.push({ title: "New subsection", purpose: "" });
 
       if (items.length === 0) return;
 

@@ -1417,48 +1417,86 @@ router.post("/generate-subsections", async (req, res) => {
       return res.status(400).json({ error: "chapterTitle and sectionTitle are required" });
     }
     const count = Math.min(15, Math.max(1, Number(subsectionCount) || 3));
-    const prompt = subsectionGenerationPrompt(
-      String(chapterTitle),
-      String(sectionTitle),
-      count,
-      research,
-      sectionObjective   ? String(sectionObjective)   : undefined,
-      chapterPurpose     ? String(chapterPurpose)     : undefined,
-      corePromise        ? String(corePromise)        : undefined,
-      coreThesis         ? String(coreThesis)         : undefined,
-      chapterNumber      ? Number(chapterNumber)      : undefined,
-      totalChapters      ? Number(totalChapters)      : undefined
-    );
-    const { text, usedProvider } = await runShort(prompt, systemPrompt(), req, res, "subsectionGen");
-    const raw = extractJSON(text);
 
+    function parseSubsections(text: string): Array<{ title: string; purpose: string; blueprintComponents: string[] }> {
+      let raw: any;
+      try { raw = extractJSON(text); } catch { return []; }
+      if (!raw) return [];
+      if (!Array.isArray(raw) && Array.isArray(raw.subsections)) {
+        // New format: { subsections: [{ subsectionTitle, subsectionPurpose, blueprintComponents }] }
+        return raw.subsections
+          .filter((s: any) => s && typeof s.subsectionTitle === "string" && s.subsectionTitle.trim())
+          .map((s: any) => ({
+            title:   stripSectionColon(String(s.subsectionTitle).trim()),
+            purpose: typeof s.subsectionPurpose === "string" ? s.subsectionPurpose.trim() : "",
+            blueprintComponents: Array.isArray(s.blueprintComponents)
+              ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c)).slice(0, 4)
+              : []
+          }));
+      }
+      if (Array.isArray(raw)) {
+        // Legacy format: string array
+        return raw
+          .filter((t: any) => typeof t === "string" && t.trim())
+          .map((t: any) => ({ title: stripSectionColon(String(t).trim()), purpose: "", blueprintComponents: [] }));
+      }
+      return [];
+    }
+
+    const MAX_ATTEMPTS = 3;
     let subsections: Array<{ title: string; purpose: string; blueprintComponents: string[] }> = [];
+    let usedProvider = "";
+    let lastError = "";
 
-    if (raw && !Array.isArray(raw) && Array.isArray(raw.subsections)) {
-      // New format: { subsections: [{ subsectionTitle, subsectionPurpose, blueprintComponents }] }
-      subsections = raw.subsections
-        .filter((s: any) => s && typeof s.subsectionTitle === "string" && s.subsectionTitle.trim())
-        .map((s: any) => ({
-          title:   stripSectionColon(String(s.subsectionTitle).trim()),
-          purpose: typeof s.subsectionPurpose === "string" ? s.subsectionPurpose.trim() : "",
-          blueprintComponents: Array.isArray(s.blueprintComponents)
-            ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c)).slice(0, 4)
-            : []
-        }));
-    } else if (Array.isArray(raw)) {
-      // Legacy format: string array
-      subsections = raw
-        .filter((t: any) => typeof t === "string" && t.trim())
-        .map((t: any) => ({ title: stripSectionColon(String(t).trim()), purpose: "", blueprintComponents: [] }));
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const prompt = subsectionGenerationPrompt(
+        String(chapterTitle),
+        String(sectionTitle),
+        count,
+        research,
+        sectionObjective   ? String(sectionObjective)   : undefined,
+        chapterPurpose     ? String(chapterPurpose)     : undefined,
+        corePromise        ? String(corePromise)        : undefined,
+        coreThesis         ? String(coreThesis)         : undefined,
+        chapterNumber      ? Number(chapterNumber)      : undefined,
+        totalChapters      ? Number(totalChapters)      : undefined
+      );
+      const result = await runShort(prompt, systemPrompt(), req, res, "subsectionGen");
+      usedProvider = result.usedProvider;
+      const parsed = parseSubsections(result.text);
+
+      if (parsed.length === count) {
+        subsections = parsed;
+        break;
+      }
+
+      lastError = `attempt ${attempt}: got ${parsed.length} subsections, need ${count}`;
+      console.warn(`[generate-subsections] ${lastError} — retrying`);
+
+      // On last attempt, accept whatever we got — it will be hard-enforced to the exact count below.
+      if (attempt === MAX_ATTEMPTS && parsed.length > 0) {
+        subsections = parsed;
+      }
     }
 
     if (subsections.length === 0) {
-      console.error("[generate-subsections] Could not parse subsections from:", text.slice(0, 300));
+      console.error("[generate-subsections] All attempts failed. Last error:", lastError);
       return res.status(500).json({ error: "AI returned unparseable subsection data." });
     }
 
+    // Hard-enforce the exact requested count — this count was already computed
+    // upstream (generate-sections) from importance/expansion scoring and must
+    // never silently drift regardless of what the model returns.
+    if (subsections.length > count) {
+      subsections = subsections.slice(0, count);
+    } else if (subsections.length < count) {
+      while (subsections.length < count) {
+        subsections.push({ title: "New subsection", purpose: "", blueprintComponents: [] });
+      }
+    }
+
     const titles = subsections.map((s) => s.title);
-    return res.json({ subsections, titles, _provider: usedProvider });
+    return res.json({ subsections, titles, _provider: usedProvider, _requestedCount: count });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

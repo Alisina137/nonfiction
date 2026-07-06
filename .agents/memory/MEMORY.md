@@ -5,3 +5,4 @@
 - [Multi-Model AI Pipeline](multi-model-pipeline.md) — 6 task phases each with a specialized model chain; TASK_CHAINS + CONTENT_TYPE_TO_TASK + callProvider model overrides; GROK_API_KEY needed for Grok 4.
 - [PDF Pagination Orphan Headings](pdf-pagination-orphan-headings.md) — never page-break a whole prose block at once; check room per-line or headings get stranded alone at page bottom.
 - [Front Matter Generation Gating](front-matter-gating.md) — Introduction/How-to-Use/What-You'll-Learn/Who-It's-For must generate only after all chapters+sections are drafted, so they use finished manuscript as context.
+- [Outline Count Enforcement](outline-count-enforcement.md) — any outline prompt with an internal self-scoring rule (e.g. "rate complexity 1-5 → pick count") will silently override an exact count passed by the caller; always hard-enforce exact counts in code, never trust the model alone.

@@ -3812,12 +3812,19 @@ INPUTS
 Chapter Title: ${chapterTitle}
 Section Title: ${sectionTitle}
 ${contextLines ? `${contextLines}\n` : ""}${topic ? `Book Topic: ${topic}\n` : ""}${niche ? `Niche: ${niche}${subNiche ? ` › ${subNiche}` : ""}\n` : ""}${audience ? `Target Audience: ${audience}\n` : ""}
-COMPLEXITY SCORING (mandatory — compute internally before generating):
-Rate the section topic complexity on a scale of 1–5:
-  Score 1–2 → generate 3 subsections
-  Score 3   → generate 4 subsections
-  Score 4–5 → generate 5 subsections
-Generate only the number of subsections the section genuinely needs. Do not pad to reach a higher count.
+====================================================
+
+CRITICAL REQUIREMENT — EXACT SUBSECTION COUNT
+
+You MUST generate EXACTLY ${subsectionCount} subsection${subsectionCount !== 1 ? "s" : ""}.
+
+Not ${subsectionCount - 1}. Not ${subsectionCount + 1}. Exactly ${subsectionCount}.
+
+This number was already determined upstream based on this section's importance and need for expansion relative to the other sections in the chapter. It is locked and cannot change.
+
+Do not add subsections. Do not remove subsections. Do not merge subsections. Your only job is to generate ${subsectionCount} high-quality subsection titles that, together, fully expand the section.
+
+====================================================
 
 RULES (NON-NEGOTIABLE)
 
