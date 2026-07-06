@@ -598,6 +598,7 @@ export default function OutlineStep({
             title:               item.title               || "New section",
             objective:           item.objective           || "",
             blueprintComponents: Array.isArray(item.blueprintComponents) ? item.blueprintComponents : [],
+            suggestedSubsectionCount: [3, 4].includes(Number(item.suggestedSubsectionCount)) ? Number(item.suggestedSubsectionCount) : undefined,
           })),
         });
       });

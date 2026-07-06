@@ -3688,11 +3688,24 @@ COMPONENT SELECTION RULES (NON-NEGOTIABLE)
 
 ====================================================
 
+SUBSECTION COUNT ASSIGNMENT
+
+After generating all ${sectionCount} section titles, analyze them together and assign each one a "suggestedSubsectionCount" of either 3 or 4, following this rule:
+
+${sectionCount >= 3
+  ? `- Exactly 2 of the ${sectionCount} sections get suggestedSubsectionCount: 3 — pick the 2 sections that are narrowest in scope, most self-contained, or need the least expansion to fully deliver their point.
+- All other ${sectionCount - 2} sections get suggestedSubsectionCount: 4 — these are the sections that carry more weight, complexity, or need more room to be fully taught.`
+  : `- With only ${sectionCount} section${sectionCount === 1 ? "" : "s"}, assign suggestedSubsectionCount: 4 unless a section is unusually narrow in scope, in which case use 3.`}
+
+Base the decision on each section's title and objective: does it feel like a single focused idea (→ 3), or does it clearly need multiple angles/steps to be taught properly (→ 4)?
+
+====================================================
+
 OUTPUT FORMAT
 
 Return ONLY valid JSON — no markdown, no explanations, no code fences, no comments.
 
-{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"]}]}`;
+{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"],"suggestedSubsectionCount":4}]}`;
 }
 
 // Simplified fallback used when the full sectionGenerationPrompt fails to
