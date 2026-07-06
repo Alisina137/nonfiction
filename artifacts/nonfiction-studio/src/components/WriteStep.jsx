@@ -348,7 +348,10 @@ export default function WriteStep({
         audience:        writingAudience(fullProject),
         bookStructure:   bookStructureVal(fullProject),
         subsectionTitle: block.label || "",
-        bookContext:     buildBookContext(fullProject)
+        bookContext:     buildBookContext(fullProject),
+        blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
+          ? block.blueprintComponents
+          : undefined
       });
       if (data.text) setProse(blockId, data.text);
       else setStatus("Refinement returned empty text — your draft was kept.");

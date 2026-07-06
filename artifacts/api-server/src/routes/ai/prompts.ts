@@ -1815,6 +1815,15 @@ Return ONLY valid JSON — no markdown, no commentary:
 
 // ─── Structure-Aware Lesson Prompt ────────────────────────────────────────────
 
+const ALL_BLUEPRINT_COMPONENTS = [
+  "Key Takeaways", "Action Plan", "Checklist", "Exercise",
+  "Reflection Questions", "Templates", "Case Study", "Real-Life Example",
+  "Research Insight", "Resources", "One Small Step",
+  "Common Mistakes", "Pro Tips", "7-Day Challenge", "FAQ", "Myth vs Reality",
+  "Success Story", "Brain Science", "Statistics", "Why This Happens",
+  "Practical Technique", "Self-Assessment", "Common Traps", "Expert Quote", "Story",
+];
+
 export function lessonPrompt({
   subsection,
   chapterContext,
@@ -1916,15 +1925,6 @@ ${(upcomingTopics as string[]).map((t: string) => `→ ${t}`).join("\n")}`
     "Case Study":        "Case Study",
     "Research":          "Research Insight",
   };
-
-  const ALL_BLUEPRINT_COMPONENTS = [
-    "Key Takeaways", "Action Plan", "Checklist", "Exercise",
-    "Reflection Questions", "Templates", "Case Study", "Real-Life Example",
-    "Research Insight", "Resources", "One Small Step",
-    "Common Mistakes", "Pro Tips", "7-Day Challenge", "FAQ", "Myth vs Reality",
-    "Success Story", "Brain Science", "Statistics", "Why This Happens",
-    "Practical Technique", "Self-Assessment", "Common Traps", "Expert Quote", "Story",
-  ];
 
   const hasBlueprint = Array.isArray(blueprintComponents) && blueprintComponents.length > 0;
 
@@ -2445,7 +2445,7 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 }`;
 }
 
-export function improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext }: any) {
+export function improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext, blueprintComponents }: any) {
   const toneInstr = resolveToneInstruction(tone || "");
 
   const contextLines: string[] = [];
@@ -2460,13 +2460,34 @@ export function improvementPrompt({ action, currentText, tone, audience, bookStr
   if (bookContext?.authorSummary) contextLines.push(`Author Voice: ${String(bookContext.authorSummary).slice(0, 200)}`);
   const ctxBlock = contextLines.length ? contextLines.join("\n") + "\n" : "";
 
+  const hasBlueprint = Array.isArray(blueprintComponents) && blueprintComponents.length > 0;
+  const forbiddenComponents = hasBlueprint
+    ? ALL_BLUEPRINT_COMPONENTS.filter((c: string) => !(blueprintComponents as string[]).includes(c))
+    : [];
+
   const ACTION_INSTRUCTIONS: Record<string, string> = {
     sharpen:     "Rewrite for maximum clarity and precision. Remove vague language, redundancy, and motivational filler. Every sentence must earn its place. Keep the same length.",
     shorten:     "Tighten the writing by at least 20%. Cut redundancy, filler, and over-explanation. Preserve every key insight, example, and named framework.",
-    expand:      "Deepen the content — add a concrete example, case study, or nuanced sub-point that the reader can immediately apply. Do NOT add filler or generic summaries. Add genuine depth only.",
+    expand:      hasBlueprint
+      ? "Deepen the content — add a nuanced sub-point, richer detail, or sharper insight that the reader can immediately apply, built ONLY from the components already allowed for this subsection (see BLUEPRINT COMPONENTS below). Do NOT add filler or generic summaries. Do NOT introduce a new structural element (e.g. a case study, exercise, checklist) that isn't already an allowed component. Add genuine depth only."
+      : "Deepen the content — add a concrete example, case study, or nuanced sub-point that the reader can immediately apply. Do NOT add filler or generic summaries. Add genuine depth only.",
     add_example: "Insert a vivid, specific, real-world example that makes the main concept tangible. Place it naturally within the existing flow. The example must be concrete, not hypothetical.",
   };
   const instruction = ACTION_INSTRUCTIONS[action] || `Apply the following refinement: "${action}".`;
+
+  const blueprintBlock = hasBlueprint
+    ? `
+════════════════════════════════════
+BLUEPRINT COMPONENTS (non-negotiable)
+════════════════════════════════════
+This subsection was written using ONLY these selected components — do not introduce any other structural element while refining it:
+ALLOWED:
+${(blueprintComponents as string[]).map((c: string) => `✓ ${c}`).join("\n")}
+FORBIDDEN — never add, even implicitly:
+${forbiddenComponents.map((c: string) => `✗ ${c}`).join("\n")}
+${!(blueprintComponents as string[]).includes("Case Study") ? "✗ Case Study / real-world story framed as a case study\n" : ""}${!(blueprintComponents as string[]).includes("Action Plan") ? "✗ Action Steps / Next Steps / To-Do / Practice Steps\n" : ""}${!(blueprintComponents as string[]).includes("Exercise") ? "✗ Try This / Activity / Practice Exercise / Exercise\n" : ""}${!(blueprintComponents as string[]).includes("Reflection Questions") ? "✗ Reflect / Think About / Self-Assessment questions\n" : ""}If the refinement action above conflicts with this list, follow this list instead.
+`
+    : "";
 
   return `You are a professional nonfiction editor refining a single book section.
 
@@ -2475,7 +2496,7 @@ BOOK CONTEXT
 ════════════════════════════════════
 ${ctxBlock}Voice & Tone: ${tone || "Direct & practical"}
 Tone Instruction: ${toneInstr}
-
+${blueprintBlock}
 ════════════════════════════════════
 EDITING ACTION
 ════════════════════════════════════
@@ -2490,6 +2511,7 @@ EDITING RULES (non-negotiable)
 - Do NOT introduce markdown headers inside the prose
 - Preserve any specific examples, data points, named frameworks, or statistics already present
 - The refined text must feel like it belongs in a book with the context above
+${hasBlueprint ? "- Do NOT introduce any component listed as FORBIDDEN above, even as a single sentence" : ""}
 
 ════════════════════════════════════
 TEXT TO IMPROVE
