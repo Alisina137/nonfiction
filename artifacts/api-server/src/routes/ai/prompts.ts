@@ -3688,11 +3688,24 @@ COMPONENT SELECTION RULES (NON-NEGOTIABLE)
 
 ====================================================
 
+SUBSECTION EXPANSION SCORING
+
+After you finish writing all ${sectionCount} section titles, analyze them AGAINST EACH OTHER to judge which ones carry the most weight in this chapter and which need the deepest expansion.
+
+For every section, assign an "expansionScore" from 0–100 based on:
+- Importance: how central this section is to delivering the chapter's core promise.
+- Complexity: how many distinct sub-ideas, steps, or nuances the topic naturally contains.
+- Need for expansion: whether the topic is dense enough to justify being broken into more subsections, versus a narrower topic that only needs a light treatment.
+
+Score sections relative to one another — do not give every section the same score. There should be a clear top tier and a clear rest.
+
+====================================================
+
 OUTPUT FORMAT
 
 Return ONLY valid JSON — no markdown, no explanations, no code fences, no comments.
 
-{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"]}]}`;
+{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"],"expansionScore":72}]}`;
 }
 
 // Simplified fallback used when the full sectionGenerationPrompt fails to
@@ -3713,10 +3726,10 @@ Rules:
 - Exactly ${sectionCount} sections, each covering a distinct major aspect of the chapter.
 - No colons in titles. No generic titles like "Introduction" or "Summary".
 - Each section needs a one-sentence objective and 3 blueprint components picked from this list: Key Takeaways, Action Plan, Checklist, Exercise, Reflection Questions, Templates, Case Study, Real-Life Example, Research Insight, Resources, One Small Step, Common Mistakes, Pro Tips, 7-Day Challenge, FAQ, Myth vs Reality, Success Story, Brain Science, Statistics, Why This Happens, Practical Technique, Self-Assessment, Common Traps, Expert Quote, Story.
-- Assign suggestedSubsectionCount as 2, 3, or 4 (vary it across sections).
+- After writing the titles, compare them against each other and assign each an "expansionScore" from 0-100 based on importance, complexity, and how much the topic needs to be broken down further. Vary the scores — do not give every section the same score.
 
 Return ONLY this JSON with no markdown, no code fences, no extra text:
-{"sections":[{"sectionTitle":"...","sectionObjective":"...","blueprintComponents":["...","...","..."],"suggestedSubsectionCount":3}]}`;
+{"sections":[{"sectionTitle":"...","sectionObjective":"...","blueprintComponents":["...","...","..."],"expansionScore":72}]}`;
 }
 
 export function subsectionGenerationPrompt(
