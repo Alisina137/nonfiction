@@ -1940,6 +1940,56 @@ ${(upcomingTopics as string[]).map((t: string) => `→ ${t}`).join("\n")}`
     ? ALL_BLUEPRINT_COMPONENTS.filter((c: string) => !(blueprintComponents as string[]).includes(c))
     : [];
 
+  // Teaching-method keywords that map onto a specific blueprint component. Chapter strategy
+  // (teachingMethods) is generated ONCE per chapter and reused across every subsection in it —
+  // it has no idea which blueprint components THIS subsection selected. If a suggested teaching
+  // method maps to a component the reader did NOT select for this subsection, it must be dropped,
+  // otherwise the model happily "follows the strategy" and smuggles in extra components.
+  const TEACHING_METHOD_KEYWORD_TO_COMPONENT: Array<[string, string]> = [
+    ["case study", "Case Study"],
+    ["exercise", "Exercise"],
+    ["checklist", "Checklist"],
+    ["action plan", "Action Plan"],
+    ["action step", "Action Plan"],
+    ["faq", "FAQ"],
+    ["statistic", "Statistics"],
+    ["data", "Statistics"],
+    ["anecdote", "Real-Life Example"],
+    ["story", "Story"],
+    ["quote", "Expert Quote"],
+    ["challenge", "7-Day Challenge"],
+    ["template", "Templates"],
+    ["myth", "Myth vs Reality"],
+    ["success story", "Success Story"],
+    ["reflection", "Reflection Questions"],
+    ["self-assessment", "Self-Assessment"],
+    ["brain science", "Brain Science"],
+    ["neuroscience", "Brain Science"],
+    ["resource", "Resources"],
+    ["mistake", "Common Mistakes"],
+    ["pro tip", "Pro Tips"],
+    ["trap", "Common Traps"],
+    ["one small step", "One Small Step"],
+    ["root cause", "Why This Happens"],
+    ["technique", "Practical Technique"],
+    ["key takeaway", "Key Takeaways"],
+  ];
+
+  function teachingMethodConflictsWithBlueprint(method: string): boolean {
+    const lower = method.toLowerCase();
+    for (const [keyword, component] of TEACHING_METHOD_KEYWORD_TO_COMPONENT) {
+      if (lower.includes(keyword) && forbiddenComponents.includes(component)) return true;
+    }
+    return false;
+  }
+
+  const rawTeachingMethods: string[] = Array.isArray(chapterStrategy?.teachingMethods)
+    ? chapterStrategy.teachingMethods.filter((m: any) => typeof m === "string" && m.trim())
+    : [];
+  const effectiveTeachingMethods = hasBlueprint
+    ? rawTeachingMethods.filter((m: string) => !teachingMethodConflictsWithBlueprint(m))
+    : rawTeachingMethods;
+
   const blueprintBlock = hasBlueprint
     ? `
 ════════════════════════════════════
@@ -1961,6 +2011,7 @@ Critical rules:
 - Do NOT follow the REQUIRED OUTPUT STRUCTURE section below — use the blueprint above instead.
 - Do NOT add headers, bold labels, or section breaks for the components — weave them naturally into flowing prose.
 - Every selected component MUST appear before the end of this subsection.
+- This blueprint list OVERRIDES the "Teaching Methods Available" list below. That list is chapter-wide guidance and was NOT generated with this specific subsection's blueprint in mind — if any teaching method there would introduce a forbidden component (e.g. "case study", "exercise", "data/statistics" when those aren't selected above), you MUST ignore that method entirely for this subsection.
 ` : "";
 
   const strategyBlock = chapterStrategy ? `
@@ -1970,7 +2021,7 @@ CHAPTER WRITING STRATEGY (follow this for every subsection)
 Chapter Theme: ${chapterStrategy.chapterTheme || ""}
 Chapter Arc: ${chapterStrategy.chapterArc || ""}
 Tone Guidance: ${chapterStrategy.toneGuidance || ""}
-Teaching Methods Available: ${Array.isArray(chapterStrategy.teachingMethods) ? chapterStrategy.teachingMethods.join(", ") : ""}
+Teaching Methods Available: ${effectiveTeachingMethods.length ? effectiveTeachingMethods.join(", ") : "(none applicable to this subsection's blueprint — rely on the blueprint components instead)"}
 Uniqueness Directive: ${chapterStrategy.uniquenessDirective || ""}
 Reader Outcome for Chapter: ${chapterStrategy.readerOutcome || ""}
 ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAvoid.length ? `Concepts to Avoid (already in prior chapters): ${chapterStrategy.conceptsToAvoid.join("; ")}` : ""}` : "";
