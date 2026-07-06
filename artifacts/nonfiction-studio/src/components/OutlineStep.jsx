@@ -322,13 +322,28 @@ function RegenBtn({ busy, onClick, title = "Regenerate title" }) {
 // ─── Blueprint Picker ─────────────────────────────────────────────────────────
 
 function BlueprintPicker({ selected, onChange }) {
+  const selectedList = Array.isArray(selected) ? selected : [];
   return (
     <div className="rounded-xl border border-violet-100 bg-violet-50/60 px-4 py-3">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
-        Section Blueprint Components
-      </p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+          Section Blueprint Components
+        </p>
+        {selectedList.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            title="Deselect every component so you can pick your own from scratch"
+            className="shrink-0 rounded-full border border-violet-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-violet-600 transition hover:border-violet-300 hover:bg-violet-100"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
       <p className="mb-3 text-[10px] text-violet-600/80">
-        Selected components will be included in the AI-generated content for this section.
+        {selectedList.length > 0
+          ? `${selectedList.length} selected — these were suggested by AI or chosen by you. Click any component to toggle it off, or click others to add them. Only what's highlighted here will be included in the generated content.`
+          : "Selected components will be included in the AI-generated content for this section."}
       </p>
       <div className="flex flex-wrap gap-1.5">
         {BLUEPRINT_COMPONENTS.map((c) => {
