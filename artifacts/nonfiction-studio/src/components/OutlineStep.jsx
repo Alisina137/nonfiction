@@ -185,9 +185,6 @@ function normalizeSection(s) {
     expanded: s.expanded !== false,
     subsections: Array.isArray(s.subsections) ? s.subsections.map(normalizeSub) : [],
     blueprintComponents: Array.isArray(s.blueprintComponents) ? s.blueprintComponents : [],
-    suggestedSubsectionCount: [2, 3, 4].includes(Number(s.suggestedSubsectionCount))
-      ? Number(s.suggestedSubsectionCount)
-      : undefined,
   };
 }
 
@@ -596,23 +593,12 @@ export default function OutlineStep({
         return normalizeChapter({
           ...chapter,
           expanded: true,
-          sections: items.map((item) => {
-            // Backend already computed the exact 2-sections-get-3 / rest-get-4
-            // subsection split from AI-scored importance & expansion need.
-            const subCount = [3, 4].includes(Number(item.suggestedSubsectionCount))
-              ? Number(item.suggestedSubsectionCount)
-              : 4;
-            const base = normalizeSection({
-              ...newSectionSkeleton(secWords),
-              title:               item.title               || "New section",
-              objective:           item.objective           || "",
-              blueprintComponents: Array.isArray(item.blueprintComponents) ? item.blueprintComponents : [],
-            });
-            return {
-              ...resizeSectionSubs(base, subCount),
-              suggestedSubsectionCount: subCount,
-            };
-          }),
+          sections: items.map((item) => normalizeSection({
+            ...newSectionSkeleton(secWords),
+            title:               item.title               || "New section",
+            objective:           item.objective           || "",
+            blueprintComponents: Array.isArray(item.blueprintComponents) ? item.blueprintComponents : [],
+          })),
         });
       });
     } catch (e) {
