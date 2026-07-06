@@ -1303,7 +1303,7 @@ router.post("/generate-sections", async (req, res) => {
     }
     const count = Math.min(15, Math.max(1, Number(sectionCount) || 3));
 
-    function parseSections(text: string): Array<{ title: string; objective: string; blueprintComponents: string[]; suggestedSubsectionCount: number | null }> {
+    function parseSections(text: string): Array<{ title: string; objective: string; blueprintComponents: string[]; expansionScore: number }> {
       let raw: any;
       try { raw = extractJSON(text); } catch { return []; }
       if (!raw) return [];
@@ -1316,44 +1316,39 @@ router.post("/generate-sections", async (req, res) => {
             blueprintComponents: Array.isArray(s.blueprintComponents)
               ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c))
               : [],
-            suggestedSubsectionCount: [3, 4].includes(Number(s.suggestedSubsectionCount)) ? Number(s.suggestedSubsectionCount) : null
+            expansionScore:      Number.isFinite(Number(s.expansionScore)) ? Number(s.expansionScore) : 50
           }));
       }
       if (Array.isArray(raw)) {
         return raw
           .filter((t: any) => typeof t === "string" && t.trim())
-          .map((t: any) => ({ title: stripSectionColon(String(t).trim()), objective: "", blueprintComponents: [], suggestedSubsectionCount: null }));
+          .map((t: any) => ({ title: stripSectionColon(String(t).trim()), objective: "", blueprintComponents: [], expansionScore: 50 }));
       }
       return [];
     }
 
-    /**
-     * Enforce "exactly 2 sections at 3 subsections, the rest at 4" regardless of
-     * whether the AI followed the instruction. If the AI already assigned counts
-     * that satisfy the rule, keep them (preserves which specific sections got 3).
-     * Otherwise, pick the 2 shortest sectionObjective/title sections as the "3"s.
-     */
-    function enforceSubsectionCounts<T extends { title: string; objective: string; suggestedSubsectionCount: number | null }>(items: T[]): (T & { suggestedSubsectionCount: number })[] {
-      const n = items.length;
-      if (n === 0) return [];
-      if (n < 3) {
-        return items.map((it) => ({ ...it, suggestedSubsectionCount: it.suggestedSubsectionCount === 3 ? 3 : 4 }));
+    // Deterministically assigns subsection counts from AI-scored importance/expansion-need:
+    // the top 2 highest-scoring sections get 3 subsections, every other section gets 4.
+    // This is computed in code (not trusted to the model) so the split is always exact.
+    function assignSubsectionCounts<T extends { expansionScore: number }>(items: T[]): Array<T & { suggestedSubsectionCount: number }> {
+      if (items.length <= 1) {
+        return items.map((item) => ({ ...item, suggestedSubsectionCount: 4 }));
       }
-      const threesFromAI = items.filter((it) => it.suggestedSubsectionCount === 3).length;
-      if (threesFromAI === 2) {
-        return items.map((it) => ({ ...it, suggestedSubsectionCount: it.suggestedSubsectionCount === 3 ? 3 : 4 }));
-      }
-      // Fallback: rank by combined title+objective length (shorter = narrower scope) and
-      // give the 2 narrowest sections a count of 3, everyone else 4.
-      const ranked = items
-        .map((it, idx) => ({ idx, score: (it.title.length + it.objective.length) }))
-        .sort((a, b) => a.score - b.score);
-      const threeIdxs = new Set(ranked.slice(0, 2).map((r) => r.idx));
-      return items.map((it, idx) => ({ ...it, suggestedSubsectionCount: threeIdxs.has(idx) ? 3 : 4 }));
+      const topCount = Math.min(2, items.length);
+      const ranked = [...items]
+        .map((item, index) => ({ index, score: item.expansionScore }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, topCount)
+        .map((r) => r.index);
+      const topIndices = new Set(ranked);
+      return items.map((item, index) => ({
+        ...item,
+        suggestedSubsectionCount: topIndices.has(index) ? 3 : 4
+      }));
     }
 
     const MAX_ATTEMPTS = 3;
-    let sections: Array<{ title: string; objective: string; blueprintComponents: string[]; suggestedSubsectionCount: number | null }> = [];
+    let sections: Array<{ title: string; objective: string; expansionScore: number }> = [];
     let usedProvider = "";
     let lastError = "";
 
@@ -1402,9 +1397,9 @@ router.post("/generate-sections", async (req, res) => {
       return res.status(500).json({ error: "AI returned unparseable section data." });
     }
 
-    const finalSections = enforceSubsectionCounts(sections);
-    const titles = finalSections.map((s) => s.title);
-    return res.json({ sections: finalSections, titles, _provider: usedProvider, _requestedCount: count });
+    const sectionsWithSubCounts = assignSubsectionCounts(sections);
+    const titles = sectionsWithSubCounts.map((s) => s.title);
+    return res.json({ sections: sectionsWithSubCounts, titles, _provider: usedProvider, _requestedCount: count });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
