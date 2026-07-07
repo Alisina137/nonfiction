@@ -259,11 +259,24 @@ function parseProseBlocks(prose: string): ProseBlock[] {
 interface HChapter    { chNum: number; title: string; sections: HSection[] }
 interface HSection    { secNum: number; title: string; id: string; subsections: HSubsection[] }
 interface HSubsection { subNum: number; title: string; id: string }
+interface HBackMatter { id: string; title: string }
+
+const BACK_MATTER_KEYS: Array<{ key: string; defaultTitle: string }> = [
+  { key: "epilogue",            defaultTitle: "Epilogue" },
+  { key: "keyLessons",          defaultTitle: "Key Lessons" },
+  { key: "appendix",            defaultTitle: "Appendix" },
+  { key: "glossary",            defaultTitle: "Glossary" },
+  { key: "references",          defaultTitle: "References" },
+  { key: "furtherReading",      defaultTitle: "Further Reading" },
+  { key: "backAcknowledgments", defaultTitle: "Acknowledgments" },
+  { key: "theEnd",              defaultTitle: "The End" },
+];
 
 function buildHierarchy(outline: any): {
   introduction: { id: string; title: string } | null;
   chapters: HChapter[];
   conclusion: { id: string; title: string } | null;
+  backMatter: HBackMatter[];
 } {
   const o = outline && typeof outline === "object" ? outline : {};
   const intro = o.introduction?.id ? { id: o.introduction.id, title: o.introduction.title || "Introduction" } : null;
@@ -282,7 +295,10 @@ function buildHierarchy(outline: any): {
       }))
     }))
   }));
-  return { introduction: intro, chapters, conclusion };
+  const backMatter: HBackMatter[] = BACK_MATTER_KEYS
+    .filter(({ key }) => o[key]?.id)
+    .map(({ key, defaultTitle }) => ({ id: o[key].id, title: o[key].title || defaultTitle }));
+  return { introduction: intro, chapters, conclusion, backMatter };
 }
 
 // ─── PDF BUILDER ─────────────────────────────────────────────────────────────
@@ -891,6 +907,16 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
     }
   }
 
+  // Back matter sections
+  for (const bm of hier.backMatter) {
+    const prose = String(lessons[bm.id]?.prose || "").trim();
+    if (prose) {
+      const { page, y } = drawChapterPage(sanitize(bm.title), 0);
+      tocEntries.push({ label: sanitize(bm.title), displayNum: String(arabicPageNum), level: 0, pdfPageRef: page });
+      drawProseBlocks(page, parseProseBlocks(prose), y, 0);
+    }
+  }
+
   // About the Author (back matter)
   if (authorBio) {
     arabicPageNum++;
@@ -1087,6 +1113,10 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   if (hier.conclusion) {
     const concProse = String(lessons[hier.conclusion.id]?.prose || "").trim();
     if (concProse) tocDocxEntries.push({ label: hier.conclusion.title, level: 0 });
+  }
+  for (const bm of hier.backMatter) {
+    const bmProse = String(lessons[bm.id]?.prose || "").trim();
+    if (bmProse) tocDocxEntries.push({ label: bm.title, level: 0 });
   }
   if (options.authorBio || project?.authorBio?.bio || project?.authorBio?.background) {
     tocDocxEntries.push({ label: "About the Author", level: 0 });
@@ -1428,6 +1458,15 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     const prose = String(lessons[hier.conclusion.id]?.prose || "").trim();
     if (prose) {
       mainChildren.push(h1Para(hier.conclusion.title, { pageBreakBefore: true }));
+      addProseBlocks(mainChildren, prose);
+    }
+  }
+
+  // Back matter sections
+  for (const bm of hier.backMatter) {
+    const prose = String(lessons[bm.id]?.prose || "").trim();
+    if (prose) {
+      mainChildren.push(h1Para(bm.title, { pageBreakBefore: true }));
       addProseBlocks(mainChildren, prose);
     }
   }

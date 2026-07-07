@@ -101,9 +101,17 @@ const emptyAuthorBio = {
 };
 
 const emptyBookOutline = {
-  introduction: { id: "intro", title: "Introduction", words: 0 },
+  introduction:          { id: "intro",                title: "Introduction",    words: 0 },
   chapters: [],
-  conclusion: { id: "concl", title: "Conclusion", words: 0 }
+  conclusion:            { id: "concl",                title: "Conclusion",      words: 0 },
+  epilogue:              { id: "epilogue",              title: "Epilogue",        words: 0 },
+  keyLessons:            { id: "keyLessons",            title: "Key Lessons",     words: 0 },
+  appendix:              { id: "appendix",              title: "Appendix",        words: 0 },
+  glossary:              { id: "glossary",              title: "Glossary",        words: 0 },
+  references:            { id: "references",            title: "References",      words: 0 },
+  furtherReading:        { id: "furtherReading",        title: "Further Reading", words: 0 },
+  backAcknowledgments:   { id: "backAcknowledgments",   title: "Acknowledgments", words: 0 },
+  theEnd:                { id: "theEnd",                title: "The End",         words: 0 },
 };
 
 const emptyBookMarketing = {
@@ -429,7 +437,17 @@ function migrateProject(raw) {
         id: typeof conclRaw?.id === "string" ? conclRaw.id : "concl",
         title: typeof conclRaw?.title === "string" ? conclRaw.title : "Conclusion",
         words: typeof conclRaw?.words === "number" && !Number.isNaN(conclRaw.words) ? conclRaw.words : 0
-      }
+      },
+      ...["epilogue","keyLessons","appendix","glossary","references","furtherReading","backAcknowledgments","theEnd"].reduce((acc, key) => {
+        const dflt = emptyBookOutline[key];
+        const raw  = p.bookOutline[key];
+        acc[key] = {
+          id:    typeof raw?.id    === "string" ? raw.id    : dflt.id,
+          title: typeof raw?.title === "string" ? raw.title : dflt.title,
+          words: typeof raw?.words === "number" && !Number.isNaN(raw.words) ? raw.words : 0,
+        };
+        return acc;
+      }, {})
     };
   }
 

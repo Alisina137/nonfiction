@@ -2026,14 +2026,24 @@ Uniqueness Directive: ${chapterStrategy.uniquenessDirective || ""}
 Reader Outcome for Chapter: ${chapterStrategy.readerOutcome || ""}
 ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAvoid.length ? `Concepts to Avoid (already in prior chapters): ${chapterStrategy.conceptsToAvoid.join("; ")}` : ""}` : "";
 
-  const isBookIntroduction = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "introduction");
-  const isHowToUseThisBook = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "howToUseThisBook");
-  const isWhatYouWillLearn = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "whatYouWillLearn");
-  const isWhoThisBookIsFor = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "whoThisBookIsFor");
-  const isDedication = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "dedication");
-  const isAcknowledgments = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "acknowledgments");
-  const isPreface = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "preface");
-  const isFrontMatterSpecial = isBookIntroduction || isHowToUseThisBook || isWhatYouWillLearn || isWhoThisBookIsFor || isDedication || isAcknowledgments || isPreface;
+  const isBookIntroduction     = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "introduction");
+  const isHowToUseThisBook     = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "howToUseThisBook");
+  const isWhatYouWillLearn     = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "whatYouWillLearn");
+  const isWhoThisBookIsFor     = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "whoThisBookIsFor");
+  const isDedication           = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "dedication");
+  const isAcknowledgments      = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "acknowledgments");
+  const isPreface              = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "preface");
+  const isFrontMatterSpecial   = isBookIntroduction || isHowToUseThisBook || isWhatYouWillLearn || isWhoThisBookIsFor || isDedication || isAcknowledgments || isPreface;
+
+  const isEpilogue              = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "epilogue");
+  const isKeyLessons            = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "keyLessons");
+  const isAppendix              = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "appendix");
+  const isGlossary              = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "glossary");
+  const isReferences            = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "references");
+  const isFurtherReading        = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "furtherReading");
+  const isBackAcknowledgments   = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "backAcknowledgments");
+  const isTheEnd                = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "theEnd");
+  const isBackMatterSpecial     = isEpilogue || isKeyLessons || isAppendix || isGlossary || isReferences || isFurtherReading || isBackAcknowledgments || isTheEnd;
 
   const chapterInfo = chapterContext
     ? `Chapter: ${typeof chapterContext === "string" ? chapterContext : (chapterContext.title || JSON.stringify(chapterContext))}`
@@ -2185,7 +2195,157 @@ Writing style requirements:
 
 Length: target approximately 250–450 words, organized into clear, readable paragraphs.` : "";
 
-  const flowBlock = (hasBlueprint || isFrontMatterSpecial) ? "" : `
+  // ── Back Matter: Epilogue ──
+  const epilogueBlock = isEpilogue ? `
+════════════════════════════════════
+EPILOGUE — INSTRUCTIONS
+════════════════════════════════════
+This is the book's Epilogue — a reflective closing that follows the Conclusion. Follow these rules exactly:
+
+1. REFLECT ON THE READER'S JOURNEY — Acknowledge what the reader has worked through and the transformation they have begun. Speak directly to them.
+2. LOOK FORWARD — Offer an inspiring vision of what their life can look like now that they have the knowledge, tools, or mindset the book provided. Be specific to this book's topic.
+3. CONNECT EMOTIONALLY — This is one of the most personal sections of the book. Write with warmth, sincerity, and genuine care for the reader's outcome.
+4. CLOSE THE LOOP — If the book opened with a story, anecdote, or question in the Introduction, consider bringing it back here as a satisfying narrative resolution.
+5. BRIEF CALL TO ACTION — Optionally end with one short, encouraging sentence that propels the reader to take the first step.
+
+Writing style requirements:
+- Warm, personal, and reflective — not a summary or recap.
+- Do NOT repeat chapter conclusions or list lessons — that is the Conclusion's job.
+- First-or second-person voice appropriate for the book's overall tone.
+
+Length: target approximately 200–400 words, organized into clear paragraphs.` : "";
+
+  // ── Back Matter: Key Lessons ──
+  const keyLessonsBlock = isKeyLessons ? `
+════════════════════════════════════
+KEY LESSONS — INSTRUCTIONS
+════════════════════════════════════
+This is the book's Key Lessons section — a concise, scannable reference of the most important takeaways from the entire book. Follow these rules exactly:
+
+1. DISTILL THE MOST IMPORTANT LESSONS — Extract the single most important actionable insight from each major concept or chapter in the book. Aim for 8–15 key lessons total.
+2. BE SPECIFIC AND ACTIONABLE — Every lesson must be a concrete, memorable principle the reader can apply. Not vague wisdom — specific guidance.
+3. NUMBERED LIST FORMAT — Present lessons as a numbered list. Each item: a bold lesson headline (5–10 words) followed by 1–2 sentences of elaboration.
+4. MAINTAIN BOOK ORDER — Arrange lessons roughly in the order they appeared in the book to reinforce the narrative arc.
+5. NO DUPLICATION — Do not repeat the same idea twice in different words.
+
+Writing style requirements:
+- Crisp and direct — each lesson should be immediately understandable.
+- Open with a 1–2 sentence framing paragraph before the numbered list.
+- Do NOT use vague platitudes ("Remember to stay positive") — every lesson must be tied to the book's specific content.
+
+Length: target approximately 400–700 words total including the numbered list.` : "";
+
+  // ── Back Matter: Appendix ──
+  const appendixBlock = isAppendix ? `
+════════════════════════════════════
+APPENDIX — INSTRUCTIONS
+════════════════════════════════════
+This is the book's Appendix — supplementary reference material that supports but does not interrupt the main text. Follow these rules exactly:
+
+1. CHOOSE THE RIGHT FORMAT FOR THIS BOOK — Based on the book's topic, provide the most useful type of supplementary material: this may be a quick-reference checklist, a framework summary, templates the reader can apply, data tables, comparison charts, or a resource directory. Choose what genuinely adds value.
+2. ORGANIZE CLEARLY — Use headers, numbered lists, or tables as appropriate. The Appendix is meant to be scanned, not read linearly.
+3. PRACTICAL AND READY-TO-USE — Every item in the Appendix should be immediately usable by the reader. Avoid abstract or theoretical content here.
+4. LABEL SECTIONS — If the Appendix contains multiple types of content, use clear sub-headers (e.g., "Appendix A: Quick Reference Checklist", "Appendix B: Recommended Templates").
+5. REFERENCE THE MAIN TEXT — Where helpful, briefly note which chapter or concept each appendix item relates to.
+
+Writing style requirements:
+- Functional and clear — prioritize utility over prose.
+- Keep explanations brief — the Appendix supplements, it does not replace, the book's content.
+- Tailor the content specifically to this book's subject matter.
+
+Length: target approximately 300–600 words, or as long as genuinely useful for this book's topic.` : "";
+
+  // ── Back Matter: Glossary ──
+  const glossaryBlock = isGlossary ? `
+════════════════════════════════════
+GLOSSARY — INSTRUCTIONS
+════════════════════════════════════
+This is the book's Glossary — a reference list of key terms and definitions specific to this book and its topic. Follow these rules exactly:
+
+1. INCLUDE ONLY TERMS USED IN THIS BOOK — Define only terms that actually appear in or are central to this book's content. Do not create a generic industry glossary.
+2. DEFINE CLEARLY AND CONCISELY — Each definition should be 1–3 sentences. Use plain language — avoid defining a term with another technical term the reader may not know.
+3. ALPHABETICAL ORDER — List all terms alphabetically.
+4. FORMAT — Each entry: **Term**: Definition text. One blank line between entries.
+5. AIM FOR 10–20 TERMS — Select the most important and potentially unfamiliar terms from the book. Do not pad with obvious everyday words.
+6. AVOID CIRCULAR DEFINITIONS — Do not define a term using only that term (e.g., do not define "mindset" as "a person's mindset").
+
+Writing style requirements:
+- Neutral, precise, and definitional in tone — not promotional or narrative.
+- Each definition must be self-contained and understandable without reading the surrounding chapters.
+
+Format: Start with a 1-sentence intro line ("The following terms are used throughout this book…"), then the alphabetical term list.
+Length: target approximately 300–600 words depending on the number of terms.` : "";
+
+  // ── Back Matter: References ──
+  const referencesBlock = isReferences ? `
+════════════════════════════════════
+REFERENCES — INSTRUCTIONS
+════════════════════════════════════
+This is the book's References section — a list of sources, studies, and works cited or referenced in the book. Follow these rules exactly:
+
+1. LIST ONLY PLAUSIBLE REFERENCES — Based on the book's topic, generate a realistic list of the types of books, studies, reports, or articles an author writing this book would actually cite. Make these realistic and specific (real-sounding titles, authors, publications). Do NOT fabricate specific page numbers or DOIs.
+2. FORMAT — Use a numbered list. Each entry should follow a standard citation style (e.g., Author Last, First. "Title of Work." Publication/Publisher, Year.). Keep the format consistent throughout.
+3. GROUP BY TYPE — Optionally group references under sub-headers: "Books," "Academic Studies," "Reports & Data," "Articles."
+4. AIM FOR 10–20 REFERENCES — Include enough to be credible for a nonfiction book of this type. Do not pad with irrelevant sources.
+5. NO MADE-UP SPECIFICS — Do not invent specific ISBN numbers, DOIs, or URLs. Use realistic but generic publication info.
+
+Writing style requirements:
+- Bibliographic and precise in format — no conversational prose.
+- Open with a 1-sentence intro line before the numbered list.
+
+Length: target approximately 250–500 words.` : "";
+
+  // ── Back Matter: Further Reading ──
+  const furtherReadingBlock = isFurtherReading ? `
+════════════════════════════════════
+FURTHER READING — INSTRUCTIONS
+════════════════════════════════════
+This is the book's Further Reading section — a curated list of recommended books and resources that complement and extend the book's content. Follow these rules exactly:
+
+1. CURATE GENUINELY RELEVANT RESOURCES — Recommend real-sounding books, courses, websites, or other resources that a reader who loved this book would genuinely benefit from. Tailor recommendations specifically to this book's topic and audience.
+2. INCLUDE A BRIEF DESCRIPTION — For each recommendation, write 1–3 sentences explaining: (a) what the resource covers, and (b) why it complements this book and what the reader will gain from it.
+3. ORGANIZE BY CATEGORY — Group recommendations under logical sub-headers based on the reader's next likely need (e.g., "To Go Deeper on [Topic]", "For Practical Application", "For Inspiration and Case Studies").
+4. AIM FOR 6–12 RECOMMENDATIONS — Enough to be a genuinely useful reading list without being overwhelming.
+5. NO FAKE SPECIFICS — Do not invent URLs or ISBN numbers. Focus on titles, authors, and brief descriptions.
+
+Writing style requirements:
+- Helpful and enthusiastic but objective — like advice from a knowledgeable mentor.
+- Open with 1–2 sentences contextualizing the list before diving into categories.
+
+Length: target approximately 300–600 words.` : "";
+
+  // ── Back Matter: Acknowledgments (back matter version) ──
+  const backAcknowledgmentsBlock = isBackAcknowledgments ? `
+════════════════════════════════════
+ACKNOWLEDGMENTS — INSTRUCTIONS
+════════════════════════════════════
+This is the book's back-matter Acknowledgments page — a warm, personal thanks to those who made the book possible. Follow these rules exactly:
+
+1. THANK RELEVANT CONTRIBUTORS — Plausibly thank the people and groups an author of this specific book would genuinely thank: mentors or experts in the field, early readers and reviewers, editors, family, colleagues, and the reader themselves for investing their time in the book.
+2. BE SPECIFIC TO THE BOOK'S FIELD — Tie the gratitude to the book's actual subject where natural (e.g., for a book on leadership: "the leaders and teams who shared their stories").
+3. WARM AND SINCERE TONE — More personal and heartfelt than the rest of the book. Let the author's gratitude come through.
+4. NO FAKE PERSONAL NAMES — Never invent a specific real-sounding personal name. Refer to roles and relationships (e.g., "my early readers," "the practitioners who generously shared their insights").
+5. CLOSE WITH THANKS TO THE READER — The final sentence or short paragraph should thank the reader directly for reading and choosing this book.
+
+Length: target approximately 150–300 words, organized into 2–4 short paragraphs.` : "";
+
+  // ── Back Matter: The End ──
+  const theEndBlock = isTheEnd ? `
+════════════════════════════════════
+THE END — INSTRUCTIONS
+════════════════════════════════════
+This is the book's closing "The End" page — a very brief, warm final message to the reader. Follow these rules exactly:
+
+1. KEEP IT EXTREMELY SHORT — This is a 1–4 sentence closing. It is NOT a summary, recap, or additional content.
+2. THANK THE READER — Express sincere gratitude to the reader for completing the book.
+3. LEAVE THEM INSPIRED — One brief, specific sentence that encapsulates the core promise or transformation of this book, leaving the reader uplifted.
+4. OPTIONALLY INVITE ENGAGEMENT — A single brief line inviting the reader to share their experience, leave a review, or connect with the author — only if it fits naturally.
+5. TONE — Warm, personal, and celebratory. This is the author's final word to the reader.
+
+Format: Present this as 2–4 short lines or very short sentences. May include "The End" as a stylistic header before or after the text if desired.
+Length: 30–80 words maximum. Never longer.` : "";
+
+  const flowBlock = (hasBlueprint || isFrontMatterSpecial || isBackMatterSpecial) ? "" : `
 ════════════════════════════════════
 WRITING FLOW — ${structureKey.toUpperCase()} STRUCTURE
 ════════════════════════════════════
@@ -2199,7 +2359,7 @@ This flow determines how you organize and sequence the content.
 Do NOT use a generic introduction → explanation → example → summary template.
 Each section of this flow must be substantively different and add unique value.`;
 
-  const antiTemplateRules = isFrontMatterSpecial ? "" : `
+  const antiTemplateRules = (isFrontMatterSpecial || isBackMatterSpecial) ? "" : `
 ════════════════════════════════════
 ANTI-TEMPLATE RULES (non-negotiable)
 ════════════════════════════════════
@@ -2282,6 +2442,79 @@ QUALITY CHECK (verify before returning)
 3. Is the tone personal, honest, and reflective?
 4. Is the length approximately 250–450 words?
 
+If any answer is NO — rewrite.` : isEpilogue ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does it speak directly to the reader and acknowledge their journey through the book?
+2. Does it look forward with an inspiring, topic-specific vision — not backward summarizing chapters?
+3. Is the tone warm, personal, and emotionally resonant?
+4. Is the length approximately 200–400 words?
+
+If any answer is NO — rewrite.` : isKeyLessons ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Are there 8–15 specific, actionable lessons drawn from the actual book content?
+2. Is each lesson concrete and tied to this book's topic — not a vague platitude?
+3. Are lessons presented as a numbered list with a bold headline + brief elaboration?
+4. Is the total length approximately 400–700 words?
+
+If any answer is NO — rewrite.` : isAppendix ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Is the supplementary material genuinely useful and relevant to this book's topic?
+2. Is it organized with clear headers, lists, or tables — designed to be scanned, not read linearly?
+3. Is every item immediately practical and ready-to-use?
+4. Does it avoid duplicating content already in the main chapters?
+
+If any answer is NO — rewrite.` : isGlossary ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does it include only terms that actually appear in or are central to this specific book?
+2. Is each definition clear, concise (1–3 sentences), and in plain language?
+3. Are terms listed in alphabetical order with the **Term**: Definition format?
+4. Are there 10–20 terms — enough to be useful without padding?
+
+If any answer is NO — rewrite.` : isReferences ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Are the references plausible and specific to this book's topic and field?
+2. Is a consistent citation format used throughout?
+3. Are there 10–20 references — enough to be credible?
+4. Are no specific ISBN numbers, DOIs, or URLs fabricated?
+
+If any answer is NO — rewrite.` : isFurtherReading ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Are all recommendations genuinely relevant to this book's topic and audience?
+2. Does each recommendation include a 1–3 sentence description of what it covers and why it complements this book?
+3. Are resources organized under logical category sub-headers?
+4. Are there 6–12 recommendations?
+
+If any answer is NO — rewrite.` : isBackAcknowledgments ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does it warmly thank plausible categories of contributors relevant to this specific book?
+2. Is it more personal and heartfelt than the rest of the book?
+3. Does it avoid inventing specific fake personal names?
+4. Does it close with a direct thank-you to the reader?
+5. Is the length approximately 150–300 words?
+
+If any answer is NO — rewrite.` : isTheEnd ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Is it extremely short — 30–80 words maximum?
+2. Does it thank the reader sincerely?
+3. Does it leave the reader inspired with a specific, book-relevant closing thought?
+4. Is the tone warm, personal, and celebratory?
+
 If any answer is NO — rewrite.` : `
 ════════════════════════════════════
 QUALITY CHECK (verify before returning)
@@ -2309,7 +2542,7 @@ Subsection: ${subsectionTitle}${purposeNote}
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
-Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${howToUseBlock}${whatYouWillLearnBlock}${whoThisBookIsForBlock}${dedicationBlock}${acknowledgmentsBlock}${prefaceBlock}${flowBlock}${antiTemplateRules}
+Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${howToUseBlock}${whatYouWillLearnBlock}${whoThisBookIsForBlock}${dedicationBlock}${acknowledgmentsBlock}${prefaceBlock}${epilogueBlock}${keyLessonsBlock}${appendixBlock}${glossaryBlock}${referencesBlock}${furtherReadingBlock}${backAcknowledgmentsBlock}${theEndBlock}${flowBlock}${antiTemplateRules}
 
 ════════════════════════════════════
 10 NON-NEGOTIABLE WRITING RULES
@@ -2360,6 +2593,37 @@ The prose must flow as 1–3 short paragraphs — do NOT use section headers or 
   ? `Follow the PREFACE INSTRUCTIONS above exactly — the author's personal journey and motivation for writing this specific book, first-person voice.
 Target length: approximately 250–450 words.
 The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.`
+  : isEpilogue
+  ? `Follow the EPILOGUE INSTRUCTIONS above exactly — reflect on the reader's journey, look forward with inspiration, connect emotionally, and optionally close the narrative loop from the Introduction.
+Target length: approximately 200–400 words.
+The prose must flow as unified paragraphs — warm, personal, and forward-looking. Do NOT use section headers or labels inside the content.`
+  : isKeyLessons
+  ? `Follow the KEY LESSONS INSTRUCTIONS above exactly — a short framing intro followed by 8–15 numbered lessons, each with a bold headline (5–10 words) and 1–2 sentences of elaboration.
+Target length: approximately 400–700 words total.
+Use a numbered list format with a bold headline per lesson. Keep lessons specific, actionable, and tied to this book's content.`
+  : isAppendix
+  ? `Follow the APPENDIX INSTRUCTIONS above exactly — practical supplementary reference material (checklist, templates, tables, or resource directory) organized with clear sub-headers and designed to be scanned.
+Target length: approximately 300–600 words, or as long as genuinely useful.
+Use headers, numbered lists, or tables as appropriate — do NOT write flowing narrative prose here.`
+  : isGlossary
+  ? `Follow the GLOSSARY INSTRUCTIONS above exactly — a 1-sentence intro followed by an alphabetical list of 10–20 key terms with concise, plain-language definitions.
+Format: **Term**: Definition text. (One blank line between entries.) Target approximately 300–600 words total.
+Do NOT use flowing narrative prose — this is a reference section.`
+  : isReferences
+  ? `Follow the REFERENCES INSTRUCTIONS above exactly — a 1-sentence intro followed by a numbered list of 10–20 plausible, consistently formatted citations relevant to this book's topic.
+Target approximately 250–500 words total.
+Do NOT fabricate specific ISBN numbers, DOIs, or URLs. Focus on realistic author, title, publisher, and year information.`
+  : isFurtherReading
+  ? `Follow the FURTHER READING INSTRUCTIONS above exactly — 1–2 sentence framing intro followed by 6–12 curated book/resource recommendations grouped under category sub-headers, each with a 1–3 sentence description.
+Target approximately 300–600 words total.
+Recommendations must be specific to this book's topic and include a clear explanation of WHY each resource complements this book.`
+  : isBackAcknowledgments
+  ? `Follow the ACKNOWLEDGMENTS INSTRUCTIONS above exactly — warmly thank 2–4 categories of plausible contributors relevant to this specific book, and close with a direct thank-you to the reader.
+Target approximately 150–300 words, organized into 2–4 short paragraphs.
+The prose must flow as unified paragraphs — warm, personal, and sincere. Do NOT use section headers or labels.`
+  : isTheEnd
+  ? `Follow the THE END INSTRUCTIONS above exactly — an extremely brief (30–80 words maximum), warm closing message: thank the reader, leave them inspired with a topic-specific thought, and optionally invite engagement.
+May include "The End" as a stylistic header. Never exceed 80 words.`
   : hasBlueprint
   ? `BLUEPRINT CONTENT STRUCTURE (follows from SECTION BLUEPRINT COMPONENTS above)
 Write the subsection as flowing prose that includes ONLY the blueprint components selected above.
@@ -2405,6 +2669,38 @@ If the answer is no — rewrite.` : isPreface ? `══════════�
 PREFACE QUALITY TEST
 ════════════════════════════════════
 Before writing, answer internally: "Does this reveal the author's personal story and motivation for this book, without repeating what the Introduction already covers?"
+If the answer is no — rewrite.` : isEpilogue ? `════════════════════════════════════
+EPILOGUE QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Does this speak directly to the reader, look forward with an inspiring and topic-specific vision, and feel emotionally resonant — without summarizing chapters?"
+If the answer is no — rewrite.` : isKeyLessons ? `════════════════════════════════════
+KEY LESSONS QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Are the lessons specific, actionable, and genuinely drawn from this book's content — not generic wisdom applicable to any book?"
+If the answer is no — rewrite.` : isAppendix ? `════════════════════════════════════
+APPENDIX QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Is this supplementary material immediately practical, clearly organized to be scanned, and genuinely specific to this book's topic?"
+If the answer is no — rewrite.` : isGlossary ? `════════════════════════════════════
+GLOSSARY QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Are these real terms from this specific book, defined clearly in plain language, alphabetically ordered, and in the correct **Term**: Definition format?"
+If the answer is no — rewrite.` : isReferences ? `════════════════════════════════════
+REFERENCES QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Are these plausible, topic-specific references formatted consistently, without fabricated ISBNs, DOIs, or URLs?"
+If the answer is no — rewrite.` : isFurtherReading ? `════════════════════════════════════
+FURTHER READING QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Are these recommendations genuinely relevant to this book's topic, with a clear explanation of why each one complements this book?"
+If the answer is no — rewrite.` : isBackAcknowledgments ? `════════════════════════════════════
+ACKNOWLEDGMENTS QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Does this feel like genuine, warm, and specific gratitude tied to this book, closing with a direct thank-you to the reader — without inventing fake personal names?"
+If the answer is no — rewrite.` : isTheEnd ? `════════════════════════════════════
+THE END QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Is this 30–80 words maximum, warm, sincere, and does it leave the reader genuinely inspired by something specific to this book's topic?"
 If the answer is no — rewrite.` : `════════════════════════════════════
 SUBSECTION UNIQUENESS TEST
 ════════════════════════════════════
@@ -2419,7 +2715,7 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 {
   "title": "The subsection title (publication-ready, specific, compelling)",
   "structureUsed": "${structureKey}",
-  "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : isHowToUseThisBook ? `The full How to Use This Book section following the instructions above — best way to read, exercises/action steps guidance, maximum value tips, encouragement to take notes and revisit concepts. Flowing prose with no internal headers. Approximately 250-450 words.` : isWhatYouWillLearn ? `A short framing intro followed by 6-10 concise bullet points (each line starting with "- ") summarizing knowledge, skills, and outcomes the reader will gain. Approximately 200-400 words total.` : isWhoThisBookIsFor ? `The full Who This Book Is For section following the instructions above — intended audience, who benefits most, experience level, reassurance. Flowing prose with no internal headers. Approximately 200-350 words.` : isDedication ? `The full dedication text following the instructions above — short, personal, sincere. 1-4 sentences, roughly 15-60 words. No headers or labels.` : isAcknowledgments ? `The full acknowledgments text following the instructions above — warm thanks to plausible categories of contributors. 1-3 short paragraphs, approximately 100-200 words.` : isPreface ? `The full Preface text following the instructions above — the author's personal journey and motivation for writing this book, first-person voice. Flowing prose with no internal headers. Approximately 250-450 words.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
+  "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : isHowToUseThisBook ? `The full How to Use This Book section following the instructions above — best way to read, exercises/action steps guidance, maximum value tips, encouragement to take notes and revisit concepts. Flowing prose with no internal headers. Approximately 250-450 words.` : isWhatYouWillLearn ? `A short framing intro followed by 6-10 concise bullet points (each line starting with "- ") summarizing knowledge, skills, and outcomes the reader will gain. Approximately 200-400 words total.` : isWhoThisBookIsFor ? `The full Who This Book Is For section following the instructions above — intended audience, who benefits most, experience level, reassurance. Flowing prose with no internal headers. Approximately 200-350 words.` : isDedication ? `The full dedication text following the instructions above — short, personal, sincere. 1-4 sentences, roughly 15-60 words. No headers or labels.` : isAcknowledgments ? `The full acknowledgments text following the instructions above — warm thanks to plausible categories of contributors. 1-3 short paragraphs, approximately 100-200 words.` : isPreface ? `The full Preface text following the instructions above — the author's personal journey and motivation for writing this book, first-person voice. Flowing prose with no internal headers. Approximately 250-450 words.` : isEpilogue ? `The full Epilogue text following the instructions above — reflective, forward-looking, emotionally resonant. Flowing prose with no internal headers. Approximately 200-400 words.` : isKeyLessons ? `A short framing intro followed by 8-15 numbered lessons, each with a bold headline and 1-2 sentences of elaboration. Approximately 400-700 words total.` : isAppendix ? `Practical supplementary reference material organized with clear sub-headers, lists, or tables — designed to be scanned. Approximately 300-600 words or as needed.` : isGlossary ? `A 1-sentence intro line followed by an alphabetical list of 10-20 key terms in **Term**: Definition format (one blank line between entries). Approximately 300-600 words total.` : isReferences ? `A 1-sentence intro line followed by a numbered list of 10-20 plausible, consistently formatted citations relevant to this book's topic. Approximately 250-500 words total.` : isFurtherReading ? `A 1-2 sentence framing intro followed by 6-12 curated recommendations grouped under category sub-headers, each with a 1-3 sentence description. Approximately 300-600 words total.` : isBackAcknowledgments ? `The full Acknowledgments text — warm thanks to 2-4 categories of plausible contributors, closing with a direct thank-you to the reader. 2-4 short paragraphs, approximately 150-300 words.` : isTheEnd ? `The full The End closing — an extremely brief, warm message (30-80 words maximum) thanking the reader and leaving them inspired. May include a stylistic "The End" header.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
   "flowSections": [
     ${(isBookIntroduction
         ? ["Hook", "Background & Context", "Purpose of the Book", "Overview of the Book", "Intended Audience", "Invitation to Continue Reading"]
@@ -2435,13 +2731,29 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
         ? ["Thanks & Gratitude"]
         : isPreface
         ? ["Author's Motivation", "Origin Story", "Connection to the Reader"]
+        : isEpilogue
+        ? ["Reader's Journey", "Looking Forward", "Emotional Connection", "Call to Action"]
+        : isKeyLessons
+        ? ["Framing Intro", "Key Lessons List"]
+        : isAppendix
+        ? ["Appendix Content"]
+        : isGlossary
+        ? ["Intro Line", "Term Definitions"]
+        : isReferences
+        ? ["Intro Line", "Reference List"]
+        : isFurtherReading
+        ? ["Framing Intro", "Curated Recommendations"]
+        : isBackAcknowledgments
+        ? ["Thanks to Contributors", "Thanks to the Reader"]
+        : isTheEnd
+        ? ["Closing Message"]
         : hasBlueprint ? (blueprintComponents as string[]) : effectiveFlow
       ).map((step: string) => `{"label": "${step}", "text": "2-4 sentences summarizing what this section covers in the content"}`).join(",\n    ")}
   ],
-  "keyTakeaway": "One sentence — the single most important thing the reader ${isBookIntroduction ? "should take away about what this book offers them" : isHowToUseThisBook ? "should remember about how to engage with this book" : isWhatYouWillLearn ? "should feel excited to gain from this book" : isWhoThisBookIsFor ? "should understand about whether this book is right for them" : isDedication ? "should feel about the sincerity of this dedication" : isAcknowledgments ? "should feel about the author's gratitude" : isPreface ? "should understand about the author's motivation for writing this book" : "learns (matches part 5 of the prose)"}",
-  "transition": "The exact closing sentence or short paragraph that bridges into ${isBookIntroduction ? "Chapter 1" : isHowToUseThisBook ? "the next front-matter section" : isWhatYouWillLearn ? "the next front-matter section" : isWhoThisBookIsFor ? "Chapter 1" : isDedication ? "the next front-matter section (or leave as a standalone closing line, since a dedication does not need a transition)" : isAcknowledgments ? "the next front-matter section" : isPreface ? "the Introduction" : "the next section"}",
+  "keyTakeaway": "One sentence — the single most important thing the reader ${isBookIntroduction ? "should take away about what this book offers them" : isHowToUseThisBook ? "should remember about how to engage with this book" : isWhatYouWillLearn ? "should feel excited to gain from this book" : isWhoThisBookIsFor ? "should understand about whether this book is right for them" : isDedication ? "should feel about the sincerity of this dedication" : isAcknowledgments ? "should feel about the author's gratitude" : isPreface ? "should understand about the author's motivation for writing this book" : isEpilogue ? "should feel inspired and ready to act after completing this book" : isKeyLessons ? "should remember as the most important principle from this book" : isAppendix ? "should reference in the appendix to immediately apply what they've learned" : isGlossary ? "should understand about the core terminology of this book's subject" : isReferences ? "should know about the sources and research behind this book" : isFurtherReading ? "should explore next to deepen their knowledge after this book" : isBackAcknowledgments ? "should feel about the author's gratitude for their time and investment" : isTheEnd ? "should carry with them after closing this book" : "learns (matches part 5 of the prose)"}",
+  "transition": "The exact closing sentence or short paragraph that bridges into ${isBookIntroduction ? "Chapter 1" : isHowToUseThisBook ? "the next front-matter section" : isWhatYouWillLearn ? "the next front-matter section" : isWhoThisBookIsFor ? "Chapter 1" : isDedication ? "the next front-matter section (or leave as a standalone closing line, since a dedication does not need a transition)" : isAcknowledgments ? "the next front-matter section" : isPreface ? "the Introduction" : isEpilogue ? "the Key Lessons or next back-matter section (or leave as a standalone closing — the Epilogue may stand alone)" : isKeyLessons ? "the Appendix or next back-matter section" : isAppendix ? "the Glossary or next back-matter section" : isGlossary ? "the References or next back-matter section" : isReferences ? "the Further Reading or next back-matter section" : isFurtherReading ? "the Acknowledgments or next back-matter section" : isBackAcknowledgments ? "The End page (or leave as a standalone closing paragraph)" : isTheEnd ? "(no transition needed — this is the final page of the book)" : "the next section"}",
   "teachingMethod": "The primary teaching method used (e.g. anecdote, data-led, analogy, direct instruction, case study, exercise)",
-  "competitorGap": "One sentence describing what competing books miss that this ${isBookIntroduction ? "introduction" : isFrontMatterSpecial ? "front-matter section" : "section"} addresses (or 'N/A' if no competitor data provided)"
+  "competitorGap": "One sentence describing what competing books miss that this ${isBookIntroduction ? "introduction" : isFrontMatterSpecial ? "front-matter section" : isBackMatterSpecial ? "back-matter section" : "section"} addresses (or 'N/A' if no competitor data provided)"
 }`;
 }
 

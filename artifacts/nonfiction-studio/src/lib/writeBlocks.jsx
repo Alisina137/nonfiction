@@ -23,6 +23,17 @@ function realSubsection(sub, fallbackRole) {
   };
 }
 
+export const BACK_MATTER_SECTIONS = [
+  { key: "epilogue",            role: "epilogue",            defaultTitle: "Epilogue",        chKey: "__epilogue__" },
+  { key: "keyLessons",          role: "keyLessons",          defaultTitle: "Key Lessons",     chKey: "__keyLessons__" },
+  { key: "appendix",            role: "appendix",            defaultTitle: "Appendix",        chKey: "__appendix__" },
+  { key: "glossary",            role: "glossary",            defaultTitle: "Glossary",        chKey: "__glossary__" },
+  { key: "references",          role: "references",          defaultTitle: "References",      chKey: "__references__" },
+  { key: "furtherReading",      role: "furtherReading",      defaultTitle: "Further Reading", chKey: "__furtherReading__" },
+  { key: "backAcknowledgments", role: "backAcknowledgments", defaultTitle: "Acknowledgments", chKey: "__backAcknowledgments__" },
+  { key: "theEnd",              role: "theEnd",              defaultTitle: "The End",         chKey: "__theEnd__" },
+];
+
 export function enumerateWriteBlocks(bookOutline) {
   const o = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
   const blocks = [];
@@ -156,6 +167,22 @@ export function enumerateWriteBlocks(bookOutline) {
         "Synthesize wins, restate transformation, and give a crisp call-to-action."
       )
     });
+  }
+
+  for (const { key, role, defaultTitle, chKey } of BACK_MATTER_SECTIONS) {
+    const node = o[key];
+    if (node?.id) {
+      blocks.push({
+        kind: key,
+        id: node.id,
+        label: node.title || defaultTitle,
+        breadcrumb: "Back matter",
+        chapterKey: chKey,
+        chapterContext: { title: node.title || defaultTitle, role },
+        sectionTitle: null,
+        subsection: syntheticSubsection(node.title || defaultTitle, `Back matter: ${defaultTitle}`),
+      });
+    }
   }
 
   return blocks;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  BACK_MATTER_SECTIONS,
   blockHasContent,
   buildChapterSummaries,
   collectPreviousConcepts,
@@ -24,6 +25,11 @@ const FINISH_STEP_KINDS = ["howToUseThisBook", "whatYouWillLearn", "whoThisBookI
 
 // Front-matter sections that must wait until every chapter + section is fully written.
 const FRONT_MATTER_KINDS = ["introduction"];
+
+// Back matter section kind names (for filtering/ordering in batch generation).
+const BACK_MATTER_KINDS = BACK_MATTER_SECTIONS.map((s) => s.key);
+// All chapterKeys for back matter (used to skip chapter-strategy fetching).
+const BACK_MATTER_CH_KEYS = new Set(BACK_MATTER_SECTIONS.map((s) => s.chKey));
 
 function writingTone(fp) {
   const d = fp?.bookDetails || {};
@@ -177,6 +183,7 @@ export default function WriteStep({
   const intro             = outline.introduction;
   const conclusion        = outline.conclusion;
   const chapters          = Array.isArray(outline.chapters) ? outline.chapters : [];
+  const backMatterNodes   = BACK_MATTER_SECTIONS.map((s) => ({ ...s, node: outline[s.key] }));
 
   // Chapter body blocks (sections/subsections) — the actual manuscript that must be
   // fully written before the Introduction and front matter can be generated.
@@ -212,6 +219,9 @@ export default function WriteStep({
     chapters.forEach((ch, ci) => { next[ch.id || `ch-${ci}`] = expanded; });
     if (intro?.id)             next["__intro__"]             = expanded;
     if (conclusion?.id)        next["__conclusion__"]        = expanded;
+    for (const { chKey, node } of backMatterNodes) {
+      if (node?.id) next[chKey] = expanded;
+    }
     setExpandedChapters(next);
   }
 
@@ -231,7 +241,7 @@ export default function WriteStep({
 
   async function fetchChapterStrategy(block, strategyCache) {
     const key = block.chapterKey;
-    if (!key || FRONT_MATTER_KINDS.includes(block.kind) || key === "__conclusion__") return null;
+    if (!key || FRONT_MATTER_KINDS.includes(block.kind) || key === "__conclusion__" || BACK_MATTER_CH_KEYS.has(key)) return null;
     if (strategyCache[key]) return strategyCache[key];
     try {
       setStatus(`Building writing strategy for "${block.chapterContext?.title}"…`);
@@ -394,9 +404,10 @@ export default function WriteStep({
     // Chapters and sections must be fully drafted before the Introduction is
     // generated, since it needs the finished manuscript as context.
     const orderedBlocks = [
-      ...blocks.filter((b) => !FRONT_MATTER_KINDS.includes(b.kind) && b.kind !== "conclusion"),
+      ...blocks.filter((b) => !FRONT_MATTER_KINDS.includes(b.kind) && b.kind !== "conclusion" && !BACK_MATTER_KINDS.includes(b.kind)),
       ...blocks.filter((b) => FRONT_MATTER_KINDS.includes(b.kind)),
       ...blocks.filter((b) => b.kind === "conclusion"),
+      ...blocks.filter((b) => BACK_MATTER_KINDS.includes(b.kind)),
     ];
     try {
       for (let i = 0; i < orderedBlocks.length; i++) {
@@ -821,6 +832,21 @@ export default function WriteStep({
 
         {/* Conclusion */}
         {renderFrontBackMatter(conclusion, "__conclusion__", "Conclusion")}
+
+        {/* Back Matter */}
+        {backMatterNodes.some(({ node }) => node?.id) && (
+          <div className="mt-12">
+            <div className="mb-4 flex items-center gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[1.5px] text-slate-400">Back Matter</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+            <div className="flex flex-col gap-4">
+              {backMatterNodes.map(({ key, defaultTitle, chKey, node }) =>
+                renderFrontBackMatter(node, chKey, defaultTitle, {})
+              )}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

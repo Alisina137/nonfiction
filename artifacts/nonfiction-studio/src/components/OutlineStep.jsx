@@ -34,12 +34,20 @@ export function seedBookOutline(previous, chapterCountFromDetails, wordCountRang
 
   if (Array.isArray(prev.chapters) && prev.chapters.length > 0) {
     return {
-      introduction: normalizeIntro(prev.introduction),
-      howToUseThisBook: normalizeHowToUse(prev.howToUseThisBook),
-      whatYouWillLearn: normalizeWhatYouWillLearn(prev.whatYouWillLearn),
-      whoThisBookIsFor: normalizeWhoThisBookIsFor(prev.whoThisBookIsFor),
-      chapters: prev.chapters.map(normalizeChapter),
-      conclusion: normalizeConclusion(prev.conclusion),
+      introduction:        normalizeIntro(prev.introduction),
+      howToUseThisBook:    normalizeHowToUse(prev.howToUseThisBook),
+      whatYouWillLearn:    normalizeWhatYouWillLearn(prev.whatYouWillLearn),
+      whoThisBookIsFor:    normalizeWhoThisBookIsFor(prev.whoThisBookIsFor),
+      chapters:            prev.chapters.map(normalizeChapter),
+      conclusion:          normalizeConclusion(prev.conclusion),
+      epilogue:            normalizeEpilogue(prev.epilogue),
+      keyLessons:          normalizeKeyLessons(prev.keyLessons),
+      appendix:            normalizeAppendix(prev.appendix),
+      glossary:            normalizeGlossary(prev.glossary),
+      references:          normalizeReferences(prev.references),
+      furtherReading:      normalizeFurtherReading(prev.furtherReading),
+      backAcknowledgments: normalizeBackAcknowledgments(prev.backAcknowledgments),
+      theEnd:              normalizeTheEnd(prev.theEnd),
     };
   }
 
@@ -99,6 +107,14 @@ export function seedBookOutline(previous, chapterCountFromDetails, wordCountRang
       title: (prev.conclusion && prev.conclusion.title) || "Conclusion",
       words: outroW,
     },
+    epilogue:            normalizeEpilogue(prev.epilogue),
+    keyLessons:          normalizeKeyLessons(prev.keyLessons),
+    appendix:            normalizeAppendix(prev.appendix),
+    glossary:            normalizeGlossary(prev.glossary),
+    references:          normalizeReferences(prev.references),
+    furtherReading:      normalizeFurtherReading(prev.furtherReading),
+    backAcknowledgments: normalizeBackAcknowledgments(prev.backAcknowledgments),
+    theEnd:              normalizeTheEnd(prev.theEnd),
   };
 }
 
@@ -125,6 +141,39 @@ function normalizeWhoThisBookIsFor(i) {
 function normalizeConclusion(c) {
   const x = c && typeof c === "object" ? c : {};
   return { id: x.id || "concl", title: x.title || "Conclusion", words: Number(x.words) || 0 };
+}
+
+function normalizeEpilogue(x) {
+  const v = x && typeof x === "object" ? x : {};
+  return { id: v.id || "epilogue", title: v.title || "Epilogue", words: Number(v.words) || 0 };
+}
+function normalizeKeyLessons(x) {
+  const v = x && typeof x === "object" ? x : {};
+  return { id: v.id || "keyLessons", title: v.title || "Key Lessons", words: Number(v.words) || 0 };
+}
+function normalizeAppendix(x) {
+  const v = x && typeof x === "object" ? x : {};
+  return { id: v.id || "appendix", title: v.title || "Appendix", words: Number(v.words) || 0 };
+}
+function normalizeGlossary(x) {
+  const v = x && typeof x === "object" ? x : {};
+  return { id: v.id || "glossary", title: v.title || "Glossary", words: Number(v.words) || 0 };
+}
+function normalizeReferences(x) {
+  const v = x && typeof x === "object" ? x : {};
+  return { id: v.id || "references", title: v.title || "References", words: Number(v.words) || 0 };
+}
+function normalizeFurtherReading(x) {
+  const v = x && typeof x === "object" ? x : {};
+  return { id: v.id || "furtherReading", title: v.title || "Further Reading", words: Number(v.words) || 0 };
+}
+function normalizeBackAcknowledgments(x) {
+  const v = x && typeof x === "object" ? x : {};
+  return { id: v.id || "backAcknowledgments", title: v.title || "Acknowledgments", words: Number(v.words) || 0 };
+}
+function normalizeTheEnd(x) {
+  const v = x && typeof x === "object" ? x : {};
+  return { id: v.id || "theEnd", title: v.title || "The End", words: Number(v.words) || 0 };
 }
 
 function normalizeChapter(ch) {
@@ -205,12 +254,20 @@ function normalizeSub(su) {
 function normalizedBookOutline(raw) {
   const r = raw && typeof raw === "object" ? raw : {};
   return {
-    introduction: normalizeIntro(r.introduction),
-    howToUseThisBook: normalizeHowToUse(r.howToUseThisBook),
-    whatYouWillLearn: normalizeWhatYouWillLearn(r.whatYouWillLearn),
-    whoThisBookIsFor: normalizeWhoThisBookIsFor(r.whoThisBookIsFor),
-    chapters: Array.isArray(r.chapters) ? r.chapters.map(normalizeChapter) : [],
-    conclusion: normalizeConclusion(r.conclusion),
+    introduction:        normalizeIntro(r.introduction),
+    howToUseThisBook:    normalizeHowToUse(r.howToUseThisBook),
+    whatYouWillLearn:    normalizeWhatYouWillLearn(r.whatYouWillLearn),
+    whoThisBookIsFor:    normalizeWhoThisBookIsFor(r.whoThisBookIsFor),
+    chapters:            Array.isArray(r.chapters) ? r.chapters.map(normalizeChapter) : [],
+    conclusion:          normalizeConclusion(r.conclusion),
+    epilogue:            normalizeEpilogue(r.epilogue),
+    keyLessons:          normalizeKeyLessons(r.keyLessons),
+    appendix:            normalizeAppendix(r.appendix),
+    glossary:            normalizeGlossary(r.glossary),
+    references:          normalizeReferences(r.references),
+    furtherReading:      normalizeFurtherReading(r.furtherReading),
+    backAcknowledgments: normalizeBackAcknowledgments(r.backAcknowledgments),
+    theEnd:              normalizeTheEnd(r.theEnd),
   };
 }
 
@@ -396,11 +453,19 @@ export default function OutlineStep({
   const [blueprintOpenMap, setBlueprintOpenMap] = useState({});
 
   const boRaw = bookOutline && typeof bookOutline === "object" ? bookOutline : {};
-  const intro = normalizeIntro(boRaw.introduction);
-  const howToUse = normalizeHowToUse(boRaw.howToUseThisBook);
-  const whatYouWillLearn = normalizeWhatYouWillLearn(boRaw.whatYouWillLearn);
-  const whoThisBookIsFor = normalizeWhoThisBookIsFor(boRaw.whoThisBookIsFor);
-  const conclusion = normalizeConclusion(boRaw.conclusion);
+  const intro               = normalizeIntro(boRaw.introduction);
+  const howToUse            = normalizeHowToUse(boRaw.howToUseThisBook);
+  const whatYouWillLearn    = normalizeWhatYouWillLearn(boRaw.whatYouWillLearn);
+  const whoThisBookIsFor    = normalizeWhoThisBookIsFor(boRaw.whoThisBookIsFor);
+  const conclusion          = normalizeConclusion(boRaw.conclusion);
+  const epilogue            = normalizeEpilogue(boRaw.epilogue);
+  const keyLessons          = normalizeKeyLessons(boRaw.keyLessons);
+  const appendix            = normalizeAppendix(boRaw.appendix);
+  const glossary            = normalizeGlossary(boRaw.glossary);
+  const references          = normalizeReferences(boRaw.references);
+  const furtherReading      = normalizeFurtherReading(boRaw.furtherReading);
+  const backAcknowledgments = normalizeBackAcknowledgments(boRaw.backAcknowledgments);
+  const theEnd              = normalizeTheEnd(boRaw.theEnd);
   const chapters = Array.isArray(boRaw.chapters) ? boRaw.chapters.map(normalizeChapter) : [];
   const seededRef = useRef(false);
 
@@ -449,6 +514,15 @@ export default function OutlineStep({
   function patchConclusion(patch) {
     commit((draft) => ({ ...draft, conclusion: { ...conclusion, ...patch } }));
   }
+
+  function patchEpilogue(patch)            { commit((d) => ({ ...d, epilogue:            { ...epilogue,            ...patch } })); }
+  function patchKeyLessons(patch)          { commit((d) => ({ ...d, keyLessons:          { ...keyLessons,          ...patch } })); }
+  function patchAppendix(patch)            { commit((d) => ({ ...d, appendix:            { ...appendix,            ...patch } })); }
+  function patchGlossary(patch)            { commit((d) => ({ ...d, glossary:            { ...glossary,            ...patch } })); }
+  function patchReferences(patch)          { commit((d) => ({ ...d, references:          { ...references,          ...patch } })); }
+  function patchFurtherReading(patch)      { commit((d) => ({ ...d, furtherReading:      { ...furtherReading,      ...patch } })); }
+  function patchBackAcknowledgments(patch) { commit((d) => ({ ...d, backAcknowledgments: { ...backAcknowledgments, ...patch } })); }
+  function patchTheEnd(patch)              { commit((d) => ({ ...d, theEnd:              { ...theEnd,              ...patch } })); }
 
   function patchChaptersUpdater(fn) {
     commit((draft) => {
@@ -1220,6 +1294,41 @@ export default function OutlineStep({
           className="rounded-xl border-2 border-slate-900/85 bg-white px-10 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50">
           + Add chapter
         </button>
+      </div>
+
+      {/* ── Back Matter ────────────────────────────────────────────────── */}
+      <div className="mt-14">
+        <div className="mb-5 flex items-center gap-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[1.5px] text-slate-400">Back Matter</span>
+          <div className="h-px flex-1 bg-slate-100" />
+        </div>
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          {[
+            { node: epilogue,            patchFn: patchEpilogue,            dflt: "Epilogue" },
+            { node: keyLessons,          patchFn: patchKeyLessons,          dflt: "Key Lessons" },
+            { node: appendix,            patchFn: patchAppendix,            dflt: "Appendix" },
+            { node: glossary,            patchFn: patchGlossary,            dflt: "Glossary" },
+            { node: references,          patchFn: patchReferences,          dflt: "References" },
+            { node: furtherReading,      patchFn: patchFurtherReading,      dflt: "Further Reading" },
+            { node: backAcknowledgments, patchFn: patchBackAcknowledgments, dflt: "Acknowledgments" },
+            { node: theEnd,              patchFn: patchTheEnd,              dflt: "The End" },
+          ].map(({ node, patchFn, dflt }, i) => (
+            <div key={node.id} className={`flex items-center justify-between gap-4 ${i > 0 ? "mt-4 border-t border-slate-50 pt-4" : ""}`}>
+              <div className="flex min-w-0 flex-[2] gap-3">
+                <EditableTitle dense value={node.title} onCommit={(t) => patchFn({ title: t || dflt })} />
+              </div>
+              <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-600">
+                Words
+                <input
+                  type="number" min={0}
+                  className="input-light w-[6.25rem] py-2 text-xs"
+                  value={Number(node.words) || 0}
+                  onChange={(e) => patchFn({ words: Math.max(0, Number(e.target.value) || 0) })}
+                />
+              </label>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
