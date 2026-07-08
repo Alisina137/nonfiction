@@ -2061,29 +2061,77 @@ ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAv
 ════════════════════════════════════
 BOOK INTRODUCTION INSTRUCTIONS
 ════════════════════════════════════
-This is the book's front-matter Introduction, not a chapter subsection. Follow these rules exactly:
+You are an award-winning nonfiction author, editor, and ghostwriter. Write a premium-quality, human-written book introduction that is engaging, authentic, and professionally published in style.
 
-1. START WITH A STRONG HOOK — Begin with a compelling question, short story, surprising fact, or thought-provoking statement that immediately captures the reader's attention.
-2. PROVIDE BACKGROUND AND CONTEXT — Explain why the topic is important and what inspired or motivated the book. Help readers understand the problem, challenge, or opportunity the book addresses.
-3. CLEARLY STATE THE PURPOSE OF THE BOOK — Explain what readers will learn, gain, or achieve by reading it. Keep the purpose concise and easy to understand.
-4. GIVE A BRIEF OVERVIEW OF THE BOOK — Summarize the major themes or topics covered. Do not reveal all details or conclusions.
-5. IDENTIFY THE INTENDED AUDIENCE — Briefly explain who the book is written for and why it will benefit them.
-6. END WITH AN INVITATION TO CONTINUE READING — Finish with an encouraging, engaging transition into Chapter 1.
+OVERALL GOAL:
+Write an introduction that makes readers feel understood, establishes credibility, creates curiosity, and motivates them to continue reading. The writing must feel natural, thoughtful, and personal — not AI-generated or robotic.
 
-Writing style requirements:
-- Write in a natural, engaging, and professional tone.
-- Use smooth transitions between paragraphs.
-- Avoid repetitive phrases and clichés.
-- Make the introduction inspiring and reader-focused.
-- Show the value of the book without overselling it.
-- Match the tone and style of the rest of the book.
-- Do NOT include chapter summaries or spoilers.
-- Do NOT use generic filler text.
-- Ensure the introduction feels original and specific to the book's topic.
+STRUCTURE — follow this exact order:
 
-Length: target approximately 500–1,000 words, organized into clear, readable paragraphs.
+1. OPEN WITH A STRONG HOOK
+   - Begin with a compelling story, question, observation, or surprising fact related to the book's topic.
+   - Immediately capture the reader's attention.
+   - Avoid clichés and generic openings.
+   - Do NOT start with "In today's world..." or any variation of it.
 
-Quality standard: this should read like an introduction written by a professional author or editor — making readers curious, establishing credibility, and naturally encouraging them to continue reading the rest of the book.` : "";
+2. EXPLAIN WHY THIS TOPIC MATTERS
+   - Describe the real-world problem or challenge.
+   - Explain why readers should care right now.
+   - Show the consequences of ignoring the issue.
+
+3. STATE WHY THIS BOOK WAS WRITTEN
+   - Clearly explain the motivation behind the book.
+   - Connect the reason to the reader's needs rather than the author's achievements.
+   - Be authentic and sincere.
+
+4. IDENTIFY THE TARGET AUDIENCE
+   - Explain exactly who this book is for.
+   - Mention who will benefit most.
+   - Make the reader feel this book was written specifically for them.
+
+5. DESCRIBE THE TRANSFORMATION
+   - Explain what readers will understand, learn, or be able to do after reading.
+   - Focus on outcomes, not a table of contents.
+
+6. ESTABLISH CREDIBILITY NATURALLY
+   - Briefly mention relevant experience, research, observations, or practical knowledge.
+   - Build trust through authenticity — never boastfulness.
+
+7. PROVIDE A ROADMAP (without spoiling)
+   - Give a concise sense of what the book covers and how it is structured.
+   - Create curiosity rather than summarizing every chapter.
+
+8. EXPLAIN HOW TO USE THE BOOK
+   - Tell readers how to get the most value.
+   - Encourage active reading and reflection where appropriate.
+
+9. END WITH AN INSPIRING TRANSITION
+   - Close with confidence and genuine encouragement.
+   - Leave readers excited to begin Chapter One.
+
+WRITING STYLE:
+- Write like a bestselling nonfiction author — sound completely human.
+- Use varied sentence lengths. Mix short and long paragraphs naturally.
+- Avoid repetitive wording.
+- Use smooth, organic transitions.
+- Maintain a warm, conversational, and intelligent tone.
+- Show confidence without exaggeration.
+- Avoid buzzwords and marketing language.
+- Do not use emojis.
+- Do not use excessive bullet points — write in flowing prose.
+- Do not sound academic unless this specific book demands it.
+
+WORDS AND PHRASES TO NEVER USE:
+"delve", "unlock", "journey", "game-changer", "navigate", "ever-evolving landscape",
+"in conclusion", "This book is about...", overused rhetorical questions, generic motivational filler.
+
+QUALITY CHECK — before finishing, the introduction must:
+- Read naturally aloud with no robotic or repetitive phrasing.
+- Maintain a consistent voice throughout.
+- Build genuine anticipation for the rest of the book.
+- Feel polished enough to appear in a traditionally published, premium-quality book.
+
+LENGTH: Write approximately 1,500–2,500 words, organized into clear, readable paragraphs. Do not pad — write only what earns its place.` : "";
 
   // ── Book-level "How to Use This Book" — dedicated instruction set ──
   const howToUseBlock = isHowToUseThisBook ? `

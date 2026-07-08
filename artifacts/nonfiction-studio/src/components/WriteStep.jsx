@@ -11,6 +11,7 @@ import {
 } from "@/lib/writeBlocks";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
+import BackMatterSection from "@/components/BackMatterSection";
 
 const IMPROVE_ACTIONS = [
   { id: "sharpen",     label: "Sharpen clarity" },
@@ -830,23 +831,19 @@ export default function WriteStep({
           );
         })}
 
-        {/* Conclusion */}
-        {renderFrontBackMatter(conclusion, "__conclusion__", "Conclusion")}
-
-        {/* Back Matter */}
-        {backMatterNodes.some(({ node }) => node?.id) && (
-          <div className="mt-12">
-            <div className="mb-4 flex items-center gap-3">
-              <span className="text-[11px] font-semibold uppercase tracking-[1.5px] text-slate-400">Back Matter</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-            <div className="flex flex-col gap-4">
-              {backMatterNodes.map(({ key, defaultTitle, chKey, node }) =>
-                renderFrontBackMatter(node, chKey, defaultTitle, {})
-              )}
-            </div>
-          </div>
-        )}
+        {/* Back Matter — Conclusion through The End */}
+        <BackMatterSection
+          bookOutline={bookOutline}
+          lessons={lessons}
+          setLessons={setLessons}
+          fullProject={fullProject}
+          blocks={blocks}
+          blockById={blockById}
+          generateBlock={generateBlock}
+          isBusy={!!busyId || batchBusy}
+          busyId={busyId}
+          manuscriptComplete={manuscriptComplete}
+        />
 
       </div>
     </div>

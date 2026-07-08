@@ -1575,4 +1575,110 @@ router.post("/generate-focus-areas", async (req, res) => {
   }
 });
 
+/** POST /api/ai/back-matter/key-lessons — generate structured Key Lessons cards */
+router.post("/back-matter/key-lessons", async (req, res) => {
+  try {
+    const { bookContext, chapterSummaries, tone, audience } = req.body || {};
+    const prompt = backMatterKeyLessonsPrompt({
+      bookContext:      String(bookContext || ""),
+      chapterSummaries: Array.isArray(chapterSummaries) ? chapterSummaries : [],
+      tone:             String(tone || ""),
+      audience:         String(audience || ""),
+    });
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
+    const data = extractJSON(text);
+    if (!data?.lessons || !Array.isArray(data.lessons)) {
+      return res.status(500).json({ error: "AI returned unexpected format for key lessons." });
+    }
+    const lessons = data.lessons
+      .filter((l: any) => l && typeof l === "object" && String(l.title || "").trim() && String(l.principle || "").trim())
+      .map((l: any, i: number) => ({
+        id:              `kl-${Date.now()}-${i}`,
+        title:           String(l.title      || "").trim(),
+        principle:       String(l.principle  || "").trim(),
+        explanation:     String(l.explanation|| "").trim(),
+        relatedChapters: Array.isArray(l.relatedChapters)
+          ? l.relatedChapters.map((c: any) => String(c || "").trim()).filter(Boolean)
+          : [],
+      }))
+      .slice(0, 20);
+    return res.json({ lessons, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** POST /api/ai/back-matter/glossary — generate structured Glossary terms */
+router.post("/back-matter/glossary", async (req, res) => {
+  try {
+    const { bookContext, chapterSummaries, tone, audience } = req.body || {};
+    const prompt = backMatterGlossaryPrompt({
+      bookContext:      String(bookContext || ""),
+      chapterSummaries: Array.isArray(chapterSummaries) ? chapterSummaries : [],
+      tone:             String(tone || ""),
+      audience:         String(audience || ""),
+    });
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
+    const data = extractJSON(text);
+    if (!data?.terms || !Array.isArray(data.terms)) {
+      return res.status(500).json({ error: "AI returned unexpected format for glossary." });
+    }
+    const terms = data.terms
+      .filter((t: any) => t && typeof t === "object" && String(t.term || "").trim() && String(t.definition || "").trim())
+      .map((t: any, i: number) => ({
+        id:              `gl-${Date.now()}-${i}`,
+        term:            String(t.term            || "").trim(),
+        definition:      String(t.definition      || "").trim(),
+        firstChapter:    String(t.firstChapter    || "").trim(),
+        relatedChapters: Array.isArray(t.relatedChapters)
+          ? t.relatedChapters.map((c: any) => String(c || "").trim()).filter(Boolean)
+          : [],
+        synonyms: Array.isArray(t.synonyms)
+          ? t.synonyms.map((s: any) => String(s || "").trim()).filter(Boolean)
+          : [],
+      }))
+      .sort((a: any, b: any) => a.term.localeCompare(b.term))
+      .slice(0, 30);
+    return res.json({ terms, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** POST /api/ai/back-matter/further-reading — generate structured Further Reading recommendations */
+router.post("/back-matter/further-reading", async (req, res) => {
+  try {
+    const { bookContext, chapterSummaries, tone, audience } = req.body || {};
+    const prompt = backMatterFurtherReadingPrompt({
+      bookContext:      String(bookContext || ""),
+      chapterSummaries: Array.isArray(chapterSummaries) ? chapterSummaries : [],
+      tone:             String(tone || ""),
+      audience:         String(audience || ""),
+    });
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
+    const data = extractJSON(text);
+    if (!data?.recommendations || !Array.isArray(data.recommendations)) {
+      return res.status(500).json({ error: "AI returned unexpected format for further reading." });
+    }
+    const VALID_TYPES       = new Set(["Book", "Article", "Course", "Website", "Podcast", "Research Paper"]);
+    const VALID_DIFFICULTIES = new Set(["Beginner", "Intermediate", "Advanced"]);
+    const recommendations = data.recommendations
+      .filter((r: any) => r && typeof r === "object" && String(r.title || "").trim())
+      .map((r: any, i: number) => ({
+        id:          `fr-${Date.now()}-${i}`,
+        title:       String(r.title       || "").trim(),
+        author:      String(r.author      || "").trim(),
+        type:        VALID_TYPES.has(String(r.type || ""))       ? String(r.type)       : "Book",
+        description: String(r.description || "").trim(),
+        why:         String(r.why         || "").trim(),
+        difficulty:  VALID_DIFFICULTIES.has(String(r.difficulty || "")) ? String(r.difficulty) : "Intermediate",
+        url:         String(r.url         || "").trim(),
+      }))
+      .slice(0, 15);
+    return res.json({ recommendations, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 export default router;
