@@ -2035,6 +2035,7 @@ ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAv
   const isPreface              = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "preface");
   const isFrontMatterSpecial   = isBookIntroduction || isHowToUseThisBook || isWhatYouWillLearn || isWhoThisBookIsFor || isDedication || isAcknowledgments || isPreface;
 
+  const isConclusion            = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "conclusion");
   const isEpilogue              = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "epilogue");
   const isKeyLessons            = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "keyLessons");
   const isAppendix              = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "appendix");
@@ -2043,7 +2044,7 @@ ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAv
   const isFurtherReading        = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "furtherReading");
   const isBackAcknowledgments   = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "backAcknowledgments");
   const isTheEnd                = !!(chapterContext && typeof chapterContext === "object" && chapterContext.role === "theEnd");
-  const isBackMatterSpecial     = isEpilogue || isKeyLessons || isAppendix || isGlossary || isReferences || isFurtherReading || isBackAcknowledgments || isTheEnd;
+  const isBackMatterSpecial     = isConclusion || isEpilogue || isKeyLessons || isAppendix || isGlossary || isReferences || isFurtherReading || isBackAcknowledgments || isTheEnd;
 
   const chapterInfo = chapterContext
     ? `Chapter: ${typeof chapterContext === "string" ? chapterContext : (chapterContext.title || JSON.stringify(chapterContext))}`
@@ -2242,6 +2243,86 @@ Writing style requirements:
 - Make it feel like a genuine, specific origin story tied to this exact book's topic.
 
 Length: target approximately 250–450 words, organized into clear, readable paragraphs.` : "";
+
+  // ── Back Matter: Conclusion ──
+  const bookConclusionBlock = isConclusion ? `
+════════════════════════════════════
+BOOK CONCLUSION INSTRUCTIONS
+════════════════════════════════════
+You are an award-winning nonfiction author, editor, and ghostwriter. Your task is to write a premium-quality, human-written conclusion for this book.
+
+Before writing anything, carefully read and analyze all previous chapters of the manuscript provided in the CHAPTER SUMMARIES above. Use the ideas, themes, arguments, examples, tone, and progression throughout the book to create a conclusion that feels like the natural and satisfying ending of the entire work.
+
+OVERALL OBJECTIVE:
+Write a conclusion that reinforces the book's central message, celebrates the reader's progress, connects the major ideas presented throughout the chapters, and inspires readers to apply what they have learned. Provide emotional and intellectual closure while remaining authentic, insightful, and professionally written.
+
+BEFORE DRAFTING — ANALYZE THE MANUSCRIPT:
+- Identify the book's central theme and purpose.
+- Identify the most important lessons developed throughout the chapters.
+- Notice recurring concepts, terminology, examples, and arguments.
+- Preserve the same writing style, vocabulary, pacing, and voice used throughout.
+- Build upon ideas already presented — do NOT introduce unrelated topics.
+- Refer to important concepts naturally without repeating them verbatim.
+- Make the conclusion feel like the inevitable ending of the reader's learning experience.
+
+STRUCTURE — follow this exact order:
+
+1. RECONNECT WITH THE BOOK'S PURPOSE
+   - Remind readers why the subject matters.
+   - Revisit the original challenge or question introduced at the beginning of the book.
+   - Show how the book has addressed that challenge through its chapters.
+
+2. REFLECT ON THE READER'S PROGRESS
+   - Acknowledge the knowledge and understanding the reader has gained.
+   - Emphasize how each chapter contributed to a broader understanding.
+   - Highlight the transformation in perspective, skills, or confidence.
+
+3. SYNTHESIZE THE MAIN IDEAS
+   - Bring together the book's most important concepts into one coherent message.
+   - Show how the individual chapters connect to support the overall purpose.
+   - Focus on insights and principles — not a chapter-by-chapter summary.
+
+4. CONNECT LEARNING TO REAL-WORLD APPLICATION
+   - Encourage readers to apply the ideas presented throughout the book.
+   - Explain that lasting value comes from thoughtful implementation.
+   - Inspire continuous learning and practical action.
+
+5. REINFORCE THE CORE MESSAGE
+   - Clearly restate the book's most important takeaway.
+   - Present it in a fresh, memorable way — not by repeating earlier wording.
+
+6. INSPIRE CONFIDENCE
+   - Encourage readers to move forward with confidence and curiosity.
+   - Use an encouraging but realistic tone.
+   - Avoid exaggerated promises or unrealistic guarantees.
+
+7. END WITH A MEMORABLE CLOSING
+   - Finish with a thoughtful reflection, powerful insight, or meaningful observation.
+   - The final paragraph provides emotional closure while leaving readers inspired.
+
+WRITING STYLE:
+- Write like a bestselling nonfiction author — sound completely human.
+- Match the tone, vocabulary, and style established throughout the manuscript.
+- Use varied sentence lengths and natural transitions.
+- Maintain a warm, intelligent, and engaging voice.
+- Be reflective without becoming repetitive.
+- Balance inspiration with practical wisdom.
+- Avoid unnecessary filler.
+
+WORDS AND PHRASES TO NEVER USE:
+"delve", "unlock", "journey", "game-changer", "navigate", "ever-evolving landscape",
+"in conclusion", "to wrap up", "Thank you for reading", or any AI-style filler phrase.
+
+QUALITY CHECK — the conclusion must:
+- Feel like the natural ending of this specific book.
+- Reference ideas from previous chapters organically.
+- Reinforce the overall narrative rather than merely summarizing it.
+- Leave readers feeling accomplished, confident, and motivated.
+- Read like a traditionally published premium nonfiction book.
+- Be cohesive, polished, and emotionally satisfying.
+- End with a memorable final paragraph.
+
+LENGTH: Write approximately 1,500–2,500 words, organized into clear paragraphs. Do not pad — every sentence must earn its place.` : "";
 
   // ── Back Matter: Epilogue ──
   const epilogueBlock = isEpilogue ? `
@@ -2490,6 +2571,17 @@ QUALITY CHECK (verify before returning)
 3. Is the tone personal, honest, and reflective?
 4. Is the length approximately 250–450 words?
 
+If any answer is NO — rewrite.` : isConclusion ? `
+════════════════════════════════════
+QUALITY CHECK (verify before returning)
+════════════════════════════════════
+1. Does it reconnect with the book's original purpose and demonstrate a clear understanding of all previous chapters?
+2. Does it synthesize the main ideas into a coherent message rather than summarizing chapters one-by-one?
+3. Does it inspire the reader to apply what they've learned and move forward with confidence?
+4. Is the tone warm, intelligent, and consistent with the manuscript's voice throughout?
+5. Does the final paragraph provide genuine emotional closure and leave the reader inspired?
+6. Is the length approximately 1,500–2,500 words with no filler, no repetition, and no AI-style phrases?
+
 If any answer is NO — rewrite.` : isEpilogue ? `
 ════════════════════════════════════
 QUALITY CHECK (verify before returning)
@@ -2590,7 +2682,7 @@ Subsection: ${subsectionTitle}${purposeNote}
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
-Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${howToUseBlock}${whatYouWillLearnBlock}${whoThisBookIsForBlock}${dedicationBlock}${acknowledgmentsBlock}${prefaceBlock}${epilogueBlock}${keyLessonsBlock}${appendixBlock}${glossaryBlock}${referencesBlock}${furtherReadingBlock}${backAcknowledgmentsBlock}${theEndBlock}${flowBlock}${antiTemplateRules}
+Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${howToUseBlock}${whatYouWillLearnBlock}${whoThisBookIsForBlock}${dedicationBlock}${acknowledgmentsBlock}${prefaceBlock}${bookConclusionBlock}${epilogueBlock}${keyLessonsBlock}${appendixBlock}${glossaryBlock}${referencesBlock}${furtherReadingBlock}${backAcknowledgmentsBlock}${theEndBlock}${flowBlock}${antiTemplateRules}
 
 ════════════════════════════════════
 10 NON-NEGOTIABLE WRITING RULES
@@ -2641,6 +2733,10 @@ The prose must flow as 1–3 short paragraphs — do NOT use section headers or 
   ? `Follow the PREFACE INSTRUCTIONS above exactly — the author's personal journey and motivation for writing this specific book, first-person voice.
 Target length: approximately 250–450 words.
 The prose must flow as unified paragraphs — do NOT use section headers or labels inside the content.`
+  : isConclusion
+  ? `Follow the BOOK CONCLUSION INSTRUCTIONS above exactly — reconnect with the book's purpose, reflect on the reader's progress, synthesize the main ideas, connect learning to real-world application, reinforce the core message, inspire confidence, and end with a memorable closing paragraph.
+Target length: approximately 1,500–2,500 words.
+The prose must flow as unified paragraphs that match the manuscript's established voice. Do NOT summarize chapters one by one. Do NOT use section headers or labels inside the content.`
   : isEpilogue
   ? `Follow the EPILOGUE INSTRUCTIONS above exactly — reflect on the reader's journey, look forward with inspiration, connect emotionally, and optionally close the narrative loop from the Introduction.
 Target length: approximately 200–400 words.
@@ -2717,6 +2813,10 @@ If the answer is no — rewrite.` : isPreface ? `══════════�
 PREFACE QUALITY TEST
 ════════════════════════════════════
 Before writing, answer internally: "Does this reveal the author's personal story and motivation for this book, without repeating what the Introduction already covers?"
+If the answer is no — rewrite.` : isConclusion ? `════════════════════════════════════
+CONCLUSION QUALITY TEST
+════════════════════════════════════
+Before writing, answer internally: "Does this conclusion clearly reflect a deep reading of the entire manuscript, synthesize the book's ideas into a coherent final message, inspire the reader to act, and end with a paragraph memorable enough to be the last thing a reader remembers?"
 If the answer is no — rewrite.` : isEpilogue ? `════════════════════════════════════
 EPILOGUE QUALITY TEST
 ════════════════════════════════════
@@ -2763,7 +2863,7 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 {
   "title": "The subsection title (publication-ready, specific, compelling)",
   "structureUsed": "${structureKey}",
-  "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : isHowToUseThisBook ? `The full How to Use This Book section following the instructions above — best way to read, exercises/action steps guidance, maximum value tips, encouragement to take notes and revisit concepts. Flowing prose with no internal headers. Approximately 250-450 words.` : isWhatYouWillLearn ? `A short framing intro followed by 6-10 concise bullet points (each line starting with "- ") summarizing knowledge, skills, and outcomes the reader will gain. Approximately 200-400 words total.` : isWhoThisBookIsFor ? `The full Who This Book Is For section following the instructions above — intended audience, who benefits most, experience level, reassurance. Flowing prose with no internal headers. Approximately 200-350 words.` : isDedication ? `The full dedication text following the instructions above — short, personal, sincere. 1-4 sentences, roughly 15-60 words. No headers or labels.` : isAcknowledgments ? `The full acknowledgments text following the instructions above — warm thanks to plausible categories of contributors. 1-3 short paragraphs, approximately 100-200 words.` : isPreface ? `The full Preface text following the instructions above — the author's personal journey and motivation for writing this book, first-person voice. Flowing prose with no internal headers. Approximately 250-450 words.` : isEpilogue ? `The full Epilogue text following the instructions above — reflective, forward-looking, emotionally resonant. Flowing prose with no internal headers. Approximately 200-400 words.` : isKeyLessons ? `A short framing intro followed by 8-15 numbered lessons, each with a bold headline and 1-2 sentences of elaboration. Approximately 400-700 words total.` : isAppendix ? `Practical supplementary reference material organized with clear sub-headers, lists, or tables — designed to be scanned. Approximately 300-600 words or as needed.` : isGlossary ? `A 1-sentence intro line followed by an alphabetical list of 10-20 key terms in **Term**: Definition format (one blank line between entries). Approximately 300-600 words total.` : isReferences ? `A 1-sentence intro line followed by a numbered list of 10-20 plausible, consistently formatted citations relevant to this book's topic. Approximately 250-500 words total.` : isFurtherReading ? `A 1-2 sentence framing intro followed by 6-12 curated recommendations grouped under category sub-headers, each with a 1-3 sentence description. Approximately 300-600 words total.` : isBackAcknowledgments ? `The full Acknowledgments text — warm thanks to 2-4 categories of plausible contributors, closing with a direct thank-you to the reader. 2-4 short paragraphs, approximately 150-300 words.` : isTheEnd ? `The full The End closing — an extremely brief, warm message (30-80 words maximum) thanking the reader and leaving them inspired. May include a stylistic "The End" header.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
+  "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : isHowToUseThisBook ? `The full How to Use This Book section following the instructions above — best way to read, exercises/action steps guidance, maximum value tips, encouragement to take notes and revisit concepts. Flowing prose with no internal headers. Approximately 250-450 words.` : isWhatYouWillLearn ? `A short framing intro followed by 6-10 concise bullet points (each line starting with "- ") summarizing knowledge, skills, and outcomes the reader will gain. Approximately 200-400 words total.` : isWhoThisBookIsFor ? `The full Who This Book Is For section following the instructions above — intended audience, who benefits most, experience level, reassurance. Flowing prose with no internal headers. Approximately 200-350 words.` : isDedication ? `The full dedication text following the instructions above — short, personal, sincere. 1-4 sentences, roughly 15-60 words. No headers or labels.` : isAcknowledgments ? `The full acknowledgments text following the instructions above — warm thanks to plausible categories of contributors. 1-3 short paragraphs, approximately 100-200 words.` : isPreface ? `The full Preface text following the instructions above — the author's personal journey and motivation for writing this book, first-person voice. Flowing prose with no internal headers. Approximately 250-450 words.` : isConclusion ? `The full book Conclusion following the BOOK CONCLUSION INSTRUCTIONS above — reconnect with purpose, reflect on reader progress, synthesize main ideas, connect to real-world application, reinforce core message, inspire confidence, memorable closing. Multi-paragraph flowing prose with no internal headers or chapter-by-chapter summary. Approximately 1,500-2,500 words. Match the manuscript's established voice exactly.` : isEpilogue ? `The full Epilogue text following the instructions above — reflective, forward-looking, emotionally resonant. Flowing prose with no internal headers. Approximately 200-400 words.` : isKeyLessons ? `A short framing intro followed by 8-15 numbered lessons, each with a bold headline and 1-2 sentences of elaboration. Approximately 400-700 words total.` : isAppendix ? `Practical supplementary reference material organized with clear sub-headers, lists, or tables — designed to be scanned. Approximately 300-600 words or as needed.` : isGlossary ? `A 1-sentence intro line followed by an alphabetical list of 10-20 key terms in **Term**: Definition format (one blank line between entries). Approximately 300-600 words total.` : isReferences ? `A 1-sentence intro line followed by a numbered list of 10-20 plausible, consistently formatted citations relevant to this book's topic. Approximately 250-500 words total.` : isFurtherReading ? `A 1-2 sentence framing intro followed by 6-12 curated recommendations grouped under category sub-headers, each with a 1-3 sentence description. Approximately 300-600 words total.` : isBackAcknowledgments ? `The full Acknowledgments text — warm thanks to 2-4 categories of plausible contributors, closing with a direct thank-you to the reader. 2-4 short paragraphs, approximately 150-300 words.` : isTheEnd ? `The full The End closing — an extremely brief, warm message (30-80 words maximum) thanking the reader and leaving them inspired. May include a stylistic "The End" header.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
   "flowSections": [
     ${(isBookIntroduction
         ? ["Hook", "Background & Context", "Purpose of the Book", "Overview of the Book", "Intended Audience", "Invitation to Continue Reading"]
