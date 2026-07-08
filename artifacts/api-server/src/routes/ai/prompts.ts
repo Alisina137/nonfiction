@@ -4725,3 +4725,136 @@ Return ONLY this JSON — no explanation:
   ]
 }`;
 }
+
+// ─── Back Matter: Key Lessons (structured JSON) ──────────────────────────────
+
+export function backMatterKeyLessonsPrompt(opts: {
+  bookContext: string;
+  chapterSummaries: Array<{ chapter: string; keyIdeas: string[] }>;
+  tone: string;
+  audience: string;
+}): string {
+  const { bookContext, chapterSummaries, tone, audience } = opts;
+  const summaries = chapterSummaries.length
+    ? `\n\nCHAPTER KEY IDEAS:\n${chapterSummaries.map(s => `${s.chapter}: ${s.keyIdeas.join("; ")}`).join("\n")}`
+    : "";
+  return `You are a professional nonfiction editor. Extract the most important, timeless lessons from this completed manuscript.
+
+BOOK CONTEXT:
+${bookContext}
+Tone: ${tone || "Direct & practical"}
+Audience: ${audience || "general reader"}${summaries}
+
+TASK: Identify 10–15 Key Lessons — timeless principles the reader will carry long after finishing this book.
+
+Rules:
+- Each lesson must be a PRINCIPLE, not a chapter summary or plot point
+- Principles should be universal and actionable beyond the book's specific examples
+- Merge similar concepts — no duplication
+- Prioritize timeless applicability over book-specific examples
+- relatedChapters: list actual chapter titles from the book context above
+
+Return ONLY valid JSON (no markdown fences, no explanation text):
+
+{
+  "lessons": [
+    {
+      "title": "3-6 word memorable title",
+      "principle": "One crisp sentence stating the principle (under 25 words)",
+      "explanation": "2-3 sentences expanding on why this matters and how to apply it in real life",
+      "relatedChapters": ["Exact chapter title from the book"]
+    }
+  ]
+}`;
+}
+
+// ─── Back Matter: Glossary (structured JSON) ─────────────────────────────────
+
+export function backMatterGlossaryPrompt(opts: {
+  bookContext: string;
+  chapterSummaries: Array<{ chapter: string; keyIdeas: string[] }>;
+  tone: string;
+  audience: string;
+}): string {
+  const { bookContext, chapterSummaries, tone, audience } = opts;
+  const summaries = chapterSummaries.length
+    ? `\n\nCHAPTER KEY IDEAS:\n${chapterSummaries.map(s => `${s.chapter}: ${s.keyIdeas.join("; ")}`).join("\n")}`
+    : "";
+  return `You are a professional nonfiction editor. Create a glossary of the most important terms from this manuscript.
+
+BOOK CONTEXT:
+${bookContext}
+Tone: ${tone || "Direct & practical"}
+Audience: ${audience || "general reader"}${summaries}
+
+TASK: Identify 15–25 key terms that are central to understanding this book. Define them clearly for the target audience.
+
+Rules:
+- ONLY include terms that actually appear in or are central to this book — do NOT create a generic industry glossary
+- Each definition must match the book's specific usage and context
+- firstChapter: name of the chapter where the term first appears (use exact chapter titles from the context above)
+- Merge duplicate terms — each term appears only once
+- synonyms: only include meaningful alternatives; use empty array if none
+- Do NOT include trivial or common everyday words
+
+Return ONLY valid JSON (no markdown fences, no explanation text):
+
+{
+  "terms": [
+    {
+      "term": "Term name",
+      "definition": "Clear, concise definition using the book's own context (1-3 sentences)",
+      "firstChapter": "Chapter title where first introduced",
+      "relatedChapters": ["Additional chapter title"],
+      "synonyms": ["alternative term if any"]
+    }
+  ]
+}`;
+}
+
+// ─── Back Matter: Further Reading (structured JSON) ──────────────────────────
+
+export function backMatterFurtherReadingPrompt(opts: {
+  bookContext: string;
+  chapterSummaries: Array<{ chapter: string; keyIdeas: string[] }>;
+  tone: string;
+  audience: string;
+}): string {
+  const { bookContext, chapterSummaries, tone, audience } = opts;
+  const summaries = chapterSummaries.length
+    ? `\n\nCHAPTER KEY IDEAS:\n${chapterSummaries.map(s => `${s.chapter}: ${s.keyIdeas.join("; ")}`).join("\n")}`
+    : "";
+  return `You are a professional nonfiction editor. Curate a Further Reading list for readers of this completed manuscript.
+
+BOOK CONTEXT:
+${bookContext}
+Tone: ${tone || "Direct & practical"}
+Audience: ${audience || "general reader"}${summaries}
+
+TASK: Recommend 8–12 books or resources that complement this book and guide readers toward continued learning.
+
+Rules:
+- Recommend real-sounding books/resources — use realistic titles, authors, publishers (do NOT invent ISBNs, DOIs, or fake URLs)
+- Each recommendation must logically extend the reader's knowledge BEYOND this specific book
+- type: exactly one of "Book", "Article", "Course", "Website", "Podcast", "Research Paper"
+- difficulty: exactly one of "Beginner", "Intermediate", "Advanced"
+- url: use empty string "" unless it's a widely known public URL (e.g., a major platform or publication)
+- Vary difficulty levels across recommendations to serve different reader needs
+- why: explain specifically how this resource extends THIS book's ideas, not a generic "great for learning" statement
+
+Return ONLY valid JSON (no markdown fences, no explanation text):
+
+{
+  "recommendations": [
+    {
+      "title": "Resource title",
+      "author": "Author name(s) or organization",
+      "type": "Book",
+      "description": "1-2 sentences describing what this resource covers",
+      "why": "1-2 sentences explaining how it specifically complements this book",
+      "difficulty": "Intermediate",
+      "url": ""
+    }
+  ]
+}`;
+}
