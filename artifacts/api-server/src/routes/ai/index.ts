@@ -37,7 +37,10 @@ import {
   topicSuggestPrompt,
   kdpSuggestPrompt,
   systemPrompt,
-  titlesPrompt
+  titlesPrompt,
+  backMatterKeyLessonsPrompt,
+  backMatterGlossaryPrompt,
+  backMatterFurtherReadingPrompt
 } from "./prompts.js";
 import { buildCompetitorSummariesForPrompt } from "./analysisSummary.js";
 import {
