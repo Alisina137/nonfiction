@@ -269,6 +269,40 @@ async function runLong(prompt: string, system: string, req: any, res: any, conte
   return { text, usedProvider };
 }
 
+// Long-form + JSON parse with one automatic retry if the AI response fails to parse
+// or doesn't pass `isValid`. Guards against occasional truncated/malformed JSON output.
+async function runLongJSON(
+  prompt: string,
+  system: string,
+  req: any,
+  res: any,
+  contentType: string,
+  isValid: (data: any) => boolean,
+  label: string
+): Promise<{ data: any; usedProvider: string }> {
+  const first = await runLong(prompt, system, req, res, contentType);
+  let data: any = null;
+  try { data = extractJSON(first.text); } catch (e: any) {
+    console.log(`[${label}] JSON parse failed on attempt 1:`, e?.message?.slice(0, 120));
+  }
+
+  if (!data || !isValid(data)) {
+    console.log(`[${label}] Invalid/unparseable on attempt 1 — retrying`);
+    try {
+      const retry = await runLong(prompt, system, req, res, contentType);
+      const retryData = extractJSON(retry.text);
+      if (isValid(retryData)) return { data: retryData, usedProvider: retry.usedProvider };
+    } catch (e: any) {
+      console.log(`[${label}] Retry failed:`, e?.message?.slice(0, 120));
+    }
+  }
+
+  if (!data || !isValid(data)) {
+    throw new Error(`AI returned unparseable data for ${label}. Please try again.`);
+  }
+  return { data, usedProvider: first.usedProvider };
+}
+
 // Short-form
 async function runShort(prompt: string, system: string, req: any, res: any, contentType = "default") {
   const maxTokens = TOKEN_LIMITS[contentType] ?? TOKEN_LIMITS.default;
@@ -1588,11 +1622,11 @@ router.post("/back-matter/key-lessons", async (req, res) => {
       tone:              String(tone || ""),
       audience:          String(audience || ""),
     });
-    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
-    const data = extractJSON(text);
-    if (!data?.lessons || !Array.isArray(data.lessons)) {
-      return res.status(500).json({ error: "AI returned unexpected format for key lessons." });
-    }
+    const { data, usedProvider } = await runLongJSON(
+      prompt, systemPrompt(), req, res, "lesson",
+      (d) => !!(d?.lessons && Array.isArray(d.lessons) && d.lessons.length > 0),
+      "back-matter/key-lessons"
+    );
     const lessons = data.lessons
       .filter((l: any) => l && typeof l === "object" && String(l.title || "").trim() && String(l.principle || "").trim())
       .map((l: any, i: number) => ({
@@ -1622,11 +1656,11 @@ router.post("/back-matter/glossary", async (req, res) => {
       tone:              String(tone || ""),
       audience:          String(audience || ""),
     });
-    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
-    const data = extractJSON(text);
-    if (!data?.terms || !Array.isArray(data.terms)) {
-      return res.status(500).json({ error: "AI returned unexpected format for glossary." });
-    }
+    const { data, usedProvider } = await runLongJSON(
+      prompt, systemPrompt(), req, res, "lesson",
+      (d) => !!(d?.terms && Array.isArray(d.terms) && d.terms.length > 0),
+      "back-matter/glossary"
+    );
     const terms = data.terms
       .filter((t: any) => t && typeof t === "object" && String(t.term || "").trim() && String(t.definition || "").trim())
       .map((t: any, i: number) => ({
@@ -1720,11 +1754,11 @@ router.post("/back-matter/appendix-entry", async (req, res) => {
       tone:              String(tone || ""),
       audience:          String(audience || ""),
     });
-    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
-    const data = extractJSON(text);
-    if (!data?.title || !data?.content) {
-      return res.status(500).json({ error: "AI returned unexpected format for appendix entry." });
-    }
+    const { data, usedProvider } = await runLongJSON(
+      prompt, systemPrompt(), req, res, "lesson",
+      (d) => !!(String(d?.title || "").trim() && String(d?.content || "").trim()),
+      "back-matter/appendix-entry"
+    );
     return res.json({
       title:    String(data.title    || "").trim(),
       category: String(data.category || "").trim(),
