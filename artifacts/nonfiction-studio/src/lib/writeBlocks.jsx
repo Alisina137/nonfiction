@@ -274,6 +274,40 @@ export function buildChapterSummaries(blocks, lessons) {
   return summaries;
 }
 
+/**
+ * Build a manuscript context object for content-aware back matter generation.
+ * Returns chapters with actual prose excerpts so the AI can derive lessons/terms
+ * from the real manuscript rather than inventing generic advice.
+ * Each block's prose is truncated to ~600 chars to keep the payload manageable.
+ */
+export function buildManuscriptContext(blocks, lessons) {
+  const PROSE_LIMIT = 600;
+  const chMap = new Map();
+  for (const block of blocks) {
+    const key = block.chapterKey;
+    if (!chMap.has(key)) {
+      chMap.set(key, { title: str(block?.chapterContext?.title) || key, blocks: [] });
+    }
+    chMap.get(key).blocks.push(block);
+  }
+  const chapters = [];
+  for (const ch of chMap.values()) {
+    const proseChunks = ch.blocks
+      .filter((b) => blockHasContent(lessons, b.id))
+      .map((b) => {
+        const prose = String(lessons?.[b.id]?.prose || "").trim();
+        const label = b.sectionTitle ? `[${b.sectionTitle}] ` : "";
+        const truncated = prose.length > PROSE_LIMIT ? prose.slice(0, PROSE_LIMIT) + "…" : prose;
+        return label + truncated;
+      })
+      .filter(Boolean);
+    if (proseChunks.length) {
+      chapters.push({ chapter: ch.title, content: proseChunks.join("\n\n") });
+    }
+  }
+  return chapters;
+}
+
 export function blockHasContent(lessons, blockId) {
   const prose = String(lessons?.[blockId]?.prose || "").trim();
   return prose.length >= 40;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { aiFetch } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
-import { buildChapterSummaries } from "@/lib/writeBlocks";
+import { buildChapterSummaries, buildManuscriptContext } from "@/lib/writeBlocks";
 
 // ─── Project helpers ──────────────────────────────────────────────────────────
 function writingTone(fp) {
@@ -704,10 +704,11 @@ export default function BackMatterSection({
   // ─── Build AI context ──────────────────────────────────────────────────────
   function buildCtx() {
     return {
-      bookContext:      buildBookContext(fullProject),
-      chapterSummaries: buildChapterSummaries(blocks, lessons),
-      tone:             writingTone(fullProject),
-      audience:         writingAudience(fullProject),
+      bookContext:       buildBookContext(fullProject),
+      chapterSummaries:  buildChapterSummaries(blocks, lessons),
+      manuscriptContent: buildManuscriptContext(blocks, lessons),
+      tone:              writingTone(fullProject),
+      audience:          writingAudience(fullProject),
     };
   }
 

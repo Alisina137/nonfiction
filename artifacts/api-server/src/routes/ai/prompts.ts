@@ -2349,18 +2349,21 @@ Length: target approximately 200–400 words, organized into clear paragraphs.` 
 ════════════════════════════════════
 KEY LESSONS — INSTRUCTIONS
 ════════════════════════════════════
-This is the book's Key Lessons section — a concise, scannable reference of the most important takeaways from the entire book. Follow these rules exactly:
+This is the book's Key Lessons section. It summarises what THIS SPECIFIC BOOK actually teaches — derived entirely from the chapters already written above. Follow these rules exactly:
 
-1. DISTILL THE MOST IMPORTANT LESSONS — Extract the single most important actionable insight from each major concept or chapter in the book. Aim for 8–15 key lessons total.
-2. BE SPECIFIC AND ACTIONABLE — Every lesson must be a concrete, memorable principle the reader can apply. Not vague wisdom — specific guidance.
-3. NUMBERED LIST FORMAT — Present lessons as a numbered list. Each item: a bold lesson headline (5–10 words) followed by 1–2 sentences of elaboration.
-4. MAINTAIN BOOK ORDER — Arrange lessons roughly in the order they appeared in the book to reinforce the narrative arc.
-5. NO DUPLICATION — Do not repeat the same idea twice in different words.
+1. READ THE CHAPTER SUMMARIES ABOVE FIRST — Every lesson must come from a concept, framework, argument, method, theory, historical event, system, or discovery that actually appears in the chapters listed in the chapter summaries block above.
+2. DERIVE ONLY FROM THIS BOOK — Write what the reader learned from reading THIS book. Do not write generic advice that would apply to any book regardless of topic.
+3. FORBIDDEN CONTENT — Never write lessons about: writing advice, publishing advice, Amazon, KDP, readability, bestseller patterns, commercial viability, marketing, SEO, formatting, writing style, content quality, or emotional intelligence in writing — unless the ENTIRE book is about those topics.
+4. NUMBERED LIST FORMAT — Present 8–15 lessons as a numbered list. Each item: a bold lesson headline (5–10 words naming the specific concept) followed by 1–2 sentences explaining what the reader learned about that concept from this book.
+5. MAINTAIN BOOK ORDER — Arrange lessons roughly in the order the concepts appeared in the chapters above.
+6. NO DUPLICATION — Do not repeat the same concept twice in different words.
 
 Writing style requirements:
-- Crisp and direct — each lesson should be immediately understandable.
-- Open with a 1–2 sentence framing paragraph before the numbered list.
-- Do NOT use vague platitudes ("Remember to stay positive") — every lesson must be tied to the book's specific content.
+- Open with a 1–2 sentence framing paragraph (e.g., "Here are the most important ideas from [Book Title]:").
+- Each lesson headline must name a specific concept from the book — not a generic principle.
+- Every lesson must reference the book's actual subject matter.
+
+Quality check before writing: "Could this exact lesson appear in a book about a completely different topic?" If yes — rewrite it to be specific to THIS book's content.
 
 Length: target approximately 400–700 words total including the numbered list.` : "";
 
@@ -2389,20 +2392,22 @@ Length: target approximately 300–600 words, or as long as genuinely useful for
 ════════════════════════════════════
 GLOSSARY — INSTRUCTIONS
 ════════════════════════════════════
-This is the book's Glossary — a reference list of key terms and definitions specific to this book and its topic. Follow these rules exactly:
+This is the book's Glossary — definitions of terms that actually appear in THIS book's chapters. Follow these rules exactly:
 
-1. INCLUDE ONLY TERMS USED IN THIS BOOK — Define only terms that actually appear in or are central to this book's content. Do not create a generic industry glossary.
-2. DEFINE CLEARLY AND CONCISELY — Each definition should be 1–3 sentences. Use plain language — avoid defining a term with another technical term the reader may not know.
-3. ALPHABETICAL ORDER — List all terms alphabetically.
-4. FORMAT — Each entry: **Term**: Definition text. One blank line between entries.
-5. AIM FOR 10–20 TERMS — Select the most important and potentially unfamiliar terms from the book. Do not pad with obvious everyday words.
-6. AVOID CIRCULAR DEFINITIONS — Do not define a term using only that term (e.g., do not define "mindset" as "a person's mindset").
+1. SCAN THE CHAPTER SUMMARIES ABOVE FIRST — Every term must come from one of the chapters listed in the chapter summaries block above. Define only terms a reader of THIS book would encounter and need explained.
+2. WHAT TO INCLUDE — Look for: people (historical figures, theorists, practitioners mentioned), places (locations relevant to the content), events (historical events or movements discussed), specialist terminology (jargon or technical vocabulary from the chapters), named theories and frameworks, technologies or tools described, organizations or institutions mentioned, historical periods, and important concepts central to this book's subject.
+3. FORBIDDEN TERMS — Never define the following unless the ENTIRE book is literally about these topics: Readability, Bestseller Patterns, Commercial Viability, Marketability, Writing Style, Content Quality Rules, Emotional Intelligence in Writing, Formatting, KDP, Amazon, SEO, Marketing. Any term you cannot trace back to a specific chapter above must not be included.
+4. DEFINE CLEARLY AND CONCISELY — Each definition: 1–3 sentences. Use plain language. Define the term as it is used in THIS book's context.
+5. ALPHABETICAL ORDER — List all terms alphabetically.
+6. FORMAT — Each entry: **Term**: Definition text. One blank line between entries.
+7. AIM FOR 10–20 TERMS — The most important and potentially unfamiliar terms from the chapters. Do not pad with obvious everyday words.
+8. AVOID CIRCULAR DEFINITIONS — Do not define a term using only that term itself.
 
 Writing style requirements:
-- Neutral, precise, and definitional in tone — not promotional or narrative.
-- Each definition must be self-contained and understandable without reading the surrounding chapters.
+- Neutral, precise, and definitional — not promotional or narrative.
+- Each definition must be self-contained and reflect how THIS book uses the term.
 
-Format: Start with a 1-sentence intro line ("The following terms are used throughout this book…"), then the alphabetical term list.
+Format: Start with a 1-sentence intro line ("The following terms appear throughout this book…"), then the alphabetical term list.
 Length: target approximately 300–600 words depending on the number of terms.` : "";
 
   // ── Back Matter: References ──
@@ -4879,38 +4884,61 @@ Return ONLY this JSON — no explanation:
 export function backMatterKeyLessonsPrompt(opts: {
   bookContext: string;
   chapterSummaries: Array<{ chapter: string; keyIdeas: string[] }>;
+  manuscriptContent: Array<{ chapter: string; content: string }>;
   tone: string;
   audience: string;
 }): string {
-  const { bookContext, chapterSummaries, tone, audience } = opts;
-  const summaries = chapterSummaries.length
-    ? `\n\nCHAPTER KEY IDEAS:\n${chapterSummaries.map(s => `${s.chapter}: ${s.keyIdeas.join("; ")}`).join("\n")}`
-    : "";
-  return `You are a professional nonfiction editor. Extract the most important, timeless lessons from this completed manuscript.
+  const { bookContext, chapterSummaries, manuscriptContent, tone, audience } = opts;
+
+  const manuscriptBlock = manuscriptContent.length
+    ? `\n\n════════════════════════════════════\nMANUSCRIPT CONTENT (read carefully — derive all lessons from this)\n════════════════════════════════════\n${
+        manuscriptContent.map(c => `[CHAPTER: ${c.chapter}]\n${c.content}`).join("\n\n---\n\n")
+      }`
+    : chapterSummaries.length
+      ? `\n\nCHAPTER KEY IDEAS:\n${chapterSummaries.map(s => `${s.chapter}: ${s.keyIdeas.join("; ")}`).join("\n")}`
+      : "";
+
+  return `You are a professional nonfiction editor creating the Key Lessons section of THIS specific book.
 
 BOOK CONTEXT:
 ${bookContext}
 Tone: ${tone || "Direct & practical"}
-Audience: ${audience || "general reader"}${summaries}
+Audience: ${audience || "general reader"}${manuscriptBlock}
 
-TASK: Identify 10–15 Key Lessons — timeless principles the reader will carry long after finishing this book.
+════════════════════════════════════
+YOUR TASK
+════════════════════════════════════
+Read the manuscript content above carefully. Identify 10–15 Key Lessons that summarize what THIS book actually teaches.
 
-Rules:
-- Each lesson must be a PRINCIPLE, not a chapter summary or plot point
-- Principles should be universal and actionable beyond the book's specific examples
-- Merge similar concepts — no duplication
-- Prioritize timeless applicability over book-specific examples
-- relatedChapters: list actual chapter titles from the book context above
+WHAT A KEY LESSON IS:
+- A concept, framework, argument, method, theory, historical event, system, discovery, or technique that appears in the manuscript above
+- Something the reader learned by reading this specific book
+- A lesson that references ideas from specific chapters listed above
+
+WHAT A KEY LESSON IS NOT:
+- Generic writing advice ("Use clear language", "Organize your writing")
+- Generic publishing advice ("Market your book", "SEO matters")
+- Any advice about: Amazon, KDP, readability, bestseller patterns, commercial viability, marketing, formatting, writing style, content quality, emotional intelligence in writing
+- A lesson that could appear in any book regardless of topic
+- Anything not traceable to the manuscript content above
+
+STRICT RULE: Every lesson MUST be derivable from a specific chapter in the manuscript above. If you cannot cite which chapter it came from, do not include it.
+
+FORMAT RULES:
+- title: 3–7 words naming the specific concept from the book (NOT a generic principle)
+- principle: One sentence explaining what the reader learned about this topic (under 30 words)
+- explanation: 2–3 sentences connecting this lesson to specific content from the manuscript — mention where it appeared and why it matters for THIS book's subject
+- relatedChapters: exact chapter titles from the manuscript above where this concept appears
 
 Return ONLY valid JSON (no markdown fences, no explanation text):
 
 {
   "lessons": [
     {
-      "title": "3-6 word memorable title",
-      "principle": "One crisp sentence stating the principle (under 25 words)",
-      "explanation": "2-3 sentences expanding on why this matters and how to apply it in real life",
-      "relatedChapters": ["Exact chapter title from the book"]
+      "title": "3-7 word title naming the specific concept",
+      "principle": "One sentence — what the reader learned about this topic from reading this book",
+      "explanation": "2-3 sentences referencing specific manuscript content — where this appeared and why it matters for this book's subject",
+      "relatedChapters": ["Exact chapter title from the manuscript above"]
     }
   ]
 }`;
@@ -4921,40 +4949,71 @@ Return ONLY valid JSON (no markdown fences, no explanation text):
 export function backMatterGlossaryPrompt(opts: {
   bookContext: string;
   chapterSummaries: Array<{ chapter: string; keyIdeas: string[] }>;
+  manuscriptContent: Array<{ chapter: string; content: string }>;
   tone: string;
   audience: string;
 }): string {
-  const { bookContext, chapterSummaries, tone, audience } = opts;
-  const summaries = chapterSummaries.length
-    ? `\n\nCHAPTER KEY IDEAS:\n${chapterSummaries.map(s => `${s.chapter}: ${s.keyIdeas.join("; ")}`).join("\n")}`
-    : "";
-  return `You are a professional nonfiction editor. Create a glossary of the most important terms from this manuscript.
+  const { bookContext, chapterSummaries, manuscriptContent, tone, audience } = opts;
+
+  const manuscriptBlock = manuscriptContent.length
+    ? `\n\n════════════════════════════════════\nMANUSCRIPT CONTENT (scan this for terms — define ONLY what appears here)\n════════════════════════════════════\n${
+        manuscriptContent.map(c => `[CHAPTER: ${c.chapter}]\n${c.content}`).join("\n\n---\n\n")
+      }`
+    : chapterSummaries.length
+      ? `\n\nCHAPTER KEY IDEAS:\n${chapterSummaries.map(s => `${s.chapter}: ${s.keyIdeas.join("; ")}`).join("\n")}`
+      : "";
+
+  return `You are a professional nonfiction editor creating the Glossary for THIS specific book.
 
 BOOK CONTEXT:
 ${bookContext}
 Tone: ${tone || "Direct & practical"}
-Audience: ${audience || "general reader"}${summaries}
+Audience: ${audience || "general reader"}${manuscriptBlock}
 
-TASK: Identify 15–25 key terms that are central to understanding this book. Define them clearly for the target audience.
+════════════════════════════════════
+YOUR TASK
+════════════════════════════════════
+Scan the manuscript content above. Identify 15–25 terms that a reader of THIS book needs defined.
 
-Rules:
-- ONLY include terms that actually appear in or are central to this book — do NOT create a generic industry glossary
-- Each definition must match the book's specific usage and context
-- firstChapter: name of the chapter where the term first appears (use exact chapter titles from the context above)
-- Merge duplicate terms — each term appears only once
-- synonyms: only include meaningful alternatives; use empty array if none
-- Do NOT include trivial or common everyday words
+WHAT TO INCLUDE — terms that actually appear in the chapters above:
+- People (historical figures, theorists, practitioners mentioned in the manuscript)
+- Places (locations, regions, countries relevant to the book's content)
+- Events (historical events, movements, periods discussed in the chapters)
+- Terminology (specialist terms, jargon, technical vocabulary used in the manuscript)
+- Theories and frameworks (named models, approaches, philosophies from the book)
+- Technologies (tools, systems, methods described in the chapters)
+- Organizations (institutions, groups, movements mentioned in the manuscript)
+- Historical periods (eras, epochs, time periods discussed)
+- Important concepts (key ideas, themes central to this book's subject matter)
+
+WHAT TO NEVER INCLUDE — these are forbidden unless the entire book is literally about these topics:
+- Readability, Readability Drives Engagement
+- Bestseller Patterns, Commercial Viability, Marketability
+- Writing Style, Content Quality Rules, Content Quality
+- Emotional Intelligence in Writing
+- Formatting, KDP, Amazon, SEO, Marketing
+- Generic self-help terms not found in the chapters above
+- Any term invented by you that does not appear in the manuscript above
+
+STRICT RULE: Every term MUST be found in the manuscript content above. If you cannot point to which chapter introduced it, do not include it.
+
+FORMAT RULES:
+- term: the exact term as it appears in the manuscript
+- definition: 1–3 sentences defining it within the context of how THIS book uses it
+- firstChapter: exact title of the chapter where the term first appears above
+- relatedChapters: other chapters where the term is used
+- synonyms: only genuine alternative names for this term; empty array if none
 
 Return ONLY valid JSON (no markdown fences, no explanation text):
 
 {
   "terms": [
     {
-      "term": "Term name",
-      "definition": "Clear, concise definition using the book's own context (1-3 sentences)",
-      "firstChapter": "Chapter title where first introduced",
-      "relatedChapters": ["Additional chapter title"],
-      "synonyms": ["alternative term if any"]
+      "term": "Term as it appears in the manuscript",
+      "definition": "1-3 sentences defining this term within the context of this book's subject matter",
+      "firstChapter": "Exact chapter title from the manuscript above where this first appears",
+      "relatedChapters": ["Additional chapter title from the manuscript above"],
+      "synonyms": ["alternative name for this term if any"]
     }
   ]
 }`;

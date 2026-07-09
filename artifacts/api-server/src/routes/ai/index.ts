@@ -1578,12 +1578,13 @@ router.post("/generate-focus-areas", async (req, res) => {
 /** POST /api/ai/back-matter/key-lessons — generate structured Key Lessons cards */
 router.post("/back-matter/key-lessons", async (req, res) => {
   try {
-    const { bookContext, chapterSummaries, tone, audience } = req.body || {};
+    const { bookContext, chapterSummaries, manuscriptContent, tone, audience } = req.body || {};
     const prompt = backMatterKeyLessonsPrompt({
-      bookContext:      String(bookContext || ""),
-      chapterSummaries: Array.isArray(chapterSummaries) ? chapterSummaries : [],
-      tone:             String(tone || ""),
-      audience:         String(audience || ""),
+      bookContext:       String(bookContext || ""),
+      chapterSummaries:  Array.isArray(chapterSummaries)  ? chapterSummaries  : [],
+      manuscriptContent: Array.isArray(manuscriptContent) ? manuscriptContent : [],
+      tone:              String(tone || ""),
+      audience:          String(audience || ""),
     });
     const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
     const data = extractJSON(text);
@@ -1611,12 +1612,13 @@ router.post("/back-matter/key-lessons", async (req, res) => {
 /** POST /api/ai/back-matter/glossary — generate structured Glossary terms */
 router.post("/back-matter/glossary", async (req, res) => {
   try {
-    const { bookContext, chapterSummaries, tone, audience } = req.body || {};
+    const { bookContext, chapterSummaries, manuscriptContent, tone, audience } = req.body || {};
     const prompt = backMatterGlossaryPrompt({
-      bookContext:      String(bookContext || ""),
-      chapterSummaries: Array.isArray(chapterSummaries) ? chapterSummaries : [],
-      tone:             String(tone || ""),
-      audience:         String(audience || ""),
+      bookContext:       String(bookContext || ""),
+      chapterSummaries:  Array.isArray(chapterSummaries)  ? chapterSummaries  : [],
+      manuscriptContent: Array.isArray(manuscriptContent) ? manuscriptContent : [],
+      tone:              String(tone || ""),
+      audience:          String(audience || ""),
     });
     const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
     const data = extractJSON(text);
