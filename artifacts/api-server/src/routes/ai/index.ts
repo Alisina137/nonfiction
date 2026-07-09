@@ -278,29 +278,23 @@ async function runLongJSON(
   res: any,
   contentType: string,
   isValid: (data: any) => boolean,
-  label: string
+  label: string,
+  maxAttempts = 3
 ): Promise<{ data: any; usedProvider: string }> {
-  const first = await runLong(prompt, system, req, res, contentType);
-  let data: any = null;
-  try { data = extractJSON(first.text); } catch (e: any) {
-    console.log(`[${label}] JSON parse failed on attempt 1:`, e?.message?.slice(0, 120));
-  }
-
-  if (!data || !isValid(data)) {
-    console.log(`[${label}] Invalid/unparseable on attempt 1 — retrying`);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const retry = await runLong(prompt, system, req, res, contentType);
-      const retryData = extractJSON(retry.text);
-      if (isValid(retryData)) return { data: retryData, usedProvider: retry.usedProvider };
+      const result = await runLong(prompt, system, req, res, contentType);
+      let data: any = null;
+      try { data = extractJSON(result.text); } catch (e: any) {
+        console.log(`[${label}] JSON parse failed on attempt ${attempt}:`, e?.message?.slice(0, 120));
+      }
+      if (data && isValid(data)) return { data, usedProvider: result.usedProvider };
+      console.log(`[${label}] Invalid/unparseable on attempt ${attempt}${attempt < maxAttempts ? " — retrying" : ""}`);
     } catch (e: any) {
-      console.log(`[${label}] Retry failed:`, e?.message?.slice(0, 120));
+      console.log(`[${label}] Generation failed on attempt ${attempt}:`, e?.message?.slice(0, 120));
     }
   }
-
-  if (!data || !isValid(data)) {
-    throw new Error(`AI returned unparseable data for ${label}. Please try again.`);
-  }
-  return { data, usedProvider: first.usedProvider };
+  throw new Error(`AI returned unparseable data for ${label} after ${maxAttempts} attempts. Please try again.`);
 }
 
 // Short-form

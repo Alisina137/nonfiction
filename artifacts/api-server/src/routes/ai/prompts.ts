@@ -5066,7 +5066,12 @@ RULES:
 - The thank-you message must feel like it was written by the actual author of this book
 - The closing quote must resonate with the book's core theme
 
-Return ONLY valid JSON (no markdown fences, no explanation text):
+CRITICAL OUTPUT FORMAT — read carefully:
+- Do NOT write a closing chapter, essay, or reflection. Do NOT use markdown headers (##), bullet points, or section titles.
+- Your entire response must be a single JSON object and nothing else — no text before or after it, no markdown code fences.
+- Keep each field short and within the word limits given above.
+
+Return ONLY this JSON object, with no other text:
 
 {
   "thankYouMessage": "The warm 2-4 sentence thank-you message to the reader (40-80 words)",
