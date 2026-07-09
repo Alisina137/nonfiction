@@ -40,7 +40,8 @@ import {
   titlesPrompt,
   backMatterKeyLessonsPrompt,
   backMatterGlossaryPrompt,
-  backMatterFurtherReadingPrompt
+  backMatterFurtherReadingPrompt,
+  backMatterAppendixEntryPrompt
 } from "./prompts.js";
 import { buildCompetitorSummariesForPrompt } from "./analysisSummary.js";
 import {
@@ -1678,6 +1679,32 @@ router.post("/back-matter/further-reading", async (req, res) => {
       }))
       .slice(0, 15);
     return res.json({ recommendations, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** POST /api/ai/back-matter/appendix-entry — generate a single AI appendix entry from the manuscript */
+router.post("/back-matter/appendix-entry", async (req, res) => {
+  try {
+    const { bookContext, manuscriptContent, tone, audience } = req.body || {};
+    const prompt = backMatterAppendixEntryPrompt({
+      bookContext:       String(bookContext || ""),
+      manuscriptContent: Array.isArray(manuscriptContent) ? manuscriptContent : [],
+      tone:              String(tone || ""),
+      audience:          String(audience || ""),
+    });
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
+    const data = extractJSON(text);
+    if (!data?.title || !data?.content) {
+      return res.status(500).json({ error: "AI returned unexpected format for appendix entry." });
+    }
+    return res.json({
+      title:    String(data.title    || "").trim(),
+      category: String(data.category || "").trim(),
+      content:  String(data.content  || "").trim(),
+      _provider: usedProvider,
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

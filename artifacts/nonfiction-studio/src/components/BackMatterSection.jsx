@@ -232,23 +232,40 @@ function KeyLessonsEditor({ data, onUpdate }) {
 }
 
 // ─── Appendix editor ──────────────────────────────────────────────────────────
-function AppendixEditor({ data, onUpdate }) {
+function AppendixEditor({ data, onUpdate, onGenerate, manuscriptReady }) {
   const entries = data?.entries || [];
   const [editId, setEditId] = useState(null);
   const [draft, setDraft] = useState({});
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState("");
 
-  function startEdit(e) { setEditId(e.id); setDraft({ ...e }); }
+  function startEdit(e) { setEditId(e.id); setDraft({ ...e }); setGenError(""); }
   function saveEdit() { onUpdate({ entries: entries.map((e) => e.id === editId ? { ...draft } : e) }); setEditId(null); }
   function del(id) { onUpdate({ entries: entries.filter((e) => e.id !== id) }); }
   function add() {
     const n = { id: `ax-${Date.now()}`, title: "New Entry", category: "", content: "" };
     onUpdate({ entries: [...entries, n] });
-    setEditId(n.id); setDraft(n);
+    setEditId(n.id); setDraft(n); setGenError("");
+  }
+
+  async function handleGenerate() {
+    if (!onGenerate) return;
+    setGenerating(true); setGenError("");
+    try {
+      const result = await onGenerate();
+      if (result?.title) {
+        setDraft((p) => ({ ...p, title: result.title, category: result.category || p.category, content: result.content || p.content }));
+      }
+    } catch (e) {
+      setGenError(e?.message || "Generation failed. Please try again.");
+    } finally {
+      setGenerating(false);
+    }
   }
 
   return (
     <div className="space-y-3">
-      {!entries.length && <p className="text-sm text-slate-400 italic">No entries yet. Add supplementary reference material manually.</p>}
+      {!entries.length && <p className="text-sm text-slate-400 italic">No entries yet. Click "+ Add entry" to add one manually, or use Generate to create one from the manuscript.</p>}
       {entries.map((e) => editId === e.id ? (
         <div key={e.id} className="rounded-xl border border-sky-200 bg-sky-50/30 p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -263,11 +280,26 @@ function AppendixEditor({ data, onUpdate }) {
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Content</label>
             <textarea className="mt-1 w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-300"
-              rows={6} value={draft.content || ""} onChange={(e2) => setDraft((p) => ({ ...p, content: e2.target.value }))} />
+              rows={8} value={draft.content || ""} onChange={(e2) => setDraft((p) => ({ ...p, content: e2.target.value }))} />
           </div>
-          <div className="flex gap-2">
+          {genError && <p className="text-[12px] text-red-500">{genError}</p>}
+          <div className="flex items-center gap-2">
+            {onGenerate && (
+              <button
+                type="button"
+                disabled={generating || !manuscriptReady}
+                onClick={handleGenerate}
+                title={!manuscriptReady ? "Complete all chapters first to enable AI generation" : "Generate from manuscript"}
+                className="flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-4 py-1.5 text-[12px] font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generating
+                  ? <><span className="h-3 w-3 animate-spin rounded-full border-2 border-violet-300 border-t-violet-600" />Generating…</>
+                  : "✦ Generate"}
+              </button>
+            )}
+            <div className="flex-1" />
             <button type="button" onClick={saveEdit} className="rounded-lg bg-sky-600 px-4 py-1.5 text-[12px] font-semibold text-white hover:bg-sky-700">Save</button>
-            <button type="button" onClick={() => setEditId(null)} className="rounded-lg border border-slate-200 px-4 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+            <button type="button" onClick={() => { setEditId(null); setGenError(""); }} className="rounded-lg border border-slate-200 px-4 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
           </div>
         </div>
       ) : (
@@ -873,7 +905,18 @@ export default function BackMatterSection({
             status={getSD(appendixNode.id)?.entries?.length > 0 && <DraftedBadge count={getSD(appendixNode.id).entries.length} label="entries" />}
             expanded={isExp("appendix")} onToggle={() => toggle("appendix")}
             borderCls="border-sky-100" bgCls="bg-sky-50/40" iconCls="text-sky-500">
-            <AppendixEditor data={getSD(appendixNode.id)} onUpdate={updateAx} />
+            <p className="mb-4 text-[13px] text-slate-500">Supplementary reference material derived from the manuscript — timelines, checklists, reference tables, or quick-reference guides.</p>
+            <AppendixEditor
+              data={getSD(appendixNode.id)}
+              onUpdate={updateAx}
+              manuscriptReady={manuscriptComplete}
+              onGenerate={async () => aiFetch("/api/ai/back-matter/appendix-entry", {
+                bookContext:       buildBookContext(fullProject),
+                manuscriptContent: buildManuscriptContext(blocks, lessons),
+                tone:              writingTone(fullProject),
+                audience:          writingAudience(fullProject),
+              }, { noCache: true })}
+            />
           </SectionCard>
         )}
 
