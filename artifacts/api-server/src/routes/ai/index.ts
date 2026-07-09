@@ -41,7 +41,8 @@ import {
   backMatterKeyLessonsPrompt,
   backMatterGlossaryPrompt,
   backMatterFurtherReadingPrompt,
-  backMatterAppendixEntryPrompt
+  backMatterAppendixEntryPrompt,
+  backMatterTheEndPrompt
 } from "./prompts.js";
 import { buildCompetitorSummariesForPrompt } from "./analysisSummary.js";
 import {
@@ -1679,6 +1680,31 @@ router.post("/back-matter/further-reading", async (req, res) => {
       }))
       .slice(0, 15);
     return res.json({ recommendations, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** POST /api/ai/back-matter/the-end — generate thank-you message and closing quote */
+router.post("/back-matter/the-end", async (req, res) => {
+  try {
+    const { bookContext, manuscriptContent, tone, audience } = req.body || {};
+    const prompt = backMatterTheEndPrompt({
+      bookContext:       String(bookContext || ""),
+      manuscriptContent: Array.isArray(manuscriptContent) ? manuscriptContent : [],
+      tone:              String(tone || ""),
+      audience:          String(audience || ""),
+    });
+    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "metadata");
+    const data = extractJSON(text);
+    if (!data?.thankYouMessage && !data?.quote) {
+      return res.status(500).json({ error: "AI returned unexpected format for The End." });
+    }
+    return res.json({
+      thankYouMessage: String(data.thankYouMessage || "").trim(),
+      quote:           String(data.quote           || "").trim(),
+      _provider: usedProvider,
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

@@ -5021,6 +5021,59 @@ Return ONLY valid JSON (no markdown fences, no explanation text):
 
 // ─── Back Matter: Further Reading (structured JSON) ──────────────────────────
 
+// ─── Back Matter: The End (structured JSON) ──────────────────────────────────
+
+export function backMatterTheEndPrompt(opts: {
+  bookContext: string;
+  manuscriptContent: Array<{ chapter: string; content: string }>;
+  tone: string;
+  audience: string;
+}): string {
+  const { bookContext, manuscriptContent, tone, audience } = opts;
+  const manuscriptBlock = manuscriptContent.length
+    ? `\n\n════════════════════════════════════\nMANUSCRIPT CONTENT (use this to personalise the closing)\n════════════════════════════════════\n${
+        manuscriptContent.map(c => `[CHAPTER: ${c.chapter}]\n${c.content}`).join("\n\n---\n\n")
+      }`
+    : "";
+  return `You are a professional nonfiction author writing the final "The End" closing page of this specific book.
+
+BOOK CONTEXT:
+${bookContext}
+Tone: ${tone || "Direct & practical"}
+Audience: ${audience || "general reader"}${manuscriptBlock}
+
+════════════════════════════════════
+YOUR TASK
+════════════════════════════════════
+Generate two things for the closing page of this book:
+
+1. THANK-YOU MESSAGE — A warm, personal 2–4 sentence message thanking the reader for completing the book. It must:
+   - Express sincere gratitude
+   - Reference this book's specific subject matter and the transformation the reader experienced
+   - Feel personal, not generic ("Thank you for reading" alone is not enough)
+   - Optionally invite the reader to share the book, leave a review, or apply what they've learned
+   - Tone: warm, celebratory, genuine — match the book's established voice
+   - Length: 40–80 words maximum
+
+2. CLOSING QUOTE — A single memorable, inspiring sentence or short quote that:
+   - Captures the core message or spirit of THIS book
+   - Could be an original author's thought, or a well-known relevant quote attributed to its author
+   - Feels like the perfect final word for a reader who just finished THIS book
+   - Length: 10–35 words
+
+RULES:
+- Both must be specific to this book's subject — not generic self-help platitudes
+- The thank-you message must feel like it was written by the actual author of this book
+- The closing quote must resonate with the book's core theme
+
+Return ONLY valid JSON (no markdown fences, no explanation text):
+
+{
+  "thankYouMessage": "The warm 2-4 sentence thank-you message to the reader (40-80 words)",
+  "quote": "The memorable closing quote or original thought (10-35 words)"
+}`;
+}
+
 // ─── Back Matter: Appendix Entry (structured JSON, single entry) ─────────────
 
 export function backMatterAppendixEntryPrompt(opts: {

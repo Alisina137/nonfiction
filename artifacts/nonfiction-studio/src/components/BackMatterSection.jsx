@@ -648,12 +648,36 @@ function AcknowledgmentsEditor({ data, onUpdate }) {
 }
 
 // ─── The End editor ───────────────────────────────────────────────────────────
-function TheEndEditor({ data, onUpdate }) {
+function TheEndEditor({ data, onUpdate, onGenerate, manuscriptReady }) {
   const msg   = data?.thankYouMessage || "";
   const quote = data?.quote || "";
+  const [generating, setGenerating] = useState(false);
+  const [genError,   setGenError]   = useState("");
+
+  async function handleGenerate() {
+    if (!onGenerate) return;
+    setGenerating(true); setGenError("");
+    try {
+      const result = await onGenerate();
+      if (result?.thankYouMessage || result?.quote) {
+        onUpdate({
+          ...data,
+          thankYouMessage: result.thankYouMessage || msg,
+          quote:           result.quote           || quote,
+        });
+      }
+    } catch (e) {
+      setGenError(e?.message || "Generation failed. Please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  const hasContent = Boolean(msg || quote);
 
   return (
     <div className="space-y-6">
+      {/* Live preview */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-8 py-14 text-center select-none">
         <div className="absolute inset-0 bg-gradient-to-t from-violet-900/20 to-transparent pointer-events-none" />
         <p className="relative text-[11px] font-bold uppercase tracking-[3px] text-violet-400 mb-4">Reading Complete</p>
@@ -668,6 +692,27 @@ function TheEndEditor({ data, onUpdate }) {
           <span className="text-[12px] font-semibold text-violet-400">100%</span>
         </div>
       </div>
+
+      {/* Generate button row */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={generating || !manuscriptReady}
+          onClick={handleGenerate}
+          title={!manuscriptReady ? "Complete all chapters first to enable AI generation" : "Generate thank-you message and closing quote from the manuscript"}
+          className="flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-[12px] font-semibold text-violet-700 shadow-sm transition hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {generating
+            ? <><span className="h-3 w-3 animate-spin rounded-full border-2 border-violet-300 border-t-violet-600" />Generating…</>
+            : hasContent ? "↻ Regenerate" : "✦ Generate"}
+        </button>
+        {!manuscriptReady && (
+          <p className="text-[12px] text-slate-400">Complete all chapters to unlock AI generation.</p>
+        )}
+        {genError && <p className="text-[12px] text-red-500">{genError}</p>}
+      </div>
+
+      {/* Fields */}
       <div className="space-y-4">
         <div>
           <label className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">Thank-you message</label>
@@ -967,7 +1012,17 @@ export default function BackMatterSection({
           <SectionCard icon="★" sectionLabel="Back Matter · 9 of 9" title={theEndNode.title || "The End"}
             expanded={isExp("theEnd")} onToggle={() => toggle("theEnd")}
             borderCls="border-purple-100" bgCls="bg-purple-50/40" iconCls="text-purple-500">
-            <TheEndEditor data={getSD(theEndNode.id) || {}} onUpdate={updateEnd} />
+            <TheEndEditor
+              data={getSD(theEndNode.id) || {}}
+              onUpdate={updateEnd}
+              manuscriptReady={manuscriptComplete}
+              onGenerate={async () => aiFetch("/api/ai/back-matter/the-end", {
+                bookContext:       buildBookContext(fullProject),
+                manuscriptContent: buildManuscriptContext(blocks, lessons),
+                tone:              writingTone(fullProject),
+                audience:          writingAudience(fullProject),
+              }, { noCache: true })}
+            />
           </SectionCard>
         )}
 
