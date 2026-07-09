@@ -1729,11 +1729,11 @@ router.post("/back-matter/the-end", async (req, res) => {
       tone:              String(tone || ""),
       audience:          String(audience || ""),
     });
-    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "metadata");
-    const data = extractJSON(text);
-    if (!data?.thankYouMessage && !data?.quote) {
-      return res.status(500).json({ error: "AI returned unexpected format for The End." });
-    }
+    const { data, usedProvider } = await runLongJSON(
+      prompt, systemPrompt(), req, res, "metadata",
+      (d) => !!(String(d?.thankYouMessage || "").trim() || String(d?.quote || "").trim()),
+      "back-matter/the-end"
+    );
     return res.json({
       thankYouMessage: String(data.thankYouMessage || "").trim(),
       quote:           String(data.quote           || "").trim(),
