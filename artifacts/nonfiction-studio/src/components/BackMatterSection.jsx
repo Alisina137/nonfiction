@@ -498,7 +498,7 @@ function FurtherReadingEditor({ data, onUpdate }) {
 // ─── Acknowledgments editor ───────────────────────────────────────────────────
 const ACK_DEFAULTS = ["Individuals", "Organizations", "Editors", "Reviewers", "Community", "Supporters"];
 
-function AcknowledgmentsEditor({ data, onUpdate }) {
+function AcknowledgmentsEditor({ data, onUpdate, onGenerateGroup, busyGroupId }) {
   const groups = data?.groups?.length
     ? data.groups
     : ACK_DEFAULTS.map((name) => ({ id: `ack-${name.toLowerCase()}`, name, text: "" }));
@@ -516,11 +516,31 @@ function AcknowledgmentsEditor({ data, onUpdate }) {
   return (
     <div className="space-y-4">
       <p className="text-[13px] text-slate-500">Thank the people and organizations who contributed to this book. Each group is a separate paragraph in the published version.</p>
-      {groups.map((g) => (
+      {groups.map((g) => {
+        const isThisBusy = busyGroupId === g.id;
+        return (
         <div key={g.id}>
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-1 gap-2">
             <label className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">{g.name}</label>
-            <button type="button" onClick={() => deleteGroup(g.id)} className="text-[11px] text-slate-300 hover:text-red-400">Remove</button>
+            <div className="flex items-center gap-2">
+              {onGenerateGroup && (
+                <button
+                  type="button"
+                  disabled={Boolean(busyGroupId) && !isThisBusy}
+                  onClick={() => onGenerateGroup(g.id)}
+                  className="flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isThisBusy ? (
+                    <><span className="h-3 w-3 animate-spin rounded-full border-2 border-rose-300 border-t-rose-600" />Writing…</>
+                  ) : g.text?.trim() ? (
+                    <>↻ Regenerate</>
+                  ) : (
+                    <>✦ Generate</>
+                  )}
+                </button>
+              )}
+              <button type="button" onClick={() => deleteGroup(g.id)} className="text-[11px] text-slate-300 hover:text-red-400">Remove</button>
+            </div>
           </div>
           <textarea
             className="w-full resize-y rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-[14px] leading-relaxed text-slate-700 outline-none transition focus:border-rose-300 focus:ring-1 focus:ring-rose-100"
@@ -528,9 +548,11 @@ function AcknowledgmentsEditor({ data, onUpdate }) {
             placeholder={`Thank the ${g.name.toLowerCase()} who contributed…`}
             value={g.text || ""}
             onChange={(e) => updateGroup(g.id, e.target.value)}
+            disabled={isThisBusy}
           />
         </div>
-      ))}
+        );
+      })}
       {addingGroup ? (
         <div className="flex items-center gap-2">
           <input className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-rose-300"
@@ -731,6 +753,25 @@ export default function BackMatterSection({
     finally { setBusySection(null); }
   }
 
+  async function genAckGroup(groupId, groupName, applyResult) {
+    if (!groupId) return;
+    setBusySection(`ack-${groupId}`); setStatus(`Generating "${groupName}"…`);
+    try {
+      const data = await aiFetch("/api/ai/back-matter/acknowledgments-entry", {
+        bookContext:       buildBookContext(fullProject),
+        groupName,
+        manuscriptContent: buildManuscriptContext(blocks, lessons),
+        tone:              writingTone(fullProject),
+        audience:          writingAudience(fullProject),
+      }, { noCache: true });
+      if (data?.text) {
+        applyResult(data.text);
+        setStatus(`Generated "${groupName}".`);
+      }
+    } catch (e) { setStatus(e.message || `Failed to generate "${groupName}".`); }
+    finally { setBusySection(null); }
+  }
+
   async function generateAll() {
     setBatchBusy(true); setStatus("Generating back matter…");
     try {
@@ -756,6 +797,18 @@ export default function BackMatterSection({
   const updateRef = (sd) => referencesNode?.id      && setSD(referencesNode.id,      sd, referencesToProse(sd.groups));
   const updateFR  = (sd) => furtherReadingNode?.id  && setSD(furtherReadingNode.id,  sd, furtherReadingToProse(sd.recommendations));
   const updateAck = (sd) => ackNode?.id             && setSD(ackNode.id,             sd, acknowledgmentsToProse(sd.groups));
+  const ackData = getSD(ackNode?.id);
+  const ackGroupsForGen = ackData?.groups?.length
+    ? ackData.groups
+    : ACK_DEFAULTS.map((name) => ({ id: `ack-${name.toLowerCase()}`, name, text: "" }));
+  function generateAckGroupById(groupId) {
+    const g = ackGroupsForGen.find((x) => x.id === groupId);
+    if (!g) return;
+    genAckGroup(g.id, g.name, (text) => {
+      const nextGroups = ackGroupsForGen.map((x) => x.id === groupId ? { ...x, text } : x);
+      updateAck({ groups: nextGroups });
+    });
+  }
   const updateEnd = (sd) => theEndNode?.id          && setSD(theEndNode.id,          sd, theEndToProse(sd));
 
   const lockMsg = manuscriptComplete ? null : "Complete all chapters and sections first.";
@@ -883,7 +936,12 @@ export default function BackMatterSection({
           <SectionCard icon="♡" sectionLabel="Back Matter · 7 of 8" title={ackNode.title || "Acknowledgments"}
             expanded={isExp("backAcknowledgments")} onToggle={() => toggle("backAcknowledgments")}
             borderCls="border-rose-100" bgCls="bg-rose-50/40" iconCls="text-rose-500">
-            <AcknowledgmentsEditor data={getSD(ackNode.id)} onUpdate={updateAck} />
+            <AcknowledgmentsEditor
+              data={getSD(ackNode.id)}
+              onUpdate={updateAck}
+              onGenerateGroup={generateAckGroupById}
+              busyGroupId={busySection?.startsWith("ack-") ? busySection.slice(4) : null}
+            />
           </SectionCard>
         )}
 

@@ -5079,6 +5079,48 @@ Return ONLY this JSON object, with no other text:
 }`;
 }
 
+export function backMatterAcknowledgmentsGroupPrompt(opts: {
+  bookContext: string;
+  groupName: string;
+  manuscriptContent: Array<{ chapter: string; content: string }>;
+  tone: string;
+  audience: string;
+}): string {
+  const { bookContext, groupName, manuscriptContent, tone, audience } = opts;
+  const manuscriptBlock = manuscriptContent.length
+    ? `\n\n════════════════════════════════════\nMANUSCRIPT CONTENT (use only for tone/context — do not summarize it)\n════════════════════════════════════\n${
+        manuscriptContent.map(c => `[CHAPTER: ${c.chapter}]\n${c.content}`).join("\n\n---\n\n")
+      }`
+    : "";
+  return `You are a professional nonfiction author writing ONE paragraph of the Acknowledgments page for this specific book.
+
+BOOK CONTEXT:
+${bookContext}
+Tone: ${tone || "Direct & practical"}
+Audience: ${audience || "general reader"}${manuscriptBlock}
+
+════════════════════════════════════
+YOUR TASK
+════════════════════════════════════
+Write a short, warm, sincere acknowledgments paragraph thanking the group: "${groupName}".
+
+RULES:
+- Write ONLY the paragraph for this one group — do not mention or thank any other group
+- Keep it plausible and generic enough to fit any author of this book (do not invent specific names unless the group name itself implies a role, e.g. "Editors")
+- Sincere, warm tone matching the book's voice — not generic filler
+- 2-4 sentences, approximately 40-90 words
+- No headers, labels, or the group name itself as a title — just the flowing thank-you text
+
+CRITICAL OUTPUT FORMAT:
+- Your entire response must be a single JSON object and nothing else — no text before or after it, no markdown code fences.
+
+Return ONLY this JSON object, with no other text:
+
+{
+  "text": "The 2-4 sentence acknowledgments paragraph for this group (40-90 words)"
+}`;
+}
+
 export function backMatterFurtherReadingPrompt(opts: {
   bookContext: string;
   chapterSummaries: Array<{ chapter: string; keyIdeas: string[] }>;

@@ -41,6 +41,7 @@ import {
   backMatterKeyLessonsPrompt,
   backMatterGlossaryPrompt,
   backMatterFurtherReadingPrompt,
+  backMatterAcknowledgmentsGroupPrompt,
   backMatterTheEndPrompt
 } from "./prompts.js";
 import { buildCompetitorSummariesForPrompt } from "./analysisSummary.js";
@@ -1707,6 +1708,31 @@ router.post("/back-matter/further-reading", async (req, res) => {
       }))
       .slice(0, 15);
     return res.json({ recommendations, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** POST /api/ai/back-matter/acknowledgments-entry — generate one acknowledgments group's paragraph */
+router.post("/back-matter/acknowledgments-entry", async (req, res) => {
+  try {
+    const { bookContext, groupName, manuscriptContent, tone, audience } = req.body || {};
+    const prompt = backMatterAcknowledgmentsGroupPrompt({
+      bookContext:       String(bookContext || ""),
+      groupName:         String(groupName || "").trim() || "Everyone who helped",
+      manuscriptContent: Array.isArray(manuscriptContent) ? manuscriptContent : [],
+      tone:              String(tone || ""),
+      audience:          String(audience || ""),
+    });
+    const { data, usedProvider } = await runLongJSON(
+      prompt, systemPrompt(), req, res, "metadata",
+      (d) => !!String(d?.text || "").trim(),
+      "back-matter/acknowledgments-entry"
+    );
+    return res.json({
+      text: String(data.text || "").trim(),
+      _provider: usedProvider,
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
