@@ -42,7 +42,6 @@ export function seedBookOutline(previous, chapterCountFromDetails, wordCountRang
       conclusion:          normalizeConclusion(prev.conclusion),
       epilogue:            normalizeEpilogue(prev.epilogue),
       keyLessons:          normalizeKeyLessons(prev.keyLessons),
-      appendix:            normalizeAppendix(prev.appendix),
       glossary:            normalizeGlossary(prev.glossary),
       references:          normalizeReferences(prev.references),
       furtherReading:      normalizeFurtherReading(prev.furtherReading),
@@ -109,7 +108,6 @@ export function seedBookOutline(previous, chapterCountFromDetails, wordCountRang
     },
     epilogue:            normalizeEpilogue(prev.epilogue),
     keyLessons:          normalizeKeyLessons(prev.keyLessons),
-    appendix:            normalizeAppendix(prev.appendix),
     glossary:            normalizeGlossary(prev.glossary),
     references:          normalizeReferences(prev.references),
     furtherReading:      normalizeFurtherReading(prev.furtherReading),
@@ -150,10 +148,6 @@ function normalizeEpilogue(x) {
 function normalizeKeyLessons(x) {
   const v = x && typeof x === "object" ? x : {};
   return { id: v.id || "keyLessons", title: v.title || "Key Lessons", words: Number(v.words) || 0 };
-}
-function normalizeAppendix(x) {
-  const v = x && typeof x === "object" ? x : {};
-  return { id: v.id || "appendix", title: v.title || "Appendix", words: Number(v.words) || 0 };
 }
 function normalizeGlossary(x) {
   const v = x && typeof x === "object" ? x : {};
@@ -262,7 +256,6 @@ function normalizedBookOutline(raw) {
     conclusion:          normalizeConclusion(r.conclusion),
     epilogue:            normalizeEpilogue(r.epilogue),
     keyLessons:          normalizeKeyLessons(r.keyLessons),
-    appendix:            normalizeAppendix(r.appendix),
     glossary:            normalizeGlossary(r.glossary),
     references:          normalizeReferences(r.references),
     furtherReading:      normalizeFurtherReading(r.furtherReading),
@@ -460,7 +453,6 @@ export default function OutlineStep({
   const conclusion          = normalizeConclusion(boRaw.conclusion);
   const epilogue            = normalizeEpilogue(boRaw.epilogue);
   const keyLessons          = normalizeKeyLessons(boRaw.keyLessons);
-  const appendix            = normalizeAppendix(boRaw.appendix);
   const glossary            = normalizeGlossary(boRaw.glossary);
   const references          = normalizeReferences(boRaw.references);
   const furtherReading      = normalizeFurtherReading(boRaw.furtherReading);
@@ -517,7 +509,6 @@ export default function OutlineStep({
 
   function patchEpilogue(patch)            { commit((d) => ({ ...d, epilogue:            { ...epilogue,            ...patch } })); }
   function patchKeyLessons(patch)          { commit((d) => ({ ...d, keyLessons:          { ...keyLessons,          ...patch } })); }
-  function patchAppendix(patch)            { commit((d) => ({ ...d, appendix:            { ...appendix,            ...patch } })); }
   function patchGlossary(patch)            { commit((d) => ({ ...d, glossary:            { ...glossary,            ...patch } })); }
   function patchReferences(patch)          { commit((d) => ({ ...d, references:          { ...references,          ...patch } })); }
   function patchFurtherReading(patch)      { commit((d) => ({ ...d, furtherReading:      { ...furtherReading,      ...patch } })); }
@@ -1306,7 +1297,6 @@ export default function OutlineStep({
           {[
             { node: epilogue,            patchFn: patchEpilogue,            dflt: "Epilogue" },
             { node: keyLessons,          patchFn: patchKeyLessons,          dflt: "Key Lessons" },
-            { node: appendix,            patchFn: patchAppendix,            dflt: "Appendix" },
             { node: glossary,            patchFn: patchGlossary,            dflt: "Glossary" },
             { node: references,          patchFn: patchReferences,          dflt: "References" },
             { node: furtherReading,      patchFn: patchFurtherReading,      dflt: "Further Reading" },

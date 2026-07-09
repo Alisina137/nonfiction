@@ -43,10 +43,6 @@ function furtherReadingToProse(recs) {
       r.description, r.why && `Why recommended: ${r.why}`, r.url || ""].filter(Boolean).join("\n")
   ).join("\n\n");
 }
-function appendixToProse(entries) {
-  if (!entries?.length) return "";
-  return entries.map((e) => [`${e.title}${e.category ? ` [${e.category}]` : ""}`, "", e.content].filter((x) => x !== undefined).join("\n")).join("\n\n---\n\n");
-}
 function referencesToProse(groups) {
   if (!groups) return "";
   const parts = [];
@@ -226,99 +222,6 @@ function KeyLessonsEditor({ data, onUpdate }) {
       ))}
       <button type="button" onClick={add} className="flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-4 py-2 text-[12px] font-medium text-slate-500 hover:border-amber-300 hover:text-amber-600">
         + Add lesson
-      </button>
-    </div>
-  );
-}
-
-// ─── Appendix editor ──────────────────────────────────────────────────────────
-function AppendixEditor({ data, onUpdate, onGenerate, manuscriptReady }) {
-  const entries = data?.entries || [];
-  const [editId, setEditId] = useState(null);
-  const [draft, setDraft] = useState({});
-  const [generating, setGenerating] = useState(false);
-  const [genError, setGenError] = useState("");
-
-  function startEdit(e) { setEditId(e.id); setDraft({ ...e }); setGenError(""); }
-  function saveEdit() { onUpdate({ entries: entries.map((e) => e.id === editId ? { ...draft } : e) }); setEditId(null); }
-  function del(id) { onUpdate({ entries: entries.filter((e) => e.id !== id) }); }
-  function add() {
-    const n = { id: `ax-${Date.now()}`, title: "New Entry", category: "", content: "" };
-    onUpdate({ entries: [...entries, n] });
-    setEditId(n.id); setDraft(n); setGenError("");
-  }
-
-  async function handleGenerate() {
-    if (!onGenerate) return;
-    setGenerating(true); setGenError("");
-    try {
-      const result = await onGenerate();
-      if (result?.title) {
-        setDraft((p) => ({ ...p, title: result.title, category: result.category || p.category, content: result.content || p.content }));
-      }
-    } catch (e) {
-      setGenError(e?.message || "Generation failed. Please try again.");
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      {!entries.length && <p className="text-sm text-slate-400 italic">No entries yet. Click "+ Add entry" to add one manually, or use Generate to create one from the manuscript.</p>}
-      {entries.map((e) => editId === e.id ? (
-        <div key={e.id} className="rounded-xl border border-sky-200 bg-sky-50/30 p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            {[["Title", "title"], ["Category", "category"]].map(([lbl, field]) => (
-              <div key={field}>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{lbl}</label>
-                <input className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-sky-300"
-                  value={draft[field] || ""} onChange={(e2) => setDraft((p) => ({ ...p, [field]: e2.target.value }))} />
-              </div>
-            ))}
-          </div>
-          <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Content</label>
-            <textarea className="mt-1 w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-300"
-              rows={8} value={draft.content || ""} onChange={(e2) => setDraft((p) => ({ ...p, content: e2.target.value }))} />
-          </div>
-          {genError && <p className="text-[12px] text-red-500">{genError}</p>}
-          <div className="flex items-center gap-2">
-            {onGenerate && (
-              <button
-                type="button"
-                disabled={generating || !manuscriptReady}
-                onClick={handleGenerate}
-                title={!manuscriptReady ? "Complete all chapters first to enable AI generation" : "Generate from manuscript"}
-                className="flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-4 py-1.5 text-[12px] font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {generating
-                  ? <><span className="h-3 w-3 animate-spin rounded-full border-2 border-violet-300 border-t-violet-600" />Generating…</>
-                  : "✦ Generate"}
-              </button>
-            )}
-            <div className="flex-1" />
-            <button type="button" onClick={saveEdit} className="rounded-lg bg-sky-600 px-4 py-1.5 text-[12px] font-semibold text-white hover:bg-sky-700">Save</button>
-            <button type="button" onClick={() => { setEditId(null); setGenError(""); }} className="rounded-lg border border-slate-200 px-4 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
-          </div>
-        </div>
-      ) : (
-        <div key={e.id} className="group flex items-start justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4 hover:border-sky-200 transition">
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-slate-900">{e.title}</p>
-              {e.category && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] text-sky-700">{e.category}</span>}
-            </div>
-            {e.content && <p className="mt-1 text-[13px] text-slate-500 line-clamp-2">{e.content}</p>}
-          </div>
-          <div className="flex shrink-0 gap-1 opacity-0 group-hover:opacity-100 transition">
-            <button type="button" onClick={() => startEdit(e)} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50">Edit</button>
-            <button type="button" onClick={() => del(e.id)} className="rounded-lg border border-red-100 bg-white px-2 py-1 text-[11px] font-medium text-red-400 hover:bg-red-50">×</button>
-          </div>
-        </div>
-      ))}
-      <button type="button" onClick={add} className="flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-4 py-2 text-[12px] font-medium text-slate-500 hover:border-sky-300 hover:text-sky-600">
-        + Add entry
       </button>
     </div>
   );
@@ -741,7 +644,6 @@ export default function BackMatterSection({
   const conclusion         = outline.conclusion;
   const epilogueNode       = outline.epilogue;
   const keyLessonsNode     = outline.keyLessons;
-  const appendixNode       = outline.appendix;
   const glossaryNode       = outline.glossary;
   const referencesNode     = outline.references;
   const furtherReadingNode = outline.furtherReading;
@@ -850,7 +752,6 @@ export default function BackMatterSection({
 
   // ─── Structured data updaters ──────────────────────────────────────────────
   const updateKL  = (sd) => keyLessonsNode?.id     && setSD(keyLessonsNode.id,     sd, keyLessonsToProse(sd.lessons));
-  const updateAx  = (sd) => appendixNode?.id        && setSD(appendixNode.id,        sd, appendixToProse(sd.entries));
   const updateGl  = (sd) => glossaryNode?.id        && setSD(glossaryNode.id,        sd, glossaryToProse(sd.terms));
   const updateRef = (sd) => referencesNode?.id      && setSD(referencesNode.id,      sd, referencesToProse(sd.groups));
   const updateFR  = (sd) => furtherReadingNode?.id  && setSD(furtherReadingNode.id,  sd, furtherReadingToProse(sd.recommendations));
@@ -859,7 +760,7 @@ export default function BackMatterSection({
 
   const lockMsg = manuscriptComplete ? null : "Complete all chapters and sections first.";
   const hasAnyNode = conclusion?.id || epilogueNode?.id || keyLessonsNode?.id ||
-    appendixNode?.id || glossaryNode?.id || referencesNode?.id ||
+    glossaryNode?.id || referencesNode?.id ||
     furtherReadingNode?.id || ackNode?.id || theEndNode?.id;
 
   if (!hasAnyNode) return null;
@@ -905,7 +806,7 @@ export default function BackMatterSection({
           const block = blockById?.get(conclusion.id);
           const done  = hasProse(conclusion.id);
           return (
-            <SectionCard icon="◎" sectionLabel="Back Matter · 1 of 9" title={conclusion.title || "Conclusion"}
+            <SectionCard icon="◎" sectionLabel="Back Matter · 1 of 8" title={conclusion.title || "Conclusion"}
               status={done && <DraftedBadge />}
               expanded={isExp("conclusion")} onToggle={() => toggle("conclusion")}
               borderCls="border-slate-200" bgCls="bg-slate-50/60" iconCls="text-slate-500"
@@ -921,7 +822,7 @@ export default function BackMatterSection({
           const block = blockById?.get(epilogueNode.id);
           const done  = hasProse(epilogueNode.id);
           return (
-            <SectionCard icon="✦" sectionLabel="Back Matter · 2 of 9" title={epilogueNode.title || "Epilogue"}
+            <SectionCard icon="✦" sectionLabel="Back Matter · 2 of 8" title={epilogueNode.title || "Epilogue"}
               status={done && <DraftedBadge />}
               expanded={isExp("epilogue")} onToggle={() => toggle("epilogue")}
               borderCls="border-violet-100" bgCls="bg-violet-50/40" iconCls="text-violet-500"
@@ -934,7 +835,7 @@ export default function BackMatterSection({
 
         {/* 3 — Key Lessons */}
         {keyLessonsNode?.id && (
-          <SectionCard icon="◈" sectionLabel="Back Matter · 3 of 9" title={keyLessonsNode.title || "Key Lessons"}
+          <SectionCard icon="◈" sectionLabel="Back Matter · 3 of 8" title={keyLessonsNode.title || "Key Lessons"}
             status={hasKL && <DraftedBadge count={getSD(keyLessonsNode.id)?.lessons?.length} label="lessons" />}
             expanded={isExp("keyLessons")} onToggle={() => toggle("keyLessons")}
             borderCls="border-amber-100" bgCls="bg-amber-50/40" iconCls="text-amber-500"
@@ -944,30 +845,9 @@ export default function BackMatterSection({
           </SectionCard>
         )}
 
-        {/* 4 — Appendix */}
-        {appendixNode?.id && (
-          <SectionCard icon="⊞" sectionLabel="Back Matter · 4 of 9" title={appendixNode.title || "Appendix"}
-            status={getSD(appendixNode.id)?.entries?.length > 0 && <DraftedBadge count={getSD(appendixNode.id).entries.length} label="entries" />}
-            expanded={isExp("appendix")} onToggle={() => toggle("appendix")}
-            borderCls="border-sky-100" bgCls="bg-sky-50/40" iconCls="text-sky-500">
-            <p className="mb-4 text-[13px] text-slate-500">Supplementary reference material derived from the manuscript — timelines, checklists, reference tables, or quick-reference guides.</p>
-            <AppendixEditor
-              data={getSD(appendixNode.id)}
-              onUpdate={updateAx}
-              manuscriptReady={manuscriptComplete}
-              onGenerate={async () => aiFetch("/api/ai/back-matter/appendix-entry", {
-                bookContext:       buildBookContext(fullProject),
-                manuscriptContent: buildManuscriptContext(blocks, lessons),
-                tone:              writingTone(fullProject),
-                audience:          writingAudience(fullProject),
-              }, { noCache: true })}
-            />
-          </SectionCard>
-        )}
-
-        {/* 5 — Glossary */}
+        {/* 4 — Glossary */}
         {glossaryNode?.id && (
-          <SectionCard icon="≡" sectionLabel="Back Matter · 5 of 9" title={glossaryNode.title || "Glossary"}
+          <SectionCard icon="≡" sectionLabel="Back Matter · 4 of 8" title={glossaryNode.title || "Glossary"}
             status={hasGl && <DraftedBadge count={getSD(glossaryNode.id)?.terms?.length} label="terms" />}
             expanded={isExp("glossary")} onToggle={() => toggle("glossary")}
             borderCls="border-teal-100" bgCls="bg-teal-50/40" iconCls="text-teal-500"
@@ -977,18 +857,18 @@ export default function BackMatterSection({
           </SectionCard>
         )}
 
-        {/* 6 — References */}
+        {/* 5 — References */}
         {referencesNode?.id && (
-          <SectionCard icon="◉" sectionLabel="Back Matter · 6 of 9" title={referencesNode.title || "References"}
+          <SectionCard icon="◉" sectionLabel="Back Matter · 5 of 8" title={referencesNode.title || "References"}
             expanded={isExp("references")} onToggle={() => toggle("references")}
             borderCls="border-green-100" bgCls="bg-green-50/40" iconCls="text-green-600">
             <ReferencesEditor data={getSD(referencesNode.id)} onUpdate={updateRef} />
           </SectionCard>
         )}
 
-        {/* 7 — Further Reading */}
+        {/* 6 — Further Reading */}
         {furtherReadingNode?.id && (
-          <SectionCard icon="→" sectionLabel="Back Matter · 7 of 9" title={furtherReadingNode.title || "Further Reading"}
+          <SectionCard icon="→" sectionLabel="Back Matter · 6 of 8" title={furtherReadingNode.title || "Further Reading"}
             status={hasFR && <DraftedBadge count={getSD(furtherReadingNode.id)?.recommendations?.length} label="picks" />}
             expanded={isExp("furtherReading")} onToggle={() => toggle("furtherReading")}
             borderCls="border-indigo-100" bgCls="bg-indigo-50/40" iconCls="text-indigo-500"
@@ -998,18 +878,18 @@ export default function BackMatterSection({
           </SectionCard>
         )}
 
-        {/* 8 — Acknowledgments */}
+        {/* 7 — Acknowledgments */}
         {ackNode?.id && (
-          <SectionCard icon="♡" sectionLabel="Back Matter · 8 of 9" title={ackNode.title || "Acknowledgments"}
+          <SectionCard icon="♡" sectionLabel="Back Matter · 7 of 8" title={ackNode.title || "Acknowledgments"}
             expanded={isExp("backAcknowledgments")} onToggle={() => toggle("backAcknowledgments")}
             borderCls="border-rose-100" bgCls="bg-rose-50/40" iconCls="text-rose-500">
             <AcknowledgmentsEditor data={getSD(ackNode.id)} onUpdate={updateAck} />
           </SectionCard>
         )}
 
-        {/* 9 — The End */}
+        {/* 8 — The End */}
         {theEndNode?.id && (
-          <SectionCard icon="★" sectionLabel="Back Matter · 9 of 9" title={theEndNode.title || "The End"}
+          <SectionCard icon="★" sectionLabel="Back Matter · 8 of 8" title={theEndNode.title || "The End"}
             expanded={isExp("theEnd")} onToggle={() => toggle("theEnd")}
             borderCls="border-purple-100" bgCls="bg-purple-50/40" iconCls="text-purple-500">
             <TheEndEditor

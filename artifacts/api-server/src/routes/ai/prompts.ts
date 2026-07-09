@@ -5079,58 +5079,6 @@ Return ONLY this JSON object, with no other text:
 }`;
 }
 
-// ─── Back Matter: Appendix Entry (structured JSON, single entry) ─────────────
-
-export function backMatterAppendixEntryPrompt(opts: {
-  bookContext: string;
-  manuscriptContent: Array<{ chapter: string; content: string }>;
-  tone: string;
-  audience: string;
-}): string {
-  const { bookContext, manuscriptContent, tone, audience } = opts;
-  const manuscriptBlock = manuscriptContent.length
-    ? `\n\n════════════════════════════════════\nMANUSCRIPT CONTENT (analyze this — derive the appendix from it)\n════════════════════════════════════\n${
-        manuscriptContent.map(c => `[CHAPTER: ${c.chapter}]\n${c.content}`).join("\n\n---\n\n")
-      }`
-    : "";
-  return `You are a professional nonfiction editor creating ONE appendix entry for this specific book.
-
-BOOK CONTEXT:
-${bookContext}
-Tone: ${tone || "Direct & practical"}
-Audience: ${audience || "general reader"}${manuscriptBlock}
-
-════════════════════════════════════
-YOUR TASK
-════════════════════════════════════
-Read the manuscript content above. Determine what kind of supplementary appendix would be most useful for readers of THIS specific book. Generate exactly one appendix entry.
-
-WHAT APPENDIX TYPE TO CHOOSE — pick the format that best fits the actual book content:
-- History / biography book → "Timeline of Major Events" (chronological list)
-- Science / medical / technical book → "Key Terms Reference" or "Symptoms Comparison Table"
-- Business / productivity book → "Implementation Checklist" or "Quick Reference Framework"
-- Programming / software book → "Command Reference" or "Code Patterns Reference"
-- Travel / geography book → "Country / Region Quick Facts"
-- Self-development book → "Action Plan Template" or "Chapter-by-Chapter Summary"
-- Research / academic book → "Methodology Overview" or "Data Summary Table"
-- Any other type → choose the format that best serves the reader given the actual chapters
-
-STRICT RULES:
-- Derive ALL content from the chapters in the manuscript above
-- Never generate generic writing advice, publishing advice, KDP tips, or SEO material
-- Never invent topics that do not appear in the manuscript
-- The content field should be substantial and ready-to-use — not just a description of what WOULD be there, but the actual material (the timeline events, the checklist items, the reference entries, etc.), formatted clearly with line breaks, bullets, or numbered items as appropriate
-- Aim for 200–600 words in the content field
-
-Return ONLY valid JSON (no markdown fences, no explanation text):
-
-{
-  "title": "Short, specific title for this appendix entry (e.g., 'Timeline of Major Events')",
-  "category": "One of: Timeline, Checklist, Reference Guide, Reference Table, Quick Reference, Template, Glossary, Index, Data Summary, Command Reference, or similar — one to three words",
-  "content": "The actual appendix content — fully written out, formatted with line breaks and structure (bullets, numbered items, or a timeline), ready for the reader to use. Based entirely on the manuscript chapters above."
-}`;
-}
-
 export function backMatterFurtherReadingPrompt(opts: {
   bookContext: string;
   chapterSummaries: Array<{ chapter: string; keyIdeas: string[] }>;

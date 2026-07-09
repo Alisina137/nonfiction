@@ -106,7 +106,6 @@ const emptyBookOutline = {
   conclusion:            { id: "concl",                title: "Conclusion",      words: 0 },
   epilogue:              { id: "epilogue",              title: "Epilogue",        words: 0 },
   keyLessons:            { id: "keyLessons",            title: "Key Lessons",     words: 0 },
-  appendix:              { id: "appendix",              title: "Appendix",        words: 0 },
   glossary:              { id: "glossary",              title: "Glossary",        words: 0 },
   references:            { id: "references",            title: "References",      words: 0 },
   furtherReading:        { id: "furtherReading",        title: "Further Reading", words: 0 },
@@ -438,7 +437,7 @@ function migrateProject(raw) {
         title: typeof conclRaw?.title === "string" ? conclRaw.title : "Conclusion",
         words: typeof conclRaw?.words === "number" && !Number.isNaN(conclRaw.words) ? conclRaw.words : 0
       },
-      ...["epilogue","keyLessons","appendix","glossary","references","furtherReading","backAcknowledgments","theEnd"].reduce((acc, key) => {
+      ...["epilogue","keyLessons","glossary","references","furtherReading","backAcknowledgments","theEnd"].reduce((acc, key) => {
         const dflt = emptyBookOutline[key];
         const raw  = p.bookOutline[key];
         acc[key] = {

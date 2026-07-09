@@ -41,7 +41,6 @@ import {
   backMatterKeyLessonsPrompt,
   backMatterGlossaryPrompt,
   backMatterFurtherReadingPrompt,
-  backMatterAppendixEntryPrompt,
   backMatterTheEndPrompt
 } from "./prompts.js";
 import { buildCompetitorSummariesForPrompt } from "./analysisSummary.js";
@@ -1731,32 +1730,6 @@ router.post("/back-matter/the-end", async (req, res) => {
     return res.json({
       thankYouMessage: String(data.thankYouMessage || "").trim(),
       quote:           String(data.quote           || "").trim(),
-      _provider: usedProvider,
-    });
-  } catch (error: any) {
-    return aiErrorResponse(res, error);
-  }
-});
-
-/** POST /api/ai/back-matter/appendix-entry — generate a single AI appendix entry from the manuscript */
-router.post("/back-matter/appendix-entry", async (req, res) => {
-  try {
-    const { bookContext, manuscriptContent, tone, audience } = req.body || {};
-    const prompt = backMatterAppendixEntryPrompt({
-      bookContext:       String(bookContext || ""),
-      manuscriptContent: Array.isArray(manuscriptContent) ? manuscriptContent : [],
-      tone:              String(tone || ""),
-      audience:          String(audience || ""),
-    });
-    const { data, usedProvider } = await runLongJSON(
-      prompt, systemPrompt(), req, res, "lesson",
-      (d) => !!(String(d?.title || "").trim() && String(d?.content || "").trim()),
-      "back-matter/appendix-entry"
-    );
-    return res.json({
-      title:    String(data.title    || "").trim(),
-      category: String(data.category || "").trim(),
-      content:  String(data.content  || "").trim(),
       _provider: usedProvider,
     });
   } catch (error: any) {

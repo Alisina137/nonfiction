@@ -26,7 +26,6 @@ function realSubsection(sub, fallbackRole) {
 export const BACK_MATTER_SECTIONS = [
   { key: "epilogue",            role: "epilogue",            defaultTitle: "Epilogue",        chKey: "__epilogue__" },
   { key: "keyLessons",          role: "keyLessons",          defaultTitle: "Key Lessons",     chKey: "__keyLessons__" },
-  { key: "appendix",            role: "appendix",            defaultTitle: "Appendix",        chKey: "__appendix__" },
   { key: "glossary",            role: "glossary",            defaultTitle: "Glossary",        chKey: "__glossary__" },
   { key: "references",          role: "references",          defaultTitle: "References",      chKey: "__references__" },
   { key: "furtherReading",      role: "furtherReading",      defaultTitle: "Further Reading", chKey: "__furtherReading__" },
