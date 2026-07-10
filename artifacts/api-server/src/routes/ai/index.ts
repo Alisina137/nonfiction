@@ -269,8 +269,11 @@ async function runLong(prompt: string, system: string, req: any, res: any, conte
   return { text, usedProvider };
 }
 
-// Long-form + JSON parse with one automatic retry if the AI response fails to parse
-// or doesn't pass `isValid`. Guards against occasional truncated/malformed JSON output.
+// Long-form + JSON parse with automatic retries if the AI response fails to parse
+// or doesn't pass `isValid`. Guards against occasional truncated/malformed JSON output,
+// and against models (e.g. Groq/Llama) that ignore "JSON only" instructions and return prose.
+// On retry, the prompt is reinforced with an explicit correction referencing the bad response,
+// and — for structured (array) shapes — a markdown/plain-text repair pass is attempted as a last resort.
 async function runLongJSON(
   prompt: string,
   system: string,
@@ -279,17 +282,34 @@ async function runLongJSON(
   contentType: string,
   isValid: (data: any) => boolean,
   label: string,
-  maxAttempts = 3
+  maxAttempts = 4,
+  repairFromText?: (raw: string) => any
 ): Promise<{ data: any; usedProvider: string }> {
+  let currentPrompt = prompt;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const result = await runLong(prompt, system, req, res, contentType);
+      const result = await runLong(currentPrompt, system, req, res, contentType);
       let data: any = null;
       try { data = extractJSON(result.text); } catch (e: any) {
         console.log(`[${label}] JSON parse failed on attempt ${attempt}:`, e?.message?.slice(0, 120));
       }
       if (data && isValid(data)) return { data, usedProvider: result.usedProvider };
+
+      if ((!data || !isValid(data)) && repairFromText) {
+        try {
+          const repaired = repairFromText(result.text);
+          if (repaired && isValid(repaired)) {
+            console.log(`[${label}] Recovered structured data from non-JSON response on attempt ${attempt}`);
+            return { data: repaired, usedProvider: result.usedProvider };
+          }
+        } catch { /* ignore repair failures, fall through to retry */ }
+      }
+
       console.log(`[${label}] Invalid/unparseable on attempt ${attempt}${attempt < maxAttempts ? " — retrying" : ""}`);
+      // Reinforce JSON-only compliance on the next attempt, quoting the bad response so the
+      // model can see exactly what it did wrong.
+      const badSnippet = String(result.text || "").slice(0, 300);
+      currentPrompt = `${prompt}\n\n════════════════════════════════════\nIMPORTANT — RETRY\n════════════════════════════════════\nYour previous response was NOT valid JSON and could not be used:\n"""\n${badSnippet}\n"""\nYou MUST respond with ONLY a single valid JSON object/array as instructed above — no prose, no markdown, no headers, no commentary before or after it.`;
     } catch (e: any) {
       console.log(`[${label}] Generation failed on attempt ${attempt}:`, e?.message?.slice(0, 120));
     }
@@ -1605,6 +1625,34 @@ router.post("/generate-focus-areas", async (req, res) => {
   }
 });
 
+/** Best-effort recovery of Key Lessons from a markdown/prose response when the model
+ *  ignored the "JSON only" instruction. Looks for bold/heading titles followed by body text. */
+function repairKeyLessonsFromText(raw: string): { lessons: any[] } | null {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  // Split on lines that look like a title: markdown heading, bold text, or "N. Title" / "Title:" patterns
+  const lines = text.split(/\r?\n/);
+  const lessons: any[] = [];
+  let current: { title: string; body: string[] } | null = null;
+  const titleRe = /^(?:#{1,4}\s+|\*\*|\d+[.)]\s+)?\**([A-Z][^*\n:]{2,80}?)\**\s*:?\s*$/;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const m = trimmed.match(titleRe);
+    if (m && trimmed.length < 100 && !trimmed.endsWith(".")) {
+      if (current) lessons.push(current);
+      current = { title: m[1].trim(), body: [] };
+    } else if (current) {
+      current.body.push(trimmed.replace(/^\*\*|\*\*$/g, ""));
+    }
+  }
+  if (current) lessons.push(current);
+  const mapped = lessons
+    .filter((l) => l.title && l.body.length)
+    .map((l) => ({ title: l.title, principle: l.body[0] || l.title, explanation: l.body.join(" ") }));
+  return mapped.length ? { lessons: mapped } : null;
+}
+
 /** POST /api/ai/back-matter/key-lessons — generate structured Key Lessons cards */
 router.post("/back-matter/key-lessons", async (req, res) => {
   try {
@@ -1619,7 +1667,9 @@ router.post("/back-matter/key-lessons", async (req, res) => {
     const { data, usedProvider } = await runLongJSON(
       prompt, systemPrompt(), req, res, "lesson",
       (d) => !!(d?.lessons && Array.isArray(d.lessons) && d.lessons.length > 0),
-      "back-matter/key-lessons"
+      "back-matter/key-lessons",
+      4,
+      repairKeyLessonsFromText
     );
     const lessons = data.lessons
       .filter((l: any) => l && typeof l === "object" && String(l.title || "").trim() && String(l.principle || "").trim())
@@ -1639,6 +1689,25 @@ router.post("/back-matter/key-lessons", async (req, res) => {
   }
 });
 
+/** Best-effort recovery of Glossary terms from a markdown/prose response when the model
+ *  ignored the "JSON only" instruction. Handles patterns like "**Term** – definition" or "Term: definition". */
+function repairGlossaryFromText(raw: string): { terms: any[] } | null {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  const lines = text.split(/\r?\n/);
+  const terms: any[] = [];
+  const termRe = /^(?:[-*]\s+)?\**([A-Z][A-Za-z0-9 /'()-]{1,60}?)\**\s*[:\u2013\u2014-]\s+(.{10,400})$/;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const m = trimmed.match(termRe);
+    if (m) {
+      terms.push({ term: m[1].trim(), definition: m[2].trim() });
+    }
+  }
+  return terms.length ? { terms } : null;
+}
+
 /** POST /api/ai/back-matter/glossary — generate structured Glossary terms */
 router.post("/back-matter/glossary", async (req, res) => {
   try {
@@ -1653,7 +1722,9 @@ router.post("/back-matter/glossary", async (req, res) => {
     const { data, usedProvider } = await runLongJSON(
       prompt, systemPrompt(), req, res, "lesson",
       (d) => !!(d?.terms && Array.isArray(d.terms) && d.terms.length > 0),
-      "back-matter/glossary"
+      "back-matter/glossary",
+      4,
+      repairGlossaryFromText
     );
     const terms = data.terms
       .filter((t: any) => t && typeof t === "object" && String(t.term || "").trim() && String(t.definition || "").trim())
