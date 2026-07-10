@@ -1876,6 +1876,48 @@ router.post("/back-matter/acknowledgments-entry", async (req, res) => {
   }
 });
 
+/** Best-effort recovery of thankYouMessage/quote when the model writes freeform prose
+ *  instead of JSON (common with smaller fallback models on this task). */
+function repairTheEndFromText(raw: string): { thankYouMessage: string; quote: string } | null {
+  let text = String(raw || "").trim();
+  if (!text) return null;
+
+  // Strip markdown headers/titles like "**The End**" or "**Title**" and horizontal rules.
+  text = text
+    .replace(/^\*{1,3}[^\n*][^\n]*\*{1,3}\s*$/gm, "")
+    .replace(/^#{1,6}\s+.*$/gm, "")
+    .replace(/^-{3,}\s*$/gm, "")
+    .trim();
+
+  const QUOTE_CHARS = `["“][^"”]{10,200}["”]`;
+  let quote = "";
+  let matchedSpan = "";
+
+  // 1. Prefer a quote with an explicit attribution ("..." - Author) — almost never a book title.
+  let m = text.match(new RegExp(`(${QUOTE_CHARS})\\s*[-–—]\\s*[A-Z][\\w .]{2,60}`));
+  // 2. Otherwise, a quote that sits alone on its own line (no surrounding sentence, no trailing comma).
+  if (!m) m = text.match(new RegExp(`^\\s*(${QUOTE_CHARS})\\s*$`, "m"));
+  // 3. Otherwise, any quoted span NOT immediately followed by a comma (which usually signals
+  //    an inline reference like a book title embedded in a sentence, e.g. `"Book Title," I want...`).
+  if (!m) {
+    const all = [...text.matchAll(new RegExp(QUOTE_CHARS, "g"))];
+    m = all.find((cand) => text[cand.index! + cand[0].length] !== ",") || all[0] || null;
+    if (m) m = [m[0], m[0]] as any;
+  }
+  if (m) {
+    matchedSpan = m[0];
+    quote = m[1].replace(/^["“]|["”]$/g, "").trim();
+    text = text.replace(matchedSpan, "").trim();
+  }
+
+  // Remaining prose, collapsed to a single paragraph, becomes the thank-you message.
+  const paragraphs = text.split(/\n{2,}/).map((p) => p.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const thankYouMessage = paragraphs.sort((a, b) => b.length - a.length)[0] || "";
+
+  if (!thankYouMessage && !quote) return null;
+  return { thankYouMessage, quote };
+}
+
 /** POST /api/ai/back-matter/the-end — generate thank-you message and closing quote */
 router.post("/back-matter/the-end", async (req, res) => {
   try {
@@ -1889,7 +1931,9 @@ router.post("/back-matter/the-end", async (req, res) => {
     const { data, usedProvider } = await runLongJSON(
       prompt, systemPrompt(), req, res, "metadata",
       (d) => !!(String(d?.thankYouMessage || "").trim() && String(d?.quote || "").trim()),
-      "back-matter/the-end"
+      "back-matter/the-end",
+      4,
+      repairTheEndFromText
     );
     return res.json({
       thankYouMessage: String(data.thankYouMessage || "").trim(),
