@@ -5019,6 +5019,67 @@ Return ONLY valid JSON (no markdown fences, no explanation text):
 }`;
 }
 
+export function backMatterGlossaryTermPrompt(opts: {
+  bookContext: string;
+  manuscriptContent: Array<{ chapter: string; content: string }>;
+  tone: string;
+  audience: string;
+  existingTerms: string[];
+  termHint: string;
+}): string {
+  const { bookContext, manuscriptContent, tone, audience, existingTerms, termHint } = opts;
+
+  const manuscriptBlock = manuscriptContent.length
+    ? `\n\n════════════════════════════════════\nMANUSCRIPT CONTENT (scan this for terms — define ONLY what appears here)\n════════════════════════════════════\n${
+        manuscriptContent.map(c => `[CHAPTER: ${c.chapter}]\n${c.content}`).join("\n\n---\n\n")
+      }`
+    : "";
+  const existingBlock = existingTerms.length
+    ? `\n\nTERMS ALREADY IN THE GLOSSARY (do NOT repeat any of these):\n${existingTerms.join(", ")}`
+    : "";
+  const hintBlock = termHint.trim()
+    ? `\n\nThe author wants this specific term defined: "${termHint.trim()}". Use the manuscript above to understand how this book uses it.`
+    : `\n\nPick ONE additional term not already in the glossary that a reader of this book needs defined.`;
+
+  return `You are a professional nonfiction editor adding ONE new entry to the Glossary of THIS specific book.
+
+BOOK CONTEXT:
+${bookContext}
+Tone: ${tone || "Direct & practical"}
+Audience: ${audience || "general reader"}${manuscriptBlock}${existingBlock}${hintBlock}
+
+════════════════════════════════════
+YOUR TASK
+════════════════════════════════════
+Produce exactly ONE glossary entry, found in (or clearly implied by) the manuscript content above.
+
+WHAT TO NEVER INCLUDE — forbidden unless the entire book is literally about these topics:
+- Readability, Bestseller Patterns, Commercial Viability, Marketability
+- Writing Style, Content Quality Rules, Formatting, KDP, Amazon, SEO, Marketing
+- Generic self-help terms not found in the chapters above
+- Any of the terms already listed above as existing
+
+FORMAT RULES:
+- term: the exact term as it appears in (or fits naturally into) the manuscript
+- definition: 1–3 sentences defining it within the context of how THIS book uses it
+- firstChapter: exact chapter title from the manuscript above where it first appears (best guess if using a hint not directly quoted)
+- relatedChapters: other chapters where the term is used, if any
+- synonyms: genuine alternative names for this term; empty array if none
+
+CRITICAL OUTPUT FORMAT:
+- Your entire response must be a single JSON object and nothing else — no text before or after it, no markdown code fences, no commentary.
+
+Return ONLY this JSON object, with no other text:
+
+{
+  "term": "Term as it appears in the manuscript",
+  "definition": "1-3 sentences defining this term within the context of this book's subject matter",
+  "firstChapter": "Exact chapter title from the manuscript above where this first appears",
+  "relatedChapters": ["Additional chapter title from the manuscript above"],
+  "synonyms": ["alternative name for this term if any"]
+}`;
+}
+
 // ─── Back Matter: Further Reading (structured JSON) ──────────────────────────
 
 // ─── Back Matter: The End (structured JSON) ──────────────────────────────────

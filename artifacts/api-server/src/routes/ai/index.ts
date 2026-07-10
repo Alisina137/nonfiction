@@ -40,6 +40,7 @@ import {
   titlesPrompt,
   backMatterKeyLessonsPrompt,
   backMatterGlossaryPrompt,
+  backMatterGlossaryTermPrompt,
   backMatterFurtherReadingPrompt,
   backMatterAcknowledgmentsGroupPrompt,
   backMatterTheEndPrompt
@@ -1743,6 +1744,51 @@ router.post("/back-matter/glossary", async (req, res) => {
       .sort((a: any, b: any) => a.term.localeCompare(b.term))
       .slice(0, 30);
     return res.json({ terms, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+/** Best-effort recovery of a single Glossary term from a non-JSON response. */
+function repairGlossaryTermFromText(raw: string): { term: string; definition: string; firstChapter?: string; relatedChapters?: string[]; synonyms?: string[] } | null {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  const m = text.match(/^(?:[-*]\s+)?\**([A-Z][A-Za-z0-9 /'()-]{1,60}?)\**\s*[:\u2013\u2014-]\s+([\s\S]{10,600})$/);
+  if (m) return { term: m[1].trim(), definition: m[2].trim().split(/\r?\n/)[0].trim() };
+  return null;
+}
+
+/** POST /api/ai/back-matter/glossary-entry — generate one new Glossary term's full data */
+router.post("/back-matter/glossary-entry", async (req, res) => {
+  try {
+    const { bookContext, manuscriptContent, tone, audience, existingTerms, termHint } = req.body || {};
+    const prompt = backMatterGlossaryTermPrompt({
+      bookContext:       String(bookContext || ""),
+      manuscriptContent: Array.isArray(manuscriptContent) ? manuscriptContent : [],
+      tone:              String(tone || ""),
+      audience:          String(audience || ""),
+      existingTerms:     Array.isArray(existingTerms) ? existingTerms.map((t: any) => String(t || "").trim()).filter(Boolean) : [],
+      termHint:          String(termHint || ""),
+    });
+    const { data, usedProvider } = await runLongJSON(
+      prompt, systemPrompt(), req, res, "metadata",
+      (d) => !!String(d?.term || "").trim() && !!String(d?.definition || "").trim(),
+      "back-matter/glossary-entry",
+      4,
+      repairGlossaryTermFromText
+    );
+    return res.json({
+      term:            String(data.term || "").trim(),
+      definition:      String(data.definition || "").trim(),
+      firstChapter:    String(data.firstChapter || "").trim(),
+      relatedChapters: Array.isArray(data.relatedChapters)
+        ? data.relatedChapters.map((c: any) => String(c || "").trim()).filter(Boolean)
+        : [],
+      synonyms: Array.isArray(data.synonyms)
+        ? data.synonyms.map((s: any) => String(s || "").trim()).filter(Boolean)
+        : [],
+      _provider: usedProvider,
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

@@ -228,7 +228,7 @@ function KeyLessonsEditor({ data, onUpdate }) {
 }
 
 // ─── Glossary editor ──────────────────────────────────────────────────────────
-function GlossaryEditor({ data, onUpdate }) {
+function GlossaryEditor({ data, onUpdate, onGenerateTerm, generatingTermId }) {
   const terms = data?.terms || [];
   const [editId, setEditId] = useState(null);
   const [draft, setDraft] = useState({});
@@ -293,6 +293,23 @@ function GlossaryEditor({ data, onUpdate }) {
             <div className="flex gap-2">
               <button type="button" onClick={saveEdit} className="rounded-lg bg-teal-600 px-4 py-1.5 text-[12px] font-semibold text-white hover:bg-teal-700">Save</button>
               <button type="button" onClick={() => setEditId(null)} className="rounded-lg border border-slate-200 px-4 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+              {onGenerateTerm && (
+                <button
+                  type="button"
+                  disabled={generatingTermId === t.id}
+                  onClick={async () => {
+                    const result = await onGenerateTerm(t.id, draft.term && draft.term !== "New Term" ? draft.term : "");
+                    if (result) setDraft((p) => ({ ...p, ...result }));
+                  }}
+                  className="ml-auto flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-[12px] font-semibold text-teal-700 shadow-sm transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {generatingTermId === t.id ? (
+                    <><span className="h-3 w-3 animate-spin rounded-full border-2 border-teal-300 border-t-teal-600" />Generating…</>
+                  ) : (
+                    <>✦ Generate</>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -753,6 +770,37 @@ export default function BackMatterSection({
     finally { setBusySection(null); }
   }
 
+  async function genGlossaryTerm(termId, termHint) {
+    if (!termId) return null;
+    setBusySection(`glossary-term-${termId}`); setStatus("Generating glossary term…");
+    try {
+      const existingTerms = (getSD(glossaryNode?.id)?.terms || [])
+        .filter((t) => t.id !== termId)
+        .map((t) => t.term)
+        .filter(Boolean);
+      const data = await aiFetch("/api/ai/back-matter/glossary-entry", {
+        bookContext:       buildBookContext(fullProject),
+        manuscriptContent: buildManuscriptContext(blocks, lessons),
+        tone:              writingTone(fullProject),
+        audience:          writingAudience(fullProject),
+        existingTerms,
+        termHint:          termHint || "",
+      }, { noCache: true });
+      if (data?.term) {
+        setStatus(`Generated "${data.term}".`);
+        return {
+          term: data.term,
+          definition: data.definition || "",
+          firstChapter: data.firstChapter || "",
+          relatedChapters: data.relatedChapters || [],
+          synonyms: data.synonyms || [],
+        };
+      }
+      return null;
+    } catch (e) { setStatus(e.message || "Failed to generate glossary term."); return null; }
+    finally { setBusySection(null); }
+  }
+
   async function genAckGroup(groupId, groupName, applyResult) {
     if (!groupId) return;
     setBusySection(`ack-${groupId}`); setStatus(`Generating "${groupName}"…`);
@@ -906,7 +954,7 @@ export default function BackMatterSection({
             borderCls="border-teal-100" bgCls="bg-teal-50/40" iconCls="text-teal-500"
             headerRight={<GenBtn busy={secBusy("glossary")} hasContent={hasGl} disabled={anyBusy || !manuscriptComplete} onClick={() => genGlossary(true)} />}>
             <p className="mb-4 text-[13px] text-slate-500">A searchable, alphabetical dictionary of key terms as used specifically in this book, with chapter references.</p>
-            <GlossaryEditor data={getSD(glossaryNode.id)} onUpdate={updateGl} />
+            <GlossaryEditor data={getSD(glossaryNode.id)} onUpdate={updateGl} onGenerateTerm={genGlossaryTerm} generatingTermId={busySection?.startsWith("glossary-term-") ? busySection.replace("glossary-term-", "") : null} />
           </SectionCard>
         )}
 
