@@ -1713,6 +1713,19 @@ router.post("/back-matter/further-reading", async (req, res) => {
   }
 });
 
+/** Strips common non-JSON prose wrappers (leading "Here's a paragraph:", quotes, markdown) from a raw AI response
+ *  so it can be used directly as plain text when the model ignores the "JSON only" instruction. */
+function extractPlainTextFallback(raw: string): string {
+  let text = String(raw || "").trim();
+  // Drop a leading intro line like "Here's the paragraph:" / "Sure, here is..." if followed by the actual content
+  text = text.replace(/^(?:here'?s|sure,?|certainly,?|of course,?)[^\n:]{0,80}[:\n]\s*/i, "").trim();
+  // Strip wrapping quotes
+  text = text.replace(/^["“]([\s\S]*)["”]$/, "$1").trim();
+  // Strip markdown emphasis wrappers around the whole text
+  text = text.replace(/^\*\*([\s\S]*)\*\*$/, "$1").trim();
+  return text;
+}
+
 /** POST /api/ai/back-matter/acknowledgments-entry — generate one acknowledgments group's paragraph */
 router.post("/back-matter/acknowledgments-entry", async (req, res) => {
   try {
@@ -1724,15 +1737,23 @@ router.post("/back-matter/acknowledgments-entry", async (req, res) => {
       tone:              String(tone || ""),
       audience:          String(audience || ""),
     });
-    const { data, usedProvider } = await runLongJSON(
-      prompt, systemPrompt(), req, res, "metadata",
-      (d) => !!String(d?.text || "").trim(),
-      "back-matter/acknowledgments-entry"
-    );
-    return res.json({
-      text: String(data.text || "").trim(),
-      _provider: usedProvider,
-    });
+    const maxTokens = TOKEN_LIMITS.metadata ?? TOKEN_LIMITS.default;
+    const taskType  = CONTENT_TYPE_TO_TASK.metadata;
+    const opts      = { ...aiOptsFromReq(req, maxTokens), ...(taskType ? { taskType } : {}) };
+    const { text: rawText, usedProvider, exhaustedProviders } = await generateContent(prompt, systemPrompt(), opts);
+    setProviderHeader(res, usedProvider, exhaustedProviders);
+
+    let text = "";
+    try {
+      const parsed = extractJSON(rawText);
+      text = String(parsed?.text || "").trim();
+    } catch {
+      // Model ignored the "JSON only" instruction — fall back to using the raw prose directly.
+    }
+    if (!text) text = extractPlainTextFallback(rawText);
+    if (!text) throw new Error(`AI returned an empty response for back-matter/acknowledgments-entry. Please try again.`);
+
+    return res.json({ text, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
