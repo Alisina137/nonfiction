@@ -1888,7 +1888,7 @@ router.post("/back-matter/the-end", async (req, res) => {
     });
     const { data, usedProvider } = await runLongJSON(
       prompt, systemPrompt(), req, res, "metadata",
-      (d) => !!(String(d?.thankYouMessage || "").trim() || String(d?.quote || "").trim()),
+      (d) => !!(String(d?.thankYouMessage || "").trim() && String(d?.quote || "").trim()),
       "back-matter/the-end"
     );
     return res.json({
