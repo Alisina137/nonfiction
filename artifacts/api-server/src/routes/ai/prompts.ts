@@ -4944,6 +4944,72 @@ Return ONLY valid JSON (no markdown fences, no explanation text):
 }`;
 }
 
+// ─── Back Matter: References (structured JSON) ───────────────────────────────
+
+export function backMatterReferencesPrompt(opts: {
+  bookContext: string;
+  manuscriptContent: Array<{ chapter: string; content: string }>;
+  tone: string;
+  audience: string;
+}): string {
+  const { bookContext, manuscriptContent, tone, audience } = opts;
+
+  const manuscriptBlock = manuscriptContent.length
+    ? `\n\n════════════════════════════════════\nMANUSCRIPT CONTENT (scan this for every citable source)\n════════════════════════════════════\n${
+        manuscriptContent.map(c => `[CHAPTER: ${c.chapter}]\n${c.content}`).join("\n\n---\n\n")
+      }`
+    : "";
+
+  return `You are a professional nonfiction editor and researcher compiling the References section for THIS specific book.
+
+BOOK CONTEXT:
+${bookContext}
+Tone: ${tone || "Direct & practical"}
+Audience: ${audience || "general reader"}${manuscriptBlock}
+
+════════════════════════════════════
+YOUR TASK
+════════════════════════════════════
+Carefully scan the entire manuscript above for every book, study, article, framework, statistic, standard, tool, or authority it cites, quotes, paraphrases, or clearly relies on. Compile a References list of AT LEAST 15 distinct, real, verifiable sources that a reader could plausibly look up — do not invent fictitious sources, but you may supply the well-known, real-world source that a mentioned concept, study, or framework is known to come from (e.g. if the manuscript discusses "the Eisenhower Matrix", cite its real-world origin).
+
+Assign EVERY reference to exactly ONE of these six groups, based on what kind of source it is:
+- "Books" — full-length published books
+- "Articles" — magazine, newspaper, or blog articles
+- "Research Papers" — academic papers, peer-reviewed studies, journal articles
+- "Standards" — official standards, regulations, certifications, ISO/industry standards
+- "Official Documentation" — government, institutional, or organizational official documentation/reports
+- "Websites" — general websites, tools, or online resources not covered above
+
+RULES:
+- Use the exact group names above, verbatim, as the "group" field.
+- Distribute references realistically across groups based on what the manuscript actually draws on — do not force every group to be non-empty if the book's content doesn't warrant it.
+- Prioritize sources that are directly tied to specific claims, statistics, frameworks, or quotes found in the manuscript above.
+- author: the real author, organization, or publisher of the source
+- title: the real title of the book/article/paper/standard/site
+- publication: journal name, publisher, or hosting organization, if applicable (empty string if not applicable)
+- year: best-known real publication year, or empty string if unknown
+- url: a real, plausible URL only if you are confident it is accurate; otherwise empty string
+- notes: one short clause on why this book cites/relies on this source (optional, empty string if none)
+
+CRITICAL: You MUST return at least 15 references total across all groups combined.
+
+Return ONLY valid JSON (no markdown fences, no explanation text):
+
+{
+  "references": [
+    {
+      "group": "Books",
+      "author": "Author Name",
+      "title": "Source Title",
+      "publication": "Publisher or Journal (if applicable)",
+      "year": "Year",
+      "url": "",
+      "notes": "Why this book relies on/cites this source"
+    }
+  ]
+}`;
+}
+
 // ─── Back Matter: Glossary (structured JSON) ─────────────────────────────────
 
 export function backMatterGlossaryPrompt(opts: {

@@ -41,6 +41,7 @@ import {
   backMatterKeyLessonsPrompt,
   backMatterGlossaryPrompt,
   backMatterGlossaryTermPrompt,
+  backMatterReferencesPrompt,
   backMatterFurtherReadingPrompt,
   backMatterAcknowledgmentsGroupPrompt,
   backMatterTheEndPrompt
@@ -1789,6 +1790,91 @@ router.post("/back-matter/glossary-entry", async (req, res) => {
         : [],
       _provider: usedProvider,
     });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+const REF_VALID_GROUPS = ["Books", "Articles", "Research Papers", "Standards", "Official Documentation", "Websites"];
+
+/** Normalize a loosely-matching AI-provided group name to one of our canonical REF_VALID_GROUPS. */
+function normalizeRefGroup(raw: string): string {
+  const g = String(raw || "").trim().toLowerCase();
+  if (!g) return "Websites";
+  if (g.includes("book")) return "Books";
+  if (g.includes("research") || g.includes("paper") || g.includes("journal") || g.includes("study")) return "Research Papers";
+  if (g.includes("standard") || g.includes("regulation") || g.includes("certif")) return "Standards";
+  if (g.includes("official") || g.includes("documentation") || g.includes("government") || g.includes("report")) return "Official Documentation";
+  if (g.includes("article")) return "Articles";
+  if (g.includes("website") || g.includes("site") || g.includes("tool") || g.includes("online")) return "Websites";
+  return "Websites";
+}
+
+/** Best-effort recovery of References from a markdown/prose response when the model
+ *  ignored the "JSON only" instruction. Looks for "Author. Title. Publication, Year." lines. */
+function repairReferencesFromText(raw: string): { references: any[] } | null {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  const lines = text.split(/\r?\n/);
+  const references: any[] = [];
+  let currentGroup = "Websites";
+  const groupHeaderRe = /^#{0,4}\s*\**\s*(Books|Articles|Research Papers|Standards|Official Documentation|Websites)\s*\**\s*$/i;
+  const entryRe = /^(?:\d+[.)]\s+)?\**([^"*\n]{2,80}?)\.?\**\s+["“]?([^".\n]{3,150})["”]?\.?\s*(.*)$/;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const gm = trimmed.match(groupHeaderRe);
+    if (gm) { currentGroup = normalizeRefGroup(gm[1]); continue; }
+    const m = trimmed.match(entryRe);
+    if (m) {
+      references.push({
+        group: currentGroup,
+        author: m[1].trim(),
+        title: m[2].trim(),
+        publication: "",
+        year: (m[3].match(/\b(19|20)\d{2}\b/) || [])[0] || "",
+        url: (m[3].match(/https?:\/\/\S+/) || [])[0] || "",
+        notes: "",
+      });
+    }
+  }
+  return references.length ? { references } : null;
+}
+
+/** POST /api/ai/back-matter/references — scan manuscript and generate 15+ structured References */
+router.post("/back-matter/references", async (req, res) => {
+  try {
+    const { bookContext, manuscriptContent, tone, audience } = req.body || {};
+    const prompt = backMatterReferencesPrompt({
+      bookContext:       String(bookContext || ""),
+      manuscriptContent: Array.isArray(manuscriptContent) ? manuscriptContent : [],
+      tone:              String(tone || ""),
+      audience:          String(audience || ""),
+    });
+    const { data, usedProvider } = await runLongJSON(
+      prompt, systemPrompt(), req, res, "research",
+      (d) => !!(d?.references && Array.isArray(d.references) && d.references.length >= 15),
+      "back-matter/references",
+      4,
+      repairReferencesFromText
+    );
+    const groups: Record<string, any[]> = {};
+    for (const g of REF_VALID_GROUPS) groups[g] = [];
+    data.references
+      .filter((r: any) => r && typeof r === "object" && String(r.title || "").trim())
+      .forEach((r: any, i: number) => {
+        const group = normalizeRefGroup(r.group);
+        groups[group].push({
+          id:          `ref-${Date.now()}-${i}`,
+          title:       String(r.title || "").trim(),
+          author:      String(r.author || "").trim(),
+          publication: String(r.publication || "").trim(),
+          year:        String(r.year || "").trim(),
+          url:         String(r.url || "").trim(),
+          notes:       String(r.notes || "").trim(),
+        });
+      });
+    return res.json({ groups, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

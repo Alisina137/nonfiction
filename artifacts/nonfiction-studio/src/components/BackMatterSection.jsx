@@ -718,6 +718,7 @@ export default function BackMatterSection({
   const hasKL    = Boolean(keyLessonsNode?.id     && getSD(keyLessonsNode.id)?.lessons?.length > 0);
   const hasGl    = Boolean(glossaryNode?.id       && getSD(glossaryNode.id)?.terms?.length > 0);
   const hasFR    = Boolean(furtherReadingNode?.id  && getSD(furtherReadingNode.id)?.recommendations?.length > 0);
+  const hasRef   = Boolean(referencesNode?.id      && Object.values(getSD(referencesNode.id)?.groups || {}).some((arr) => arr?.length > 0));
 
   // ─── Build AI context ──────────────────────────────────────────────────────
   function buildCtx() {
@@ -754,6 +755,20 @@ export default function BackMatterSection({
         setStatus(`Generated ${data.terms.length} glossary terms.`);
       }
     } catch (e) { setStatus(e.message || "Failed to generate glossary."); }
+    finally { setBusySection(null); }
+  }
+
+  async function genReferences(force = false) {
+    if (!referencesNode?.id || (!force && hasRef)) return;
+    setBusySection("references"); setStatus("Scanning manuscript for references…");
+    try {
+      const data = await aiFetch("/api/ai/back-matter/references", buildCtx(), { noCache: true });
+      if (data?.groups) {
+        const total = Object.values(data.groups).reduce((n, arr) => n + (arr?.length || 0), 0);
+        setSD(referencesNode.id, { groups: data.groups }, referencesToProse(data.groups));
+        setStatus(`Generated ${total} references.`);
+      }
+    } catch (e) { setStatus(e.message || "Failed to generate references."); }
     finally { setBusySection(null); }
   }
 
@@ -962,7 +977,9 @@ export default function BackMatterSection({
         {referencesNode?.id && (
           <SectionCard icon="◉" sectionLabel="Back Matter · 5 of 8" title={referencesNode.title || "References"}
             expanded={isExp("references")} onToggle={() => toggle("references")}
-            borderCls="border-green-100" bgCls="bg-green-50/40" iconCls="text-green-600">
+            borderCls="border-green-100" bgCls="bg-green-50/40" iconCls="text-green-600"
+            headerRight={<GenBtn busy={secBusy("references")} hasContent={hasRef} disabled={anyBusy || !manuscriptComplete} onClick={() => genReferences(true)} />}>
+            <p className="mb-4 text-[13px] text-slate-500">Scans the full manuscript and compiles at least 15 real sources, sorted into the right category below.</p>
             <ReferencesEditor data={getSD(referencesNode.id)} onUpdate={updateRef} />
           </SectionCard>
         )}
