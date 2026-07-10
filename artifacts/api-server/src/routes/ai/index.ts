@@ -1667,7 +1667,7 @@ router.post("/back-matter/key-lessons", async (req, res) => {
     });
     const { data, usedProvider } = await runLongJSON(
       prompt, systemPrompt(), req, res, "lesson",
-      (d) => !!(d?.lessons && Array.isArray(d.lessons) && d.lessons.length > 0),
+      (d) => !!(d?.lessons && Array.isArray(d.lessons) && d.lessons.length >= 5),
       "back-matter/key-lessons",
       4,
       repairKeyLessonsFromText
@@ -1683,7 +1683,7 @@ router.post("/back-matter/key-lessons", async (req, res) => {
           ? l.relatedChapters.map((c: any) => String(c || "").trim()).filter(Boolean)
           : [],
       }))
-      .slice(0, 20);
+      .slice(0, 10);
     return res.json({ lessons, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);

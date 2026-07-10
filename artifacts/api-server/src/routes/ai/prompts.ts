@@ -4908,7 +4908,7 @@ Audience: ${audience || "general reader"}${manuscriptBlock}
 ════════════════════════════════════
 YOUR TASK
 ════════════════════════════════════
-Read the manuscript content above carefully. Identify 10–15 Key Lessons that summarize what THIS book actually teaches.
+Read the manuscript content above carefully. Identify between 5 and 10 Key Lessons (never fewer than 5, never more than 10) that summarize what THIS book actually teaches.
 
 WHAT A KEY LESSON IS:
 - A concept, framework, argument, method, theory, historical event, system, discovery, or technique that appears in the manuscript above
