@@ -1261,6 +1261,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   // Dedication
   if (dedication) {
     frontChildren.push(
+      h1Para("Dedication", { pageBreakBefore: false }),
       centeredPara(dedication, 13, false, true, "333333", 3000, 3000),
       pageBreak()
     );
