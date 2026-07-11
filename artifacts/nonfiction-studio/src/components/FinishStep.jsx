@@ -25,7 +25,6 @@ function writingAudience(fp) {
 // freely-editable textarea and is always included in exports when filled in.
 const SIMPLE_FRONT_MATTER = [
   { kind: "dedication",       label: "Dedication",           hint: "Explain the best way readers should approach this book’s dedication…" },
-  { kind: "acknowledgments",  label: "Acknowledgments",      hint: "Thank the people who helped make this book possible…" },
   { kind: "preface",          label: "Preface",              hint: "Share the personal story behind why you wrote this book…" },
   { kind: "howToUseThisBook", label: "How to Use This Book", hint: "Explain how readers should approach the book and its exercises…" },
   { kind: "whatYouWillLearn", label: "What You Will Learn",  hint: "Summarize the key knowledge and outcomes readers will gain…" },
@@ -47,7 +46,6 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [status, setStatus] = useState("");
   const [settings, setSettings] = useState(DEFAULT_EXPORT_SETTINGS);
   const [dedication, setDedication] = useState("");
-  const [acknowledgments, setAcknowledgments] = useState("");
   const [preface, setPreface] = useState("");
   const [howToUseThisBook, setHowToUseThisBook] = useState("");
   const [whatYouWillLearn, setWhatYouWillLearn] = useState("");
@@ -65,13 +63,12 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
 
   const exportPayload = {
     project, settings,
-    dedication, acknowledgments, preface,
+    dedication, preface,
     howToUseThisBook, whatYouWillLearn, whoThisBookIsFor
   };
 
   const SIMPLE_FIELD_STATE = {
     dedication:       [dedication, setDedication],
-    acknowledgments:  [acknowledgments, setAcknowledgments],
     preface:          [preface, setPreface],
     howToUseThisBook: [howToUseThisBook, setHowToUseThisBook],
     whatYouWillLearn: [whatYouWillLearn, setWhatYouWillLearn],
@@ -112,13 +109,13 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   async function generateAllFrontMatter() {
     setGeneratingAll(true);
     setShowOptional(true);
-    setFmStatus("Generating all 6 front-matter sections…");
+    setFmStatus("Generating all 5 front-matter sections…");
     try {
       for (const { kind, label } of SIMPLE_FRONT_MATTER) {
         setFmStatus(`Generating "${label}"…`);
         await generateSimpleFrontMatter(kind, label);
       }
-      setFmStatus("All 6 front-matter sections drafted.");
+      setFmStatus("All 5 front-matter sections drafted.");
     } finally {
       setGeneratingAll(false);
       setBusyId(null);
@@ -220,9 +217,9 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
           <div className="space-y-4 pt-1">
             <div className="flex flex-col gap-2 rounded-xl border border-violet-200 bg-violet-50/60 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-bold text-violet-900">Generate all 6 front-matter sections</p>
+                <p className="text-xs font-bold text-violet-900">Generate all 5 front-matter sections</p>
                 <p className="mt-0.5 text-[11px] text-violet-700">
-                  Drafts Dedication, Acknowledgments, Preface, How to Use This Book, What You Will Learn, and Who This Book Is For using your outline and manuscript content.
+                  Drafts Dedication, Preface, How to Use This Book, What You Will Learn, and Who This Book Is For using your outline and manuscript content.
                 </p>
               </div>
               <button
@@ -285,7 +282,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
             })}
 
             <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-[11px] text-slate-600">
-              <span className="font-semibold">Front matter page order:</span> Cover → Abstract → Dedication → Acknowledgments → Table of Contents → Preface → How to Use This Book → What You Will Learn → Who This Book Is For → Chapter 1…
+              <span className="font-semibold">Front matter page order:</span> Cover → Abstract → Dedication → Table of Contents → Preface → How to Use This Book → What You Will Learn → Who This Book Is For → Chapter 1…
             </div>
           </div>
         )}
@@ -306,7 +303,6 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
             settings.pageNumbers && "Page numbers in footer",
             "Professional typography",
             dedication && "Dedication page",
-            acknowledgments && "Acknowledgments page",
             preface && "Preface page",
             howToUseThisBook && "How to Use This Book page",
             whatYouWillLearn && "What You Will Learn page",
