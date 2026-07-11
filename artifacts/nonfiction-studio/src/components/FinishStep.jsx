@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { countManuscriptWords, buildPublishingBundle } from "@/lib/manuscript";
 import { resolveAuthorName, resolveBookTitle } from "@/lib/projectMeta";
@@ -7,6 +7,19 @@ import ExportSettingsPanel from "@/components/ExportSettingsPanel";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
 import { lessonToProse } from "@/lib/writeBlocks";
+
+const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
+
+function loadFrontMatter() {
+  try {
+    const raw = window.localStorage.getItem(FM_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveFrontMatter(data) {
+  try { window.localStorage.setItem(FM_STORAGE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+}
 
 function writingTone(fp) {
   const d = fp?.bookDetails || {};
@@ -45,15 +58,23 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [docxBusy, setDocxBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [settings, setSettings] = useState(DEFAULT_EXPORT_SETTINGS);
-  const [dedication, setDedication] = useState("");
-  const [preface, setPreface] = useState("");
-  const [howToUseThisBook, setHowToUseThisBook] = useState("");
-  const [whatYouWillLearn, setWhatYouWillLearn] = useState("");
-  const [whoThisBookIsFor, setWhoThisBookIsFor] = useState("");
-  const [showOptional, setShowOptional] = useState(false);
+  const [dedication, setDedication] = useState(() => loadFrontMatter().dedication || "");
+  const [preface, setPreface] = useState(() => loadFrontMatter().preface || "");
+  const [howToUseThisBook, setHowToUseThisBook] = useState(() => loadFrontMatter().howToUseThisBook || "");
+  const [whatYouWillLearn, setWhatYouWillLearn] = useState(() => loadFrontMatter().whatYouWillLearn || "");
+  const [whoThisBookIsFor, setWhoThisBookIsFor] = useState(() => loadFrontMatter().whoThisBookIsFor || "");
+  const [showOptional, setShowOptional] = useState(() => {
+    const fm = loadFrontMatter();
+    return Object.values(fm).some((v) => typeof v === "string" && v.trim().length > 0);
+  });
   const [busyId, setBusyId] = useState(null);
   const [fmStatus, setFmStatus] = useState("");
   const [generatingAll, setGeneratingAll] = useState(false);
+
+  // Persist front matter to localStorage whenever any field changes
+  useEffect(() => {
+    saveFrontMatter({ dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
+  }, [dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor]);
 
   const title = resolveBookTitle(project);
   const author = resolveAuthorName(project);
