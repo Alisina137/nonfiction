@@ -922,7 +922,7 @@ export default function BackMatterSection({
           const block = blockById?.get(conclusion.id);
           const done  = hasProse(conclusion.id);
           return (
-            <SectionCard icon="◎" sectionLabel="Back Matter · 1 of 8" title={conclusion.title || "Conclusion"}
+            <SectionCard icon="◎" sectionLabel="Back Matter · 1 of 7" title={conclusion.title || "Conclusion"}
               status={done && <DraftedBadge />}
               expanded={isExp("conclusion")} onToggle={() => toggle("conclusion")}
               borderCls="border-slate-200" bgCls="bg-slate-50/60" iconCls="text-slate-500"
@@ -938,7 +938,7 @@ export default function BackMatterSection({
           const block = blockById?.get(epilogueNode.id);
           const done  = hasProse(epilogueNode.id);
           return (
-            <SectionCard icon="✦" sectionLabel="Back Matter · 2 of 8" title={epilogueNode.title || "Epilogue"}
+            <SectionCard icon="✦" sectionLabel="Back Matter · 2 of 7" title={epilogueNode.title || "Epilogue"}
               status={done && <DraftedBadge />}
               expanded={isExp("epilogue")} onToggle={() => toggle("epilogue")}
               borderCls="border-violet-100" bgCls="bg-violet-50/40" iconCls="text-violet-500"
@@ -951,7 +951,7 @@ export default function BackMatterSection({
 
         {/* 3 — Key Lessons */}
         {keyLessonsNode?.id && (
-          <SectionCard icon="◈" sectionLabel="Back Matter · 3 of 8" title={keyLessonsNode.title || "Key Lessons"}
+          <SectionCard icon="◈" sectionLabel="Back Matter · 3 of 7" title={keyLessonsNode.title || "Key Lessons"}
             status={hasKL && <DraftedBadge count={getSD(keyLessonsNode.id)?.lessons?.length} label="lessons" />}
             expanded={isExp("keyLessons")} onToggle={() => toggle("keyLessons")}
             borderCls="border-amber-100" bgCls="bg-amber-50/40" iconCls="text-amber-500"
@@ -963,7 +963,7 @@ export default function BackMatterSection({
 
         {/* 4 — Glossary */}
         {glossaryNode?.id && (
-          <SectionCard icon="≡" sectionLabel="Back Matter · 4 of 8" title={glossaryNode.title || "Glossary"}
+          <SectionCard icon="≡" sectionLabel="Back Matter · 4 of 7" title={glossaryNode.title || "Glossary"}
             status={hasGl && <DraftedBadge count={getSD(glossaryNode.id)?.terms?.length} label="terms" />}
             expanded={isExp("glossary")} onToggle={() => toggle("glossary")}
             borderCls="border-teal-100" bgCls="bg-teal-50/40" iconCls="text-teal-500"
