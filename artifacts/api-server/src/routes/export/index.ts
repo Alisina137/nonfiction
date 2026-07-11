@@ -1321,7 +1321,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     // Paragraph 1: fldChar begin + instrText switches + fldChar separate
     const fieldBeginPara = new XmlComponent("w:p");
     fieldBeginPara.root.push(fldCharRun("begin", true));
-    fieldBeginPara.root.push(instrRun(` TOC \\o "1-3" \\h \\u `));
+    fieldBeginPara.root.push(instrRun(` TOC \\o "1-3" \\h `));
     fieldBeginPara.root.push(fldCharRun("separate"));
     frontChildren.push(fieldBeginPara as any);
 
@@ -1374,11 +1374,11 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
       tabRun.root.push(new XmlComponent("w:tab"));
       ep.root.push(tabRun);
 
-      // Page number placeholder — Word replaces this with real numbers when updateFields triggers.
-      // We leave a blank run here; the dot-leader tab already lands at the right edge.
+      // Page number placeholder — Word replaces with real numbers when updateFields triggers.
+      // Show "1" so every entry has a visible number even before the field is updated.
       const pgRun = new XmlComponent("w:r");
       const pgT   = new XmlComponent("w:t");
-      pgT.root.push("");
+      pgT.root.push("1");
       pgRun.root.push(pgT);
       ep.root.push(pgRun);
 
