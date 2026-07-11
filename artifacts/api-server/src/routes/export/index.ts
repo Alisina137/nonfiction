@@ -246,9 +246,23 @@ function parseProseBlocks(prose: string): ProseBlock[] {
       if (!t) continue;
       const bulletM = t.match(/^[•\-\*]\s+(.+)/);
       const numM    = t.match(/^(\d+)[.)]\s+(.+)/);
-      if (bulletM)      blocks.push({ kind: "bullet",   text: bulletM[1] });
-      else if (numM)    blocks.push({ kind: "numbered", text: numM[2], num: parseInt(numM[1], 10) });
-      else              blocks.push({ kind: "para",     text: t });
+      if (bulletM) {
+        // Strip inline markdown from bullet text
+        const clean = bulletM[1].replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").replace(/^#+\s*/, "").trim();
+        if (clean) blocks.push({ kind: "bullet", text: clean });
+      } else if (numM) {
+        const clean = numM[2].replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").trim();
+        if (clean) blocks.push({ kind: "numbered", text: clean, num: parseInt(numM[1], 10) });
+      } else {
+        // Strip markdown heading markers (## Heading → Heading) and bold/italic
+        const clean = t
+          .replace(/^#{1,6}\s+/, "")
+          .replace(/\*\*(.+?)\*\*/g, "$1")
+          .replace(/\*(.+?)\*/g, "$1")
+          .replace(/^_{1,2}(.+?)_{1,2}$/, "$1")
+          .trim();
+        if (clean) blocks.push({ kind: "para", text: clean });
+      }
     }
   }
   return blocks;
@@ -1383,26 +1397,32 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
 
   frontChildren.push(pageBreak());
 
+  // Front-matter prose heading: same Heading 1 style but with tighter spacing
+  // so the title sits close to its body text (chapter headings use 480/480).
+  function fmH1Para(text: string): Paragraph {
+    return h1Para(text, { pageBreakBefore: false, spacing: { before: 120, after: 160 } });
+  }
+
   // Preface
   if (preface) {
-    frontChildren.push(h1Para("Preface", { pageBreakBefore: false }));
+    frontChildren.push(fmH1Para("Preface"));
     addProseBlocks(frontChildren, preface);
     frontChildren.push(pageBreak());
   }
 
   // How to Use This Book / What You Will Learn / Who This Book Is For
   if (howToUseThisBook) {
-    frontChildren.push(h1Para("How to Use This Book", { pageBreakBefore: false }));
+    frontChildren.push(fmH1Para("How to Use This Book"));
     addProseBlocks(frontChildren, howToUseThisBook);
     frontChildren.push(pageBreak());
   }
   if (whatYouWillLearn) {
-    frontChildren.push(h1Para("What You Will Learn", { pageBreakBefore: false }));
+    frontChildren.push(fmH1Para("What You Will Learn"));
     addProseBlocks(frontChildren, whatYouWillLearn);
     frontChildren.push(pageBreak());
   }
   if (whoThisBookIsFor) {
-    frontChildren.push(h1Para("Who This Book Is For", { pageBreakBefore: false }));
+    frontChildren.push(fmH1Para("Who This Book Is For"));
     addProseBlocks(frontChildren, whoThisBookIsFor);
     frontChildren.push(pageBreak());
   }
