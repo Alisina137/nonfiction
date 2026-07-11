@@ -1332,13 +1332,15 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
         pPr.root.push(ind);
       }
 
-      // Right-aligned dot-leader tab stop at right margin of text column
+      // Right-aligned dot-leader tab stop.
+      // Tab stop pos is measured from the LEFT MARGIN (not from the text indent),
+      // so we always use textWidthTwips for every level — the dot leaders reach the same right edge.
       const tabs = new XmlComponent("w:tabs");
       const tab  = new XmlComponent("w:tab");
       tab.root.push(new XmlAttributeComponent({
         "w:val":    "right",
         "w:leader": "dot",
-        "w:pos":    String(textWidthTwips - indent),
+        "w:pos":    String(textWidthTwips),
       }));
       tabs.root.push(tab);
       pPr.root.push(tabs);
@@ -1353,42 +1355,18 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
       labelRun.root.push(labelT);
       ep.root.push(labelRun);
 
-      // Tab character (triggers the dot leader)
+      // Tab character (fires the dot leader toward the right margin)
       const tabRun = new XmlComponent("w:r");
       tabRun.root.push(new XmlComponent("w:tab"));
       ep.root.push(tabRun);
 
-      // Placeholder page-number field — Word replaces with real number on update
-      const pgBegin = new XmlComponent("w:r");
-      const pgFc    = new XmlComponent("w:fldChar");
-      pgFc.root.push(new XmlAttributeComponent({ "w:fldCharType": "begin" }));
-      pgBegin.root.push(pgFc);
-      ep.root.push(pgBegin);
-
-      const pgInstr = new XmlComponent("w:r");
-      const pgIt    = new XmlComponent("w:instrText");
-      pgIt.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
-      pgIt.root.push(` PAGEREF _Toc${entry.level}_${tocDocxEntries.indexOf(entry)} \\h `);
-      pgInstr.root.push(pgIt);
-      ep.root.push(pgInstr);
-
-      const pgSep = new XmlComponent("w:r");
-      const pgSepFc = new XmlComponent("w:fldChar");
-      pgSepFc.root.push(new XmlAttributeComponent({ "w:fldCharType": "separate" }));
-      pgSep.root.push(pgSepFc);
-      ep.root.push(pgSep);
-
-      const pgNum = new XmlComponent("w:r");
-      const pgNumT = new XmlComponent("w:t");
-      pgNumT.root.push("1");
-      pgNum.root.push(pgNumT);
-      ep.root.push(pgNum);
-
-      const pgEnd = new XmlComponent("w:r");
-      const pgEndFc = new XmlComponent("w:fldChar");
-      pgEndFc.root.push(new XmlAttributeComponent({ "w:fldCharType": "end" }));
-      pgEnd.root.push(pgEndFc);
-      ep.root.push(pgEnd);
+      // Page number placeholder — Word replaces this with real numbers when updateFields triggers.
+      // We leave a blank run here; the dot-leader tab already lands at the right edge.
+      const pgRun = new XmlComponent("w:r");
+      const pgT   = new XmlComponent("w:t");
+      pgT.root.push("");
+      pgRun.root.push(pgT);
+      ep.root.push(pgRun);
 
       frontChildren.push(ep as any);
     }
