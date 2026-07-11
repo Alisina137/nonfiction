@@ -1072,7 +1072,6 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   interface DocxTocEntry { label: string; level: number }
   const tocDocxEntries: DocxTocEntry[] = [];
 
-  if (options.acknowledgments)   tocDocxEntries.push({ label: "Acknowledgments",      level: 0 });
   if (options.preface)           tocDocxEntries.push({ label: "Preface",              level: 0 });
   if (options.howToUseThisBook)  tocDocxEntries.push({ label: "How to Use This Book", level: 0 });
   if (options.whatYouWillLearn)  tocDocxEntries.push({ label: "What You Will Learn",  level: 0 });
@@ -1265,13 +1264,6 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
       centeredPara(dedication, 13, false, true, "333333", 3000, 3000),
       pageBreak()
     );
-  }
-
-  // Acknowledgments
-  if (acknowledgments) {
-    frontChildren.push(h1Para("Acknowledgments", { pageBreakBefore: false }));
-    addProseBlocks(frontChildren, acknowledgments);
-    frontChildren.push(pageBreak());
   }
 
   // ── Table of Contents ──────────────────────────────────────────────────────
