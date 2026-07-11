@@ -1307,11 +1307,13 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     // Paragraph 1: fldChar begin + instrText switches + fldChar separate
     const fieldBeginPara = new XmlComponent("w:p");
     fieldBeginPara.root.push(fldCharRun("begin", true));
-    fieldBeginPara.root.push(instrRun(` TOC \\o "1-3" \\h \\z \\u `));
+    fieldBeginPara.root.push(instrRun(` TOC \\o "1-3" \\h \\u `));
     fieldBeginPara.root.push(fldCharRun("separate"));
     frontChildren.push(fieldBeginPara as any);
 
-    // Pre-rendered entries (static fallback; Word replaces with live page numbers)
+    // Pre-rendered entries (static fallback; Word replaces with live page numbers on updateFields).
+    // Each entry gets a right-aligned dot-leader tab stop so the format is correct in all viewers.
+    const textWidthTwips = Math.round(P.pageW * 20) - P.docxMLeft - P.docxMRight;
     for (const entry of tocDocxEntries) {
       const level  = Math.min(entry.level, 2);
       const style  = ["TOC1", "TOC2", "TOC3"][level];
@@ -1319,22 +1321,74 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
 
       const ep   = new XmlComponent("w:p");
       const pPr  = new XmlComponent("w:pPr");
+
       const pSty = new XmlComponent("w:pStyle");
       pSty.root.push(new XmlAttributeComponent({ "w:val": style }));
       pPr.root.push(pSty);
+
       if (indent > 0) {
         const ind = new XmlComponent("w:ind");
         ind.root.push(new XmlAttributeComponent({ "w:left": String(indent) }));
         pPr.root.push(ind);
       }
+
+      // Right-aligned dot-leader tab stop at right margin of text column
+      const tabs = new XmlComponent("w:tabs");
+      const tab  = new XmlComponent("w:tab");
+      tab.root.push(new XmlAttributeComponent({
+        "w:val":    "right",
+        "w:leader": "dot",
+        "w:pos":    String(textWidthTwips - indent),
+      }));
+      tabs.root.push(tab);
+      pPr.root.push(tabs);
+
       ep.root.push(pPr);
 
-      const run = new XmlComponent("w:r");
-      const t   = new XmlComponent("w:t");
-      t.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
-      t.root.push(entry.label);
-      run.root.push(t);
-      ep.root.push(run);
+      // Label text
+      const labelRun = new XmlComponent("w:r");
+      const labelT   = new XmlComponent("w:t");
+      labelT.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
+      labelT.root.push(entry.label);
+      labelRun.root.push(labelT);
+      ep.root.push(labelRun);
+
+      // Tab character (triggers the dot leader)
+      const tabRun = new XmlComponent("w:r");
+      tabRun.root.push(new XmlComponent("w:tab"));
+      ep.root.push(tabRun);
+
+      // Placeholder page-number field — Word replaces with real number on update
+      const pgBegin = new XmlComponent("w:r");
+      const pgFc    = new XmlComponent("w:fldChar");
+      pgFc.root.push(new XmlAttributeComponent({ "w:fldCharType": "begin" }));
+      pgBegin.root.push(pgFc);
+      ep.root.push(pgBegin);
+
+      const pgInstr = new XmlComponent("w:r");
+      const pgIt    = new XmlComponent("w:instrText");
+      pgIt.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
+      pgIt.root.push(` PAGEREF _Toc${entry.level}_${tocDocxEntries.indexOf(entry)} \\h `);
+      pgInstr.root.push(pgIt);
+      ep.root.push(pgInstr);
+
+      const pgSep = new XmlComponent("w:r");
+      const pgSepFc = new XmlComponent("w:fldChar");
+      pgSepFc.root.push(new XmlAttributeComponent({ "w:fldCharType": "separate" }));
+      pgSep.root.push(pgSepFc);
+      ep.root.push(pgSep);
+
+      const pgNum = new XmlComponent("w:r");
+      const pgNumT = new XmlComponent("w:t");
+      pgNumT.root.push("1");
+      pgNum.root.push(pgNumT);
+      ep.root.push(pgNum);
+
+      const pgEnd = new XmlComponent("w:r");
+      const pgEndFc = new XmlComponent("w:fldChar");
+      pgEndFc.root.push(new XmlAttributeComponent({ "w:fldCharType": "end" }));
+      pgEnd.root.push(pgEndFc);
+      ep.root.push(pgEnd);
 
       frontChildren.push(ep as any);
     }
@@ -1500,6 +1554,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     creator: author,
     title: bookTitle,
     description: String(description).slice(0, 500),
+    settings: { updateFields: true },
     styles: {
       default: {
         document: {
