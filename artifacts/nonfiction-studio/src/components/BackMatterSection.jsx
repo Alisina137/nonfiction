@@ -973,20 +973,9 @@ export default function BackMatterSection({
           </SectionCard>
         )}
 
-        {/* 5 — References */}
-        {referencesNode?.id && (
-          <SectionCard icon="◉" sectionLabel="Back Matter · 5 of 8" title={referencesNode.title || "References"}
-            expanded={isExp("references")} onToggle={() => toggle("references")}
-            borderCls="border-green-100" bgCls="bg-green-50/40" iconCls="text-green-600"
-            headerRight={<GenBtn busy={secBusy("references")} hasContent={hasRef} disabled={anyBusy || !manuscriptComplete} onClick={() => genReferences(true)} />}>
-            <p className="mb-4 text-[13px] text-slate-500">Scans the full manuscript and compiles at least 15 real sources, sorted into the right category below.</p>
-            <ReferencesEditor data={getSD(referencesNode.id)} onUpdate={updateRef} />
-          </SectionCard>
-        )}
-
-        {/* 6 — Further Reading */}
+        {/* 5 — Further Reading */}
         {furtherReadingNode?.id && (
-          <SectionCard icon="→" sectionLabel="Back Matter · 6 of 8" title={furtherReadingNode.title || "Further Reading"}
+          <SectionCard icon="→" sectionLabel="Back Matter · 5 of 7" title={furtherReadingNode.title || "Further Reading"}
             status={hasFR && <DraftedBadge count={getSD(furtherReadingNode.id)?.recommendations?.length} label="picks" />}
             expanded={isExp("furtherReading")} onToggle={() => toggle("furtherReading")}
             borderCls="border-indigo-100" bgCls="bg-indigo-50/40" iconCls="text-indigo-500"
@@ -998,7 +987,7 @@ export default function BackMatterSection({
 
         {/* 7 — Acknowledgments */}
         {ackNode?.id && (
-          <SectionCard icon="♡" sectionLabel="Back Matter · 7 of 8" title={ackNode.title || "Acknowledgments"}
+          <SectionCard icon="♡" sectionLabel="Back Matter · 6 of 7" title={ackNode.title || "Acknowledgments"}
             expanded={isExp("backAcknowledgments")} onToggle={() => toggle("backAcknowledgments")}
             borderCls="border-rose-100" bgCls="bg-rose-50/40" iconCls="text-rose-500">
             <AcknowledgmentsEditor
@@ -1012,7 +1001,7 @@ export default function BackMatterSection({
 
         {/* 8 — The End */}
         {theEndNode?.id && (
-          <SectionCard icon="★" sectionLabel="Back Matter · 8 of 8" title={theEndNode.title || "The End"}
+          <SectionCard icon="★" sectionLabel="Back Matter · 7 of 7" title={theEndNode.title || "The End"}
             expanded={isExp("theEnd")} onToggle={() => toggle("theEnd")}
             borderCls="border-purple-100" bgCls="bg-purple-50/40" iconCls="text-purple-500">
             <TheEndEditor
