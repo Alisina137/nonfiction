@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
+import { loadBook, saveBook } from "@/lib/bookLibrary";
 import AnalysisStep from "@/components/AnalysisStep";
 import BookTitleStep from "@/components/BookTitleStep";
 import ResourcesStep from "@/components/ResourcesStep";
@@ -769,25 +770,30 @@ export default function Dashboard() {
     }));
   }
 
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  const bookId = new URLSearchParams(search).get("bookId") || "legacy";
+
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem("nonfiction-ai-project");
-      if (stored) setProject(migrateProject(JSON.parse(stored)));
+      const stored = loadBook(bookId);
+      if (stored) setProject(migrateProject(stored));
+      else setProject(migrateProject(baseProject));
     } catch {
       setProject(migrateProject(baseProject));
     }
-  }, []);
+  }, [bookId]);
 
   useEffect(() => {
     const t = setTimeout(() => {
       try {
-        window.localStorage.setItem("nonfiction-ai-project", JSON.stringify(project));
+        saveBook(bookId, project);
       } catch {
         console.warn("autosave failed");
       }
     }, 800);
     return () => clearTimeout(t);
-  }, [project]);
+  }, [project, bookId]);
 
   function goToStep(index) {
     if (!canAccessStep(completedSteps, index)) return;
@@ -1132,15 +1138,19 @@ export default function Dashboard() {
               </span>
               Reset book
             </button>
-            <Link
-              href="/"
+            <button
+              type="button"
+              onClick={() => {
+                saveBook(bookId, project);
+                setLocation("/");
+              }}
               className="flex items-center justify-center gap-2 rounded-xl border border-slate-200/90 bg-white/80 px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50/50 hover:text-sky-900 md:py-3.5"
             >
               <span className="text-lg" aria-hidden>
                 ⌂
               </span>
-              Exit book
-            </Link>
+              Complete later
+            </button>
           </div>
         </aside>
 
