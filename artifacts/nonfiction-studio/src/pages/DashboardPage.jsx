@@ -1068,14 +1068,31 @@ export default function Dashboard() {
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={currentStep < STEP_COUNT - 1 && !stepAllowsNext}
-          className="shrink-0 rounded-full bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-sky-600/28 transition hover:from-sky-700 hover:to-sky-600 hover:shadow-lg hover:shadow-sky-600/35 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-400 disabled:shadow-none disabled:opacity-50"
-        >
-          {currentStep >= STEP_COUNT - 1 ? "Finish" : "Next"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={handleResetBook}
+            title="Clears book progress but keeps your author name, persona, and biography"
+            className="rounded-xl border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs font-semibold text-amber-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-100/90"
+          >
+            ↺ Reset
+          </button>
+          <button
+            type="button"
+            onClick={() => { saveBook(bookId, project); setLocation("/"); }}
+            className="rounded-xl border border-slate-200/90 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50/50 hover:text-sky-900"
+          >
+            ⌂ Complete later
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={currentStep < STEP_COUNT - 1 && !stepAllowsNext}
+            className="rounded-full bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-sky-600/28 transition hover:from-sky-700 hover:to-sky-600 hover:shadow-lg hover:shadow-sky-600/35 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-400 disabled:shadow-none disabled:opacity-50"
+          >
+            {currentStep >= STEP_COUNT - 1 ? "Finish" : "Next"}
+          </button>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -1126,32 +1143,6 @@ export default function Dashboard() {
             </ul>
           </nav>
 
-          <div className="mt-auto flex shrink-0 flex-col gap-2 md:mt-10">
-            <button
-              type="button"
-              onClick={handleResetBook}
-              title="Clears book progress but keeps your author name, persona, and biography"
-              className="flex items-center justify-center gap-2 rounded-xl border border-amber-200/90 bg-amber-50/80 px-3 py-3 text-sm font-semibold text-amber-950 shadow-sm transition hover:border-amber-300 hover:bg-amber-100/90 md:py-3.5"
-            >
-              <span className="text-base" aria-hidden>
-                ↺
-              </span>
-              Reset book
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                saveBook(bookId, project);
-                setLocation("/");
-              }}
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200/90 bg-white/80 px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50/50 hover:text-sky-900 md:py-3.5"
-            >
-              <span className="text-lg" aria-hidden>
-                ⌂
-              </span>
-              Complete later
-            </button>
-          </div>
         </aside>
 
         <main className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-16 pt-7 sm:px-7 md:px-12 md:pb-20 md:pt-11">
