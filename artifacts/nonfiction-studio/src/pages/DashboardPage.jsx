@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
 import { loadBook, saveBook } from "@/lib/bookLibrary";
 import AnalysisStep from "@/components/AnalysisStep";
@@ -763,6 +763,24 @@ export default function Dashboard() {
 
   const stepMeta = BOOK_BUILDER_STEPS[currentStep];
 
+  // Live word count across all written lesson prose
+  const { totalWords, targetWords } = useMemo(() => {
+    const total = Object.values(project.lessons || {}).reduce((sum, lesson) => {
+      const prose = lesson?.prose?.trim();
+      if (!prose) return sum;
+      return sum + prose.split(/\s+/).length;
+    }, 0);
+
+    // Parse target from bookDetails.wordCountRange e.g. "30,000–50,000 words"
+    const range = project.bookDetails?.wordCountRange || "";
+    const nums = range.replace(/,/g, "").match(/\d+/g);
+    const target = nums && nums.length > 0
+      ? Math.round(nums.map(Number).reduce((a, b) => a + b, 0) / nums.length)
+      : 50000;
+
+    return { totalWords: total, targetWords: target };
+  }, [project.lessons, project.bookDetails?.wordCountRange]);
+
   function patchWizard(patch) {
     setProject((p) => ({
       ...p,
@@ -1100,7 +1118,7 @@ export default function Dashboard() {
           <p className="shrink-0 leading-snug text-xs font-semibold tracking-tight text-slate-700 md:text-[13px]">
             Step {currentStep + 1} of {STEP_COUNT}: {BOOK_BUILDER_STEPS[currentStep].label}
           </p>
-          <nav className="relative mt-4 shrink-0 pt-0.5">
+          <nav className="relative mt-4 min-h-0 flex-1 overflow-y-auto pt-0.5 pb-2">
             <div className="absolute bottom-2 left-[17px] top-10 w-px bg-gradient-to-b from-slate-200 via-sky-100/70 to-emerald-100/70" aria-hidden />
             <ul className="relative space-y-1 md:space-y-1.5">
               {BOOK_BUILDER_STEPS.map((s, idx) => {
@@ -1142,6 +1160,25 @@ export default function Dashboard() {
               })}
             </ul>
           </nav>
+
+          {/* Word count tracker */}
+          <div className="mt-4 shrink-0 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Words written</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-800">
+              {totalWords > 0 ? totalWords.toLocaleString() : "—"}
+            </p>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 transition-all duration-700"
+                style={{ width: `${Math.min(100, (totalWords / targetWords) * 100)}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-[10px] text-slate-400">
+              {totalWords > 0
+                ? `${Math.round((totalWords / targetWords) * 100)}% of ~${targetWords.toLocaleString()} target`
+                : `Target: ~${targetWords.toLocaleString()} words`}
+            </p>
+          </div>
 
         </aside>
 
