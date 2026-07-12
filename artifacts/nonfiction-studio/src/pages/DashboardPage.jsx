@@ -1017,7 +1017,7 @@ export default function Dashboard() {
   return (
     <div className="book-builder flex h-screen min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-900 [background-image:radial-gradient(ellipse_125%_80%_at_50%_-28%,rgba(14,165,233,0.11),transparent_55%),radial-gradient(ellipse_80%_50%_at_100%_0%,rgba(99,102,241,0.05),transparent_45%)]">
       <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-md md:gap-8 md:px-8 md:py-3.5 supports-[backdrop-filter]:bg-white/70">
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={handleBack}
@@ -1027,6 +1027,21 @@ export default function Dashboard() {
             Back
           </button>
           <ProviderStatusBadge />
+          <button
+            type="button"
+            onClick={handleResetBook}
+            title="Clears book progress but keeps your author name, persona, and biography"
+            className="rounded-xl border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs font-semibold text-amber-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-100/90"
+          >
+            ↺ Reset
+          </button>
+          <button
+            type="button"
+            onClick={() => { saveBook(bookId, project); setLocation("/"); }}
+            className="rounded-xl border border-slate-200/90 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50/50 hover:text-sky-900"
+          >
+            ⌂ Complete later
+          </button>
         </div>
         <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-2 text-center">
           <h1 className="font-serif text-[1.05rem] font-bold leading-snug tracking-tight text-slate-900 md:text-xl">
@@ -1086,31 +1101,14 @@ export default function Dashboard() {
             </p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={handleResetBook}
-            title="Clears book progress but keeps your author name, persona, and biography"
-            className="rounded-xl border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs font-semibold text-amber-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-100/90"
-          >
-            ↺ Reset
-          </button>
-          <button
-            type="button"
-            onClick={() => { saveBook(bookId, project); setLocation("/"); }}
-            className="rounded-xl border border-slate-200/90 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50/50 hover:text-sky-900"
-          >
-            ⌂ Complete later
-          </button>
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={currentStep < STEP_COUNT - 1 && !stepAllowsNext}
-            className="rounded-full bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-sky-600/28 transition hover:from-sky-700 hover:to-sky-600 hover:shadow-lg hover:shadow-sky-600/35 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-400 disabled:shadow-none disabled:opacity-50"
-          >
-            {currentStep >= STEP_COUNT - 1 ? "Finish" : "Next"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={currentStep < STEP_COUNT - 1 && !stepAllowsNext}
+          className="shrink-0 rounded-full bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-sky-600/28 transition hover:from-sky-700 hover:to-sky-600 hover:shadow-lg hover:shadow-sky-600/35 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-400 disabled:shadow-none disabled:opacity-50"
+        >
+          {currentStep >= STEP_COUNT - 1 ? "Finish" : "Next"}
+        </button>
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
