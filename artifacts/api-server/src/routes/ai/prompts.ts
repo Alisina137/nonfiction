@@ -3885,109 +3885,219 @@ Return ONLY valid JSON:
 }`;
 }
 
-export function competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, books }: any) {
+export function competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, stanceOnTopic, standout, publishingGoal, books }: any) {
   const bookLines = Array.isArray(books) && books.length
-    ? books.slice(0, 10).map((b: any, i: number) => {
+    ? books.slice(0, 12).map((b: any, i: number) => {
         const parts = [`${i + 1}. "${b.title || "Untitled"}"`];
-        if (b.authors)       parts.push(`by ${b.authors}`);
-        if (b.subtitle)      parts.push(`(${b.subtitle})`);
-        if (b.rating)        parts.push(`${b.rating}★`);
-        if (b.ratingsTotal)  parts.push(`${b.ratingsTotal.toLocaleString()} reviews`);
+        if (b.authors)              parts.push(`by ${b.authors}`);
+        if (b.subtitle)             parts.push(`(${b.subtitle})`);
+        if (b.rating)               parts.push(`${b.rating}★`);
+        if (b.ratingsTotal)         parts.push(`${b.ratingsTotal.toLocaleString()} reviews`);
+        if (b.publicationDate)      parts.push(`(${b.publicationDate})`);
+        if (b.bestsellersRankFlat)  parts.push(`[rank: ${String(b.bestsellersRankFlat).slice(0, 60)}]`);
+        if (b.description)          parts.push(`\n   Desc: ${String(b.description).slice(0, 200)}`);
         return parts.join(" ");
       }).join("\n")
-    : "(no competitor books provided — infer from niche/sub-niche)";
+    : "(no competitor books provided — infer from deep niche knowledge)";
 
-  return `You are an elite Amazon KDP market researcher and competitive intelligence analyst.
+  return `You are an elite AI Research Analyst and Amazon KDP Market Intelligence Specialist.
 
-Analyze the niche, sub-niche, and competitor books below to produce a focused market intelligence report that powers all downstream book-generation steps.
+Your role is NOT to summarize competitor books. Your role is to extract strategic intelligence that makes every downstream book creation step significantly smarter.
 
-INPUTS
+Think like:
+- A senior market research analyst who turns raw data into competitive strategy
+- A developmental editor who knows exactly what readers want and what they hate
+- A bestselling author who understands commercial differentiation
+- A reader psychology specialist who maps the emotional journey to purchase
 
+Be specific to this exact niche. No generic advice. Every insight must reflect real Amazon KDP market dynamics for this category.
+
+========================================
+RESEARCH INPUTS
+========================================
 Main Niche: ${niche || "unspecified"}
 Sub-Niche: ${subNiche || "unspecified"}
 Deep Niche: ${deepNiche || "not specified"}
 Book Topic: ${bookTopic || "not specified"}
+Author Stance: ${stanceOnTopic || "not specified"}
+Standout Angle: ${standout || "not specified"}
+Publishing Goal: ${publishingGoal || "not specified"}
 
 Competitor Books:
 ${bookLines}
 
-INSTRUCTIONS
+========================================
+ANALYSIS PIPELINE — follow in order
+========================================
 
-- Be specific to this niche — no generic advice
-- Infer from competitor titles, subtitles, and ratings where needed
-- Every field must reflect real Amazon KDP market patterns for this category
+PHASE 1 — COMPETITOR ANALYSIS
+For each competitor, infer from title/subtitle/ratings/market position:
+- Core promise and reader transformation
+- Likely strengths (why readers rate it highly)
+- Likely weaknesses and reader complaints
+- Commercial positioning and market reach
 
-OUTPUT FORMAT
+PHASE 2 — MARKET PATTERN IDENTIFICATION
+Across all competitors, identify:
+- Topics every successful book in this niche covers (table stakes)
+- Overused frameworks and tired advice readers are sick of
+- Reader frustrations that appear repeatedly across competitors
+- Emerging content trends gaining traction
+- Topics that are underserved or missing entirely
 
-Return ONLY valid JSON with this exact structure. No markdown, no code fences, no extra text.
+PHASE 3 — READER PSYCHOLOGY PROFILING
+Build a deep psychological portrait of the ideal reader:
+- Current situation vs. desired future
+- Internal obstacles (mindset, limiting beliefs, fear)
+- External obstacles (time, money, circumstances)
+- False beliefs they hold that keep them stuck
+- Preferred learning style (stories / frameworks / data / examples)
+- Emotional drivers that make them buy
+
+PHASE 4 — MARKET GAP ANALYSIS
+Identify what competitors have collectively missed:
+- Questions nobody answers clearly
+- Shallow or outdated explanations
+- Missing frameworks, tools, or exercises
+- Lack of emotional support or reader empathy
+- Missing implementation guidance
+
+PHASE 5 — COMMERCIAL POSITIONING
+Determine differentiation opportunities with the highest commercial potential.
+
+PHASE 6 — BOOK DNA EXTRACTION
+Extract the essential signals needed for downstream steps:
+- Energy style (tone/energy register of winning books)
+- Writing style fingerprint (how top books write)
+- Emotional triggers that drive purchase decisions
+- Transformation promise and reader pain narrative
+
+PHASE 7 — RESEARCH QUALITY SCORING
+Score the quality of this intelligence on a 0–100 scale across 5 dimensions.
+
+========================================
+OUTPUT — return ONLY valid JSON, no markdown, no code fences
+========================================
 
 {
   "targetAudience": {
-    "primary": "Primary reader description (1-2 sentences)",
+    "primary": "Primary reader description (2-3 specific sentences)",
     "secondary": "Secondary reader segment",
     "experienceLevel": "Beginner / Intermediate / Advanced",
-    "demographics": "Age, gender, lifestyle context",
-    "motivations": "Core emotional and practical motivations"
+    "demographics": "Age range, gender skew, career/life stage",
+    "motivations": "Core emotional and practical motivations (2-3 sentences)"
   },
   "readerPainPoints": [
-    "Specific pain point 1",
-    "Specific pain point 2",
-    "Specific pain point 3",
-    "Specific pain point 4",
-    "Specific pain point 5",
-    "Specific pain point 6",
-    "Specific pain point 7"
+    "Specific pain point in reader voice (what they would say)",
+    "Pain point 2",
+    "Pain point 3",
+    "Pain point 4",
+    "Pain point 5",
+    "Pain point 6",
+    "Pain point 7"
   ],
   "desiredOutcomes": [
-    "Specific outcome 1",
-    "Specific outcome 2",
-    "Specific outcome 3",
-    "Specific outcome 4",
-    "Specific outcome 5",
-    "Specific outcome 6",
-    "Specific outcome 7"
+    "Specific outcome readers want (in reader voice)",
+    "Outcome 2",
+    "Outcome 3",
+    "Outcome 4",
+    "Outcome 5",
+    "Outcome 6",
+    "Outcome 7"
   ],
   "marketGaps": [
-    "Underserved topic or audience gap 1",
+    "Specific content gap or underserved topic competitors missed",
     "Gap 2",
     "Gap 3",
     "Gap 4",
-    "Gap 5"
+    "Gap 5",
+    "Gap 6"
   ],
   "uniqueSellingPropositions": [
-    {"statement": "USP statement 1", "whyItStandsOut": "Why it differentiates", "whyReadersCare": "Why readers would buy it"},
-    {"statement": "USP statement 2", "whyItStandsOut": "...", "whyReadersCare": "..."},
-    {"statement": "USP statement 3", "whyItStandsOut": "...", "whyReadersCare": "..."},
-    {"statement": "USP statement 4", "whyItStandsOut": "...", "whyReadersCare": "..."},
-    {"statement": "USP statement 5", "whyItStandsOut": "...", "whyReadersCare": "..."}
+    {"statement": "USP 1", "whyItStandsOut": "Why it differentiates from every competitor", "whyReadersCare": "Emotional reason readers would buy this"},
+    {"statement": "USP 2", "whyItStandsOut": "...", "whyReadersCare": "..."},
+    {"statement": "USP 3", "whyItStandsOut": "...", "whyReadersCare": "..."},
+    {"statement": "USP 4", "whyItStandsOut": "...", "whyReadersCare": "..."},
+    {"statement": "USP 5", "whyItStandsOut": "...", "whyReadersCare": "..."}
   ],
   "positioningStrategies": [
-    "Positioning angle 1 (e.g. Beginner-Friendly)",
+    "Specific positioning angle 1 for this niche",
     "Positioning angle 2",
     "Positioning angle 3",
     "Positioning angle 4",
     "Positioning angle 5"
   ],
   "titleInsights": {
-    "bestTitleStyle": "e.g. action-oriented, identity-based, transformation-focused",
-    "bestSubtitleStyle": "e.g. outcome + audience formula that performs best here",
-    "bestPositioningApproach": "Recommended positioning angle for the title",
-    "recommendedTransformationPromise": "The single core transformation promise the title should convey"
+    "bestTitleStyle": "Specific title style that converts best in this niche with rationale",
+    "bestSubtitleStyle": "Subtitle formula that performs best in this market",
+    "bestPositioningApproach": "The differentiation angle the title should communicate",
+    "recommendedTransformationPromise": "The single transformation promise the title must convey"
   },
   "authorPersonaGuidance": {
-    "authorVoice": "e.g. trusted mentor / tough coach / academic expert",
-    "tone": "e.g. conversational and direct / narrative-driven / authoritative",
-    "credibilityStyle": "e.g. personal experience + research citations",
-    "writingApproach": "e.g. practical frameworks with real-world examples"
+    "authorVoice": "Specific voice recommendation based on what readers respond to in this niche",
+    "tone": "Tone recommendation with specific examples from the market",
+    "credibilityStyle": "How to establish authority specifically in this market",
+    "writingApproach": "Framework + narrative style that outperforms competitors here"
   },
   "bestCompetitorInsights": [
     {
-      "sourceBook": "Title of the competitor book this idea comes from",
-      "coreIdea": "The strongest idea, argument, or angle this book makes on this topic — 1-2 sentences capturing its essence",
-      "howToAdapt": "How to present this same idea differently — a new framing, stronger evidence, a fresh metaphor, a deeper exploration, or a more actionable version"
+      "sourceBook": "Competitor book title",
+      "coreIdea": "The strongest idea or angle from this book — 1-2 sentences",
+      "howToAdapt": "How to present this same idea more effectively with fresher framing or deeper exploration"
     }
   ],
-  "outlineGenerationBrief": "A concise 2-4 sentence blueprint: what transformation arc this book should follow, what core topics it must cover, how it should be structured to outperform competitors, and what unique angle it should take."
+  "outlineGenerationBrief": "3-5 sentence strategic blueprint: transformation arc this book should follow, core topics it must cover, recommended structure, unique angle, and how to outperform competitors.",
+  "readerPainProfile": "2-3 sentence narrative portrait of the reader — their daily frustrations, failed attempts, and emotional state when they pick up this book.",
+  "transformationPromise": "One sentence: the specific transformation this book will deliver. Should feel emotionally true and commercially compelling.",
+  "marketGapAnalysis": "2-3 sentences: the most significant gaps in current market coverage that this book must fill. Be specific about what competitors fail to deliver.",
+  "writingStyleFingerprint": "2-3 sentences describing the ideal writing style for this market: sentence complexity, use of stories, pacing, evidence style, framework density.",
+  "positioningStrategy": "2-3 sentences: the single strongest commercial differentiation strategy for this book — what makes it definitively different.",
+  "emotionalTriggers": [
+    "Specific emotional trigger that drives purchase in this market",
+    "Trigger 2",
+    "Trigger 3",
+    "Trigger 4"
+  ],
+  "energyStyle": "The energy register that works best in this niche — e.g. 'urgent and action-driven', 'warm mentor voice guiding through transformation', 'confident expert sharing hard-won insights'.",
+  "readerPsychologyProfile": {
+    "currentSituation": "Where the reader is right now — their reality, daily struggles, and past failed attempts",
+    "desiredFuture": "Where they want to be — specific, emotional, concrete",
+    "internalObstacles": "Mindset blocks, self-doubt, and limiting beliefs preventing success",
+    "externalObstacles": "Time, money, environment, or tools — practical barriers",
+    "falseBeliefsToBreak": "The specific misconceptions this book must address and disprove",
+    "learningPreferences": "How this audience learns best: stories, frameworks, data, step-by-step, case studies",
+    "emotionalDrivers": "The deeper emotional needs driving them to seek this book",
+    "commonMistakes": "The 3-5 most common mistakes this audience makes before finding the right solution"
+  },
+  "competitorStrengthsWeaknesses": [
+    {
+      "title": "Competitor book title",
+      "likelyStrengths": ["Strength 1 inferred from market position", "Strength 2", "Strength 3"],
+      "likelyWeaknesses": ["Weakness 1 inferred from niche patterns", "Weakness 2"],
+      "likelyReaderComplaints": ["Complaint 1", "Complaint 2", "Complaint 3"]
+    }
+  ],
+  "marketPatterns": {
+    "topicsEverySuccessfulBookCovers": ["Must-cover topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"],
+    "overusedFrameworks": ["Overused approach 1 readers are tired of", "Overused 2", "Overused 3"],
+    "readerFrustrations": ["Common frustration recurring across this market 1", "Frustration 2", "Frustration 3"],
+    "emergingTrends": ["Emerging trend 1 gaining traction", "Trend 2"],
+    "underservedTopics": ["Topic not well-covered by competitors 1", "Topic 2", "Topic 3"]
+  },
+  "researchScores": {
+    "competitorCoverage": 85,
+    "readerUnderstanding": 90,
+    "marketUnderstanding": 80,
+    "commercialOpportunity": 75,
+    "confidence": 85
+  },
+  "priorityRecommendations": [
+    "Specific strategic recommendation for this book 1",
+    "Recommendation 2",
+    "Recommendation 3",
+    "Recommendation 4",
+    "Recommendation 5"
+  ]
 }`;
 }
 

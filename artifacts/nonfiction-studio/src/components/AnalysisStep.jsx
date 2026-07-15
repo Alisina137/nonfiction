@@ -252,16 +252,22 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          niche:     research.mainNicheLabel || research.genre || "",
-          subNiche:  research.subNicheLabel  || "",
-          deepNiche: research.deepNicheLabel || "",
-          bookTopic: research.bookTopic      || "",
+          niche:          research.mainNicheLabel  || research.genre || "",
+          subNiche:       research.subNicheLabel   || "",
+          deepNiche:      research.deepNicheLabel  || "",
+          bookTopic:      research.bookTopic       || "",
+          stanceOnTopic:  research.stanceOnTopic   || "",
+          standout:       research.standout        || "",
+          publishingGoal: research.publishingGoal  || "",
           books: analysis.books.map((b) => ({
-            title:        b.title,
-            authors:      b.authors,
-            subtitle:     b.subtitle,
-            rating:       b.rating,
-            ratingsTotal: b.ratingsTotal
+            title:               b.title,
+            authors:             b.authors,
+            subtitle:            b.subtitle,
+            rating:              b.rating,
+            ratingsTotal:        b.ratingsTotal,
+            description:         b.description  || "",
+            publicationDate:     b.publicationDate || "",
+            bestsellersRankFlat: b.bestsellersRankFlat || "",
           }))
         })
       });
@@ -614,6 +620,11 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
               const ti    = intelligence.titleInsights              || {};
               const apg   = intelligence.authorPersonaGuidance      || {};
               const brief = intelligence.outlineGenerationBrief     || "";
+              const rpp   = intelligence.readerPsychologyProfile    || {};
+              const mp    = intelligence.marketPatterns             || {};
+              const csw   = intelligence.competitorStrengthsWeaknesses || [];
+              const scores= intelligence.researchScores             || {};
+              const recs  = intelligence.priorityRecommendations    || [];
               const strVal = (v) => typeof v === "string" ? v : (Array.isArray(v) ? v.join("; ") : (v && typeof v === "object" ? Object.values(v).filter(Boolean).join(" · ") : ""));
               return (
                 <div className="space-y-4">
@@ -713,6 +724,173 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
                     <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 mb-2">Outline Generation Brief</p>
                       <p className="text-sm text-slate-800 leading-relaxed">{strVal(brief)}</p>
+                    </div>
+                  )}
+
+                  {/* ── Book DNA ── */}
+                  {(intelligence.readerPainProfile || intelligence.transformationPromise || intelligence.energyStyle || intelligence.writingStyleFingerprint || intelligence.positioningStrategy) && (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Book DNA</p>
+                      <div className="space-y-3">
+                        {intelligence.readerPainProfile     && <div><p className="text-[9px] font-bold uppercase text-rose-400 mb-0.5">Reader Pain Profile</p><p className="text-sm text-slate-700 leading-snug">{intelligence.readerPainProfile}</p></div>}
+                        {intelligence.transformationPromise && <div><p className="text-[9px] font-bold uppercase text-emerald-500 mb-0.5">Transformation Promise</p><p className="text-sm text-slate-700 leading-snug">{intelligence.transformationPromise}</p></div>}
+                        {intelligence.energyStyle           && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Energy Style</p><p className="text-sm text-slate-700 leading-snug">{intelligence.energyStyle}</p></div>}
+                        {intelligence.writingStyleFingerprint && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Writing Style Fingerprint</p><p className="text-sm text-slate-700 leading-snug">{intelligence.writingStyleFingerprint}</p></div>}
+                        {intelligence.positioningStrategy   && <div><p className="text-[9px] font-bold uppercase text-violet-500 mb-0.5">Positioning Strategy</p><p className="text-sm text-slate-700 leading-snug">{intelligence.positioningStrategy}</p></div>}
+                      </div>
+                      {Array.isArray(intelligence.emotionalTriggers) && intelligence.emotionalTriggers.length > 0 && (
+                        <div className="mt-3 border-t border-slate-100 pt-3">
+                          <p className="text-[9px] font-bold uppercase text-violet-400 mb-1.5">Emotional Triggers</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {intelligence.emotionalTriggers.map((t, i) => (
+                              <span key={i} className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">{String(t)}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Reader Psychology Profile ── */}
+                  {Object.keys(rpp).length > 0 && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50/40 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 mb-3">Reader Psychology Profile</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {rpp.currentSituation    && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Current Situation</p><p className="text-xs text-slate-700 leading-snug">{rpp.currentSituation}</p></div>}
+                        {rpp.desiredFuture       && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Desired Future</p><p className="text-xs text-slate-700 leading-snug">{rpp.desiredFuture}</p></div>}
+                        {rpp.internalObstacles   && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Internal Obstacles</p><p className="text-xs text-slate-700 leading-snug">{rpp.internalObstacles}</p></div>}
+                        {rpp.externalObstacles   && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">External Obstacles</p><p className="text-xs text-slate-700 leading-snug">{rpp.externalObstacles}</p></div>}
+                        {rpp.falseBeliefsToBreak && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">False Beliefs to Break</p><p className="text-xs text-slate-700 leading-snug">{rpp.falseBeliefsToBreak}</p></div>}
+                        {rpp.learningPreferences && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Learning Preferences</p><p className="text-xs text-slate-700 leading-snug">{rpp.learningPreferences}</p></div>}
+                        {rpp.emotionalDrivers    && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Emotional Drivers</p><p className="text-xs text-slate-700 leading-snug">{rpp.emotionalDrivers}</p></div>}
+                        {rpp.commonMistakes      && <div><p className="text-[9px] font-bold uppercase text-slate-400 mb-0.5">Common Mistakes</p><p className="text-xs text-slate-700 leading-snug">{rpp.commonMistakes}</p></div>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Market Patterns ── */}
+                  {Object.keys(mp).length > 0 && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-3">Market Patterns</p>
+                      <div className="space-y-3">
+                        {Array.isArray(mp.topicsEverySuccessfulBookCovers) && mp.topicsEverySuccessfulBookCovers.length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold uppercase text-slate-400 mb-1.5">Table Stakes (must cover)</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {mp.topicsEverySuccessfulBookCovers.map((t, i) => (
+                                <span key={i} className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">{String(t)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {Array.isArray(mp.overusedFrameworks) && mp.overusedFrameworks.length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold uppercase text-slate-400 mb-1.5">Overused / Readers Are Tired Of</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {mp.overusedFrameworks.map((t, i) => (
+                                <span key={i} className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-700">{String(t)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {Array.isArray(mp.underservedTopics) && mp.underservedTopics.length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold uppercase text-slate-400 mb-1.5">Underserved Opportunities</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {mp.underservedTopics.map((t, i) => (
+                                <span key={i} className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">{String(t)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {Array.isArray(mp.emergingTrends) && mp.emergingTrends.length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold uppercase text-slate-400 mb-1.5">Emerging Trends</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {mp.emergingTrends.map((t, i) => (
+                                <span key={i} className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-800">{String(t)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Competitor Strengths & Weaknesses ── */}
+                  {csw.length > 0 && (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Competitor Analysis</p>
+                      <div className="space-y-3">
+                        {csw.slice(0, 5).map((c, i) => (
+                          <div key={i} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                            <p className="text-xs font-semibold text-slate-900 mb-2">"{String(c.title || "")}"</p>
+                            <div className="grid gap-2 sm:grid-cols-3">
+                              {Array.isArray(c.likelyStrengths) && c.likelyStrengths.length > 0 && (
+                                <div>
+                                  <p className="text-[9px] font-bold uppercase text-emerald-600 mb-1">Strengths</p>
+                                  <ul className="space-y-0.5">{c.likelyStrengths.map((s, j) => <li key={j} className="text-[11px] text-slate-600 leading-snug">• {String(s)}</li>)}</ul>
+                                </div>
+                              )}
+                              {Array.isArray(c.likelyWeaknesses) && c.likelyWeaknesses.length > 0 && (
+                                <div>
+                                  <p className="text-[9px] font-bold uppercase text-rose-500 mb-1">Weaknesses</p>
+                                  <ul className="space-y-0.5">{c.likelyWeaknesses.map((s, j) => <li key={j} className="text-[11px] text-slate-600 leading-snug">• {String(s)}</li>)}</ul>
+                                </div>
+                              )}
+                              {Array.isArray(c.likelyReaderComplaints) && c.likelyReaderComplaints.length > 0 && (
+                                <div>
+                                  <p className="text-[9px] font-bold uppercase text-amber-600 mb-1">Reader Complaints</p>
+                                  <ul className="space-y-0.5">{c.likelyReaderComplaints.map((s, j) => <li key={j} className="text-[11px] text-slate-600 leading-snug">• {String(s)}</li>)}</ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Research Scores ── */}
+                  {Object.keys(scores).length > 0 && (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Research Quality Scores</p>
+                      <div className="space-y-2">
+                        {[
+                          { key: "competitorCoverage",  label: "Competitor Coverage",   color: "bg-sky-500" },
+                          { key: "readerUnderstanding", label: "Reader Understanding",  color: "bg-violet-500" },
+                          { key: "marketUnderstanding", label: "Market Understanding",  color: "bg-indigo-500" },
+                          { key: "commercialOpportunity", label: "Commercial Opportunity", color: "bg-emerald-500" },
+                          { key: "confidence",          label: "Overall Confidence",    color: "bg-slate-600" },
+                        ].map(({ key, label, color }) => {
+                          const val = typeof scores[key] === "number" ? Math.min(100, Math.max(0, scores[key])) : null;
+                          if (val === null) return null;
+                          return (
+                            <div key={key} className="flex items-center gap-3">
+                              <p className="w-40 shrink-0 text-[11px] text-slate-600">{label}</p>
+                              <div className="flex-1 h-1.5 rounded-full bg-slate-100">
+                                <div className={`h-full rounded-full ${color}`} style={{ width: `${val}%` }} />
+                              </div>
+                              <p className="w-8 text-right text-[11px] font-semibold text-slate-700">{val}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Priority Recommendations ── */}
+                  {recs.length > 0 && (
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 mb-2">Priority Recommendations</p>
+                      <ol className="space-y-1.5">
+                        {recs.slice(0, 5).map((r, i) => (
+                          <li key={i} className="flex gap-2 text-sm text-slate-800 leading-snug">
+                            <span className="shrink-0 font-bold text-indigo-500">{i + 1}.</span>
+                            <span>{String(r)}</span>
+                          </li>
+                        ))}
+                      </ol>
                     </div>
                   )}
                 </div>

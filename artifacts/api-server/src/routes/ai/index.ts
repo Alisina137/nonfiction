@@ -1222,8 +1222,8 @@ router.post("/regenerate-book-section", async (req, res) => {
 
 router.post("/competitive-intelligence", async (req, res) => {
   try {
-    const { niche, subNiche, deepNiche, bookTopic, books } = req.body || {};
-    const prompt = competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, books });
+    const { niche, subNiche, deepNiche, bookTopic, stanceOnTopic, standout, publishingGoal, books } = req.body || {};
+    const prompt = competitiveIntelligencePrompt({ niche, subNiche, deepNiche, bookTopic, stanceOnTopic, standout, publishingGoal, books });
     const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "competitiveIntel");
     const data = extractJSON(text);
     if (!data || typeof data !== "object") {
@@ -1235,15 +1235,32 @@ router.post("/competitive-intelligence", async (req, res) => {
     const isStr = (v: any) => (typeof v === "string" ? v : "");
 
     const intelligence = {
+      // ── Core audience & pain ──────────────────────────────────────────────
       targetAudience:            isObj(data.targetAudience),
       readerPainPoints:          isArr(data.readerPainPoints),
       desiredOutcomes:           isArr(data.desiredOutcomes),
       marketGaps:                isArr(data.marketGaps),
+      // ── Positioning & USPs ───────────────────────────────────────────────
       uniqueSellingPropositions: isArr(data.uniqueSellingPropositions),
       positioningStrategies:     isArr(data.positioningStrategies),
       titleInsights:             isObj(data.titleInsights),
       authorPersonaGuidance:     isObj(data.authorPersonaGuidance),
+      bestCompetitorInsights:    isArr(data.bestCompetitorInsights),
       outlineGenerationBrief:    isStr(data.outlineGenerationBrief) || isStr(Object.values(isObj(data.outlineGenerationBrief)).join(" ")),
+      // ── Book DNA fields (used by bookContext + all downstream prompts) ────
+      readerPainProfile:         isStr(data.readerPainProfile),
+      transformationPromise:     isStr(data.transformationPromise),
+      marketGapAnalysis:         isStr(data.marketGapAnalysis),
+      writingStyleFingerprint:   isStr(data.writingStyleFingerprint),
+      positioningStrategy:       isStr(data.positioningStrategy),
+      emotionalTriggers:         isArr(data.emotionalTriggers),
+      energyStyle:               isStr(data.energyStyle),
+      // ── Deep strategic intelligence ──────────────────────────────────────
+      readerPsychologyProfile:       isObj(data.readerPsychologyProfile),
+      competitorStrengthsWeaknesses: isArr(data.competitorStrengthsWeaknesses),
+      marketPatterns:                isObj(data.marketPatterns),
+      researchScores:                isObj(data.researchScores),
+      priorityRecommendations:       isArr(data.priorityRecommendations),
     };
 
     const REQUIRED = ["targetAudience", "readerPainPoints", "desiredOutcomes", "marketGaps"] as const;
