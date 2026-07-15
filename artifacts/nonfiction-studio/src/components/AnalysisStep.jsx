@@ -57,6 +57,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
   const [intelLoading, setIntelLoading]           = useState(false);
   const [intelError, setIntelError]               = useState("");
   const [showBooks, setShowBooks]                 = useState(true);
+  const [sortBy, setSortBy]                       = useState("default");
   const [newKeyword, setNewKeyword]               = useState("");
   const [searchProgress, setSearchProgress]       = useState("");
   const keywordInputRef = useRef(null);
@@ -410,7 +411,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
 
       {/* ── Book list ── */}
       {analysis.books.length > 0 && (
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium text-slate-700">{analysis.books.length} competitor book{analysis.books.length !== 1 ? "s" : ""} found</p>
             <button
@@ -421,15 +422,39 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
               {showBooks ? "Hide" : "Show"}
             </button>
           </div>
-          {analysis.books.filter(b => b.source !== "manual").length > 0 && (
-            <button
-              type="button"
-              onClick={() => updateAnalysis((prev) => ({ ...prev, books: prev.books.filter(b => b.source === "manual") }))}
-              className="text-xs text-rose-600 hover:underline"
-            >
-              Clear all
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] text-slate-400">Sort:</p>
+              {[
+                { value: "default",  label: "Default" },
+                { value: "rating",   label: "Rating" },
+                { value: "reviews",  label: "Reviews" },
+                { value: "rank",     label: "Rank" },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSortBy(value)}
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                    sortBy === value
+                      ? "bg-slate-800 text-white"
+                      : "border border-slate-200 text-slate-500 hover:bg-slate-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {analysis.books.filter(b => b.source !== "manual").length > 0 && (
+              <button
+                type="button"
+                onClick={() => updateAnalysis((prev) => ({ ...prev, books: prev.books.filter(b => b.source === "manual") }))}
+                className="text-xs text-rose-600 hover:underline"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -439,7 +464,16 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
             No competitors yet — search above or paste a URL below.
           </li>
         )}
-        {analysis.books.map((book) => {
+        {[...analysis.books].sort((a, b) => {
+          if (sortBy === "rating")  return (b.rating ?? -1) - (a.rating ?? -1);
+          if (sortBy === "reviews") return (b.ratingsTotal ?? -1) - (a.ratingsTotal ?? -1);
+          if (sortBy === "rank") {
+            const ra = typeof a.bestsellersRankFlat === "string" ? parseInt(a.bestsellersRankFlat.replace(/\D/g, ""), 10) || Infinity : Infinity;
+            const rb = typeof b.bestsellersRankFlat === "string" ? parseInt(b.bestsellersRankFlat.replace(/\D/g, ""), 10) || Infinity : Infinity;
+            return ra - rb;
+          }
+          return 0;
+        }).map((book) => {
           const isOpen        = expandedId === book.id;
           const ratingLabel   = typeof book.rating       === "number" ? `${book.rating.toFixed(1)} ★` : null;
           const reviewsLabel  = typeof book.ratingsTotal === "number" ? `${book.ratingsTotal.toLocaleString()} reviews` : null;
