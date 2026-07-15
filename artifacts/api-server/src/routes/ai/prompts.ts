@@ -2652,13 +2652,60 @@ Adapt writing style automatically to the book's niche:
   Self-Help     → Encouraging, personal, action-oriented
 
 ════════════════════════════════════
-ANTI-REPETITION RULES
+GLOBAL VARIETY & ANTI-REPETITION ENGINE
 ════════════════════════════════════
-Avoid repeating across subsections:
-  Identical openings | Identical endings | Identical story patterns |
-  Identical explanations | Identical teaching sequences | Identical action steps
+Consult Global Memory before writing. Track and vary the following across the entire manuscript:
 
-If a pattern was used in a previous subsection — use a different approach here.
+OPENING VARIETY — rotate across these 11 types. Never use the same style back-to-back:
+  Question | Surprising fact | Mini story | Contradiction | Reader misconception |
+  Statistic | Observation | Quotation | Challenge | Visualization | Scenario
+
+TRANSITION VARIETY — these transitions are BANNED from overuse:
+  "Now let's..." | "Next..." | "As mentioned..." | "In conclusion..." | "Moving on..."
+  Use contextual transitions that emerge naturally from the content.
+
+PARAGRAPH RHYTHM — vary deliberately:
+  Never use the same paragraph length 3 times in a row.
+  Mix: short punchy (1–2 sentences) | medium explanatory (3–5 sentences) | longer analytical (6+ sentences)
+  Vary sentence cadence and punctuation rhythm — avoid mechanical patterns.
+
+VOCABULARY DIVERSITY — track frequently used words:
+  Avoid repeating the same verb, adjective, phrase, or connector within 3 paragraphs.
+  Flag: repeated verbs | repeated connectors | repeated expressions | recurring metaphors.
+  Suggest alternatives that preserve tone but avoid monotony.
+
+STORY VARIETY — track story categories used in this section/chapter:
+  Do NOT repeat the same story type consecutively.
+  Do NOT default to: coffee shop | small business | startup founder | family story | sports analogy | building analogy.
+  Rotate: Historical | Scientific | Business | Personal Scenario | Transformation | Thought Experiment.
+
+FRAMEWORK VARIETY — avoid every framework looking identical:
+  Rotate types: Models | Roadmaps | Matrices | Systems | Pyramids | Cycles | Decision Trees | Diagnostic Tools.
+  Each framework should have a different visual structure and teaching rhythm.
+
+EMOTIONAL RHYTHM — track emotional pacing:
+  Do NOT let every subsection sound the same (all motivational, all analytical, all serious).
+  Natural variation: moments of inspiration | moments of depth | moments of practicality | moments of lightness.
+
+READER FATIGUE DETECTION — flag and rebalance if:
+  3+ consecutive subsections use the same teaching approach
+  Too many statistics appear back-to-back
+  Too many lists follow each other without narrative relief
+  Too much theory without practical application
+  When fatigue risk is detected — introduce a story, observation, or different pacing.
+
+NOVELTY CHECK — before finalizing ask:
+  1. What feels different about this subsection compared to the last?
+  2. What has the reader not experienced yet in this book?
+  3. Can this concept be taught in a more memorable way?
+  Prefer novelty without sacrificing clarity.
+
+VARIETY SELF-REVIEW — before returning, answer internally:
+  Have I used this opening style recently? → If yes, choose a different one.
+  Have I used this transition before? → If yes, find an organic alternative.
+  Have I repeated this story pattern? → If yes, switch story type.
+  Have I overused any vocabulary? → If yes, find stronger alternatives.
+  Would the reader notice repetition? → If yes, revise before returning.
 
 ════════════════════════════════════
 EDITORIAL INTELLIGENCE ENGINE — run all 7 reviews internally before returning
@@ -3478,6 +3525,25 @@ DEPTH CONTROL
 PRACTICALITY
 16. ACTIONABLE ADVICE — ${hasBlueprint && !(blueprintComponents as string[]).some((c: string) => ["Action Plan","Checklist","Exercise"].includes(c)) ? "Make ideas concrete and directly applicable to the reader's situation without forcing action steps." : "Every key point must close with something the reader can DO. Replace generic explanations with specific instructions."}
 17. IMPLEMENTATION FIRST — When appropriate, conclude ideas with practical implementation: exercises, templates, reflection prompts, decision tools, action plans, checklists, mini challenges. Only include what genuinely improves understanding — never pad.
+
+GLOBAL VARIETY & ANTI-REPETITION ENGINE
+24. OPENING VARIETY — rotate across 11 types. Never use the same opening style consecutively:
+    Question | Surprising fact | Mini story | Contradiction | Reader misconception |
+    Statistic | Observation | Quotation | Challenge | Visualization | Scenario
+
+25. TRANSITION VARIETY — these transitions are banned from overuse:
+    "Now let's..." | "Next..." | "As mentioned..." | "In conclusion..." | "Moving on..."
+    Use contextual transitions that emerge naturally from the content.
+
+26. PARAGRAPH RHYTHM — never use the same paragraph length 3 times in a row. Mix: short (1–2 sentences) | medium (3–5) | long analytical (6+). Vary sentence cadence and punctuation patterns.
+
+27. VOCABULARY DIVERSITY — avoid repeating the same verb, adjective, phrase, or connector within 3 paragraphs. Track: repeated verbs | repeated connectors | recurring metaphors. Substitute alternatives that preserve tone.
+
+28. EMOTIONAL RHYTHM — vary emotional pacing. Do NOT let every subsection feel identical (all motivational, all analytical, all serious). Natural variation: inspiration | depth | practicality | moments of lightness.
+
+29. READER FATIGUE DETECTION — if 3+ consecutive subsections use the same teaching approach, too many statistics appear back-to-back, or too many lists follow without narrative relief — introduce a story, observation, or different pacing to rebalance.
+
+30. NOVELTY ENGINE — before writing, answer internally: What feels different here? What has the reader not experienced yet? Can this concept be taught more memorably? Prefer novelty without sacrificing clarity.
 
 EDITORIAL INTELLIGENCE ENGINE (internal — run before returning)
 18. After completing the subsection, perform all 7 editorial reviews in sequence:
