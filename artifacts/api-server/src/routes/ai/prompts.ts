@@ -4843,38 +4843,114 @@ Every section must earn its place by serving a distinct role in the chapter's tr
 
 ====================================================
 
-LEARNING COMPONENTS — PROGRESSION-AWARE SELECTION
+BLUEPRINT COMPONENT INTELLIGENCE ENGINE
 
 ====================================================
 
-COMPONENT LEARNING ROLES
-(Each component has one specific pedagogical purpose)
+STEP 1 — ANALYZE SECTION CONTEXT BEFORE SELECTING
 
-Research Insight         → Explain: build credibility through data, studies, and evidence
-Case Study               → Prove: real-world evidence the concept works
-Real-Life Example        → Demonstrate: concrete, visual illustrations of the concept
-Resources                → Explore: encourage deeper learning beyond this chapter
-Key Takeaways            → Retain: memorable points the reader keeps forever
-Reflection Questions     → Internalize: guided introspection and self-awareness
-Exercise                 → Practice: hands-on skill-building activities
-Checklist                → Execute: step-by-step consistency and action tools
-Templates                → Apply: reusable frameworks the reader fills in themselves
-Action Plan              → Commit: specific, time-bound next steps
-One Small Step           → Momentum: something the reader can do in under 5 minutes right now
-Common Mistakes          → Guard: prevent implementation failures and wrong turns
-Pro Tips                 → Advance: expert-level optimization advice for experienced readers
-7-Day Challenge          → Challenge: a commitment task to complete before moving on
-FAQ                      → Clarify: answers to the most common doubts at this stage
-Myth vs Reality          → Reframe: dismantle false beliefs and replace them with truth
-Success Story            → Motivate: a brief, relatable win to sustain momentum
-Brain Science            → Explain: ground the concept in neuroscience or psychology
-Statistics               → Explain: quantify the scale or impact with hard data
-Why This Happens         → Explain: reveal the root cause or mechanism behind a pattern
-Practical Technique      → Apply: a specific, named method the reader can use directly
-Self-Assessment          → Assess: "How am I doing?" self-evaluation at this point
-Common Traps             → Guard: subtle pitfalls readers fall into when attempting this
-Expert Quote             → Prove: an authoritative voice reinforcing the point
-Story                    → Demonstrate: a short narrative that brings the concept to life
+Before choosing any component, identify:
+A. What is the teaching purpose of this section? (see list below)
+B. What category balance does this purpose require?
+C. What does the reader need right now — Engagement, Authority, Explanation, Action, or Reinforcement?
+D. What natural component pairings strengthen learning here?
+
+====================================================
+
+TEACHING PURPOSES — identify the purpose of each section before selecting
+
+Introduce Concept    → reader needs: Engagement + Explanation (Story/Example + Why This Happens/Framework)
+Correct Misconception → reader needs: Authority + Explanation (Myth vs Reality + Research/Brain Science)
+Teach Skill          → reader needs: Explanation + Action (Framework + Exercise/Checklist/Templates)
+Explain Framework    → reader needs: Explanation + Action (Framework + Real-Life Example + Checklist)
+Build Confidence     → reader needs: Engagement + Reinforcement (Success Story + Key Takeaways/Pro Tips)
+Inspire Action       → reader needs: Engagement + Action (Story + Action Plan/One Small Step)
+Diagnose Problem     → reader needs: Authority + Explanation (Statistics/Research + Why This Happens)
+Compare Options      → reader needs: Authority + Explanation (Case Study + Common Mistakes/Common Traps)
+Deepen Understanding → reader needs: Authority + Explanation (Brain Science + Research Insight + Case Study)
+Summarize            → reader needs: Reinforcement (Key Takeaways + Reflection Questions + Self-Assessment)
+Implementation       → reader needs: Action (Action Plan + Checklist + Templates + Common Mistakes)
+Troubleshooting      → reader needs: Explanation + Reinforcement (Common Traps + FAQ + Practical Technique)
+Optimization         → reader needs: Action + Reinforcement (Pro Tips + Templates + Self-Assessment)
+Mastery              → reader needs: Action + Reinforcement (Self-Assessment + Reflection Questions + Pro Tips)
+
+====================================================
+
+COMPONENT CATEGORIES
+(every component belongs to exactly one category)
+
+ENGAGEMENT (draws readers in, makes concepts relatable)
+  Story, Real-Life Example, Success Story, Case Study, Expert Quote
+
+AUTHORITY (establishes credibility, grounds concepts in evidence)
+  Research Insight, Statistics, Brain Science, Why This Happens, Myth vs Reality
+
+EXPLANATION (builds understanding, delivers the core concept)
+  Common Mistakes, Common Traps, Practical Technique, FAQ
+
+ACTION (drives application and behavior change)
+  Exercise, Checklist, Templates, Action Plan, One Small Step, Self-Assessment, 7-Day Challenge
+
+REINFORCEMENT (cements learning, sustains momentum)
+  Key Takeaways, Reflection Questions, Resources, Pro Tips
+
+====================================================
+
+BALANCED RECIPE (target for every section)
+
+Select 3 components total. Build a balanced recipe:
+  0–1 from ENGAGEMENT
+  0–1 from AUTHORITY
+  1–2 from EXPLANATION or ACTION
+  0–1 from REINFORCEMENT
+
+Not every section needs every category.
+The balance depends on the teaching purpose identified in STEP 1.
+
+====================================================
+
+NATURAL COMPONENT PAIRINGS (prefer these combinations)
+
+Story + Common Mistakes           — narrative with grounded lesson
+Research Insight + Statistics     — evidence layered with scale
+Framework + Real-Life Example     — model made concrete
+Checklist + Action Plan           — sequence plus commitment
+Reflection Questions + Exercise   — introspection into practice
+Case Study + Key Takeaways        — proof distilled into lessons
+FAQ + Resources                   — doubts resolved with deeper paths
+Templates + Self-Assessment       — tool plus progress check
+One Small Step + Action Plan      — momentum into full commitment
+Myth vs Reality + Brain Science   — reframe grounded in science
+
+====================================================
+
+NICHE-AWARE COMPONENT PREFERENCES
+
+Business:       Case Study, Framework (Practical Technique), Checklist, Action Plan, Templates
+Health:         Research Insight, Brain Science, Exercise, Reflection Questions, Statistics
+Finance:        Statistics, Templates, Common Traps, Action Plan, Self-Assessment
+Psychology:     Research Insight, Exercise, Reflection Questions, Case Study, Brain Science
+History:        Story, Expert Quote, Common Mistakes, Research Insight, Why This Happens
+Self-Help:      Story, Real-Life Example, Exercise, Reflection Questions, Action Plan
+Technology:     Practical Technique, Checklist, Common Mistakes, Templates, FAQ
+
+Adapt component selection to the book's niche. Do not force identical patterns across all niches.
+
+====================================================
+
+DIFFICULTY ADAPTATION
+
+Beginner chapters (Phase 1–2):
+  Prefer: Story, Real-Life Example, Success Story, Why This Happens, One Small Step, Key Takeaways
+  Reduce: Research Insight, Statistics, Pro Tips, Templates, Self-Assessment
+
+Intermediate chapters (Phase 3):
+  Prefer: Practical Technique, Checklist, Action Plan, Case Study, Reflection Questions
+  Balance: Explanation + Action evenly
+
+Advanced chapters (Phase 4–5):
+  Prefer: Research Insight, Brain Science, Pro Tips, Templates, Self-Assessment, Common Traps
+  Reduce: Story, FAQ, One Small Step (reader is past these)
 
 ====================================================
 
@@ -4894,22 +4970,45 @@ ${phaseAvoid.length ? phaseAvoid.map((c: string) => `❌ ${c}`).join("\n") : "(n
 
 ====================================================
 
+ANTI-REPETITION RULES
+
+Across all sections in this chapter, avoid repeating the same combination.
+No two consecutive sections should share the same 3-component set.
+Vary which categories you draw from section to section.
+
+❌ Repetitive (avoid): Story + Research Insight + Checklist (used for every section)
+✅ Varied: Section 1 = Story + Why This Happens + Key Takeaways
+           Section 2 = Research Insight + Action Plan + Reflection Questions
+           Section 3 = Case Study + Templates + Common Mistakes
+
+====================================================
+
+COMPONENT VALIDATION (self-check before finalizing)
+
+For every component selected, confirm:
+1. Does it support the section's teaching purpose?
+2. Does it serve a different learning function from the other selected components?
+3. Is it appropriate for Phase ${learningPhase} (${phaseName})?
+4. Would a premium educational book teach this concept this way?
+5. Does the combination create a balanced learning recipe?
+
+If any answer is NO — replace that component before returning the result.
+
+====================================================
+
 COMPONENT SELECTION RULES (NON-NEGOTIABLE)
 
 1. Choose EXACTLY 3 components per section.
 
-2. Prioritize PREFERRED components for Phase ${learningPhase} (${phaseName}).
-   The reader needs components that: ${phaseGoal}
+2. Follow the balanced recipe: select from at least 2 different categories.
+   Never pick 3 components from the same category.
 
-3. AVOID components must NOT be used. The reader is not ready for them at this stage.
+3. AVOID components must NOT be used at Phase ${learningPhase}. The reader is not ready for them.
 
-4. Select COMPLEMENTARY components — each must serve a DIFFERENT learning purpose.
-   Never combine two components with the same pedagogical role.
-
-   ❌ WEAK (all explain/prove — redundant): Research Insight + Case Study + Real-Life Example
-   ❌ WEAK (all action — one-dimensional): Action Plan + Checklist + Exercise
-   ❌ WEAK (all passive — no active element): Key Takeaways + Reflection Questions + FAQ
-
+4. Each component must serve a DIFFERENT learning purpose.
+   ❌ WEAK: Research Insight + Case Study + Real-Life Example (all explain/prove — redundant)
+   ❌ WEAK: Action Plan + Checklist + Exercise (all action — one-dimensional)
+   ❌ WEAK: Key Takeaways + Reflection Questions + FAQ (all passive — no active element)
    ✅ STRONG: Research Insight + Reflection Questions + Key Takeaways
    ✅ STRONG: Action Plan + Common Mistakes + Reflection Questions
    ✅ STRONG: Case Study + Exercise + Key Takeaways
@@ -4918,11 +5017,11 @@ COMPONENT SELECTION RULES (NON-NEGOTIABLE)
    ✅ STRONG: One Small Step + Action Plan + Common Mistakes
 
 5. Match component to section type:
-   Conceptual section     → prefer Research Insight, Real-Life Example, Case Study, Statistics, Myth vs Reality
-   Framework section      → prefer Real-Life Example, Templates, Checklist, Action Plan, Exercise
-   Implementation section → prefer Action Plan, Templates, Exercise, Checklist, Common Mistakes
-   Optimization section   → prefer Key Takeaways, Templates, Reflection Questions, Pro Tips, Checklist
-   Conclusion section     → prefer Reflection Questions, Key Takeaways, Action Plan, Self-Assessment
+   Conceptual section     → Research Insight, Real-Life Example, Case Study, Statistics, Myth vs Reality
+   Framework section      → Practical Technique, Templates, Checklist, Action Plan, Exercise
+   Implementation section → Action Plan, Templates, Exercise, Checklist, Common Mistakes
+   Optimization section   → Key Takeaways, Templates, Reflection Questions, Pro Tips, Checklist
+   Conclusion section     → Reflection Questions, Key Takeaways, Action Plan, Self-Assessment
 
 6. Vary combinations across sections in this chapter.
    No two consecutive sections should share the same 3-component set.
@@ -5149,38 +5248,113 @@ Every subsection must feel purposeful — the reader should never wonder why it'
 
 ====================================================
 
-LEARNING COMPONENTS — PROGRESSION-AWARE SELECTION (PER SUBSECTION)
+BLUEPRINT COMPONENT INTELLIGENCE ENGINE (PER SUBSECTION)
 
 ====================================================
 
-COMPONENT LEARNING ROLES
-(Each component has one specific pedagogical purpose)
+STEP 1 — ANALYZE SUBSECTION CONTEXT BEFORE SELECTING
 
-Research Insight         → Explain: build credibility through data, studies, and evidence
-Case Study               → Prove: real-world evidence the concept works
-Real-Life Example        → Demonstrate: concrete, visual illustrations of the concept
-Resources                → Explore: encourage deeper learning beyond this chapter
-Key Takeaways            → Retain: memorable points the reader keeps forever
-Reflection Questions     → Internalize: guided introspection and self-awareness
-Exercise                 → Practice: hands-on skill-building activities
-Checklist                → Execute: step-by-step consistency and action tools
-Templates                → Apply: reusable frameworks the reader fills in themselves
-Action Plan              → Commit: specific, time-bound next steps
-One Small Step           → Momentum: something the reader can do in under 5 minutes right now
-Common Mistakes          → Guard: prevent implementation failures and wrong turns
-Pro Tips                 → Advance: expert-level optimization advice for experienced readers
-7-Day Challenge          → Challenge: a commitment task to complete before moving on
-FAQ                      → Clarify: answers to the most common doubts at this stage
-Myth vs Reality          → Reframe: dismantle false beliefs and replace them with truth
-Success Story            → Motivate: a brief, relatable win to sustain momentum
-Brain Science            → Explain: ground the concept in neuroscience or psychology
-Statistics               → Explain: quantify the scale or impact with hard data
-Why This Happens         → Explain: reveal the root cause or mechanism behind a pattern
-Practical Technique      → Apply: a specific, named method the reader can use directly
-Self-Assessment          → Assess: "How am I doing?" self-evaluation at this point
-Common Traps             → Guard: subtle pitfalls readers fall into when attempting this
-Expert Quote             → Prove: an authoritative voice reinforcing the point
-Story                    → Demonstrate: a short narrative that brings the concept to life
+Before choosing any component, identify:
+A. What is the teaching purpose of this subsection? (see purpose list below)
+B. What single core idea does this subsection teach?
+C. What does the reader need right now — Engagement, Authority, Explanation, Action, or Reinforcement?
+D. What natural component pairings would strengthen learning here?
+E. What components have already been used heavily in this section? (avoid repeating them)
+
+====================================================
+
+TEACHING PURPOSES — identify the purpose of each subsection before selecting
+
+Introduce Concept    → Engagement + Explanation (Story/Example + Why This Happens/Framework)
+Correct Misconception → Authority + Explanation (Myth vs Reality + Research Insight/Brain Science)
+Teach Skill          → Explanation + Action (Practical Technique + Exercise/Checklist)
+Explain Framework    → Explanation + Action (Why This Happens + Real-Life Example + Checklist)
+Build Confidence     → Engagement + Reinforcement (Success Story + Key Takeaways)
+Inspire Action       → Engagement + Action (Story + Action Plan/One Small Step)
+Diagnose Problem     → Authority + Explanation (Statistics + Why This Happens)
+Deepen Understanding → Authority + Explanation (Brain Science + Research Insight)
+Implementation       → Action (Action Plan + Checklist + Common Mistakes)
+Troubleshooting      → Explanation + Reinforcement (Common Traps + FAQ + Practical Technique)
+Optimization         → Action + Reinforcement (Pro Tips + Templates + Self-Assessment)
+Summarize            → Reinforcement (Key Takeaways + Reflection Questions)
+Mastery              → Action + Reinforcement (Self-Assessment + Reflection Questions + Pro Tips)
+
+====================================================
+
+COMPONENT CATEGORIES
+(every component belongs to exactly one category)
+
+ENGAGEMENT (draws readers in, makes concepts relatable)
+  Story, Real-Life Example, Success Story, Case Study, Expert Quote
+
+AUTHORITY (establishes credibility, grounds concepts in evidence)
+  Research Insight, Statistics, Brain Science, Why This Happens, Myth vs Reality
+
+EXPLANATION (builds understanding, delivers the concept clearly)
+  Common Mistakes, Common Traps, Practical Technique, FAQ
+
+ACTION (drives application and behavior change)
+  Exercise, Checklist, Templates, Action Plan, One Small Step, Self-Assessment, 7-Day Challenge
+
+REINFORCEMENT (cements learning, sustains momentum)
+  Key Takeaways, Reflection Questions, Resources, Pro Tips
+
+====================================================
+
+BALANCED RECIPE (target for every subsection)
+
+Select 3–4 components. Build a balanced recipe:
+  0–1 from ENGAGEMENT
+  0–1 from AUTHORITY
+  1–2 from EXPLANATION or ACTION
+  0–1 from REINFORCEMENT
+
+Not every subsection needs every category.
+Single-purpose subsections (skill drill, quick action) may use 2–3 ACTION components.
+Conceptual subsections (explaining why) may use 2 AUTHORITY + 1 REINFORCEMENT.
+
+====================================================
+
+NATURAL COMPONENT PAIRINGS (prefer these)
+
+Story + Common Mistakes           — narrative with grounded lesson
+Research Insight + Statistics     — evidence layered with scale
+Practical Technique + Exercise    — method made actionable
+Checklist + Action Plan           — sequence plus commitment
+Reflection Questions + Exercise   — introspection into practice
+Case Study + Key Takeaways        — proof distilled into lessons
+FAQ + Resources                   — doubts resolved with deeper paths
+Templates + Self-Assessment       — tool plus progress check
+One Small Step + Action Plan      — momentum into full commitment
+Myth vs Reality + Brain Science   — reframe grounded in science
+Brain Science + Why This Happens  — mechanism explained at depth
+
+====================================================
+
+NICHE-AWARE COMPONENT PREFERENCES
+
+Business:       Case Study, Practical Technique, Checklist, Action Plan, Templates
+Health:         Research Insight, Brain Science, Exercise, Reflection Questions, Statistics
+Finance:        Statistics, Templates, Common Traps, Action Plan, Self-Assessment
+Psychology:     Research Insight, Exercise, Reflection Questions, Case Study, Brain Science
+History:        Story, Expert Quote, Common Mistakes, Research Insight, Why This Happens
+Self-Help:      Story, Real-Life Example, Exercise, Reflection Questions, Action Plan
+Technology:     Practical Technique, Checklist, Common Mistakes, Templates, FAQ
+
+====================================================
+
+DIFFICULTY ADAPTATION
+
+Beginner subsections (Phase 1–2):
+  Prefer: Story, Real-Life Example, Success Story, Why This Happens, One Small Step, Key Takeaways
+  Reduce: Research Insight, Statistics, Pro Tips, Templates, Self-Assessment
+
+Intermediate subsections (Phase 3):
+  Prefer: Practical Technique, Checklist, Action Plan, Case Study, Reflection Questions
+
+Advanced subsections (Phase 4–5):
+  Prefer: Research Insight, Brain Science, Pro Tips, Templates, Self-Assessment, Common Traps
+  Reduce: Story, FAQ, One Small Step
 
 ====================================================
 
@@ -5200,36 +5374,59 @@ ${phaseAvoid.length ? phaseAvoid.map((c: string) => `❌ ${c}`).join("\n") : "(n
 
 ====================================================
 
+ANTI-REPETITION RULES
+
+Across all subsections in this section, track what has already been selected.
+Avoid using the same component more than twice in one section.
+Vary which categories you draw from subsection to subsection.
+
+❌ Repetitive: Story + Research + Checklist | Story + Research + Checklist | Story + Research + Checklist
+✅ Varied:     Story + Why This Happens + Key Takeaways
+               Research Insight + Action Plan + Reflection Questions
+               Case Study + Templates + Common Mistakes
+
+====================================================
+
+COMPONENT VALIDATION (self-check before finalizing)
+
+For every component selected, confirm:
+1. Does it support this specific subsection's single core idea?
+2. Does it support the parent section's teaching mission?
+3. Does it serve a different learning function than the other selected components?
+4. Is it appropriate for Phase ${learningPhase} (${phaseName})?
+5. Has this exact combination already been used in an earlier subsection of this section?
+6. Would a premium educational book teach this concept this way?
+
+If any answer is NO — replace that component before returning the result.
+
+====================================================
+
 COMPONENT SELECTION RULES (NON-NEGOTIABLE)
 
 1. Choose 3 OR 4 components for EACH subsection, independently.
-   Default to 3. Only use 4 when the subsection is unusually dense or multi-faceted and a 4th component would meaningfully round it out (e.g. it needs both a proof element and an action element, or the topic spans two distinct sub-ideas).
-   Do not reuse one fixed set for every subsection in this section — evaluate each subsection on its own merits, and vary the count (not just the components) across subsections where warranted.
+   Default to 3. Only use 4 when the subsection is dense or multi-faceted and a 4th component adds genuinely different learning value.
+   Vary the count across subsections — do not apply the same count to every subsection.
 
-2. Base the choice on: this specific subsection's title, its purpose/description, the parent section title, the parent chapter context, and the reader's current learning phase (below).
+2. Select based on: this specific subsection's title, its single core idea, the parent section, the parent chapter, and the reader's current learning phase.
 
-3. Prioritize PREFERRED components for Phase ${learningPhase} (${phaseName}).
-   The reader needs components that: ${phaseGoal}
+3. Build a balanced recipe — never pick 3 components from the same category.
 
-4. AVOID components must NOT be used. The reader is not ready for them at this stage.
+4. AVOID components must NOT be used at Phase ${learningPhase}. The reader is not ready for them.
 
-5. Select COMPLEMENTARY components — each must serve a DIFFERENT learning purpose.
-   Never combine two components with the same pedagogical role.
-
-   ❌ WEAK (all explain/prove — redundant): Research Insight + Case Study + Real-Life Example
-   ❌ WEAK (all action — one-dimensional): Action Plan + Checklist + Exercise
-   ❌ WEAK (all passive — no active element): Key Takeaways + Reflection Questions + FAQ
-
+5. Each component must serve a DIFFERENT learning purpose:
+   ❌ WEAK: Research Insight + Case Study + Real-Life Example (all explain/prove)
+   ❌ WEAK: Action Plan + Checklist + Exercise (all action)
+   ❌ WEAK: Key Takeaways + Reflection Questions + FAQ (all passive)
    ✅ STRONG: Research Insight + Reflection Questions + Key Takeaways
    ✅ STRONG: Action Plan + Common Mistakes + Reflection Questions
    ✅ STRONG: Case Study + Exercise + Key Takeaways
-   ✅ STRONG: Myth vs Reality + Real-Life Example + Key Takeaways
+   ✅ STRONG: Myth vs Reality + Brain Science + Action Plan
    ✅ STRONG: Templates + Exercise + Self-Assessment
    ✅ STRONG: One Small Step + Action Plan + Common Mistakes
 
-6. Vary combinations (and counts) across subsections in this section — no two subsections should share the exact same component set unless their purposes genuinely call for it.
+6. Vary combinations across subsections — no two subsections should share the exact same component set.
 
-7. Never use fewer than 3 or more than 4 components for any subsection.
+7. Never use fewer than 3 or more than 4 components per subsection.
 
 ====================================================
 
