@@ -83,6 +83,320 @@ Requirements:
 Return ONLY the prose text — no JSON, no headings, no labels, no preamble.`;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// BOOK DNA ARCHITECTURE — Internal Intelligence Layer
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Book DNA is the permanent, project-wide source of truth.
+// It is never shown to users. It is synthesized from all prior step data
+// and injected into every AI generation call to maintain consistency.
+//
+// Hierarchy:
+//   Book DNA (global)
+//     └── Chapter DNA (per chapter)
+//           └── Section DNA (per section)
+//                 └── Subsection DNA (per subsection)
+//
+// Global Memory tracks what has already been written to prevent repetition.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Build Book DNA from a full project object.
+ * Called by routes that receive the entire project.
+ */
+export function buildBookDNAFromProject(project: any): string {
+  if (!project || typeof project !== "object") return "";
+  const research  = project?.research  || {};
+  const intel     = project?.analysis?.intelligence || {};
+  const pb        = project?.proposedBook?.content  || {};
+  const bd        = project?.bookDetails || {};
+  const persona   = (() => {
+    const ap = project?.authorPersona || {};
+    const selId = ap.selectedId;
+    if (selId && selId !== "__create_new__") {
+      return (Array.isArray(ap.savedPersonas) ? ap.savedPersonas : []).find((p: any) => p.id === selId) || ap.draft || {};
+    }
+    return ap.draft || {};
+  })();
+
+  const title          = bd.title || research.bookTitle || project?.bookTitle?.selectedCard?.title || "";
+  const audience       = bd.audience || pb.proposedAudience || research.targetAudience || intel.targetAudience || "";
+  const coreThesis     = bd.coreThesis || bd.corePromise || pb.bookPitch || "";
+  const corePromise    = bd.corePromise || intel.transformationPromise || pb.proposedTransformation || "";
+  const usp            = bd.usp || pb.uniqueSellingProposition || pb.differentiation || "";
+  const uniqueMech     = bd.uniqueMechanism || "";
+  const painPoints     = intel.readerPainProfile || "";
+  const beforeState    = bd.readerTransformationBefore || "";
+  const afterState     = bd.readerTransformationAfter || "";
+  const readerObjections = bd.readerObjections || "";
+  const marketGap      = intel.marketGapAnalysis || "";
+  const voiceSummary   = persona?.voiceSummary || "";
+  const archetype      = persona?.authorArchetype || "";
+  const dos            = Array.isArray(persona?.dos) ? persona.dos.join("; ") : "";
+  const donts          = Array.isArray(persona?.donts) ? persona.donts.join("; ") : "";
+  const teachingStyle  = Array.isArray(persona?.signatureTeachingStyle) ? persona.signatureTeachingStyle.join(", ") : "";
+  const sigFramework   = persona?.signatureFramework || pb.signatureFramework?.name || "";
+  const tone           = bd.tone || pb.proposedTone || "";
+  const structure      = bd.structure || "";
+  const wordCount      = bd.wordCountRange || "";
+  const researchInt    = bd.researchIntensity || "";
+  const emotionalOut   = bd.desiredEmotionalOutcome || "";
+  const contentGuide   = Array.isArray(persona?.contentGuidelines) ? persona.contentGuidelines.join("; ") : "";
+  const focusTags      = Array.isArray(project?.proposedBook?.focusTags) ? project.proposedBook.focusTags.join(", ") : "";
+  const milestones     = Array.isArray(intel.desiredOutcomes)
+    ? intel.desiredOutcomes.slice(0, 4).map((o: any) => typeof o === "string" ? o : (o?.outcome || "")).filter(Boolean).join(" → ")
+    : "";
+
+  return _formatBookDNA({
+    title, audience, coreThesis, corePromise, usp, uniqueMech,
+    painPoints, beforeState, afterState, readerObjections, marketGap,
+    voiceSummary, archetype, dos, donts, teachingStyle, sigFramework,
+    tone, structure, wordCount, researchInt, emotionalOut, contentGuide,
+    focusTags, milestones
+  });
+}
+
+/**
+ * Build Book DNA from a compact bookContext object.
+ * Used by lesson / write routes that receive bookContext, not the full project.
+ */
+export function buildBookDNAFromContext(bookContext: any): string {
+  if (!bookContext || typeof bookContext !== "object") return "";
+  const ctx = bookContext;
+  return _formatBookDNA({
+    title:         ctx.title      || "",
+    audience:      ctx.audience   || "",
+    coreThesis:    ctx.bookTopic  || "",
+    corePromise:   ctx.corePromise || ctx.transformationPromise || "",
+    usp:           ctx.usp || ctx.differentiation || "",
+    uniqueMech:    ctx.uniqueMechanism || "",
+    painPoints:    ctx.readerPainProfile || "",
+    beforeState:   ctx.readerTransformationBefore || "",
+    afterState:    ctx.readerTransformationAfter || ctx.transformationPromise || "",
+    readerObjections: "",
+    marketGap:     ctx.marketGap || "",
+    voiceSummary:  ctx.writingStyleFingerprint || ctx.authorSummary || "",
+    archetype:     "",
+    dos:           "",
+    donts:         "",
+    teachingStyle: "",
+    sigFramework:  "",
+    tone:          ctx.tone || "",
+    structure:     ctx.structure || "",
+    wordCount:     ctx.wordCountRange || "",
+    researchInt:   "",
+    emotionalOut:  ctx.emotionalTriggers || "",
+    contentGuide:  "",
+    focusTags:     "",
+    milestones:    "",
+  });
+}
+
+function _formatBookDNA(d: {
+  title: string; audience: string; coreThesis: string; corePromise: string;
+  usp: string; uniqueMech: string; painPoints: string; beforeState: string;
+  afterState: string; readerObjections: string; marketGap: string;
+  voiceSummary: string; archetype: string; dos: string; donts: string;
+  teachingStyle: string; sigFramework: string; tone: string; structure: string;
+  wordCount: string; researchInt: string; emotionalOut: string;
+  contentGuide: string; focusTags: string; milestones: string;
+}): string {
+  const lines: string[] = [];
+  if (d.coreThesis)       lines.push(`Core Thesis: ${d.coreThesis}`);
+  if (d.corePromise)      lines.push(`Core Promise: ${d.corePromise}`);
+  if (d.audience)         lines.push(`Ideal Reader: ${d.audience}`);
+  if (d.painPoints)       lines.push(`Reader Pain Points: ${d.painPoints}`);
+  if (d.beforeState)      lines.push(`Reader Before State: ${d.beforeState}`);
+  if (d.afterState)       lines.push(`Reader After State (Transformation Goal): ${d.afterState}`);
+  if (d.readerObjections) lines.push(`Reader Objections to Address: ${d.readerObjections}`);
+  if (d.milestones)       lines.push(`Transformation Milestones: ${d.milestones}`);
+  if (d.usp)              lines.push(`USP: ${d.usp}`);
+  if (d.uniqueMech)       lines.push(`Unique Mechanism: ${d.uniqueMech}`);
+  if (d.marketGap)        lines.push(`Market Position (Gap to Fill): ${d.marketGap}`);
+  if (d.focusTags)        lines.push(`Key Themes & Vocabulary: ${d.focusTags}`);
+  if (d.voiceSummary)     lines.push(`Writing Voice: ${d.voiceSummary}`);
+  if (d.archetype)        lines.push(`Author Archetype: ${d.archetype}`);
+  if (d.teachingStyle)    lines.push(`Teaching Style: ${d.teachingStyle}`);
+  if (d.sigFramework)     lines.push(`Signature Framework: ${d.sigFramework}`);
+  if (d.tone)             lines.push(`Emotional Tone: ${d.tone}`);
+  if (d.structure)        lines.push(`Preferred Structure: ${d.structure}`);
+  if (d.researchInt)      lines.push(`Evidence Level: ${d.researchInt}`);
+  if (d.emotionalOut)     lines.push(`Emotional Triggers: ${d.emotionalOut}`);
+  if (d.contentGuide)     lines.push(`Content Guidelines: ${d.contentGuide}`);
+  if (d.dos)              lines.push(`Always Do: ${d.dos}`);
+  if (d.donts)            lines.push(`Never Do: ${d.donts}`);
+
+  if (!lines.length) return "";
+  return `
+════════════════════════════════════
+BOOK DNA — Permanent Project Identity
+════════════════════════════════════
+This is the authoritative source of truth for this book.
+Every word generated must align with every field below.
+
+${lines.join("\n")}
+
+Quality Target: Every sentence must serve the reader's transformation from their Before State to their After State.
+Content Boundary: Never contradict the USP, never introduce concepts that belong to a different chapter, never repeat what has already been covered.
+════════════════════════════════════`;
+}
+
+/**
+ * Build Chapter DNA block.
+ * Inherits Book DNA. Adds chapter-level objectives and arc.
+ */
+export function buildChapterDNABlock(chapterContext: any, chapterStrategy: any, chapterNumber?: number): string {
+  const ch  = (chapterContext && typeof chapterContext === "object") ? chapterContext : {};
+  const str = chapterStrategy || {};
+
+  const title       = ch.title || (typeof chapterContext === "string" ? chapterContext : "") || "";
+  const goal        = ch.description || ch.chapterObjective || "";
+  const theme       = str.chapterTheme || "";
+  const arc         = str.chapterArc   || "";
+  const outcome     = str.readerOutcome || "";
+  const opening     = str.openingStrategy || "";
+  const closing     = str.closingStrategy || "";
+  const avoid       = Array.isArray(str.conceptsToAvoid) && str.conceptsToAvoid.length
+    ? str.conceptsToAvoid.join("; ")
+    : "";
+  const methods     = Array.isArray(str.teachingMethods) && str.teachingMethods.length
+    ? str.teachingMethods.join(", ")
+    : "";
+  const uniqueness  = str.uniquenessDirective || "";
+
+  const lines: string[] = [];
+  if (chapterNumber !== undefined) lines.push(`Chapter Number: ${chapterNumber}`);
+  if (title)     lines.push(`Chapter: ${title}`);
+  if (goal)      lines.push(`Chapter Goal: ${goal}`);
+  if (theme)     lines.push(`Chapter Theme (unifying idea): ${theme}`);
+  if (arc)       lines.push(`Reader Arc: ${arc}`);
+  if (outcome)   lines.push(`Learning Outcome: ${outcome}`);
+  if (opening)   lines.push(`Opening Strategy: ${opening}`);
+  if (closing)   lines.push(`Transition / Closing Strategy: ${closing}`);
+  if (methods)   lines.push(`Teaching Methods Available: ${methods}`);
+  if (uniqueness) lines.push(`Uniqueness Directive: ${uniqueness}`);
+  if (avoid)     lines.push(`Concepts to Avoid (already covered): ${avoid}`);
+
+  if (!lines.length) return "";
+  return `
+════════════════════════════════════
+CHAPTER DNA — Chapter-Level Intelligence
+════════════════════════════════════
+Inherits all Book DNA constraints. Chapter-specific objectives:
+
+${lines.join("\n")}
+════════════════════════════════════`;
+}
+
+/**
+ * Build Section DNA block.
+ * Inherits Chapter DNA. Adds section-level objectives.
+ */
+export function buildSectionDNABlock(sectionTitle: string, sectionObjective: string): string {
+  if (!sectionTitle) return "";
+  const lines: string[] = [];
+  if (sectionTitle)     lines.push(`Section: ${sectionTitle}`);
+  if (sectionObjective) lines.push(`Section Goal: ${sectionObjective}`);
+  lines.push(`Teaching Purpose: Cover exactly what this section promises — no more, no less.`);
+  lines.push(`Desired Reader Action: Reader should understand and be ready to apply the section's core concept.`);
+
+  return `
+════════════════════════════════════
+SECTION DNA — Section-Level Intelligence
+════════════════════════════════════
+Inherits all Chapter DNA constraints. Section-specific objectives:
+
+${lines.join("\n")}
+════════════════════════════════════`;
+}
+
+/**
+ * Build Subsection DNA block.
+ * Inherits Section DNA. Adds subsection-level objectives.
+ */
+export function buildSubsectionDNABlock(subsection: any, subsectionPurpose: string): string {
+  const title = typeof subsection === "string"
+    ? subsection
+    : (subsection?.title || "");
+  const desc = typeof subsection === "object"
+    ? (String(subsection?.description || subsection?.objective || "").slice(0, 200))
+    : "";
+
+  if (!title) return "";
+  const lines: string[] = [];
+  lines.push(`Subsection: ${title}`);
+  if (desc)              lines.push(`Subsection Purpose: ${desc}`);
+  if (subsectionPurpose) lines.push(`Teaching Objective: ${subsectionPurpose}`);
+  lines.push(`Expected Reader Outcome: Reader finishes this subsection with ONE clear, actionable insight they can use immediately.`);
+  lines.push(`Complexity Guidance: Introduce exactly one core idea. Do not overlap with adjacent subsections.`);
+
+  return `
+════════════════════════════════════
+SUBSECTION DNA — Subsection-Level Intelligence
+════════════════════════════════════
+Inherits all Section DNA constraints. Subsection-specific objectives:
+
+${lines.join("\n")}
+════════════════════════════════════`;
+}
+
+/**
+ * Build Global Memory block.
+ * Tracks what has already been written project-wide.
+ * Used to prevent repetition and ensure progressive depth.
+ */
+export function buildGlobalMemoryBlock(previousConcepts: any[], chapterSummaries: any[]): string {
+  const concepts  = Array.isArray(previousConcepts) ? previousConcepts : [];
+  const summaries = Array.isArray(chapterSummaries)  ? chapterSummaries  : [];
+
+  if (!concepts.length && !summaries.length) return "";
+
+  // Extract framework names from concept titles (heuristic: "The X Method", "X Framework", etc.)
+  const frameworks = new Set<string>();
+  const topicLines: string[] = [];
+
+  for (const c of concepts.slice(-12)) {
+    const t = typeof c === "string" ? c : (c?.title || "");
+    if (!t) continue;
+    topicLines.push(`  • ${t}`);
+    const m = t.match(/The ([A-Z][\w\s]+(?:Method|Framework|System|Model|Approach|Blueprint|Principle))/i);
+    if (m) frameworks.add(m[0]);
+  }
+
+  const frameworkLines = [...frameworks].map(f => `  • ${f}`);
+
+  const chapterLines: string[] = [];
+  for (const s of summaries.slice(0, 6)) {
+    if (s?.chapter) {
+      const ideas = Array.isArray(s.keyIdeas) ? s.keyIdeas.slice(0, 2).join("; ") : "";
+      chapterLines.push(`  • ${s.chapter}${ideas ? `: ${ideas}` : ""}`);
+    }
+  }
+
+  const parts: string[] = [];
+  if (frameworkLines.length) {
+    parts.push(`Frameworks/Systems Already Introduced (do not re-introduce):\n${frameworkLines.join("\n")}`);
+  }
+  if (topicLines.length) {
+    parts.push(`Subsections Already Written (do not repeat or re-explain):\n${topicLines.join("\n")}`);
+  }
+  if (chapterLines.length) {
+    parts.push(`Completed Chapters (build forward — never backward):\n${chapterLines.join("\n")}`);
+  }
+
+  if (!parts.length) return "";
+  return `
+════════════════════════════════════
+GLOBAL MEMORY — Project-Wide Knowledge
+════════════════════════════════════
+Consult this before writing. Build on what exists. Never repeat or re-introduce:
+
+${parts.join("\n\n")}
+
+Memory Rule: If a concept, framework, story, or example appears in Global Memory, it must NOT be re-introduced. Reference it briefly if needed, then deepen or extend it.
+════════════════════════════════════`;
+}
+
 // ─── Shared project data extractor ───────────────────────────────────────────
 
 function safeStr(v: any): string {
@@ -1842,6 +2156,13 @@ export function lessonPrompt({
 }: any) {
   const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
   const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
+
+  // ── Book DNA Architecture — build all DNA layers from available context ──
+  const dnaBookBlock       = buildBookDNAFromContext(bookContext);
+  const dnaChapterBlock    = buildChapterDNABlock(chapterContext, chapterStrategy);
+  const dnaSectionBlock    = buildSectionDNABlock(sectionTitle || "", "");
+  const dnaSubsectionBlock = buildSubsectionDNABlock(subsection, subsectionPurpose || "");
+  const dnaGlobalMemory    = buildGlobalMemoryBlock(previousConcepts || [], chapterSummaries || []);
 
   // Rich covered-content block — shows chapter/section context + key takeaway for each prior block
   const coveredContentBlock = Array.isArray(previousConcepts) && previousConcepts.length
