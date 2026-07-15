@@ -2604,19 +2604,63 @@ Avoid repeating across subsections:
 If a pattern was used in a previous subsection — use a different approach here.
 
 ════════════════════════════════════
-SELF-VALIDATION (run this internally before finishing)
+EDITORIAL INTELLIGENCE ENGINE — run all 7 reviews internally before returning
 ════════════════════════════════════
-Before returning this subsection, confirm:
-1. Does this subsection teach exactly one clear idea?
-2. Is every paragraph necessary and purposeful?
-3. Do the selected blueprint components work together as one continuous lesson?
-4. Is the subsection practical — does it help the reader do something?
-5. Does it reinforce the Book DNA and Blueprint?
-6. Does it support the chapter mission and reader transformation?
-7. Does the learning flow feel natural, not mechanical?
-8. Would a premium publisher approve this subsection?
+Perform each editorial review in sequence. Revise the content after each review if problems are found.
 
-If any answer is NO — revise before returning.
+1. DEVELOPMENTAL REVIEW
+   — Does this subsection support the Book DNA and Blueprint?
+   — Does it contribute to the chapter mission and reader transformation?
+   — Does it answer the specific reader question it was designed for?
+   — Would removing it weaken the book? If not, revise.
+
+2. TECHNICAL ACCURACY REVIEW
+   — Is every claim factually consistent and logically sound?
+   — Are there contradictions, unsupported claims, overgeneralizations, or misleading advice?
+   — If evidence is weak, add stronger support or restate with appropriate caution.
+
+3. EDUCATIONAL REVIEW
+   — Can the reader actually learn from this subsection?
+   — Is the concept introduced clearly, taught in the right order, and reinforced?
+   — Is implementation guidance sufficient for the reader to act?
+   — If understanding is likely to fail — rewrite the explanation.
+
+4. READER ADVOCATE REVIEW
+   — Would this answer the reader's question without confusion?
+   — Would a reader trust this advice and continue reading?
+   — Identify any friction points (boring passages, confusing sequences, unsupported claims) and fix them.
+
+5. COPY EDITING
+   — Fix grammar, punctuation, sentence flow, and wordiness.
+   — Remove passive voice where it weakens clarity.
+   — Eliminate repeated words within the same paragraph.
+   — Correct only where it improves readability without changing intended meaning.
+
+6. CONSISTENCY REVIEW
+   — Are terminology, framework names, and definitions consistent with earlier sections?
+   — Does the tone and voice match the established author voice?
+   — Are example continuity and story continuity maintained?
+   — Flag and correct any inconsistency with prior content.
+
+7. COMMERCIAL REVIEW
+   — Does this subsection deliver genuine reader value a paying customer would appreciate?
+   — Is it original — not generic advice that appears in every book on this topic?
+   — Would a professional editor at a major publisher approve it?
+   — Would a reader highlight this passage and recommend this book because of it?
+
+QUALITY SCORECARD — score each category internally (1–10). Revise any category scoring below 7:
+  Accuracy | Clarity | Teaching Effectiveness | Reader Engagement | Practical Value |
+  Originality | Evidence Quality | Readability | Flow | Book DNA Alignment |
+  Blueprint Alignment | Chapter Alignment | Section Alignment | Transformation Impact |
+  Commercial Value | Overall Quality
+
+REVISION STRATEGY — when revising:
+  Preserve the author's intended voice.
+  Improve only the areas that failed validation.
+  Do not make unnecessary changes.
+  Avoid repeated cycles of rewriting.
+
+Only after all 7 reviews pass — return the final subsection.
 ` : "";
 
   const strategyBlock = chapterStrategy ? `
@@ -3268,20 +3312,25 @@ QUALITY CHECK (verify before returning)
 
 If any answer is NO — rewrite.` : `
 ════════════════════════════════════
-QUALITY CHECK (verify before returning)
+EDITORIAL INTELLIGENCE ENGINE — run all 7 reviews before returning
 ════════════════════════════════════
-1. Does this subsection teach exactly one clear idea — not two or three loosely related ones?
-2. Does the content follow the ${structureKey} writing flow?
-3. Does the tone match: ${toneInstr.slice(0, 120)}
-4. Is every paragraph purposeful — hook, context, explanation, evidence, example, application, reflection, transition, or action?
-5. Does this subsection provide unique value not found in adjacent subsections?
-6. Is the opening varied and engaging — not a definition, not a generic warm-up?
-7. Are transitions natural — no "Now let's..." or "The next step is..."?
-8. Does the subsection leave the reader feeling capable of applying what they just learned?
-9. Would a reader immediately notice this is a ${structureKey} book rather than a generic one?
-10. Would a premium publisher approve this subsection?
+Perform each review in sequence. Revise the content if any review reveals a problem.
 
-If any answer is NO — rewrite.`;
+1. DEVELOPMENTAL: Teaches one clear idea? Supports Book DNA, Blueprint, chapter mission, reader transformation? Writing flow matches ${structureKey}?
+2. TECHNICAL: Every claim factually sound and logically consistent? No contradictions, overgeneralizations, or unsupported advice?
+3. EDUCATIONAL: Can the reader actually learn from this? Concept clear? Right teaching order? Implementation guidance present? Tone matches: ${toneInstr.slice(0, 100)}?
+4. READER ADVOCATE: Opening varied and engaging (not a definition)? Transitions natural (no "Now let's...", "The next step is...")? Reader leaves feeling capable?
+5. COPY EDIT: Grammar, flow, sentence variety, wordiness, passive voice, repeated words — all clean?
+6. CONSISTENCY: Voice, terminology, and style consistent with prior sections? Content unique — no overlap with adjacent subsections?
+7. COMMERCIAL: Provides unique value a paying reader would highlight? Would a premium publisher in the ${structureKey} genre approve this?
+
+QUALITY SCORECARD — score internally (1–10). Auto-revise any category below 7:
+  Accuracy | Clarity | Teaching Effectiveness | Reader Engagement | Practical Value |
+  Originality | Evidence Quality | Readability | Flow | Book DNA Alignment |
+  Blueprint Alignment | Chapter Alignment | Transformation Impact | Commercial Value | Overall Quality
+
+REVISION STRATEGY: Preserve author voice. Fix only failing areas. No unnecessary changes.
+If any review fails — revise automatically before returning.`;
 
   return `You are a professional nonfiction author, instructional designer, and developmental editor. Your responsibility is to transform all available planning intelligence — Book DNA, Blueprint, Outline, Chapter DNA, Section DNA, Subsection DNA, Component Teaching Plan, and Global Memory — into premium-quality nonfiction content.
 
@@ -3356,12 +3405,25 @@ PRACTICALITY
 16. ACTIONABLE ADVICE — ${hasBlueprint && !(blueprintComponents as string[]).some((c: string) => ["Action Plan","Checklist","Exercise"].includes(c)) ? "Make ideas concrete and directly applicable to the reader's situation without forcing action steps." : "Every key point must close with something the reader can DO. Replace generic explanations with specific instructions."}
 17. IMPLEMENTATION FIRST — When appropriate, conclude ideas with practical implementation: exercises, templates, reflection prompts, decision tools, action plans, checklists, mini challenges. Only include what genuinely improves understanding — never pad.
 
-SELF-REVIEW (internal — run before returning)
-18. After completing the subsection, evaluate it against all 11 dimensions:
-    Accuracy | Clarity | Educational value | Practical value | Reader engagement | Originality |
-    Alignment with Book DNA | Alignment with Blueprint | Alignment with Chapter Mission |
-    Alignment with Section Mission | Alignment with Subsection Mission
-    If any dimension is weak — revise before returning. The reader should feel they have learned something meaningful, not merely consumed words.
+EDITORIAL INTELLIGENCE ENGINE (internal — run before returning)
+18. After completing the subsection, perform all 7 editorial reviews in sequence:
+
+    DEVELOPMENTAL: Supports Book DNA? Blueprint? Chapter mission? Reader transformation? If not — revise.
+    TECHNICAL: Every claim factually sound? No contradictions, overgeneralizations, or misleading advice? If not — correct.
+    EDUCATIONAL: Can the reader actually learn this? Concept clear? Right teaching order? Implementation guidance present? If not — rewrite.
+    READER ADVOCATE: Would reader trust this and continue reading? Any confusion or friction? If yes — fix.
+    COPY EDIT: Grammar, flow, wordiness, passive voice, repeated words — correct without changing meaning.
+    CONSISTENCY: Terminology, framework names, tone, voice — consistent with prior sections? Fix any drift.
+    COMMERCIAL: Does this deliver genuine reader value? Is it original? Would a major publisher approve it?
+
+    QUALITY SCORECARD — score each internally (1–10). Auto-revise any category below 7:
+      Accuracy | Clarity | Teaching Effectiveness | Reader Engagement | Practical Value |
+      Originality | Evidence Quality | Readability | Flow | Book DNA Alignment |
+      Blueprint Alignment | Chapter Alignment | Section Alignment | Transformation Impact |
+      Commercial Value | Overall Quality
+
+    REVISION STRATEGY: Preserve author voice. Improve only failing areas. No unnecessary changes.
+    The reader should feel they have learned something meaningful — not merely consumed words.
 
 ${qualityCheck}${ctxBlock}${resBlock}
 
