@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "H0MG-tKlke2RZn5usvYGR"
+uri = "file://nonfiction-ai-studio-documentation.docx"
+type = "word_document"
+title = "Nonfiction AI Studio — User Documentation"
