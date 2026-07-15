@@ -2459,9 +2459,19 @@ ${(upcomingTopics as string[]).map((t: string) => `→ ${t}`).join("\n")}`
   const blueprintBlock = hasBlueprint
     ? `
 ════════════════════════════════════
-SECTION BLUEPRINT COMPONENTS — EXCLUSIVE & NON-NEGOTIABLE
+SUBSECTION INTELLIGENCE ENGINE
 ════════════════════════════════════
-The reader selected the following as the ONLY content elements for this section.
+
+STEP 0 — TEACHING PURPOSE ANALYSIS (do this before writing a single word)
+1. What is the single core idea this subsection teaches?
+2. What category balance was selected? (Engagement / Authority / Explanation / Action / Reinforcement)
+3. What does the reader need right now — to understand, to be convinced, to act, or to reflect?
+4. How do the selected blueprint components work together to deliver one complete learning experience?
+
+════════════════════════════════════
+BLUEPRINT COMPONENTS — EXCLUSIVE & NON-NEGOTIABLE
+════════════════════════════════════
+The following are the ONLY content elements for this subsection.
 You MUST include every one of them. You MUST NOT include anything else.
 
 ${(blueprintComponents as string[]).map((c: string) => `✓ ${c} — ${COMPONENT_GUIDANCE[c] || `include a ${c.toLowerCase()} element`}`).join("\n")}
@@ -2472,12 +2482,141 @@ ${!(blueprintComponents as string[]).includes("Action Plan") ? "✗ Action Steps
 ${!(blueprintComponents as string[]).includes("Exercise") ? "✗ Try This / Activity / Practice Exercise / Exercise" : ""}
 ${!(blueprintComponents as string[]).includes("Reflection Questions") ? "✗ Reflect / Think About / Self-Assessment questions" : ""}
 
-Critical rules:
-- The blueprint components listed above ARE the structure of this subsection. They REPLACE any default 6-part structure.
-- Do NOT follow the REQUIRED OUTPUT STRUCTURE section below — use the blueprint above instead.
-- Do NOT add headers, bold labels, or section breaks for the components — weave them naturally into flowing prose.
-- Every selected component MUST appear before the end of this subsection.
-- This blueprint list OVERRIDES the "Teaching Methods Available" list below. That list is chapter-wide guidance and was NOT generated with this specific subsection's blueprint in mind — if any teaching method there would introduce a forbidden component (e.g. "case study", "exercise", "data/statistics" when those aren't selected above), you MUST ignore that method entirely for this subsection.
+This blueprint list OVERRIDES the "Teaching Methods Available" list below. That list is chapter-wide guidance and was NOT generated with this subsection's blueprint in mind — if any teaching method there would introduce a forbidden component, ignore it entirely for this subsection.
+
+════════════════════════════════════
+SINGLE IDEA PRINCIPLE
+════════════════════════════════════
+This subsection teaches EXACTLY ONE primary concept.
+Do NOT mix multiple unrelated ideas.
+Every paragraph must support the same learning objective.
+If multiple ideas arise, cut the weaker ones — they belong in different subsections.
+
+════════════════════════════════════
+LEARNING FLOW — adapt this sequence to the selected components
+════════════════════════════════════
+Design the subsection using this educational progression:
+
+  Attention       — open with something that hooks the reader into the topic
+  Understanding   — introduce the core idea in plain, clear language
+  Evidence        — ground the concept in research, data, or expert insight
+  Example         — make it concrete with a specific, real-world illustration
+  Application     — show how the reader applies this in their own life
+  Reflection      — prompt the reader to internalize the idea
+  Action          — convert understanding into a specific next behavior
+
+This order may shift based on the selected components.
+Never force all 7 steps if fewer serve the concept better.
+The flow should feel natural — not a mechanical checklist.
+
+════════════════════════════════════
+COMPONENT INTEGRATION — blend, don't stack
+════════════════════════════════════
+Blueprint components must work TOGETHER as one continuous lesson.
+Do NOT generate isolated blocks that sit side by side.
+Instead, weave them naturally:
+
+  Example: Story introduces the idea → Research validates it → Checklist applies it → Key Takeaways retain it.
+
+The reader should experience a single unbroken educational flow.
+No component should feel like an interruption of the previous one.
+
+════════════════════════════════════
+PARAGRAPH DESIGN — every paragraph has a purpose
+════════════════════════════════════
+Possible paragraph purposes:
+  Hook | Context | Explanation | Evidence | Story | Example | Comparison |
+  Framework | Clarification | Application | Reflection | Transition | Action | Conclusion
+
+Before writing each paragraph, identify its purpose internally.
+If a paragraph has no clear purpose — cut it.
+Never write filler paragraphs to reach a word count.
+
+════════════════════════════════════
+STORY INTEGRATION (when Story, Success Story, or Case Study are selected)
+════════════════════════════════════
+Use authentic, specific stories. Rotate naturally across:
+  Historical events | Real companies | Real people | Composite examples |
+  Personal scenarios | Industry examples | Customer experiences
+
+Do NOT repeatedly use: coffee shop, bakery, small business owner, store owner — unless genuinely appropriate.
+Stories must TEACH the concept, not merely entertain.
+One story per subsection is sufficient. Never use two stories for the same point.
+
+════════════════════════════════════
+EVIDENCE INTEGRATION (when Research Insight, Statistics, Brain Science, or Expert Quote are selected)
+════════════════════════════════════
+Blend evidence intelligently:
+  Research findings | Statistics | Expert opinion | Industry practice | Scientific findings
+
+Avoid excessive percentages back-to-back.
+Evidence should SUPPORT the lesson — not overwhelm it.
+Connect each data point directly to the reader's situation.
+
+════════════════════════════════════
+FRAMEWORK INTEGRATION (when Practical Technique, Templates, or Checklist are selected)
+════════════════════════════════════
+When introducing a framework or method:
+  1. Introduce it with a name or label
+  2. Explain WHY it exists (the problem it solves)
+  3. Break it into understandable parts
+  4. Show how it works in practice
+  5. Provide implementation guidance
+
+Reconnect to frameworks introduced earlier in the book where appropriate.
+
+════════════════════════════════════
+TRANSITIONS — natural variety required
+════════════════════════════════════
+Transitions between components must feel organic.
+AVOID repeatedly using:
+  "Now let's..." | "The next step..." | "As discussed earlier..." | "In conclusion..."
+
+Create varied transitions that emerge naturally from the content.
+
+════════════════════════════════════
+EMOTIONAL DESIGN — track reader state
+════════════════════════════════════
+Each subsection should intentionally move the reader toward:
+  Understanding → Confidence → Motivation → Implementation → Progress
+
+Never leave the reader overwhelmed.
+End the subsection with the reader feeling capable of applying what they just learned.
+
+════════════════════════════════════
+NICHE ADAPTATION
+════════════════════════════════════
+Adapt writing style automatically to the book's niche:
+  Business     → Strategic, direct, outcome-focused
+  Health        → Supportive, empathetic, evidence-grounded
+  Finance       → Analytical, precise, risk-aware
+  History       → Narrative, contextual, cause-and-effect
+  Psychology    → Reflective, mechanism-explaining, self-aware
+  Self-Help     → Encouraging, personal, action-oriented
+
+════════════════════════════════════
+ANTI-REPETITION RULES
+════════════════════════════════════
+Avoid repeating across subsections:
+  Identical openings | Identical endings | Identical story patterns |
+  Identical explanations | Identical teaching sequences | Identical action steps
+
+If a pattern was used in a previous subsection — use a different approach here.
+
+════════════════════════════════════
+SELF-VALIDATION (run this internally before finishing)
+════════════════════════════════════
+Before returning this subsection, confirm:
+1. Does this subsection teach exactly one clear idea?
+2. Is every paragraph necessary and purposeful?
+3. Do the selected blueprint components work together as one continuous lesson?
+4. Is the subsection practical — does it help the reader do something?
+5. Does it reinforce the Book DNA and Blueprint?
+6. Does it support the chapter mission and reader transformation?
+7. Does the learning flow feel natural, not mechanical?
+8. Would a premium publisher approve this subsection?
+
+If any answer is NO — revise before returning.
 ` : "";
 
   const strategyBlock = chapterStrategy ? `
@@ -3131,11 +3270,16 @@ If any answer is NO — rewrite.` : `
 ════════════════════════════════════
 QUALITY CHECK (verify before returning)
 ════════════════════════════════════
-1. Does the content follow the ${structureKey} writing flow? 
-2. Does the tone match: ${toneInstr.slice(0, 120)}
-3. Does this subsection provide unique value not found in other subsections?
-4. Is the opening varied and engaging (not a definition)?
-5. Would a reader immediately notice this is a ${structureKey} book rather than a generic one?
+1. Does this subsection teach exactly one clear idea — not two or three loosely related ones?
+2. Does the content follow the ${structureKey} writing flow?
+3. Does the tone match: ${toneInstr.slice(0, 120)}
+4. Is every paragraph purposeful — hook, context, explanation, evidence, example, application, reflection, transition, or action?
+5. Does this subsection provide unique value not found in adjacent subsections?
+6. Is the opening varied and engaging — not a definition, not a generic warm-up?
+7. Are transitions natural — no "Now let's..." or "The next step is..."?
+8. Does the subsection leave the reader feeling capable of applying what they just learned?
+9. Would a reader immediately notice this is a ${structureKey} book rather than a generic one?
+10. Would a premium publisher approve this subsection?
 
 If any answer is NO — rewrite.`;
 
@@ -3241,11 +3385,32 @@ The prose must flow as unified paragraphs — warm, personal, and sincere. Do NO
   ? `Follow the THE END INSTRUCTIONS above exactly — an extremely brief (30–80 words maximum), warm closing message: thank the reader, leave them inspired with a topic-specific thought, and optionally invite engagement.
 May include "The End" as a stylistic header. Never exceed 80 words.`
   : hasBlueprint
-  ? `BLUEPRINT CONTENT STRUCTURE (follows from SECTION BLUEPRINT COMPONENTS above)
-Write the subsection as flowing prose that includes ONLY the blueprint components selected above.
-Do NOT follow a generic 6-part template. The blueprint components ARE the structure.
-Do NOT add any component that is marked FORBIDDEN above.
-The prose must flow as unified paragraphs — no internal headers or bold labels.`
+  ? `SUBSECTION INTELLIGENCE ENGINE — WRITING INSTRUCTIONS
+════════════════════════════════════════════
+Build this subsection as a COMPLETE LEARNING EXPERIENCE, not a collection of paragraphs.
+
+CONSTRUCTION SEQUENCE:
+1. START with an Attention hook — one sentence or short scene that pulls the reader in immediately
+2. ESTABLISH the single core idea in plain, clear language (2–3 sentences)
+3. INTEGRATE the selected blueprint components in a natural educational flow:
+   — Let Engagement components (Story, Example, Case Study) open or illustrate
+   — Let Authority components (Research, Statistics, Brain Science) validate
+   — Let Explanation components (Practical Technique, Common Mistakes, FAQ) clarify
+   — Let Action components (Exercise, Checklist, Action Plan, Templates) apply
+   — Let Reinforcement components (Key Takeaways, Reflection Questions, Pro Tips) cement
+4. BLEND the components — they must work as one continuous lesson, not isolated blocks
+5. CLOSE by leaving the reader feeling capable and ready to apply what they just learned
+
+WRITING RULES:
+— Flowing prose only. No internal headers or bold labels for component names.
+— Every paragraph has a clear purpose. No filler.
+— Transitions between components must feel organic — never use "Now let's..." or "The next step is..."
+— Stories must teach the concept, not just entertain. Rotate story types (avoid coffee shop / bakery defaults).
+— Evidence should support the lesson, not overwhelm it.
+— One story per subsection is enough — never use two stories for the same point.
+— End with the reader in a stronger position than when they started.
+
+ONLY include the blueprint components listed above. Do NOT add any FORBIDDEN component.`
   : `Every section MUST follow this exact 6-part structure internally within the prose:
 
 1. ENGAGING INTRODUCTION — Hook the reader with a surprising fact, bold claim, short scene, or provocative question specific to this topic. No generic warm-ups.
