@@ -56,6 +56,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
   const [expandedId, setExpandedId]               = useState(null);
   const [intelLoading, setIntelLoading]           = useState(false);
   const [intelError, setIntelError]               = useState("");
+  const [showBooks, setShowBooks]                 = useState(true);
   const [newKeyword, setNewKeyword]               = useState("");
   const [searchProgress, setSearchProgress]       = useState("");
   const keywordInputRef = useRef(null);
@@ -410,7 +411,16 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
       {/* ── Book list ── */}
       {analysis.books.length > 0 && (
         <div className="mt-2 flex items-center justify-between">
-          <p className="text-sm font-medium text-slate-700">{analysis.books.length} competitor book{analysis.books.length !== 1 ? "s" : ""} found</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-slate-700">{analysis.books.length} competitor book{analysis.books.length !== 1 ? "s" : ""} found</p>
+            <button
+              type="button"
+              onClick={() => setShowBooks((v) => !v)}
+              className="rounded-full border border-slate-200 px-2.5 py-0.5 text-[11px] font-medium text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              {showBooks ? "Hide" : "Show"}
+            </button>
+          </div>
           {analysis.books.filter(b => b.source !== "manual").length > 0 && (
             <button
               type="button"
@@ -423,7 +433,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
         </div>
       )}
 
-      <ul className="mt-3 space-y-3">
+      {showBooks && <ul className="mt-3 space-y-3">
         {analysis.books.length === 0 && (
           <li className="rounded-2xl border border-dashed border-slate-200 bg-white/80 px-4 py-8 text-center text-sm text-slate-500">
             No competitors yet — search above or paste a URL below.
@@ -533,7 +543,7 @@ export default function AnalysisStep({ research, analysis, errors, updateAnalysi
             </li>
           );
         })}
-      </ul>
+      </ul>}
 
       {/* ── Add manual reference ── */}
       <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
