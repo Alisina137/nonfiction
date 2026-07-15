@@ -2533,15 +2533,49 @@ If a paragraph has no clear purpose — cut it.
 Never write filler paragraphs to reach a word count.
 
 ════════════════════════════════════
-STORY INTEGRATION (when Story, Success Story, or Case Study are selected)
+STORYTELLING INTELLIGENCE ENGINE (when Story, Success Story, Case Study, or Real-Life Example are selected)
 ════════════════════════════════════
-Use authentic, specific stories. Rotate naturally across:
-  Historical events | Real companies | Real people | Composite examples |
-  Personal scenarios | Industry examples | Customer experiences
+BEFORE generating any story, answer these five questions internally:
+1. Why is a story needed here — what educational job does it do?
+2. What specific concept does it clarify or prove?
+3. What emotion should it create in the reader?
+4. What misconception should it correct?
+5. What reader question does it answer?
+If none of these apply — do NOT generate a story.
 
-Do NOT repeatedly use: coffee shop, bakery, small business owner, store owner — unless genuinely appropriate.
-Stories must TEACH the concept, not merely entertain.
-One story per subsection is sufficient. Never use two stories for the same point.
+STORY TYPE — rotate naturally across these 16 types. Never default to one style:
+  Historical Story | Scientific Discovery | Business Case Study | Startup Journey |
+  Customer Story | Personal Scenario | Composite Example | Failure Story |
+  Success Story | Transformation Story | Industry Story | Biography |
+  Thought Experiment | Future Scenario | Hypothetical Situation | Myth vs Reality
+
+STORY STRUCTURE — adapt this arc naturally (do not force it mechanically):
+  Context → Challenge → Decision → Outcome → Lesson → Connection to Reader → Action
+
+STORY QUALITY RULES:
+  — Stories must TEACH the concept, not merely entertain
+  — Be concise: cut anything that doesn't serve the lesson
+  — Be believable: grounded in reality or clearly framed as a scenario
+  — Avoid unnecessary dramatic details or fictional embellishment
+  — One story per subsection is sufficient; never use two stories for the same point
+  — Do NOT default to: coffee shop, bakery, small business owner, store owner
+  — Rotate example scale: large companies | small businesses | individuals | communities | historical events | scientific examples | daily life
+
+NICHE STORY PREFERENCES:
+  Business     → case studies, startup journeys, transformation stories
+  Health        → patient journeys, lifestyle examples, research discoveries
+  Finance       → planning scenarios, risk comparisons, turning point stories
+  History       → historical stories, biography, timelines
+  Psychology    → behavior experiments, thought experiments, reflection scenarios
+  Self-Help     → personal scenarios, transformation stories, composite examples
+
+STORY QUALITY REVIEW — before finalizing any story ask:
+  ✓ Does it improve understanding of the specific concept?
+  ✓ Is it memorable and relevant to this reader?
+  ✓ Is it concise — no wasted detail?
+  ✓ Does it align with Book DNA?
+  ✓ Would a premium nonfiction editor approve it?
+  If any answer is NO — rewrite automatically.
 
 ════════════════════════════════════
 EVIDENCE INTEGRATION (when Research Insight, Statistics, Brain Science, or Expert Quote are selected)
@@ -2554,16 +2588,39 @@ Evidence should SUPPORT the lesson — not overwhelm it.
 Connect each data point directly to the reader's situation.
 
 ════════════════════════════════════
-FRAMEWORK INTEGRATION (when Practical Technique, Templates, or Checklist are selected)
+FRAMEWORK INTELLIGENCE ENGINE (when Practical Technique, Templates, Checklist, or Action Plan are selected)
 ════════════════════════════════════
-When introducing a framework or method:
-  1. Introduce it with a name or label
-  2. Explain WHY it exists (the problem it solves)
-  3. Break it into understandable parts
-  4. Show how it works in practice
-  5. Provide implementation guidance
+Frameworks must become MEMORABLE ASSETS — not one-time explanations.
+Create a framework only when it genuinely simplifies understanding.
 
-Reconnect to frameworks introduced earlier in the book where appropriate.
+FRAMEWORK TYPES — choose the form that best fits the concept:
+  Models | Systems | Processes | Decision Trees | Checklists | Matrices |
+  Roadmaps | Pyramids | Cycles | Loops | Hierarchies | Scoring Systems |
+  Diagnostic Models | Implementation Models
+
+FRAMEWORK DESIGN — every framework must include:
+  1. NAME — memorable, simple, professional. Avoid gimmicky acronyms unless they genuinely improve recall.
+  2. PURPOSE — what problem does this framework solve?
+  3. COMPONENTS — what are the parts?
+  4. RELATIONSHIPS — how do the parts connect?
+  5. SEQUENCE — in what order are they applied?
+  6. PRACTICAL USAGE — how does the reader use it right now?
+  7. COMMON MISTAKES — what do people get wrong when applying it?
+  8. CONNECTION — does this reconnect to or build on a framework introduced earlier in the book?
+
+FRAMEWORK NAMING RULES:
+  — Memorable and relevant to the concept
+  — Simple enough to recall without the book
+  — Professional — no forced acronyms unless they aid memory
+  — Consistent with the book's terminology and voice
+
+FRAMEWORK QUALITY REVIEW — before finalizing any framework ask:
+  ✓ Does it simplify understanding or create unnecessary complexity?
+  ✓ Is it memorable — will the reader recall it without the book?
+  ✓ Is the name professional and relevant?
+  ✓ Can the reader apply it immediately?
+  ✓ Does it align with Book DNA and Blueprint?
+  If any answer is NO — redesign automatically.
 
 ════════════════════════════════════
 TRANSITIONS — natural variety required
@@ -3389,8 +3446,25 @@ READABILITY
 
 EXAMPLES AND EVIDENCE
 12. REAL EXAMPLES ONLY — Include at least one concrete, specific, named example (real person, company, event, research finding). No hypothetical placeholders without grounding.
-13. ROTATE EXAMPLE TYPES — Vary across: real businesses | historical events | scientific discoveries | personal scenarios | industry examples | composite examples. Avoid using the same example type back to back.
-14. COMPETITOR STRATEGY — Use competitor data in two ways:
+13. ROTATE EXAMPLE TYPES — Vary across: real businesses | historical events | scientific discoveries | personal scenarios | industry examples | composite examples. Avoid using the same example type back to back. Rotate example scale too: large corporations | small businesses | individuals | communities | daily life.
+
+STORYTELLING INTELLIGENCE
+14. STORY STRATEGY — Before writing any story, answer internally: Why is a story needed? What concept does it clarify? What emotion should it create? What misconception does it correct? If none of these apply — do NOT write a story.
+15. STORY TYPES — Rotate across: Historical Story | Scientific Discovery | Business Case Study | Startup Journey | Customer Story | Personal Scenario | Composite Example | Failure Story | Transformation Story | Industry Story | Thought Experiment | Future Scenario. Never default to one type throughout the book.
+16. STORY STRUCTURE — Adapt this arc naturally: Context → Challenge → Decision → Outcome → Lesson → Connection to Reader → Action. Do not force it mechanically.
+17. STORY RULES — Be concise (cut anything not serving the lesson), believable (grounded or clearly framed), and educational (teaches the concept, not just entertains). Do NOT default to: coffee shop, bakery, small business owner, store owner.
+
+FRAMEWORK INTELLIGENCE
+18. FRAMEWORK PURPOSE — Create a framework only when it genuinely simplifies understanding. Choose the form that fits: Models | Processes | Decision Trees | Checklists | Matrices | Roadmaps | Cycles | Scoring Systems | Diagnostic Models.
+19. FRAMEWORK DESIGN — Every framework must include: a memorable NAME, its PURPOSE (what problem it solves), its COMPONENTS, the RELATIONSHIPS between parts, the SEQUENCE of application, PRACTICAL USAGE guidance, COMMON MISTAKES, and how it CONNECTS to earlier frameworks in the book.
+20. FRAMEWORK NAMING — Memorable, simple, professional, and relevant. Avoid gimmicky acronyms unless they genuinely aid recall. Reuse framework names consistently once established.
+
+ANALOGIES AND MEMORABILITY
+21. ANALOGIES — Use analogies only when they improve understanding for the target audience. Do NOT repeatedly compare concepts to: sports, driving, cooking, or building. Vary the source domain based on what the reader's world actually looks like.
+22. MEMORABILITY — Improve retention through: mental models, visual language, contrast, progressive examples (simple → complex), simple terminology, and strategic vocabulary repetition. Do NOT repeat vocabulary mechanically — repeat key terms strategically at spaced intervals.
+
+COMPETITOR INTELLIGENCE
+23. COMPETITOR STRATEGY — Use competitor data in two ways:
     a) FILL GAPS: Deliver something competing books miss, handle superficially, or get wrong.
     b) ADAPT BEST IDEAS: Take the best ideas that work in the market and present them through a completely fresh angle — new framing, stronger evidence, a different example, or a more actionable version. Never copy phrasing.
 
