@@ -163,6 +163,46 @@ export function buildBookDNAFromProject(project: any): string {
 export function buildBookDNAFromContext(bookContext: any): string {
   if (!bookContext || typeof bookContext !== "object") return "";
   const ctx = bookContext;
+
+  // ── Blueprint Intelligence Synchronization ─────────────────────────────
+  // Blueprint fields take precedence over generic research fields.
+  // This is the "Book DNA Synchronization" — every AI generation inherits
+  // the Blueprint's strategic decisions automatically.
+  const teachingStyle = ctx.blueprintTeachingStyle || "";
+  const evidenceStyle = ctx.blueprintEvidenceStyle || "";
+  const coreFramework = ctx.blueprintCoreFramework || ctx.signatureFramework || "";
+  const keyVocab      = ctx.blueprintKeyVocabulary || ctx.keywords || "";
+  const recurringConcepts = ctx.blueprintRecurringConcepts || "";
+  const learningProg  = ctx.blueprintLearningProg || "";
+  const transGoal     = ctx.blueprintTransformationGoal || "";
+  const emotionalGoal = ctx.blueprintEmotionalGoal || ctx.emotionalTriggers || "";
+  const marketGaps    = ctx.blueprintMarketGaps || ctx.marketGap || "";
+  const compAdv       = ctx.blueprintCompetitiveAdvantages || "";
+  const falseBels     = ctx.blueprintFalseBeliefsToBreak || "";
+  const transMap      = ctx.blueprintTransformationMap || "";
+  const personality   = ctx.blueprintPersonality || "";
+  const practicality  = ctx.blueprintPracticality || "";
+
+  // Build extended DNA content from Blueprint Intelligence
+  const bpLines: string[] = [];
+  if (coreFramework)    bpLines.push(`Core Framework: ${coreFramework}`);
+  if (teachingStyle)    bpLines.push(`Teaching Style: ${teachingStyle}`);
+  if (evidenceStyle)    bpLines.push(`Evidence Style: ${evidenceStyle}`);
+  if (practicality)     bpLines.push(`Practicality Level: ${practicality}`);
+  if (personality)      bpLines.push(`Book Personality: ${personality}`);
+  if (keyVocab)         bpLines.push(`Key Vocabulary (use these terms): ${keyVocab}`);
+  if (recurringConcepts) bpLines.push(`Recurring Concepts (thread throughout): ${recurringConcepts}`);
+  if (learningProg)     bpLines.push(`Learning Progression: ${learningProg}`);
+  if (transGoal)        bpLines.push(`Transformation Goal: ${transGoal}`);
+  if (emotionalGoal)    bpLines.push(`Emotional Goal: ${emotionalGoal}`);
+  if (marketGaps)       bpLines.push(`Market Gaps to Address: ${marketGaps}`);
+  if (compAdv)          bpLines.push(`Competitive Advantages to Reinforce: ${compAdv}`);
+  if (falseBels)        bpLines.push(`False Beliefs to Dismantle: ${falseBels}`);
+  if (transMap)         bpLines.push(`Reader Journey: ${transMap}`);
+  const blueprintDNABlock = bpLines.length
+    ? `\n── Blueprint Intelligence (inherited from Blueprint step) ──\n${bpLines.join("\n")}`
+    : "";
+
   return _formatBookDNA({
     title:         ctx.title      || "",
     audience:      ctx.audience   || "",
@@ -171,24 +211,24 @@ export function buildBookDNAFromContext(bookContext: any): string {
     usp:           ctx.usp || ctx.differentiation || "",
     uniqueMech:    ctx.uniqueMechanism || "",
     painPoints:    ctx.readerPainProfile || "",
-    beforeState:   ctx.readerTransformationBefore || "",
-    afterState:    ctx.readerTransformationAfter || ctx.transformationPromise || "",
+    beforeState:   ctx.readerTransformationBefore || ctx.blueprintReaderCurrentSituation || "",
+    afterState:    ctx.readerTransformationAfter || ctx.blueprintReaderDesiredFuture || ctx.transformationPromise || "",
     readerObjections: "",
-    marketGap:     ctx.marketGap || "",
+    marketGap:     marketGaps,
     voiceSummary:  ctx.writingStyleFingerprint || ctx.authorSummary || "",
     archetype:     "",
     dos:           "",
     donts:         "",
-    teachingStyle: "",
-    sigFramework:  "",
+    teachingStyle: teachingStyle,
+    sigFramework:  coreFramework,
     tone:          ctx.tone || "",
     structure:     ctx.structure || "",
     wordCount:     ctx.wordCountRange || "",
     researchInt:   "",
-    emotionalOut:  ctx.emotionalTriggers || "",
-    contentGuide:  "",
-    focusTags:     "",
-    milestones:    "",
+    emotionalOut:  emotionalGoal,
+    contentGuide:  blueprintDNABlock,
+    focusTags:     keyVocab,
+    milestones:    transMap,
   });
 }
 
@@ -4247,6 +4287,11 @@ INSTRUCTIONS
 - readerPainPointsSuggestions: 3 different 2–3 sentence narratives of the reader's core frustrations, from different emotional angles.
 - beforeStateSuggestions / afterStateSuggestions: 3 multi-line alternatives (4–6 states per alternative, one state per line).
 - chapterCount: integer 5–15. wordCountRange: pick from WORD COUNT options.
+- blueprintLayers: generate all 5 strategic layers — every field must be specific to THIS book, not generic.
+- transformationMap: 6–8 stages, each stage 1 sentence describing what shifts in the reader.
+- chapterMissions: generate exactly chapterCount missions (one per planned chapter) — each mission must connect directly to the core thesis and reader transformation.
+- blueprintValidation: answer each question honestly based on the project data — if weak areas exist, set overallPass to false and describe what needs refinement.
+- blueprintScores: integer 0–100 for each dimension — be critical and realistic, not flattering.
 
 OUTPUT — return only this JSON object:
 
@@ -4296,7 +4341,110 @@ OUTPUT — return only this JSON object:
   "desiredEmotionalOutcomeSuggestions": ["<outcome1>", "<outcome2>", "<outcome3>"],
   "uspSuggestions": ["<usp1>", "<usp2>", "<usp3>"],
   "focusTopics": ["<topic1>", "<topic2>", "<topic3>", "<topic4>", "<topic5>", "<topic6>", "<topic7>", "<topic8>", "<topic9>", "<topic10>"],
-  "subtitle": "<subtitle or empty string if existing subtitle is strong>"
+  "subtitle": "<subtitle or empty string if existing subtitle is strong>",
+  "blueprintLayers": {
+    "bookIdentity": {
+      "bookMission": "<1-sentence mission — what this book exists to do in the world>",
+      "writingVoice": "<the distinctive voice this book must have — e.g. 'analytical mentor with dry wit'>",
+      "teachingStyle": "<how the book teaches — e.g. 'concept → example → exercise → reflection'>",
+      "evidenceStyle": "<how evidence is woven in — e.g. 'research-backed with real case studies'>",
+      "practicalityLevel": "<Highly practical | Balanced | Conceptual>",
+      "bookPersonality": "<the book's personality archetype — e.g. 'wise coach', 'research analyst', 'fellow traveler'>",
+      "frameworkStyle": "<Single core framework | Multi-framework | Story-based | Checklist-driven | Hybrid>",
+      "difficultyLevel": "<Beginner-friendly | Intermediate | Advanced | Expert>"
+    },
+    "readerModel": {
+      "currentSituation": "<1-2 sentences: where the reader is right now in their life>",
+      "desiredFuture": "<1-2 sentences: where they want to be after reading>",
+      "goals": ["<specific reader goal 1>", "<goal 2>", "<goal 3>", "<goal 4>"],
+      "motivations": ["<what drives them to seek this book 1>", "<motivation 2>", "<motivation 3>"],
+      "fears": ["<what holds them back 1>", "<fear 2>", "<fear 3>"],
+      "frustrations": ["<recurring frustration 1>", "<frustration 2>", "<frustration 3>"],
+      "falseBeliefsToBreak": ["<false belief this book must dismantle 1>", "<false belief 2>", "<false belief 3>"],
+      "learningStyle": "<how this specific audience absorbs information best>",
+      "transformationMilestones": ["<milestone 1 — early win>", "<milestone 2>", "<milestone 3>", "<milestone 4>", "<milestone 5 — lasting change>"]
+    },
+    "marketModel": {
+      "competitorStrengths": ["<what competing books do well 1>", "<strength 2>", "<strength 3>"],
+      "competitorWeaknesses": ["<where competing books consistently fail readers 1>", "<weakness 2>", "<weakness 3>"],
+      "readerExpectations": ["<what readers expect when buying this type of book 1>", "<expectation 2>", "<expectation 3>"],
+      "marketTrends": ["<emerging trend in this category 1>", "<trend 2>"],
+      "marketGaps": ["<specific gap no current book fills 1>", "<gap 2>", "<gap 3>"],
+      "uniqueOpportunities": ["<opportunity this book can uniquely own 1>", "<opportunity 2>"],
+      "overusedAdvice": ["<advice readers are tired of hearing 1>", "<overused 2>", "<overused 3>"],
+      "missingTopics": ["<topic readers need but no book covers well 1>", "<missing 2>", "<missing 3>"],
+      "commercialRisks": ["<what could limit commercial success 1>", "<risk 2>"],
+      "competitiveAdvantages": ["<this book's strongest competitive edge 1>", "<advantage 2>", "<advantage 3>"]
+    },
+    "bookStrategy": {
+      "coreFramework": "<name and 1-sentence description of the primary framework/system>",
+      "supportingFrameworks": ["<supporting framework 1>", "<supporting framework 2>"],
+      "keyVocabulary": ["<proprietary term 1>", "<term 2>", "<term 3>", "<term 4>", "<term 5>"],
+      "recurringConcepts": ["<concept threaded throughout the book 1>", "<concept 2>", "<concept 3>"],
+      "learningProgression": "<how the reader's capability builds from chapter 1 to final chapter>",
+      "implementationStrategy": "<how the book ensures readers actually implement its teachings>",
+      "evidenceStrategy": "<what mix of research, stories, data, and examples to use>",
+      "storyStrategy": "<how narrative and case studies are woven through the book>",
+      "practicalStrategy": "<how exercises, tools, and frameworks are delivered>"
+    },
+    "qualityTargets": {
+      "commercialGoal": "<what defines commercial success for this book>",
+      "educationalGoal": "<the core knowledge transformation the reader gains>",
+      "emotionalGoal": "<the emotional state the reader finishes with>",
+      "practicalGoal": "<the concrete skill or system the reader walks away with>",
+      "transformationGoal": "<the lasting life change this book enables>",
+      "originalityGoal": "<what makes this book distinctively different from everything else>",
+      "readabilityGoal": "<the reading experience quality target — pace, clarity, flow>",
+      "memorabilityGoal": "<what readers will still remember and cite 1 year later>"
+    }
+  },
+  "transformationMap": [
+    { "stage": "Current State", "description": "<reader's painful starting reality>" },
+    { "stage": "Awareness", "description": "<first shift — what opens up when they start reading>" },
+    { "stage": "Understanding", "description": "<the core insight that changes their mental model>" },
+    { "stage": "Confidence", "description": "<where belief in the approach builds>" },
+    { "stage": "Implementation", "description": "<where action and practice begin>" },
+    { "stage": "Momentum", "description": "<when early results compound into consistency>" },
+    { "stage": "Mastery", "description": "<the achieved outcome — what they can now do>" },
+    { "stage": "Long-Term Success", "description": "<the lasting transformation in their life or work>" }
+  ],
+  "chapterMissions": [
+    {
+      "chapterNumber": 1,
+      "chapterTopic": "<what this chapter is about — 5-8 words>",
+      "purpose": "<why this chapter must exist in the book>",
+      "transformationGoal": "<what shifts in the reader after this chapter>",
+      "knowledgeGoal": "<what the reader understands after this chapter>",
+      "practicalGoal": "<what the reader can do or try after this chapter>",
+      "connectionToThesis": "<how this chapter advances the core argument>",
+      "expectedReaderAction": "<the one thing the reader should do after finishing>"
+    }
+  ],
+  "blueprintValidation": {
+    "solvesRealMarketProblem": true,
+    "clearlyDifferentiates": true,
+    "strongUSP": true,
+    "realisticTransformation": true,
+    "logicalLearningProgression": true,
+    "allChaptersSupportTransformation": true,
+    "marketGapsAddressed": true,
+    "supportsPremiumBook": true,
+    "overallPass": true,
+    "refinementNeeded": null
+  },
+  "blueprintScores": {
+    "readerUnderstanding": 80,
+    "marketUnderstanding": 75,
+    "commercialPotential": 70,
+    "transformationStrength": 85,
+    "frameworkStrength": 75,
+    "originality": 70,
+    "practicality": 80,
+    "learningDesign": 75,
+    "competitiveAdvantage": 70,
+    "researchConfidence": 75,
+    "blueprintConfidence": 76
+  }
 }`;
 }
 
@@ -5172,6 +5320,33 @@ ${personaBlock}
 
 COMPETITOR BOOKS:
 ${competitorBlock}
+
+${(() => {
+  const missions = bd.chapterMissions;
+  if (!Array.isArray(missions) || !missions.length) return "";
+  const lines = missions.slice(0, 15).map((m: any) =>
+    `Ch ${m.chapterNumber}: ${m.chapterTopic || ""} — Purpose: ${m.purpose || ""} | Action: ${m.expectedReaderAction || ""}`
+  ).join("\n");
+  return `BLUEPRINT CHAPTER MISSIONS (use these as the strategic guide for each chapter's title and sections):
+${lines}`;
+})()}
+
+${(() => {
+  const layers = bd.blueprintLayers;
+  if (!layers || typeof layers !== "object") return "";
+  const bi = layers.bookIdentity || {};
+  const bs = layers.bookStrategy || {};
+  const parts: string[] = [];
+  if (bi.teachingStyle)   parts.push(`Teaching Style: ${bi.teachingStyle}`);
+  if (bi.evidenceStyle)   parts.push(`Evidence Style: ${bi.evidenceStyle}`);
+  if (bi.bookPersonality) parts.push(`Book Personality: ${bi.bookPersonality}`);
+  if (bs.coreFramework)   parts.push(`Core Framework: ${bs.coreFramework}`);
+  if (bs.learningProgression) parts.push(`Learning Progression: ${bs.learningProgression}`);
+  if (bs.keyVocabulary?.length) parts.push(`Key Vocabulary: ${(bs.keyVocabulary as string[]).join(", ")}`);
+  if (!parts.length) return "";
+  return `BLUEPRINT INTELLIGENCE (inherited — all chapters must reinforce these):
+${parts.join("\n")}`;
+})()}
 
 ═══════════════════════════
 STRUCTURE RULE

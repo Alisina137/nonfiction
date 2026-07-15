@@ -1331,6 +1331,33 @@ router.post("/generate-details", async (req, res) => {
       : [];
     const mechFirst = mechArr[0] ? `${mechArr[0].name}\n\n${mechArr[0].description}` : "";
 
+    // ── Blueprint Intelligence layers ──────────────────────────────────────
+    const blueprintLayers = (data.blueprintLayers && typeof data.blueprintLayers === "object")
+      ? data.blueprintLayers : null;
+
+    const transformationMap = Array.isArray(data.transformationMap)
+      ? data.transformationMap.filter((s: any) => s && typeof s === "object" && s.stage)
+      : null;
+
+    const chapterMissions = Array.isArray(data.chapterMissions)
+      ? data.chapterMissions.filter((m: any) => m && typeof m === "object" && m.chapterNumber)
+      : null;
+
+    const blueprintValidation = (data.blueprintValidation && typeof data.blueprintValidation === "object")
+      ? data.blueprintValidation : null;
+
+    const blueprintScores = (data.blueprintScores && typeof data.blueprintScores === "object")
+      ? (() => {
+          const raw = data.blueprintScores as Record<string, any>;
+          const out: Record<string, number> = {};
+          for (const [k, v] of Object.entries(raw)) {
+            const n = parseInt(String(v), 10);
+            if (!isNaN(n)) out[k] = Math.min(100, Math.max(0, n));
+          }
+          return Object.keys(out).length ? out : null;
+        })()
+      : null;
+
     return res.json({
       // ── Suggestions arrays (new) ──────────────────────────────────────────
       genreSuggestions,
@@ -1358,6 +1385,13 @@ router.post("/generate-details", async (req, res) => {
       chapterCountReason: typeof data.chapterCountReason === "string" ? data.chapterCountReason : "",
       wordCountRange:     wordCount,
       wordCountReason:    typeof data.wordCountReason === "string" ? data.wordCountReason : "",
+
+      // ── Blueprint Intelligence (stored directly in bookDetails by the UI) ──
+      blueprintLayers,
+      transformationMap,
+      chapterMissions,
+      blueprintValidation,
+      blueprintScores,
 
       _provider: usedProvider
     });

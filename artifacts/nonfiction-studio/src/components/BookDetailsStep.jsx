@@ -446,6 +446,204 @@ function ChipsWithCustom({ suggestions, value, onChange, reasons, options, place
   );
 }
 
+// ─── Blueprint Intelligence Panel ─────────────────────────────────────────────
+
+const SCORE_LABELS = {
+  readerUnderstanding:  "Reader Understanding",
+  marketUnderstanding:  "Market Understanding",
+  commercialPotential:  "Commercial Potential",
+  transformationStrength: "Transformation Strength",
+  frameworkStrength:    "Framework Strength",
+  originality:          "Originality",
+  practicality:         "Practicality",
+  learningDesign:       "Learning Design",
+  competitiveAdvantage: "Competitive Advantage",
+  researchConfidence:   "Research Confidence",
+  blueprintConfidence:  "Blueprint Confidence",
+};
+
+function ScoreBar({ label, score }) {
+  const pct = Math.min(100, Math.max(0, score || 0));
+  const color = pct >= 80 ? "bg-emerald-500" : pct >= 60 ? "bg-sky-500" : "bg-amber-400";
+  const textColor = pct >= 80 ? "text-emerald-700" : pct >= 60 ? "text-sky-700" : "text-amber-700";
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-40 shrink-0 text-[11px] text-slate-600 leading-tight">{label}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className={`w-8 text-right text-[11px] font-bold ${textColor}`}>{pct}</span>
+    </div>
+  );
+}
+
+function BlueprintIntelligencePanel({ scores, validation, transformationMap, chapterMissions, layers }) {
+  const [open, setOpen] = useState(false);
+  const hasScores = scores && Object.keys(scores).length > 0;
+  const hasMap = Array.isArray(transformationMap) && transformationMap.length > 0;
+  const hasMissions = Array.isArray(chapterMissions) && chapterMissions.length > 0;
+  const hasLayers = layers && typeof layers === "object";
+  const overallPass = !validation || validation.overallPass !== false;
+  const avgScore = hasScores
+    ? Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length)
+    : null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-100/60 transition"
+      >
+        <span className="text-indigo-500 text-base">🧠</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-indigo-900">Blueprint Intelligence</p>
+          <p className="text-[11px] text-indigo-600 mt-0.5">
+            {avgScore !== null && <span className="mr-2">Confidence: <strong>{avgScore}/100</strong></span>}
+            {overallPass
+              ? <span className="text-emerald-600">✓ Validation passed</span>
+              : <span className="text-amber-600">⚠ Refinement recommended</span>}
+          </p>
+        </div>
+        <span className="shrink-0 text-indigo-400 text-sm">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-indigo-200 px-4 pb-4 pt-3 space-y-5">
+
+          {/* Scores */}
+          {hasScores && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 mb-2">Blueprint Scores</p>
+              <div className="space-y-1.5">
+                {Object.entries(SCORE_LABELS).map(([key, label]) =>
+                  scores[key] !== undefined ? (
+                    <ScoreBar key={key} label={label} score={scores[key]} />
+                  ) : null
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Validation */}
+          {validation && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 mb-2">Blueprint Validation</p>
+              <div className="space-y-1">
+                {[
+                  ["solvesRealMarketProblem",     "Solves a real market problem"],
+                  ["clearlyDifferentiates",        "Clearly differentiates from competitors"],
+                  ["strongUSP",                    "Strong unique selling proposition"],
+                  ["realisticTransformation",      "Realistic reader transformation"],
+                  ["logicalLearningProgression",   "Logical learning progression"],
+                  ["allChaptersSupportTransformation", "All chapters support transformation"],
+                  ["marketGapsAddressed",          "Market gaps addressed"],
+                  ["supportsPremiumBook",          "Supports a premium published book"],
+                ].map(([key, label]) => {
+                  const val = validation[key];
+                  if (val === undefined) return null;
+                  return (
+                    <div key={key} className="flex items-center gap-2 text-[11px]">
+                      <span className={val ? "text-emerald-500" : "text-amber-500"}>{val ? "✓" : "⚠"}</span>
+                      <span className={val ? "text-slate-600" : "text-amber-700 font-medium"}>{label}</span>
+                    </div>
+                  );
+                })}
+                {validation.refinementNeeded && (
+                  <p className="mt-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 leading-relaxed">
+                    <strong>Refinement needed:</strong> {validation.refinementNeeded}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Transformation Map */}
+          {hasMap && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 mb-2">Reader Transformation Map</p>
+              <div className="space-y-1">
+                {transformationMap.map((s, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    {i < transformationMap.length - 1 ? (
+                      <div className="flex flex-col items-center gap-0.5 mt-0.5 shrink-0">
+                        <span className="h-3 w-3 rounded-full bg-indigo-400 border-2 border-white shadow-sm" />
+                        <span className="h-3 w-0.5 bg-indigo-200" />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center mt-0.5 shrink-0">
+                        <span className="h-3 w-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
+                      </div>
+                    )}
+                    <div className="min-w-0 pb-1">
+                      <span className="text-[11px] font-bold text-slate-700">{s.stage}</span>
+                      {s.description && (
+                        <span className="ml-1 text-[11px] text-slate-500">— {s.description}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Chapter Missions summary */}
+          {hasMissions && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 mb-2">
+                Chapter Missions ({chapterMissions.length})
+              </p>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {chapterMissions.map((m) => (
+                  <div key={m.chapterNumber} className="rounded-lg border border-indigo-100 bg-white/70 px-2.5 py-2">
+                    <p className="text-[11px] font-bold text-slate-700">
+                      Ch {m.chapterNumber} — {m.chapterTopic || ""}
+                    </p>
+                    {m.purpose && (
+                      <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{m.purpose}</p>
+                    )}
+                    {m.expectedReaderAction && (
+                      <p className="text-[11px] text-indigo-600 mt-0.5">→ {m.expectedReaderAction}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Book Identity summary from layers */}
+          {hasLayers && layers.bookIdentity && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 mb-2">Book Identity</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                {[
+                  ["Teaching Style", layers.bookIdentity.teachingStyle],
+                  ["Evidence Style", layers.bookIdentity.evidenceStyle],
+                  ["Practicality",   layers.bookIdentity.practicalityLevel],
+                  ["Personality",    layers.bookIdentity.bookPersonality],
+                  ["Framework",      layers.bookIdentity.frameworkStyle],
+                  ["Difficulty",     layers.bookIdentity.difficultyLevel],
+                ].filter(([, v]) => v).map(([label, value]) => (
+                  <div key={label}>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+                    <p className="text-[11px] text-slate-700 leading-snug">{value}</p>
+                  </div>
+                ))}
+              </div>
+              {layers.bookIdentity.bookMission && (
+                <p className="mt-2 text-[11px] text-indigo-700 italic leading-relaxed">
+                  Mission: {layers.bookIdentity.bookMission}
+                </p>
+              )}
+            </div>
+          )}
+
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function BookDetailsStep({ bookDetails, setBookDetails, fullProject, currentStep, detailsStepIndex }) {
@@ -574,6 +772,16 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
         readerPainPointsSuggestions:     data.readerPainPointsSuggestions    || [],
         subtitleSuggestions:             data.subtitleSuggestions            || [],
       };
+
+      // ── Store Blueprint Intelligence layers directly into bookDetails ──────
+      // These are silently saved — no new UI fields, but they power downstream AI
+      const bpPatch = {};
+      if (data.blueprintLayers)      bpPatch.blueprintLayers      = data.blueprintLayers;
+      if (data.transformationMap)    bpPatch.transformationMap    = data.transformationMap;
+      if (data.chapterMissions)      bpPatch.chapterMissions      = data.chapterMissions;
+      if (data.blueprintValidation)  bpPatch.blueprintValidation  = data.blueprintValidation;
+      if (data.blueprintScores)      bpPatch.blueprintScores      = data.blueprintScores;
+      if (Object.keys(bpPatch).length > 0) patch(bpPatch);
 
       console.log("[generate-details] suggestion counts:", Object.fromEntries(
         Object.entries(suggestions).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
@@ -1418,6 +1626,17 @@ export default function BookDetailsStep({ bookDetails, setBookDetails, fullProje
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Blueprint Intelligence Panel ── */}
+      {!aiGenerating && (bd.blueprintScores || bd.blueprintValidation || bd.transformationMap) && (
+        <BlueprintIntelligencePanel
+          scores={bd.blueprintScores}
+          validation={bd.blueprintValidation}
+          transformationMap={bd.transformationMap}
+          chapterMissions={bd.chapterMissions}
+          layers={bd.blueprintLayers}
+        />
       )}
 
       {aiError && (
