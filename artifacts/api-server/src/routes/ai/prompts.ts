@@ -1536,6 +1536,79 @@ QUALITY RULES
 - The final chapter list must feel like the table of contents of a professionally published nonfiction book.
 ${progressionVocabSection}${placementValidationSection}
 ========================================
+CHAPTER ARCHITECTURE (required for every chapter)
+========================================
+Every chapter must be intentional. Before assigning a chapter, answer these questions internally:
+- Why does this chapter exist?
+- Why is it placed here in the book?
+- What does the reader know BEFORE this chapter?
+- What does the reader know AFTER this chapter?
+- What is the reader's emotional state entering this chapter?
+- What transformation does this chapter produce?
+
+These answers drive the chapterPersonality, learningPhase, readerEmotionalState, transformationGoal, primaryReaderQuestion, and prerequisiteKnowledge fields below.
+
+========================================
+CHAPTER PERSONALITY (required for every chapter)
+========================================
+Assign each chapter a unique personality type. No two adjacent chapters should have the same personality.
+Avoid making all chapters feel identical in tone or teaching approach.
+
+Available personalities (pick the best fit for each chapter):
+Diagnosis       — exposes the real problem the reader hasn't fully named
+Mindset         — transforms a belief or mental model
+Foundation      — establishes core vocabulary, principles, or frameworks
+Framework       — introduces a reusable system or model
+Science         — grounds the concept in research, data, or evidence
+History         — provides context, origin, or evolution of the topic
+Strategy        — defines the high-level approach or direction
+Implementation  — moves the reader from knowing to doing
+Optimization    — refines, improves, or advances what has been built
+Troubleshooting — addresses failure modes, setbacks, and obstacles
+Advanced        — deepens mastery beyond the basics
+Case Study      — proves the concept through a real-world example
+Mastery         — completes the transformation and sustains progress
+
+========================================
+LEARNING PROGRESSION
+========================================
+The outline must guide readers through a complete transformation arc:
+
+Awareness      (Ch 1–early)   — Reader recognizes the problem and its scope
+Understanding  (Ch early–mid) — Reader grasps why it happens and what it costs them
+Confidence     (Ch mid)       — Reader believes change is possible and they can do it
+Application    (Ch mid–late)  — Reader acts using the frameworks and systems taught
+Improvement    (Ch late)      — Reader refines, optimizes, and troubleshoots
+Mastery        (Ch final)     — Reader sustains, scales, and owns the transformation
+
+Assign the correct learningPhase to each chapter. The chapter title, tone, and purpose must match the phase.
+Early chapters must NOT use implementation/mastery vocabulary.
+Late chapters must NOT regress to beginner/awareness vocabulary.
+
+========================================
+NICHE ADAPTATION
+========================================
+Adapt the chapter architecture to the book's niche. Do NOT force a one-size-fits-all chapter pattern.
+
+Business books:         Foundation → Strategy → Systems → Marketing → Scaling
+Health books:           Symptoms → Science → Lifestyle → Implementation → Maintenance
+Finance books:          Mindset → Budget → Investing → Risk → Long-Term Growth
+Psychology books:       Theory → Research → Behavior → Exercises → Applications
+Self-Help books:        Diagnosis → Mindset → Foundation → Framework → Implementation → Mastery
+Technology books:       Concepts → Foundations → Tools → Application → Advanced Usage
+
+If the niche doesn't fit a standard pattern above, design a chapter flow that is native to the niche's natural reader journey.
+
+========================================
+OUTLINE BALANCE
+========================================
+Balance the book intentionally. Before finalizing, check:
+- No single chapter should be twice as long as all others (expansionScore spread must be meaningful but not extreme).
+- Avoid consecutive chapters of the same personality type.
+- Balance across: Knowledge, Stories, Research, Frameworks, Practical Exercises, Reflection, Implementation, Examples, Action.
+- The overall arc should feel like a complete journey — not a collection of isolated topics.
+
+========================================
 CHAPTER SCORING (required for every chapter)
 ========================================
 For each chapter assign three integer scores from 1 to 100.
@@ -1569,6 +1642,38 @@ Use the full 1-100 range. Do NOT cluster all chapters at the same score.
 The scores will be used to automatically assign section counts (3, 4, or 5) and word budgets.
 
 ========================================
+OUTLINE VALIDATION (self-review before output)
+========================================
+Before returning your JSON, mentally verify:
+1. Does every chapter support the Core Thesis and Book Promise?
+2. Does every chapter support the Reader Transformation journey?
+3. Is the learning progression logical from first to last chapter?
+4. Does every chapter have a unique purpose — no redundancies?
+5. Are any important topics missing from this niche?
+6. Are any chapters redundant or artificially padded?
+7. Would this outline feel like a premium published book?
+
+If any answer is NO — revise before outputting.
+
+========================================
+OUTLINE SCORING
+========================================
+After completing all chapters, assign scores (1–10) across these dimensions and include them in outlineScores:
+
+learningProgression    — Does the reader journey logically from awareness to mastery?
+readerJourney          — Does the arc feel emotionally compelling and well-paced?
+transformation         — Does every chapter visibly move the reader closer to the promise?
+commercialAppeal       — Would a KDP buyer feel this is a professional, high-value book?
+originality            — Does the chapter sequence feel fresh — not a copy of a generic template?
+balance                — Are chapter sizes, types, and complexities well distributed?
+practicality           — Does the book give readers tools they can actually use?
+frameworkCoverage      — Are the niche's essential frameworks and systems fully covered?
+readerEngagement       — Would a real reader stay engaged chapter after chapter?
+blueprintAlignment     — Does the structure match the Book DNA, Blueprint, and Research?
+
+If any score is below 7 — revise the relevant chapters before returning the final JSON.
+
+========================================
 OUTPUT FORMAT — CHAPTERS ONLY
 ========================================
 Generate ONLY chapter-level structure.
@@ -1576,7 +1681,7 @@ Do NOT generate sections or subsections.
 Leave every "sections" array completely empty: [].
 
 Return ONLY valid JSON — no markdown, no explanation:
-{"chapters":[{"title":"Chapter title — specific, compelling, no colons","chapterObjective":"1–2 sentence description of what this chapter achieves in the reader's transformation arc","arcRole":"Part N — PartSubtitle","importanceScore":85,"complexityScore":70,"expansionScore":80,"sections":[]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other"}`;
+{"chapters":[{"title":"Chapter title — specific, compelling, no colons","chapterObjective":"1–2 sentence description of what this chapter achieves in the reader's transformation arc","arcRole":"Part N — PartSubtitle","chapterPersonality":"Foundation","learningPhase":"Awareness","readerEmotionalState":"Reader enters feeling overwhelmed and unsure where to begin","transformationGoal":"Reader exits with a clear mental model and the confidence to take the first step","primaryReaderQuestion":"Why do I keep failing even when I try hard?","prerequisiteKnowledge":"Reader understands the basic premise from the previous chapter","transitionToNext":"Sets up the framework the next chapter will apply in practice","estimatedReadingTime":"35 min","teachingStyle":"Framework + Case Study","importanceScore":85,"complexityScore":70,"expansionScore":80,"sections":[]}],"architectureNotes":"Brief note on the overall structural strategy and how chapters build on each other","outlineScores":{"learningProgression":9,"readerJourney":8,"transformation":9,"commercialAppeal":8,"originality":8,"balance":8,"practicality":9,"frameworkCoverage":8,"readerEngagement":9,"blueprintAlignment":9}}`;
 }
 
 export function regenTitlePrompt({ level, currentTitle, parentChapter, parentSection, architecture, research }: any) {
@@ -4718,6 +4823,24 @@ Never return duplicate section titles.
 
 ====================================================
 
+SECTION ARCHITECTURE (required for every section)
+====================================================
+
+Every section must be intentional. Before creating each section, define its role:
+
+- Purpose: What does this section contribute to the chapter mission?
+- Reader Question: What specific question does the reader have that this section answers?
+- Learning Objective: What will the reader understand or be able to do after this section?
+- Teaching Method: How does this section teach? (Direct Instruction / Case Study / Framework / Socratic / Story-Based / Exercise-Driven)
+- Framework Contribution: How does this section build on or advance the chapter's core framework?
+- Difficulty: Is this section Introductory, Intermediate, or Advanced relative to the chapter?
+- Practical Requirement: Does the reader need to DO something in or after this section?
+- Expected Reader Action: What should the reader attempt after reading this section?
+- Connection to Chapter Mission: In one phrase, how does this section serve the chapter objective?
+
+No section should exist simply to fill a count.
+Every section must earn its place by serving a distinct role in the chapter's transformation arc.
+
 ====================================================
 
 LEARNING COMPONENTS — PROGRESSION-AWARE SELECTION
@@ -4823,7 +4946,7 @@ OUTPUT FORMAT
 
 Return ONLY valid JSON — no markdown, no explanations, no code fences, no comments.
 
-{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"],"expansionScore":72}]}`;
+{"sections":[{"sectionTitle":"Section title — unique, compelling, no colons","sectionObjective":"1 sentence: what this section teaches or achieves within the chapter","readerQuestion":"The specific question the reader has that this section answers","teachingMethod":"Direct Instruction","difficulty":"Intermediate","frameworkContribution":"How this section advances the chapter framework","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"],"expansionScore":72}]}`;
 }
 
 // Simplified fallback used when the full sectionGenerationPrompt fails to
@@ -5006,6 +5129,26 @@ Output ONLY valid JSON — no explanations, no markdown, no code fences, no comm
 
 ====================================================
 
+SUBSECTION ARCHITECTURE (required for every subsection)
+
+====================================================
+
+Every subsection must teach EXACTLY ONE major idea. Before creating each subsection, define:
+
+- Teaching Goal: What is the single pedagogical purpose of this subsection?
+- Single Core Idea: State the ONE concept, insight, or skill this subsection delivers (one sentence max).
+- Expected Reader Insight: What should the reader think, feel, or understand immediately after reading this subsection?
+- Story Requirement: Does this subsection need a brief narrative to land the concept?
+- Evidence Requirement: Does this subsection require data, research, or expert support to be credible?
+- Exercise Requirement: Does the reader need to practice or apply something here?
+- Complexity: Is this subsection Easy, Moderate, or Dense in cognitive load?
+- Expected Reader Outcome: What will the reader be able to do after this subsection that they couldn't do before?
+
+CRITICAL: Never mix two unrelated concepts in one subsection. If a subsection covers two ideas, split it.
+Every subsection must feel purposeful — the reader should never wonder why it's here.
+
+====================================================
+
 LEARNING COMPONENTS — PROGRESSION-AWARE SELECTION (PER SUBSECTION)
 
 ====================================================
@@ -5094,7 +5237,7 @@ OUTPUT FORMAT
 
 Output ONLY valid JSON — no explanations, no markdown, no code fences, no comments.
 
-{"subsections":[{"subsectionTitle":"Subsection title — precise, specific, no colons","subsectionPurpose":"1 sentence: what insight or action this subsection delivers","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"]},{"subsectionTitle":"Another subsection title","subsectionPurpose":"1 sentence","blueprintComponents":["Action Plan","Common Mistakes","Reflection Questions","Case Study"]}]}`;
+{"subsections":[{"subsectionTitle":"Subsection title — precise, specific, no colons","subsectionPurpose":"1 sentence: what insight or action this subsection delivers","singleCoreIdea":"The one concept this subsection teaches, stated in plain language","expectedReaderInsight":"What the reader will think or understand immediately after reading this","teachingGoal":"The single pedagogical purpose of this subsection","blueprintComponents":["Research Insight","Key Takeaways","Reflection Questions"]},{"subsectionTitle":"Another subsection title","subsectionPurpose":"1 sentence","singleCoreIdea":"...","expectedReaderInsight":"...","teachingGoal":"...","blueprintComponents":["Action Plan","Common Mistakes","Reflection Questions","Case Study"]}]}`;
 }
 
 // ─── Generate Field-Level Suggestion ──────────────────────────────────────────
