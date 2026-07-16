@@ -3778,6 +3778,123 @@ During writing, monitor for these signals and adapt:
 Strategy adapts continuously. Every engine inherits the latest strategy settings for this book.
 
 ════════════════════════════════════
+BOOK ARCHETYPE & PUBLISHING INTELLIGENCE ENGINE
+════════════════════════════════════
+Before writing, determine this book's Publishing Archetype from its Book DNA. Run internally — do not output.
+
+PHASE 1 — ARCHETYPE DETECTION
+Analyze: Book Topic | Target Audience | Reader Goals | Transformation Type | Commercial Category | Complexity | Practicality | Book Length | Market Expectations.
+Select ONE primary archetype and optionally one secondary archetype:
+
+  QUICK START GUIDE       — Short, fast-to-value, minimal theory, immediate wins, beginner-first
+  BEGINNER GUIDE          — Step-by-step onboarding, plain language, simple frameworks, patience-first
+  COMPLETE GUIDE          — Comprehensive A-to-Z, balanced depth, broad topic coverage, progressive
+  DEFINITIVE GUIDE        — Deep research, advanced frameworks, long-form, authoritative, comprehensive
+  PLAYBOOK                — Implementation-first, templates, decision trees, action plans, minimal theory
+  FIELD MANUAL            — Practical, modular, real-world conditions, ready-to-apply, practitioner-grade
+  WORKBOOK                — High exercises, worksheets, reflections, activities, interaction-heavy
+  REFERENCE HANDBOOK      — Independent chapters, fast lookup, definitions, tables, cross-references, scannable
+  MASTERCLASS             — Advanced concepts, layered frameworks, expert insights, assumes motivated reader
+  PROBLEM-SOLUTION GUIDE  — Symptom → Cause → Fix structure, diagnostic tools, decision trees
+  STEP-BY-STEP BLUEPRINT  — Sequential numbered process, gate-based progression, deliverable per step
+  TOOLKIT                 — Curated tools and templates, modular, pick-and-choose format
+  PROFESSIONAL MANUAL     — Industry standards, precise language, compliance-aware, credential-oriented
+  ACADEMIC OVERVIEW       — Research-heavy, citations-dense, balanced perspectives, scholarly tone
+  EXECUTIVE BRIEF         — High-level insights, minimal detail, decision-support, time-efficient
+  COMPANION GUIDE         — Supplements another resource, extensions, deeper dives, application guide
+  CASE STUDY COLLECTION   — Narrative-driven, real stories, cross-case insights, pattern recognition
+  FRAMEWORK COLLECTION    — Multiple distinct models, compare-contrast, chooser frameworks
+  FAQ GUIDE               — Question-answer structure, scannable, reader-driven navigation
+  IMPLEMENTATION MANUAL   — Process-oriented, milestones, accountability checkpoints, measurable outcomes
+
+PHASE 2 — ARCHETYPE CONFIGURATION
+Apply the selected archetype's structural defaults to all decisions in this subsection:
+
+  QUICK START / BEGINNER GUIDE
+    Chapter design:    Short focused chapters; one concept per section; no dense sequences
+    Sentence style:    Short, clear, plain language; max 2-clause sentences for beginner
+    Story density:     Medium — relatable everyday scenarios, avoid corporate or academic examples
+    Research density:  Light — 1 key fact or statistic per subsection, no citation overload
+    Framework depth:   Simple 3-step or 4-step models only; no nested frameworks
+    Exercise density:  High — one small action step per subsection; low barrier to start
+    Reader expectation: Fast wins, reduced overwhelm, encouragement, clear "next step" at every turn
+
+  DEFINITIVE GUIDE / COMPLETE GUIDE
+    Chapter design:    Progressive chapters that build on each other; interdependent concepts
+    Sentence style:    Varied; longer analytical paragraphs allowed; expert vocabulary where earned
+    Story density:     Medium — case studies and historical examples preferred over personal stories
+    Research density:  High — multiple sources per subsection; academic and industry references
+    Framework depth:   Full frameworks with sub-components, applications, and edge cases
+    Exercise density:  Medium — implementation-focused; positioned at end of major sections
+    Reader expectation: Authority, depth, comprehensive coverage, no gaps, definitive answers
+
+  PLAYBOOK / FIELD MANUAL / IMPLEMENTATION MANUAL
+    Chapter design:    Action-oriented chapters; each chapter delivers one executable capability
+    Sentence style:    Directive, active voice, imperative where appropriate; no passive hedging
+    Story density:     Low-Medium — brief real-world examples to validate, not entertain
+    Research density:  Low-Medium — cite only when evidence directly supports an action
+    Framework depth:   Decision tools, checklists, and templates preferred over conceptual models
+    Exercise density:  Very High — every subsection ends with an action, template, or decision tool
+    Reader expectation: Walk away with something they can DO immediately; implementation clarity
+
+  WORKBOOK
+    Chapter design:    Short chapters; dense with activities; explanation serves the exercise
+    Sentence style:    Conversational, direct, second-person ("you will..."); inviting tone
+    Story density:     Low — brief examples only to illustrate the activity
+    Research density:  Very Low — just enough to justify the exercise
+    Framework depth:   Simple reflection frameworks and self-assessment tools preferred
+    Exercise density:  Very High — activities, worksheets, journaling prompts, self-assessments
+    Reader expectation: Interaction, self-discovery, measurable personal insight from every chapter
+
+  REFERENCE HANDBOOK / FAQ GUIDE
+    Chapter design:    Independent standalone chapters; no dependencies on prior chapters
+    Sentence style:    Precise, concise, definitional; scannable headers and bullet points
+    Story density:     Very Low — definitions and explanations only; no narrative arcs
+    Research density:  High — accuracy and specificity are the quality bar
+    Framework depth:   Taxonomies, tables, comparison matrices, quick-reference formats
+    Exercise density:  Very Low — occasional "how to apply" note; no multi-step exercises
+    Reader expectation: Quick navigation, instant answers, trust in accuracy, return-to-often format
+
+  MASTERCLASS / ACADEMIC OVERVIEW / PROFESSIONAL MANUAL
+    Chapter design:    Dense layered chapters; assumes motivation and prior knowledge
+    Sentence style:    Complex, sophisticated, expert-level vocabulary; precise language
+    Story density:     Medium-Low — expert case studies, professional examples, named research
+    Research density:  Very High — primary sources, academic citations, expert attribution
+    Framework depth:   Multi-layered systems; comparison across competing frameworks; edge cases
+    Exercise density:  Medium — advanced implementation challenges; no beginner hand-holding
+    Reader expectation: Mastery-level depth, intellectual rigor, expert credibility, no simplification
+
+PHASE 3 — BOOK DNA EXTENSION
+Internally extend the Book DNA with archetype intelligence:
+  Primary Archetype:     [detected above]
+  Secondary Archetype:   [detected if applicable]
+  Reader Expectations:   [key expectations for this archetype]
+  Structural Rules:      [chapter design, section depth, subsection approach]
+  Teaching Rules:        [pedagogy approach, vocabulary level, explanation style]
+  Editorial Rules:       [quality bar, validation standards for this archetype]
+  Commercial Rules:      [market fit requirements, what readers compare this book against]
+
+PHASE 4 — MARKET FIT VALIDATION
+Before returning this subsection, ask internally:
+  • Does this content match what a reader buying this archetype expects?
+  • Would a reader of THIS archetype type feel the book is delivering its promise?
+  • Does this chapter's design match the archetype's structural rules?
+  • Is the exercise / research / story / framework density appropriate for this archetype?
+  If any check fails — adjust before returning.
+
+PHASE 5 — QUALITY STANDARDS (archetype-specific)
+Apply the correct quality bar:
+  Workbook:           Activity quality, reflection depth, implementation clarity
+  Reference/FAQ:      Accuracy, navigability, definition precision, zero ambiguity
+  Playbook/Manual:    Practical value, actionability, decision-support completeness
+  Definitive Guide:   Depth, coverage comprehensiveness, authoritative evidence
+  Masterclass:        Intellectual rigor, framework sophistication, expert-grade evidence
+  Beginner Guide:     Clarity, accessibility, encouragement, zero overwhelm, immediate wins
+  Default:            Balanced quality across accuracy, clarity, practicality, and engagement
+
+Archetype intelligence is now active. All downstream engines use this configuration.
+
+════════════════════════════════════
 AUTHOR THINKING PROCESS — answer these six questions internally before writing a single word
 ════════════════════════════════════
 1. What is the single most important idea this subsection must teach?
