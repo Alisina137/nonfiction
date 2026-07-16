@@ -11,7 +11,9 @@ import { buildManuscriptDigest } from "@/lib/manuscriptDigest";
 import { buildKnowledgeGraphSummary } from "@/lib/knowledgeGraph";
 
 const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
-const DEV_EDIT_KEY   = "nonfiction-ai-dev-edit";
+const DEV_EDIT_KEY    = "nonfiction-ai-dev-edit";
+const BENCH_HIST_KEY  = "nonfiction-ai-bench-history";
+const MAX_BENCH_HIST  = 5;
 
 function loadFrontMatter() {
   try {
@@ -28,8 +30,18 @@ function loadDevEdit() {
   try { return JSON.parse(window.localStorage.getItem(DEV_EDIT_KEY) || "null"); } catch { return null; }
 }
 
+function loadBenchHistory() {
+  try { return JSON.parse(window.localStorage.getItem(BENCH_HIST_KEY) || "[]"); } catch { return []; }
+}
+
 function saveDevEdit(data) {
-  try { window.localStorage.setItem(DEV_EDIT_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+  try {
+    window.localStorage.setItem(DEV_EDIT_KEY, JSON.stringify(data));
+    const history = loadBenchHistory();
+    const entry   = { ...data, _runAt: new Date().toISOString() };
+    const next    = [entry, ...history].slice(0, MAX_BENCH_HIST);
+    window.localStorage.setItem(BENCH_HIST_KEY, JSON.stringify(next));
+  } catch { /* ignore */ }
 }
 
 const SCORECARD_LABELS = {
@@ -61,8 +73,39 @@ function ScoreBar({ score }) {
   );
 }
 
-function PublishingReadinessPanel({ devEdit, devEditBusy, devEditError, onRetry }) {
-  const [showDetails, setShowDetails] = useState(false);
+const PRIORITY_STYLE = {
+  Critical: { bg: "bg-red-50",    border: "border-red-200",    label: "text-red-800",    badge: "bg-red-100 text-red-700" },
+  Major:    { bg: "bg-amber-50",  border: "border-amber-200",  label: "text-amber-900",  badge: "bg-amber-100 text-amber-700" },
+  Moderate: { bg: "bg-sky-50",    border: "border-sky-200",    label: "text-sky-900",    badge: "bg-sky-100 text-sky-700" },
+  Minor:    { bg: "bg-slate-50",  border: "border-slate-200",  label: "text-slate-700",  badge: "bg-slate-100 text-slate-600" },
+  Cosmetic: { bg: "bg-white",     border: "border-slate-100",  label: "text-slate-500",  badge: "bg-slate-50 text-slate-400" },
+};
+
+const MARKET_POSITION_COLOR = {
+  Introductory: "bg-emerald-50 text-emerald-800",
+  Intermediate: "bg-sky-50 text-sky-800",
+  Advanced:     "bg-violet-50 text-violet-800",
+  Professional: "bg-indigo-50 text-indigo-800",
+  Executive:    "bg-purple-50 text-purple-800",
+  Academic:     "bg-slate-100 text-slate-700",
+  Practical:    "bg-teal-50 text-teal-800",
+  Reference:    "bg-orange-50 text-orange-800",
+};
+
+const READER_EXP_LABELS = {
+  clarity:                  "Clarity",
+  confidence:               "Reader Confidence",
+  motivation:               "Motivation",
+  progress:                 "Sense of Progress",
+  retention:                "Content Retention",
+  satisfaction:             "Overall Satisfaction",
+  completionLikelihood:     "Completion Likelihood",
+  recommendationLikelihood: "Recommendation Likelihood",
+};
+
+function PublishingReadinessPanel({ devEdit, devEditBusy, devEditError, onRetry, benchHistory }) {
+  const [showDetails,  setShowDetails]  = useState(false);
+  const [showHistory,  setShowHistory]  = useState(false);
 
   if (devEditBusy) {
     return (
@@ -134,7 +177,7 @@ function PublishingReadinessPanel({ devEdit, devEditBusy, devEditError, onRetry 
         </button>
       </div>
 
-      {/* Score + approval badge */}
+      {/* Score + approval badge + market position */}
       <div className="flex items-center gap-5">
         <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3">
           <span className={`text-3xl font-extrabold tabular-nums ${overall >= 8 ? "text-emerald-600" : overall >= 6.5 ? "text-sky-600" : "text-amber-600"}`}>
@@ -143,9 +186,16 @@ function PublishingReadinessPanel({ devEdit, devEditBusy, devEditError, onRetry 
           <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">out of 10</span>
         </div>
         <div className="flex-1 space-y-2">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${approved ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"}`}>
-            {approved ? "✓ Approved for publication" : "⚠ Improvements recommended"}
-          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${approved ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"}`}>
+              {approved ? "✓ Approved for publication" : "⚠ Improvements recommended"}
+            </span>
+            {devEdit.marketPosition && (
+              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${MARKET_POSITION_COLOR[devEdit.marketPosition] || "bg-slate-100 text-slate-600"}`}>
+                {devEdit.marketPosition}
+              </span>
+            )}
+          </div>
           {ap.approvalNotes && (
             <p className="text-xs leading-relaxed text-slate-600">{ap.approvalNotes}</p>
           )}
@@ -162,14 +212,51 @@ function PublishingReadinessPanel({ devEdit, devEditBusy, devEditError, onRetry 
         ))}
       </div>
 
-      {/* High priority weak areas */}
-      {highPriority.length > 0 && (
+      {/* Revision priorities */}
+      {Array.isArray(devEdit.revisionPriorities) && devEdit.revisionPriorities.filter(rp => rp.items?.length > 0).length > 0 ? (
+        <div className="space-y-2">
+          {devEdit.revisionPriorities.filter(rp => rp.items?.length > 0).slice(0, 3).map((rp, i) => {
+            const s = PRIORITY_STYLE[rp.level] || PRIORITY_STYLE.Moderate;
+            return (
+              <div key={i} className={`rounded-xl border ${s.border} ${s.bg} px-3 py-2.5 space-y-1`}>
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${s.label}`}>
+                  <span className={`mr-1.5 rounded px-1.5 py-0.5 text-[9px] ${s.badge}`}>{rp.level}</span>
+                </p>
+                {rp.items.slice(0, 3).map((item, j) => (
+                  <div key={j} className={`flex gap-2 text-xs ${s.label}`}>
+                    <span className="mt-0.5 shrink-0 font-bold">→</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      ) : highPriority.length > 0 && (
         <div className="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
           <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Priority improvements</p>
           {highPriority.slice(0, 4).map((w, i) => (
             <div key={i} className="flex gap-2 text-xs text-amber-900">
               <span className="mt-0.5 shrink-0 font-bold">→</span>
               <span><span className="font-semibold">{w.location}:</span> {w.issue} <span className="text-amber-700">({w.action})</span></span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Strengths — always visible */}
+      {Array.isArray(devEdit.strengths) && devEdit.strengths.length > 0 && (
+        <div className="space-y-1.5 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Protected Strengths</p>
+          {devEdit.strengths.map((s, i) => (
+            <div key={i} className="flex gap-2 text-xs text-emerald-900">
+              <span className="mt-0.5 shrink-0">★</span>
+              <div>
+                <span className="font-semibold">{s.area}</span>
+                {s.dimension && <span className="ml-1 text-emerald-600">({s.dimension})</span>}
+                {s.note && <p className="mt-0.5 text-emerald-800">{s.note}</p>}
+                {s.protectionAdvice && <p className="mt-0.5 text-emerald-600 italic">{s.protectionAdvice}</p>}
+              </div>
             </div>
           ))}
         </div>
@@ -198,6 +285,73 @@ function PublishingReadinessPanel({ devEdit, devEditBusy, devEditError, onRetry 
             ))}
           </div>
 
+          {/* Reader Experience Model */}
+          {devEdit.readerExperience && Object.keys(devEdit.readerExperience).length > 0 && (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Reader Experience Model</p>
+              {Object.entries(READER_EXP_LABELS).map(([key, label]) => {
+                const val = devEdit.readerExperience[key];
+                if (val == null) return null;
+                return (
+                  <div key={key} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-0.5">
+                    <span className="text-xs text-slate-600">{label}</span>
+                    <div className="w-40">
+                      <ScoreBar score={val} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Category Benchmarks */}
+          {devEdit.categoryBenchmarks && Object.keys(devEdit.categoryBenchmarks).length > 0 && (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Category Benchmarks</p>
+              {Object.entries(devEdit.categoryBenchmarks).map(([key, val]) => (
+                <div key={key} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-0.5">
+                  <span className="text-xs text-slate-600">{key}</span>
+                  <div className="w-40">
+                    <ScoreBar score={val} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Archetype Benchmarks */}
+          {devEdit.archetypeBenchmarks && Object.keys(devEdit.archetypeBenchmarks).length > 0 && (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Archetype Benchmarks</p>
+              {Object.entries(devEdit.archetypeBenchmarks).map(([key, val]) => (
+                <div key={key} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-0.5">
+                  <span className="text-xs text-slate-600">{key}</span>
+                  <div className="w-40">
+                    <ScoreBar score={val} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* All revision priorities */}
+          {Array.isArray(devEdit.revisionPriorities) && devEdit.revisionPriorities.filter(rp => rp.items?.length > 0).length > 0 && (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">All Revision Priorities</p>
+              {devEdit.revisionPriorities.filter(rp => rp.items?.length > 0).map((rp, i) => {
+                const s = PRIORITY_STYLE[rp.level] || PRIORITY_STYLE.Moderate;
+                return (
+                  <div key={i} className={`rounded-xl border ${s.border} ${s.bg} px-3 py-2 space-y-1`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-wide ${s.label}`}>{rp.level}</span>
+                    {rp.items.map((item, j) => (
+                      <p key={j} className={`flex gap-1.5 text-xs ${s.label}`}><span className="shrink-0">→</span>{item}</p>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* Chapter reviews */}
           {Array.isArray(devEdit.chapterReviews) && devEdit.chapterReviews.length > 0 && (
             <div className="space-y-1.5 border-t border-slate-100 pt-3">
@@ -223,6 +377,37 @@ function PublishingReadinessPanel({ devEdit, devEditBusy, devEditError, onRetry 
               {devEdit.unansweredQuestions.slice(0, 5).map((q, i) => (
                 <p key={i} className="flex gap-1.5 text-xs text-slate-600"><span className="shrink-0 text-amber-500">?</span>{q}</p>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Benchmark history */}
+      {Array.isArray(benchHistory) && benchHistory.length > 1 && (
+        <div className="border-t border-slate-100 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowHistory(!showHistory)}
+            className="w-full rounded-lg border border-slate-100 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50"
+          >
+            {showHistory ? "Hide benchmark history ↑" : `Benchmark history (${Math.min(benchHistory.length, MAX_BENCH_HIST)} runs) ↓`}
+          </button>
+          {showHistory && (
+            <div className="mt-2 space-y-1.5">
+              {benchHistory.map((run, i) => {
+                const runScore = run.bookScorecard?.overallPublishingScore ?? 0;
+                const runDate  = run._runAt ? new Date(run._runAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : `Run ${benchHistory.length - i}`;
+                return (
+                  <div key={i} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                    <span className="text-slate-500">{i === 0 ? "Latest" : runDate}</span>
+                    <span className={`font-bold tabular-nums ${runScore >= 8 ? "text-emerald-600" : runScore >= 6.5 ? "text-sky-600" : "text-amber-600"}`}>{runScore.toFixed(1)}</span>
+                    {run.marketPosition && <span className="text-[10px] text-slate-400">{run.marketPosition}</span>}
+                    <span className={`rounded-full px-2 py-0.5 font-semibold ${run.bookApproval?.approved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-600"}`}>
+                      {run.bookApproval?.approved ? "✓" : "⚠"}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -285,6 +470,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [devEdit, setDevEdit] = useState(() => loadDevEdit());
   const [devEditBusy, setDevEditBusy] = useState(false);
   const [devEditError, setDevEditError] = useState("");
+  const [benchHistory, setBenchHistory] = useState(() => loadBenchHistory());
   const devEditTriggered = useRef(false);
 
   // Persist front matter to localStorage whenever any field changes
@@ -303,13 +489,15 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     setDevEditBusy(true);
     setDevEditError("");
     try {
-      const digest = buildManuscriptDigest(fullProject);
-      const kg     = buildKnowledgeGraphSummary(fullProject);
-      const ctx    = buildBookContext(fullProject);
+      const digest   = buildManuscriptDigest(fullProject);
+      const kg       = buildKnowledgeGraphSummary(fullProject);
+      const ctx      = buildBookContext(fullProject);
+      const category = fullProject?.research?.mainNicheLabel || fullProject?.research?.primaryNiche || "";
+      const archetype = fullProject?.bookDetails?.structure || fullProject?.bookDetails?.bookType || "";
       const res = await fetch("/api/ai/developmental-edit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookContext: ctx, manuscriptDigest: digest, knowledgeGraph: kg })
+        body: JSON.stringify({ bookContext: ctx, manuscriptDigest: digest, knowledgeGraph: kg, category, archetype })
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -318,6 +506,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       const data = await res.json();
       setDevEdit(data);
       saveDevEdit(data);
+      setBenchHistory(loadBenchHistory());
     } catch (e) {
       setDevEditError(e.message || "Could not complete the developmental edit.");
     } finally {
@@ -463,6 +652,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         devEditBusy={devEditBusy}
         devEditError={devEditError}
         onRetry={() => { devEditTriggered.current = false; runDevelopmentalEdit(); }}
+        benchHistory={benchHistory}
       />
 
       {/* Export settings */}

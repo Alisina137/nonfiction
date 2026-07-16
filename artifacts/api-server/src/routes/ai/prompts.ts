@@ -7204,10 +7204,63 @@ export function developmentalEditPrompt(opts: {
   bookContext?: any;
   manuscriptDigest?: any;
   knowledgeGraph?: any;
+  category?: string;
+  archetype?: string;
 }): string {
   const ctx  = opts.bookContext  || {};
   const md   = opts.manuscriptDigest || {};
   const kg   = opts.knowledgeGraph || null;
+  const category  = String(opts.category  || "").trim();
+  const archetype = String(opts.archetype || "").trim();
+
+  // ─── Category-specific benchmark criteria ────────────────────────────────
+  const CATEGORY_CRITERIA: Record<string, string[]> = {
+    business:    ["Framework Quality", "Implementation Quality", "Decision Support", "Leadership Application", "Case Study Effectiveness"],
+    psychology:  ["Research Integration", "Behavior Change Support", "Reflection Quality", "Evidence Strength", "Clinical Accuracy"],
+    health:      ["Evidence Quality", "Safety Communication", "Practical Advice", "Medical Accuracy", "Actionability"],
+    finance:     ["Accuracy", "Risk Communication", "Decision Frameworks", "Tax & Regulatory Accuracy", "Reader Financial Safety"],
+    history:     ["Chronological Accuracy", "Context Setting", "Analytical Depth", "Source Integration", "Narrative Engagement"],
+    biography:   ["Narrative Arc", "Character Development", "Lessons Extracted", "Historical Accuracy", "Emotional Resonance"],
+    cooking:     ["Instructional Clarity", "Recipe Accuracy", "Technique Explanation", "Visual Description", "Equipment Guidance"],
+    parenting:   ["Empathy", "Practicality", "Developmental Appropriateness", "Safety Guidance", "Compassion"],
+    technology:  ["Technical Accuracy", "Concept Progression", "Example Quality", "Accessibility for Target Level", "Currency of Information"],
+    selfhelp:    ["Actionability", "Transformation Clarity", "Reader Empathy", "Practical Framework", "Motivation Sustaining"],
+    leadership:  ["Framework Quality", "Case Studies", "Decision Tools", "Leadership Principles", "Organizational Applicability"],
+  };
+  const normalizedCategory = category.toLowerCase().replace(/[^a-z]/g, "");
+  const categoryMatch = Object.entries(CATEGORY_CRITERIA).find(([k]) => normalizedCategory.includes(k));
+  const categoryCriteria = categoryMatch ? categoryMatch[1] : ["Reader Value", "Practical Implementation", "Originality", "Actionability", "Knowledge Depth"];
+  const categoryLabel = category || "General Nonfiction";
+
+  const categoryBlock = `
+════════════════════════════════════
+CATEGORY-SPECIFIC BENCHMARKS (${categoryLabel})
+════════════════════════════════════
+Evaluate these ${categoryLabel}-specific quality dimensions. Rate each from 0.0–10.0 (one decimal).
+${categoryCriteria.map((c) => `• ${c}`).join("\n")}
+Include these scores in "categoryBenchmarks" using the exact criterion names as keys.`;
+
+  // ─── Archetype-specific benchmark criteria ───────────────────────────────
+  const ARCHETYPE_CRITERIA: Record<string, string[]> = {
+    workbook:   ["Activity Quality", "Reflection Quality", "Implementation Completeness", "Worksheet Usefulness"],
+    playbook:   ["Actionability", "Template Quality", "Decision Tools", "Step Clarity"],
+    guide:      ["Coverage Depth", "Authority", "Reference Navigation", "Comprehensiveness"],
+    reference:  ["Navigation Ease", "Definition Clarity", "Cross References", "Index Quality"],
+    masterclass:["Advanced Concept Delivery", "Framework Integration", "Commercial Depth", "Expert Positioning"],
+    memoir:     ["Narrative Voice", "Vulnerability Authenticity", "Universal Lessons", "Emotional Arc"],
+    manifesto:  ["Argument Strength", "Clarity of Call", "Emotional Power", "Cultural Relevance"],
+    textbook:   ["Pedagogical Structure", "Exercise Quality", "Concept Scaffolding", "Assessment Integration"],
+  };
+  const normalizedArchetype = archetype.toLowerCase().replace(/[^a-z]/g, "");
+  const archetypeMatch = Object.entries(ARCHETYPE_CRITERIA).find(([k]) => normalizedArchetype.includes(k));
+  const archetypeCriteria = archetypeMatch ? archetypeMatch[1] : ["Structural Quality", "Reader Guidance", "Practical Depth", "Format Effectiveness"];
+  const archetypeBlock = `
+════════════════════════════════════
+ARCHETYPE BENCHMARKS (${archetype || "Standard Nonfiction"})
+════════════════════════════════════
+Evaluate these ${archetype || "standard nonfiction"}-specific quality dimensions. Rate each from 0.0–10.0.
+${archetypeCriteria.map((c) => `• ${c}`).join("\n")}
+Include these scores in "archetypeBenchmarks" using the exact criterion names as keys.`;
 
   const title       = safeStr(ctx.title)       || "Untitled Book";
   const subtitle    = safeStr(ctx.subtitle)    || "";
@@ -7301,6 +7354,39 @@ ACTIONABILITY: Measure exercises, templates, worksheets, reflections, action pla
 BOOK SCORECARD: Rate each of the 13 dimensions from 0.0–10.0 (one decimal). Calculate overallPublishingScore as the weighted average.
 
 BOOK APPROVAL: Evaluate all 8 quality gates. Only approve if ALL gates pass. If any gate fails, mark approved: false and explain in approvalNotes.
+
+${categoryBlock}
+${archetypeBlock}
+
+READER EXPERIENCE MODEL: Estimate each from the reader's perspective (0.0–10.0, one decimal):
+• clarity — how clearly ideas and concepts are explained
+• confidence — how much confidence the reader gains chapter by chapter
+• motivation — how motivated the reader stays to continue reading and implement
+• progress — how strongly the reader feels visible personal growth through the book
+• retention — how memorable and retainable the content is after reading
+• satisfaction — the reader's overall satisfaction with the book
+• completionLikelihood — estimated likelihood a typical reader completes the book (0=nobody finishes, 10=everyone finishes)
+• recommendationLikelihood — likelihood a reader would actively recommend it to others
+Include in "readerExperience" using these exact camelCase keys.
+
+MARKET POSITION: Estimate the single best label for this manuscript's target level. Choose one:
+Introductory | Intermediate | Advanced | Professional | Executive | Academic | Practical | Reference
+Include as "marketPosition" (single string).
+
+STRENGTH DETECTION: Identify 2–5 genuine standout strengths — specific chapters, sections, frameworks, or stories that are measurably above average quality and must be PROTECTED during future revisions. For each:
+• area — specific location (e.g. "Chapter 3", "Chapter 2 — The 5-Step Framework")
+• dimension — which quality dimension it excels at (e.g. "Storytelling", "Framework Quality")
+• note — one sentence describing what makes it exceptional
+• protectionAdvice — one sentence: how to preserve this strength when revising surrounding content
+Include in "strengths" array.
+
+REVISION PRIORITIES: Classify ALL improvement recommendations into exactly these 5 priority levels in the "revisionPriorities" array:
+• Critical — must fix before publication (currently blocking approval or creating serious reader harm)
+• Major — significantly improves commercial viability or reader transformation if addressed
+• Moderate — meaningful quality improvement but not blocking publication
+• Minor — polish and refinement that elevates the reader experience
+• Cosmetic — word-level, formatting, or presentational improvements
+For each level, list specific actionable items (not vague areas — write "Expand the implementation section in Chapter 3 with a step-by-step worksheet" not "improve Chapter 3").
 
 ════════════════════════════════════
 SCORING THRESHOLDS
@@ -7407,6 +7493,30 @@ Return ONLY valid JSON (no markdown fences, no explanation text):
     "consistency": true,
     "readerExperience": true,
     "approvalNotes": "One sentence summary of the approval decision and next step"
-  }
+  },
+  "categoryBenchmarks": {"Framework Quality": 8.0, "Implementation Quality": 7.5, "Decision Support": 8.0},
+  "archetypeBenchmarks": {"Actionability": 7.5, "Template Quality": 8.0},
+  "strengths": [
+    {"area": "Chapter X — Section Title", "dimension": "Storytelling", "note": "One sentence describing what makes this exceptional", "protectionAdvice": "One sentence on how to protect this during revision"},
+    {"area": "Chapter Y — Framework Name", "dimension": "Framework Quality", "note": "One sentence describing what makes this exceptional", "protectionAdvice": "One sentence on how to protect this during revision"}
+  ],
+  "readerExperience": {
+    "clarity": 8.0,
+    "confidence": 7.5,
+    "motivation": 8.0,
+    "progress": 7.5,
+    "retention": 7.5,
+    "satisfaction": 8.0,
+    "completionLikelihood": 8.5,
+    "recommendationLikelihood": 7.5
+  },
+  "marketPosition": "Intermediate",
+  "revisionPriorities": [
+    {"level": "Critical", "items": ["Specific action required before publication — or empty array if none"]},
+    {"level": "Major", "items": ["Specific action that significantly improves commercial viability"]},
+    {"level": "Moderate", "items": ["Specific action that meaningfully improves quality"]},
+    {"level": "Minor", "items": ["Specific polish or refinement action"]},
+    {"level": "Cosmetic", "items": ["Word-level or formatting improvement"]}
+  ]
 }`;
 }

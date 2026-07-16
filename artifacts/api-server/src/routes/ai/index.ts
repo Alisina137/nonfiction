@@ -888,9 +888,9 @@ router.post("/improve", async (req, res) => {
 
 router.post("/developmental-edit", async (req, res) => {
   try {
-    const { bookContext, manuscriptDigest, knowledgeGraph } = req.body || {};
+    const { bookContext, manuscriptDigest, knowledgeGraph, category, archetype } = req.body || {};
     const { data, usedProvider } = await runLongJSON(
-      developmentalEditPrompt({ bookContext, manuscriptDigest, knowledgeGraph }),
+      developmentalEditPrompt({ bookContext, manuscriptDigest, knowledgeGraph, category, archetype }),
       systemPrompt(),
       req,
       res,
@@ -960,6 +960,41 @@ router.post("/developmental-edit", async (req, res) => {
       priority: str(wa.priority, "medium"),
     }));
 
+    const re = data.readerExperience || {};
+    const readerExperience = {
+      clarity:                  num(re.clarity,                  7.5),
+      confidence:               num(re.confidence,               7.5),
+      motivation:               num(re.motivation,               7.5),
+      progress:                 num(re.progress,                 7.5),
+      retention:                num(re.retention,                7.5),
+      satisfaction:             num(re.satisfaction,             7.5),
+      completionLikelihood:     num(re.completionLikelihood,     7.5),
+      recommendationLikelihood: num(re.recommendationLikelihood, 7.5),
+    };
+
+    const strengths = arr(data.strengths).map((s: any) => ({
+      area:             str(s.area),
+      dimension:        str(s.dimension),
+      note:             str(s.note),
+      protectionAdvice: str(s.protectionAdvice),
+    })).filter((s: any) => s.area);
+
+    const revisionPriorities = arr(data.revisionPriorities).map((rp: any) => ({
+      level: str(rp.level, "Moderate"),
+      items: arr(rp.items).map((item: any) => str(item)).filter(Boolean),
+    }));
+
+    // Normalise categoryBenchmarks / archetypeBenchmarks — values must be numbers
+    const normBenchmarks = (raw: any) => {
+      if (!raw || typeof raw !== "object") return {};
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(raw)) {
+        const n = parseFloat(String(v));
+        if (isFinite(n)) out[k] = Math.min(10, Math.max(0, parseFloat(n.toFixed(1))));
+      }
+      return out;
+    };
+
     const out = {
       perspectiveReviews:     data.perspectiveReviews || {},
       bookLevelAnalysis:      data.bookLevelAnalysis || {},
@@ -979,8 +1014,14 @@ router.post("/developmental-edit", async (req, res) => {
         weakTransformationChapters: arr(tv.weakTransformationChapters),
         recommendation:             str(tv.recommendation),
       },
-      bookScorecard:  scorecard,
+      bookScorecard:       scorecard,
       bookApproval,
+      categoryBenchmarks:  normBenchmarks(data.categoryBenchmarks),
+      archetypeBenchmarks: normBenchmarks(data.archetypeBenchmarks),
+      strengths,
+      readerExperience,
+      marketPosition:      str(data.marketPosition, "General"),
+      revisionPriorities,
       _provider: usedProvider,
     };
     return res.json(out);
