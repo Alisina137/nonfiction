@@ -437,6 +437,119 @@ Memory Rule: If a concept, framework, story, or example appears in Global Memory
 ════════════════════════════════════`;
 }
 
+/**
+ * Build the Knowledge Graph Intelligence block injected into every lessonPrompt.
+ * Converts the compiled knowledgeGraph (from bookContext.knowledgeGraph) into a
+ * structured prompt block that enforces the spec rules:
+ *   — First Introduction Rule   (define new concepts clearly)
+ *   — Reinforcement Rule        (deepen, never redefine)
+ *   — Dependency Validation     (prerequisites must precede dependants)
+ *   — Contradiction Detection   (consistent definitions and advice throughout)
+ *   — Cross References          (natural forward/backward links, max 1 per section)
+ *   — Question Coverage         (every concept answers at least one reader question)
+ */
+export function buildKnowledgeGraphBlock(kg: any): string {
+  if (!kg || typeof kg !== "object") return "";
+  const concepts   = Array.isArray(kg.concepts)   ? kg.concepts   : [];
+  const frameworks = Array.isArray(kg.frameworks) ? kg.frameworks : [];
+  const openQs     = Array.isArray(kg.openQuestions) ? kg.openQuestions : [];
+  const storyTypes = Array.isArray(kg.storyTypes) ? kg.storyTypes : [];
+  if (!concepts.length && !frameworks.length) return "";
+
+  const lines: string[] = [];
+
+  // ── Concept Registry ────────────────────────────────────────────────────
+  if (concepts.length) {
+    lines.push(`CONCEPT REGISTRY — ${concepts.length} concepts registered`);
+    lines.push(`Use these terms consistently. Do NOT redefine them — only deepen, apply, or extend.`);
+    const byDifficulty: Record<string, string[]> = { beginner: [], intermediate: [], advanced: [] };
+    for (const c of concepts as any[]) {
+      const tier = c.difficulty === "beginner" || c.difficulty === "advanced" ? c.difficulty : "intermediate";
+      const loc  = c.introducedAt ? ` [${c.introducedAt}]` : "";
+      const def  = c.definition ? ` — ${c.definition}` : "";
+      byDifficulty[tier].push(`  • ${c.name}${def}${loc}`);
+    }
+    const tierLabels: Record<string, string> = { beginner: "Foundation", intermediate: "Core", advanced: "Advanced" };
+    for (const [tier, items] of Object.entries(byDifficulty)) {
+      if (items.length) lines.push(`${tierLabels[tier]}:\n${items.join("\n")}`);
+    }
+  }
+
+  // ── Framework Registry ──────────────────────────────────────────────────
+  if (frameworks.length) {
+    lines.push(`\nFRAMEWORK REGISTRY — ${frameworks.length} frameworks established`);
+    lines.push(`Do NOT re-explain these — only reference and build on them.`);
+    for (const f of frameworks as any[]) {
+      const loc = f.introducedAt ? ` [${f.introducedAt}]` : "";
+      const pur = f.purpose ? ` — ${f.purpose}` : "";
+      lines.push(`  • ${f.name} (${f.type || "model"})${pur}${loc}`);
+    }
+  }
+
+  // ── Open Reader Questions ───────────────────────────────────────────────
+  if (openQs.length) {
+    lines.push(`\nOPEN READER QUESTIONS (not yet answered — weave answers in where relevant):`);
+    openQs.forEach((q: string) => lines.push(`  ? ${q}`));
+  }
+
+  // ── Story Variety ────────────────────────────────────────────────────────
+  if (storyTypes.length) {
+    lines.push(`\nSTORY TYPES ALREADY USED (rotate — avoid back-to-back repetition):`);
+    lines.push(`  ${storyTypes.join(", ")}`);
+  }
+
+  return `
+════════════════════════════════════
+KNOWLEDGE GRAPH — Book Concept Intelligence
+════════════════════════════════════
+${lines.join("\n")}
+
+════════════════════════════════════
+KNOWLEDGE INTELLIGENCE RULES (NON-NEGOTIABLE)
+════════════════════════════════════
+
+FIRST INTRODUCTION RULE
+When introducing a concept that is NOT in the registry above:
+1. Define it clearly in one plain sentence — no jargon, no assumed knowledge
+2. Explain WHY it matters to this reader's specific situation
+3. Connect it to prior concepts: "This builds on [prior concept]..."
+4. Provide immediate real-world context before going deep
+5. Never assume the reader already understands it
+
+REINFORCEMENT RULE
+When mentioning a concept that IS already in the registry:
+1. Do NOT redefine it — trust that the reader remembers it
+2. Briefly reconnect: "As we established, [concept]..." (1 sentence max)
+3. Deepen the understanding: new application, new dimension, new nuance
+4. Show a perspective the reader hasn't seen yet in this book
+
+DEPENDENCY VALIDATION
+Before teaching a concept that depends on prior knowledge:
+Check if its prerequisites appear in the registry above.
+If a prerequisite is MISSING — introduce it briefly (1–2 sentences) before the main concept.
+Example: don't explain "compound growth" before explaining "compound interest".
+
+CONTRADICTION DETECTION
+Before finalizing, verify no definition, advice, or recommendation here contradicts
+anything established in the registry above.
+If a conflict exists — resolve it by showing how the two ideas relate or differ,
+or reframe your current point to be consistent with the established position.
+
+CROSS REFERENCE RULE
+When a concept naturally connects to prior content, include ONE natural cross reference.
+Good formats:
+  "This builds on [concept] we covered in [location]..."
+  "You'll apply this again in Chapter X when we discuss..."
+  "This framework complements [framework name] by..."
+Maximum ONE cross reference per section — never make it feel like a textbook index.
+
+QUESTION COVERAGE
+Every concept you introduce or reinforce must implicitly or explicitly answer
+at least one reader question. Ask yourself before each concept: "What is the reader
+actually trying to figure out here?" If the answer isn't clear — reframe the section.
+════════════════════════════════════`;
+}
+
 // ─── Shared project data extractor ───────────────────────────────────────────
 
 function safeStr(v: any): string {
@@ -2308,6 +2421,7 @@ export function lessonPrompt({
   const dnaSectionBlock    = buildSectionDNABlock(sectionTitle || "", "");
   const dnaSubsectionBlock = buildSubsectionDNABlock(subsection, subsectionPurpose || "");
   const dnaGlobalMemory    = buildGlobalMemoryBlock(previousConcepts || [], chapterSummaries || []);
+  const knowledgeGraphBlock = buildKnowledgeGraphBlock(bookContext?.knowledgeGraph);
 
   // Rich covered-content block — shows chapter/section context + key takeaway for each prior block
   const coveredContentBlock = Array.isArray(previousConcepts) && previousConcepts.length
@@ -3463,7 +3577,7 @@ Subsection: ${subsectionTitle}${purposeNote}
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
-Tone Instruction: ${toneInstr}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${howToUseBlock}${whatYouWillLearnBlock}${whoThisBookIsForBlock}${dedicationBlock}${acknowledgmentsBlock}${prefaceBlock}${bookConclusionBlock}${epilogueBlock}${keyLessonsBlock}${appendixBlock}${glossaryBlock}${referencesBlock}${furtherReadingBlock}${backAcknowledgmentsBlock}${theEndBlock}${flowBlock}${antiTemplateRules}
+Tone Instruction: ${toneInstr}${knowledgeGraphBlock}${coveredContentBlock}${chapterSummariesBlock}${upcomingBlock}${strategyBlock}${blueprintBlock}${bookIntroBlock}${howToUseBlock}${whatYouWillLearnBlock}${whoThisBookIsForBlock}${dedicationBlock}${acknowledgmentsBlock}${prefaceBlock}${bookConclusionBlock}${epilogueBlock}${keyLessonsBlock}${appendixBlock}${glossaryBlock}${referencesBlock}${furtherReadingBlock}${backAcknowledgmentsBlock}${theEndBlock}${flowBlock}${antiTemplateRules}
 
 ════════════════════════════════════
 WRITING INTELLIGENCE — NON-NEGOTIABLE RULES
@@ -3787,7 +3901,41 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
   "keyTakeaway": "One sentence — the single most important thing the reader ${isBookIntroduction ? "should take away about what this book offers them" : isHowToUseThisBook ? "should remember about how to engage with this book" : isWhatYouWillLearn ? "should feel excited to gain from this book" : isWhoThisBookIsFor ? "should understand about whether this book is right for them" : isDedication ? "should feel about the sincerity of this dedication" : isAcknowledgments ? "should feel about the author's gratitude" : isPreface ? "should understand about the author's motivation for writing this book" : isEpilogue ? "should feel inspired and ready to act after completing this book" : isKeyLessons ? "should remember as the most important principle from this book" : isAppendix ? "should reference in the appendix to immediately apply what they've learned" : isGlossary ? "should understand about the core terminology of this book's subject" : isReferences ? "should know about the sources and research behind this book" : isFurtherReading ? "should explore next to deepen their knowledge after this book" : isBackAcknowledgments ? "should feel about the author's gratitude for their time and investment" : isTheEnd ? "should carry with them after closing this book" : "learns (matches part 5 of the prose)"}",
   "transition": "The exact closing sentence or short paragraph that bridges into ${isBookIntroduction ? "Chapter 1" : isHowToUseThisBook ? "the next front-matter section" : isWhatYouWillLearn ? "the next front-matter section" : isWhoThisBookIsFor ? "Chapter 1" : isDedication ? "the next front-matter section (or leave as a standalone closing line, since a dedication does not need a transition)" : isAcknowledgments ? "the next front-matter section" : isPreface ? "the Introduction" : isEpilogue ? "the Key Lessons or next back-matter section (or leave as a standalone closing — the Epilogue may stand alone)" : isKeyLessons ? "the Appendix or next back-matter section" : isAppendix ? "the Glossary or next back-matter section" : isGlossary ? "the References or next back-matter section" : isReferences ? "the Further Reading or next back-matter section" : isFurtherReading ? "the Acknowledgments or next back-matter section" : isBackAcknowledgments ? "The End page (or leave as a standalone closing paragraph)" : isTheEnd ? "(no transition needed — this is the final page of the book)" : "the next section"}",
   "teachingMethod": "The primary teaching method used (e.g. anecdote, data-led, analogy, direct instruction, case study, exercise)",
-  "competitorGap": "One sentence describing what competing books miss that this ${isBookIntroduction ? "introduction" : isFrontMatterSpecial ? "front-matter section" : isBackMatterSpecial ? "back-matter section" : "section"} addresses (or 'N/A' if no competitor data provided)"
+  "competitorGap": "One sentence describing what competing books miss that this ${isBookIntroduction ? "introduction" : isFrontMatterSpecial ? "front-matter section" : isBackMatterSpecial ? "back-matter section" : "section"} addresses (or 'N/A' if no competitor data provided)",
+  "knowledgeGraphDelta": {
+    "newConcepts": [
+      {
+        "name": "Exact concept name as used in the text",
+        "definition": "One clear sentence — plain language, no jargon",
+        "difficulty": "beginner | intermediate | advanced",
+        "importance": "high | medium | low",
+        "category": "concept | framework | definition | skill | principle | strategy | tool | process | method",
+        "readerQuestion": "The specific reader question this concept answers (e.g. 'Why do I keep reverting to old habits?')"
+      }
+    ],
+    "reinforcedConcepts": ["Names of concepts from the registry that were deepened or re-applied here (NOT redefined)"],
+    "frameworks": [
+      {
+        "name": "Framework name exactly as introduced",
+        "type": "model | process | checklist | matrix | roadmap | cycle | system | decision-tree | pyramid | diagnostic",
+        "purpose": "One sentence — what problem this framework solves for the reader"
+      }
+    ],
+    "storiesUsed": [
+      {
+        "type": "Historical Story | Scientific Discovery | Business Case Study | Startup Journey | Customer Story | Personal Scenario | Composite Example | Failure Story | Success Story | Transformation Story | Thought Experiment | Future Scenario | Myth vs Reality",
+        "conceptTaught": "The concept this story was used to illustrate"
+      }
+    ],
+    "questionsAnswered": ["Reader questions explicitly or implicitly answered by this section"],
+    "questionsRaised": ["New questions this section raises that upcoming sections should address"],
+    "definitionsEstablished": [
+      {
+        "term": "Exact term as used",
+        "definition": "Exact 1-sentence definition established in this section"
+      }
+    ]
+  }
 }`;
 }
 

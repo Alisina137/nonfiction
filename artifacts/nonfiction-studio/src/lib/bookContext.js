@@ -9,6 +9,7 @@
  */
 
 import { resolveBookTitle } from "@/lib/projectMeta";
+import { buildKnowledgeGraphSummary } from "@/lib/knowledgeGraph";
 
 const CREATE_NEW_PERSONA_ID = "__create_new__";
 
@@ -243,6 +244,12 @@ export function buildBookContext(project) {
       : "",
     blueprintConfidence: (bd.blueprintScores?.blueprintConfidence) || null,
     blueprintValidationPass: (bd.blueprintValidation?.overallPass) !== false,
+
+    // ── Knowledge Graph (built progressively from written lessons) ─────────
+    // Injected into every subsequent section write so the AI can enforce:
+    // First Introduction Rule, Reinforcement Rule, Cross References,
+    // Dependency Validation, Contradiction Detection, Question Coverage.
+    knowledgeGraph: buildKnowledgeGraphSummary(project),
   };
 
   // Return null if there's nothing useful (very early in workflow)
