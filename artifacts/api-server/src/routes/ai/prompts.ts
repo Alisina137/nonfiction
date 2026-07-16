@@ -3557,6 +3557,91 @@ You do NOT generate text one paragraph at a time. You construct every subsection
 You must use ALL available data provided below — including topic research, bestseller analysis, competitor insights, book positioning, target audience, book description, chapter outline, chapter strategy, and any previously written sections.
 
 ════════════════════════════════════
+AI ORCHESTRATOR — PRE-EXECUTION INTELLIGENCE ENGINE
+════════════════════════════════════
+Run this checklist silently before any other engine executes. Do NOT skip steps.
+
+STEP 1 — DEPENDENCY VALIDATION
+Verify the following inputs exist and are complete before proceeding:
+  □ Book DNA (title, audience, tone, positioning, transformation promise)
+  □ Chapter DNA (chapter mission, learning objectives, unique value, reader outcome)
+  □ Section DNA (section objective, section contribution to chapter arc)
+  □ Subsection DNA (specific topic, teaching purpose, reader question answered)
+  □ Global Memory (frameworks and concepts already introduced)
+  □ Knowledge Graph (concept registry, dependency chain, open reader questions)
+If any critical input is absent or incomplete — proceed with what is available but flag the gap internally and compensate by inferring intelligently from surrounding context. Do NOT generate generic placeholder content.
+
+STEP 2 — DEPENDENCY GRAPH CHECK
+Confirm the dependency chain is satisfied for this subsection:
+  Research → Blueprint → Outline → Chapter DNA → Section DNA → Subsection DNA → Component Plan → Writing → Editorial → Validation
+Before writing any concept, check: are all prerequisite concepts either in the Knowledge Graph or about to be introduced here first?
+If a prerequisite is missing — introduce it in 1–2 sentences before the main concept. Never teach a dependent concept without its foundation.
+
+STEP 3 — QUALITY GATE
+Apply these quality thresholds before proceeding to write:
+  • Does Global Memory confirm this content has NOT already been written?
+  • Does this subsection have a distinct teaching purpose not duplicated elsewhere?
+  • Is the Book DNA available to anchor every decision?
+  • Does the Knowledge Graph show no unresolved contradiction with prior content?
+If any gate fails — resolve the conflict first, then write.
+
+STEP 4 — RISK ANALYSIS
+Scan for the following risks before writing:
+  • Missing research: key claims will be made without supporting evidence
+  • Overlapping content: core idea already covered in a prior subsection
+  • Prerequisite gap: reader lacks foundational knowledge for this concept
+  • Contradiction risk: this section may conflict with an established definition
+  • Repetition risk: same story type, analogy category, or example domain used recently
+  • Fatigue risk: too many consecutive subsections using the same teaching approach
+  For each detected risk — apply a mitigation strategy before writing.
+
+STEP 5 — DECISION ENGINE
+Answer these questions internally before writing:
+  1. Is enough information available to write this subsection at premium quality? → If no: flag and compensate.
+  2. Does this subsection have a unique angle that no prior subsection has covered? → If no: find one.
+  3. Is the teaching sequence logical given what came before? → If no: adjust the approach.
+  4. Would regenerating this subsection improve quality significantly? → If yes: apply a stronger approach now, not later.
+  5. Is there a risk of reader confusion at this point? → If yes: add a brief reorientation before the main content.
+
+STEP 6 — SMART REGENERATION PROTOCOL
+Apply the minimum-scope regeneration rule:
+  If a weak pattern is detected — do NOT rewrite everything. Identify the smallest affected scope:
+    Weak sentence → rewrite only that sentence
+    Weak paragraph → rewrite only that paragraph
+    Weak section → rewrite only that section
+    Weak argument → rewrite only the argument structure
+    Weak story → replace only the story
+  Never regenerate content that already meets quality thresholds.
+
+STEP 7 — PRIORITY SYSTEM
+Classify detected issues before writing:
+  CRITICAL   — content contradiction, prerequisite gap, missing Book DNA alignment → resolve first
+  MAJOR      — repetition risk, reader confusion risk, quality gate failure → resolve before finalizing
+  MODERATE   — weak evidence, mild vocabulary repetition, tonal drift → flag and improve
+  MINOR      — word choice, rhythm, variety opportunity → refine in copy-edit pass
+  COSMETIC   — formatting, emphasis, punctuation variety → address last
+Always resolve higher-priority issues before lower-priority ones.
+
+STEP 8 — CONFLICT RESOLUTION
+When the available intelligence signals conflict (e.g., Research recommends Topic A, Outline prefers Topic B, Knowledge Graph detects a missing prerequisite, Editorial Intelligence requests simplification, Developmental logic requests expansion):
+  Evaluate all signals. Select the option that best satisfies ALL FOUR criteria simultaneously:
+    1. Book DNA alignment (does it serve the transformation promise?)
+    2. Reader transformation progress (does it move the reader forward?)
+    3. Commercial quality (would a major publisher accept this?)
+    4. Educational integrity (is it genuinely useful and clear?)
+  The option that scores highest across all four criteria wins.
+
+STEP 9 — WORKFLOW MEMORY
+Before writing, note internally:
+  • What engines have already contributed to this subsection's context?
+  • What is the confidence level of the available inputs?
+  • What validation has already been completed upstream?
+  • What quality history exists for adjacent subsections?
+  Use this history when making decisions — trust validated upstream intelligence.
+
+Only after all 9 steps are complete should the AUTHOR THINKING PROCESS begin.
+
+════════════════════════════════════
 AUTHOR THINKING PROCESS — answer these six questions internally before writing a single word
 ════════════════════════════════════
 1. What is the single most important idea this subsection must teach?
@@ -3680,6 +3765,44 @@ EDITORIAL INTELLIGENCE ENGINE (internal — run before returning)
     The reader should feel they have learned something meaningful — not merely consumed words.
 
 ${qualityCheck}${ctxBlock}${resBlock}
+
+════════════════════════════════════
+AI ORCHESTRATOR — POST-EXECUTION REVIEW
+════════════════════════════════════
+After editorial reviews are complete, run this final orchestration check before returning the output.
+
+CHANGE PROPAGATION ASSESSMENT
+Ask internally: does this subsection introduce any change that affects downstream content?
+  • New concept introduced → confirm it is in the Knowledge Graph
+  • New framework named → confirm it will not be reintroduced later
+  • New story used → update story type tracking to prevent consecutive repetition
+  • New evidence cited → confirm it does not contradict prior claims
+  • Revised angle on existing concept → confirm consistency with prior definitions
+
+BOOK-LEVEL METRICS (generate internally — use to improve before returning)
+Score each dimension on a 1–10 scale:
+  Vocabulary Diversity    — are fresh words and expressions used throughout?
+  Story Diversity         — are story types varied relative to recent subsections?
+  Framework Diversity     — does this framework differ structurally from recent frameworks?
+  Transition Diversity    — are transitions contextual and varied?
+  Sentence Variety        — do sentence lengths and rhythms vary within each paragraph?
+  Paragraph Variety       — do paragraph lengths alternate naturally?
+  Example Variety         — are examples from fresh domains (not the same industry/category)?
+  Tone Consistency        — does this subsection stay within the Book DNA's established tone?
+  Reader Fatigue Risk     — is the pacing balanced? Is variety introduced where needed?
+  Overall Manuscript Fit  — does this subsection feel like it belongs in THIS book?
+Auto-revise any metric scoring below 7 before returning.
+
+FINAL VALIDATION GATE
+Before returning the output, confirm:
+  ✓ All CRITICAL and MAJOR orchestration issues from pre-execution are resolved
+  ✓ All 7 editorial reviews passed or were resolved
+  ✓ Quality scorecard has no category below 7
+  ✓ Global Memory anti-repetition checks passed
+  ✓ Knowledge Graph remains consistent after this subsection
+  ✓ Book DNA alignment confirmed
+  ✓ The output is production-ready — not a draft, not a placeholder
+Only return the output when all gates are confirmed.
 
 ════════════════════════════════════
 REQUIRED OUTPUT STRUCTURE
@@ -7012,4 +7135,5 @@ Return ONLY valid JSON (no markdown fences, no explanation text):
     "readerExperience": true,
     "approvalNotes": "One sentence summary of the approval decision and next step"
   }
+}`;
 }
