@@ -11,9 +11,10 @@ import { buildManuscriptDigest } from "@/lib/manuscriptDigest";
 import { buildKnowledgeGraphSummary } from "@/lib/knowledgeGraph";
 
 const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
-const DEV_EDIT_KEY    = "nonfiction-ai-dev-edit";
-const BENCH_HIST_KEY  = "nonfiction-ai-bench-history";
-const MAX_BENCH_HIST  = 5;
+const DEV_EDIT_KEY       = "nonfiction-ai-dev-edit";
+const BENCH_HIST_KEY     = "nonfiction-ai-bench-history";
+const MAX_BENCH_HIST     = 5;
+const READER_PERSONA_KEY = "nonfiction-ai-reader-personas";
 
 function loadFrontMatter() {
   try {
@@ -42,6 +43,13 @@ function saveDevEdit(data) {
     const next    = [entry, ...history].slice(0, MAX_BENCH_HIST);
     window.localStorage.setItem(BENCH_HIST_KEY, JSON.stringify(next));
   } catch { /* ignore */ }
+}
+
+function loadReaderPersonas() {
+  try { return JSON.parse(window.localStorage.getItem(READER_PERSONA_KEY) || "null"); } catch { return null; }
+}
+function saveReaderPersonas(data) {
+  try { window.localStorage.setItem(READER_PERSONA_KEY, JSON.stringify(data)); } catch { /* ignore */ }
 }
 
 const SCORECARD_LABELS = {
@@ -416,6 +424,350 @@ function PublishingReadinessPanel({ devEdit, devEditBusy, devEditError, onRetry,
   );
 }
 
+const CONFUSION_TYPE_LABEL = {
+  undefined_concept:   "Undefined Concept",
+  missing_prerequisite:"Missing Prerequisite",
+  ambiguous_wording:   "Ambiguous Wording",
+  logical_jump:        "Logical Jump",
+  overloaded:          "Overloaded",
+};
+const BOREDOM_TYPE_LABEL = {
+  too_basic:         "Too Basic",
+  repetitive:        "Repetitive",
+  slow_pacing:       "Slow Pacing",
+  low_variety:       "Low Variety",
+  excessive_theory:  "Excessive Theory",
+};
+const PERSONA_SCORE_LABELS = {
+  attention:         "Attention",
+  understanding:     "Understanding",
+  motivation:        "Motivation",
+  retention:         "Retention",
+  practicality:      "Practicality",
+  confidence:        "Confidence",
+  curiosity:         "Curiosity",
+  momentum:          "Momentum",
+  overallExperience: "Overall Experience",
+};
+const ENGAGEMENT_COLOR = {
+  high:   "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  medium: "bg-sky-50 text-sky-800 ring-sky-200",
+  low:    "bg-amber-50 text-amber-800 ring-amber-200",
+};
+const CONFUSION_RISK_COLOR = {
+  low:    "bg-emerald-50 text-emerald-700",
+  medium: "bg-amber-50 text-amber-700",
+  high:   "bg-red-50 text-red-700",
+};
+
+function ReaderPersonaPanel({ rp, rpBusy, rpError, onRetry }) {
+  const [showDetails, setShowDetails] = useState(false);
+
+  if (rpBusy) {
+    return (
+      <section className="book-panel space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-violet-500" />
+          <p className="text-xs font-medium text-slate-500">Simulating reader personas…</p>
+        </div>
+        <p className="text-[11px] text-slate-400">Running the Reader Experience simulation — this takes 30–60 seconds.</p>
+      </section>
+    );
+  }
+
+  if (rpError) {
+    return (
+      <section className="book-panel space-y-2">
+        <p className="text-xs font-semibold text-amber-700">Reader Simulation failed</p>
+        <p className="text-xs text-slate-500">{rpError}</p>
+        <button type="button" onClick={onRetry} className="text-xs font-semibold text-slate-500 hover:text-slate-800">↻ Retry</button>
+      </section>
+    );
+  }
+
+  if (!rp) return null;
+
+  const be  = rp.bookExperience || {};
+  const gm  = rp.globalMemory   || {};
+  const pc  = rp.personaComparison || {};
+  const overallScore = be.overallReaderExperienceScore ?? 0;
+
+  return (
+    <section className="book-panel space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Reader Simulation</h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {Array.isArray(rp.selectedPersonas) && rp.selectedPersonas.length > 0
+              ? `${rp.selectedPersonas.length} personas simulated — confusion, boredom, and implementation gaps detected.`
+              : "Manuscript evaluated from multiple reader perspectives."}
+          </p>
+        </div>
+        <button type="button" onClick={onRetry} className="shrink-0 text-xs font-semibold text-slate-400 hover:text-slate-600" title="Re-run reader simulation">
+          ↻ Re-simulate
+        </button>
+      </div>
+
+      {/* Score row */}
+      <div className="flex items-center gap-5">
+        <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3">
+          <span className={`text-3xl font-extrabold tabular-nums ${overallScore >= 8 ? "text-emerald-600" : overallScore >= 6.5 ? "text-violet-600" : "text-amber-600"}`}>
+            {overallScore.toFixed(1)}
+          </span>
+          <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">reader exp.</span>
+        </div>
+        <div className="flex-1 space-y-1.5">
+          {be.completionLikelihood != null && (
+            <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+              <span className="text-xs text-slate-600">Completion Likelihood</span>
+              <div className="w-32"><ScoreBar score={be.completionLikelihood} /></div>
+            </div>
+          )}
+          {be.recommendationLikelihood != null && (
+            <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+              <span className="text-xs text-slate-600">Recommendation Likelihood</span>
+              <div className="w-32"><ScoreBar score={be.recommendationLikelihood} /></div>
+            </div>
+          )}
+          {pc.keyInsight && <p className="text-[11px] italic text-slate-500">{pc.keyInsight}</p>}
+        </div>
+      </div>
+
+      {/* Persona pills */}
+      {Array.isArray(rp.selectedPersonas) && rp.selectedPersonas.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {rp.selectedPersonas.map((p, i) => (
+            <span key={i} className="rounded-full bg-violet-50 px-2.5 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-violet-200">{p}</span>
+          ))}
+          {pc.strongestFit && (
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">★ Best fit: {pc.strongestFit}</span>
+          )}
+        </div>
+      )}
+
+      {/* Confusion points */}
+      {Array.isArray(rp.confusionPoints) && rp.confusionPoints.length > 0 && (
+        <div className="space-y-1.5 rounded-xl border border-red-200 bg-red-50/40 p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-red-800">Confusion Risks</p>
+          {rp.confusionPoints.slice(0, 4).map((c, i) => (
+            <div key={i} className="flex gap-2 text-xs text-red-900">
+              <span className="mt-0.5 shrink-0 font-bold">!</span>
+              <div>
+                <span className="font-semibold">{c.location || `Ch ${c.chapterNumber}`}:</span>{" "}
+                <span className="mr-1.5 rounded bg-red-100 px-1 py-0.5 text-[9px] font-bold uppercase text-red-700">{CONFUSION_TYPE_LABEL[c.type] || c.type}</span>
+                {c.description}
+                {c.recommendation && <p className="mt-0.5 text-red-600 italic">{c.recommendation}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Boredom risks */}
+      {Array.isArray(rp.boredomRisks) && rp.boredomRisks.length > 0 && (
+        <div className="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Engagement Risks</p>
+          {rp.boredomRisks.slice(0, 3).map((b, i) => (
+            <div key={i} className="flex gap-2 text-xs text-amber-900">
+              <span className="mt-0.5 shrink-0">↓</span>
+              <div>
+                <span className="font-semibold">{b.location || `Ch ${b.chapterNumber}`}:</span>{" "}
+                <span className="mr-1.5 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-bold uppercase text-amber-700">{BOREDOM_TYPE_LABEL[b.type] || b.type}</span>
+                {b.description}
+                {b.recommendation && <p className="mt-0.5 text-amber-600 italic">{b.recommendation}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Global memory: top objections + questions */}
+      {(gm.topObjections?.length > 0 || gm.topQuestions?.length > 0) && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {gm.topObjections?.length > 0 && (
+            <div className="space-y-1 rounded-xl bg-slate-50 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Top Reader Objections</p>
+              {gm.topObjections.map((o, i) => (
+                <p key={i} className="flex gap-1.5 text-xs text-slate-600"><span className="shrink-0 text-slate-400">✕</span>{o}</p>
+              ))}
+            </div>
+          )}
+          {gm.topQuestions?.length > 0 && (
+            <div className="space-y-1 rounded-xl bg-slate-50 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Top Reader Questions</p>
+              {gm.topQuestions.map((q, i) => (
+                <p key={i} className="flex gap-1.5 text-xs text-slate-600"><span className="shrink-0 text-amber-400">?</span>{q}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Expand/collapse detailed breakdown */}
+      <button
+        type="button"
+        onClick={() => setShowDetails(!showDetails)}
+        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+      >
+        {showDetails ? "Hide persona details ↑" : "Show persona details ↓"}
+      </button>
+
+      {showDetails && (
+        <div className="space-y-4 pt-1">
+          {/* Per-persona engagement scores */}
+          {Array.isArray(rp.personas) && rp.personas.map((persona, pi) => (
+            <div key={pi} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-bold text-violet-700">{persona.name}</span>
+                {persona.engagementScores?.overallExperience != null && (
+                  <span className={`text-xs font-bold tabular-nums ${persona.engagementScores.overallExperience >= 8 ? "text-emerald-600" : persona.engagementScores.overallExperience >= 6.5 ? "text-sky-600" : "text-amber-600"}`}>
+                    {persona.engagementScores.overallExperience.toFixed(1)}
+                  </span>
+                )}
+              </div>
+              {persona.profile?.motivation && (
+                <p className="text-[11px] italic text-slate-500">{persona.profile.motivation}</p>
+              )}
+              {/* Engagement scores */}
+              <div className="space-y-1.5">
+                {Object.entries(PERSONA_SCORE_LABELS).map(([key, label]) => {
+                  const val = persona.engagementScores?.[key];
+                  if (val == null) return null;
+                  return (
+                    <div key={key} className="grid grid-cols-[1fr_auto] items-center gap-x-3">
+                      <span className="text-[11px] text-slate-500">{label}</span>
+                      <div className="w-32"><ScoreBar score={val} /></div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Chapter highlights summary */}
+              {Array.isArray(persona.chapterHighlights) && persona.chapterHighlights.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {persona.chapterHighlights.map((ch, ci) => (
+                    <span
+                      key={ci}
+                      title={ch.note || ""}
+                      className={`rounded px-1.5 py-0.5 text-[9px] font-bold ring-1 ${ENGAGEMENT_COLOR[ch.engagementLevel] || ENGAGEMENT_COLOR.medium}`}
+                    >
+                      Ch {ch.chapterNumber} {ch.wouldContinue ? "" : "✕"}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Emotional highlights */}
+              {(persona.emotionalHighPoints?.length > 0 || persona.emotionalLowPoints?.length > 0) && (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {persona.emotionalHighPoints?.slice(0, 2).map((h, i) => (
+                    <p key={i} className="flex gap-1 text-[11px] text-emerald-700"><span className="shrink-0">↑</span>{h}</p>
+                  ))}
+                  {persona.emotionalLowPoints?.slice(0, 2).map((l, i) => (
+                    <p key={i} className="flex gap-1 text-[11px] text-amber-700"><span className="shrink-0">↓</span>{l}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Implementation gaps */}
+          {Array.isArray(rp.implementationGaps) && rp.implementationGaps.length > 0 && (
+            <div className="space-y-1.5 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Implementation Gaps</p>
+              {rp.implementationGaps.map((g, i) => (
+                <div key={i} className="flex gap-2 text-xs text-slate-700">
+                  <span className="mt-0.5 shrink-0 text-slate-400">→</span>
+                  <div>
+                    <span className="font-semibold">{g.location || `Ch ${g.chapterNumber}`}:</span> {g.description}
+                    {g.recommendation && <p className="mt-0.5 text-sky-600 italic">{g.recommendation}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Question predictions */}
+          {Array.isArray(rp.questionPredictions) && rp.questionPredictions.length > 0 && (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Predicted Reader Questions</p>
+              {rp.questionPredictions.map((qp, i) => (
+                <div key={i} className="space-y-0.5 rounded-lg bg-slate-50 px-2.5 py-2">
+                  <p className="text-[11px] font-semibold text-slate-700">Chapter {qp.chapterNumber}</p>
+                  {qp.topQuestions.map((q, j) => (
+                    <p key={j} className="flex gap-1.5 text-xs text-slate-600">
+                      <span className="shrink-0 text-amber-400">?</span>
+                      {q}
+                      {!qp.answeredLater && j === 0 && <span className="ml-1 rounded bg-amber-100 px-1 text-[9px] font-bold text-amber-600">NOT ANSWERED</span>}
+                    </p>
+                  ))}
+                  {qp.answeredLater && qp.answerLocation && (
+                    <p className="text-[10px] text-emerald-600">✓ Answered in {qp.answerLocation}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Persona comparison */}
+          {pc.dimensionScores?.length > 0 && (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Persona Comparison</p>
+              {pc.dimensionScores.map((dim, i) => (
+                <div key={i} className="space-y-1">
+                  <p className="text-[11px] font-semibold text-slate-600">{dim.dimension}</p>
+                  {Object.entries(dim.scores || {}).map(([pname, score]) => (
+                    <div key={pname} className="grid grid-cols-[1fr_auto] items-center gap-3">
+                      <span className="text-[11px] text-slate-500 truncate">{pname}</span>
+                      <div className="w-32"><ScoreBar score={score} /></div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {pc.weakestFit && (
+                <p className="text-[11px] text-slate-500">
+                  <span className="font-semibold">Least served:</span> {pc.weakestFit}
+                  {" — "}consider adding content or examples that speak directly to this reader type.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Global memory: confusing concepts + strongest sections */}
+          {(gm.confusingConcepts?.length > 0 || gm.strongestSections?.length > 0) && (
+            <div className="grid gap-2 border-t border-slate-100 pt-3 sm:grid-cols-2">
+              {gm.confusingConcepts?.length > 0 && (
+                <div className="space-y-1 rounded-xl bg-red-50/50 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-red-700">Confusing Concepts</p>
+                  {gm.confusingConcepts.map((c, i) => (
+                    <p key={i} className="text-xs text-red-800">• {c}</p>
+                  ))}
+                </div>
+              )}
+              {gm.strongestSections?.length > 0 && (
+                <div className="space-y-1 rounded-xl bg-emerald-50/50 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Strongest Sections</p>
+                  {gm.strongestSections.map((s, i) => (
+                    <p key={i} className="text-xs text-emerald-800">★ {s}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Book experience assessment */}
+          {(be.overallFlow || be.motivationConsistency || be.implementationReadiness) && (
+            <div className="space-y-1 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Book Experience Assessment</p>
+              {be.overallFlow && <p className="text-xs text-slate-600"><span className="font-semibold">Flow:</span> {be.overallFlow}</p>}
+              {be.motivationConsistency && <p className="text-xs text-slate-600"><span className="font-semibold">Motivation:</span> {be.motivationConsistency}</p>}
+              {be.implementationReadiness && <p className="text-xs text-slate-600"><span className="font-semibold">Implementation:</span> {be.implementationReadiness}</p>}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function writingTone(fp) {
   const d = fp?.bookDetails || {};
   const r = fp?.research || {};
@@ -473,16 +825,26 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [benchHistory, setBenchHistory] = useState(() => loadBenchHistory());
   const devEditTriggered = useRef(false);
 
+  const [rp, setRp] = useState(() => loadReaderPersonas());
+  const [rpBusy, setRpBusy] = useState(false);
+  const [rpError, setRpError] = useState("");
+  const rpTriggered = useRef(false);
+
   // Persist front matter to localStorage whenever any field changes
   useEffect(() => {
     saveFrontMatter({ dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
   }, [dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor]);
 
-  // Auto-trigger developmental edit when FinishStep first mounts (if no cached result)
+  // Auto-trigger both engines when FinishStep first mounts (if no cached result)
   useEffect(() => {
-    if (devEdit || devEditTriggered.current) return;
-    devEditTriggered.current = true;
-    runDevelopmentalEdit();
+    if (!devEdit && !devEditTriggered.current) {
+      devEditTriggered.current = true;
+      runDevelopmentalEdit();
+    }
+    if (!rp && !rpTriggered.current) {
+      rpTriggered.current = true;
+      runReaderPersonas();
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function runDevelopmentalEdit() {
@@ -511,6 +873,32 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       setDevEditError(e.message || "Could not complete the developmental edit.");
     } finally {
       setDevEditBusy(false);
+    }
+  }
+
+  async function runReaderPersonas() {
+    setRpBusy(true);
+    setRpError("");
+    try {
+      const digest = buildManuscriptDigest(fullProject);
+      const kg     = buildKnowledgeGraphSummary(fullProject);
+      const ctx    = buildBookContext(fullProject);
+      const res = await fetch("/api/ai/reader-personas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookContext: ctx, manuscriptDigest: digest, knowledgeGraph: kg })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Reader simulation failed.");
+      }
+      const data = await res.json();
+      setRp(data);
+      saveReaderPersonas(data);
+    } catch (e) {
+      setRpError(e.message || "Could not complete the reader simulation.");
+    } finally {
+      setRpBusy(false);
     }
   }
 
@@ -653,6 +1041,14 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         devEditError={devEditError}
         onRetry={() => { devEditTriggered.current = false; runDevelopmentalEdit(); }}
         benchHistory={benchHistory}
+      />
+
+      {/* Reader Persona Simulation Engine */}
+      <ReaderPersonaPanel
+        rp={rp}
+        rpBusy={rpBusy}
+        rpError={rpError}
+        onRetry={() => { rpTriggered.current = false; runReaderPersonas(); }}
       />
 
       {/* Export settings */}

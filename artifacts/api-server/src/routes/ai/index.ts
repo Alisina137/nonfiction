@@ -45,7 +45,8 @@ import {
   backMatterFurtherReadingPrompt,
   backMatterAcknowledgmentsGroupPrompt,
   backMatterTheEndPrompt,
-  developmentalEditPrompt
+  developmentalEditPrompt,
+  readerPersonaPrompt
 } from "./prompts.js";
 import { buildCompetitorSummariesForPrompt } from "./analysisSummary.js";
 import {
@@ -1025,6 +1026,132 @@ router.post("/developmental-edit", async (req, res) => {
       _provider: usedProvider,
     };
     return res.json(out);
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/reader-personas", async (req, res) => {
+  try {
+    const { bookContext, manuscriptDigest, knowledgeGraph } = req.body || {};
+    const { data, usedProvider } = await runLongJSON(
+      readerPersonaPrompt({ bookContext, manuscriptDigest, knowledgeGraph }),
+      systemPrompt(),
+      req,
+      res,
+      "readerPersonas"
+    );
+
+    const str  = (v: any, d = "") => (typeof v === "string" ? v.trim() : d);
+    const arr  = (v: any) => (Array.isArray(v) ? v : []);
+    const num  = (v: any, d = 7.0) => (typeof v === "number" && isFinite(v) ? Math.min(10, Math.max(0, parseFloat(v.toFixed(1)))) : d);
+    const bool = (v: any) => (typeof v === "boolean" ? v : Boolean(v));
+
+    const normScores = (raw: any) => {
+      if (!raw || typeof raw !== "object") return {};
+      const keys = ["attention","understanding","motivation","retention","practicality","confidence","curiosity","momentum","overallExperience"];
+      const out: Record<string,number> = {};
+      for (const k of keys) out[k] = num(raw[k], 7.0);
+      return out;
+    };
+
+    const personas = arr(data.personas).map((p: any) => ({
+      name:             str(p.name, "Unknown"),
+      profile: {
+        knowledgeLevel: str(p.profile?.knowledgeLevel),
+        learningStyle:  str(p.profile?.learningStyle),
+        motivation:     str(p.profile?.motivation),
+        preferredStyle: str(p.profile?.preferredStyle),
+      },
+      engagementScores:   normScores(p.engagementScores),
+      chapterHighlights:  arr(p.chapterHighlights).map((ch: any) => ({
+        chapterNumber:        Number(ch.chapterNumber) || 0,
+        engagementLevel:      str(ch.engagementLevel, "medium"),
+        confusionRisk:        str(ch.confusionRisk, "medium"),
+        wouldContinue:        bool(ch.wouldContinue),
+        note:                 str(ch.note),
+      })),
+      emotionalHighPoints: arr(p.emotionalHighPoints).map(String),
+      emotionalLowPoints:  arr(p.emotionalLowPoints).map(String),
+      topObjections:       arr(p.topObjections).map(String),
+      topQuestions:        arr(p.topQuestions).map(String),
+    }));
+
+    const confusionPoints = arr(data.confusionPoints).map((c: any) => ({
+      chapterNumber:    Number(c.chapterNumber) || 0,
+      location:         str(c.location),
+      affectedPersonas: arr(c.affectedPersonas).map(String),
+      type:             str(c.type, "ambiguous_wording"),
+      description:      str(c.description),
+      recommendation:   str(c.recommendation),
+    }));
+
+    const boredomRisks = arr(data.boredomRisks).map((b: any) => ({
+      chapterNumber:    Number(b.chapterNumber) || 0,
+      location:         str(b.location),
+      affectedPersonas: arr(b.affectedPersonas).map(String),
+      type:             str(b.type, "slow_pacing"),
+      description:      str(b.description),
+      recommendation:   str(b.recommendation),
+    }));
+
+    const implementationGaps = arr(data.implementationGaps).map((g: any) => ({
+      chapterNumber:  Number(g.chapterNumber) || 0,
+      location:       str(g.location),
+      description:    str(g.description),
+      recommendation: str(g.recommendation),
+    }));
+
+    const questionPredictions = arr(data.questionPredictions).map((q: any) => ({
+      chapterNumber:  Number(q.chapterNumber) || 0,
+      topQuestions:   arr(q.topQuestions).map(String),
+      answeredLater:  bool(q.answeredLater),
+      answerLocation: str(q.answerLocation),
+    }));
+
+    const pc = data.personaComparison || {};
+    const personaComparison = {
+      strongestFit:   str(pc.strongestFit),
+      weakestFit:     str(pc.weakestFit),
+      dimensionScores: arr(pc.dimensionScores).map((d: any) => ({
+        dimension: str(d.dimension),
+        scores: d.scores && typeof d.scores === "object"
+          ? Object.fromEntries(Object.entries(d.scores).map(([k,v]) => [k, num(v as any, 7.0)]))
+          : {},
+      })),
+      keyInsight: str(pc.keyInsight),
+    };
+
+    const be = data.bookExperience || {};
+    const bookExperience = {
+      overallFlow:                str(be.overallFlow),
+      motivationConsistency:      str(be.motivationConsistency),
+      implementationReadiness:    str(be.implementationReadiness),
+      completionLikelihood:       num(be.completionLikelihood, 7.5),
+      recommendationLikelihood:   num(be.recommendationLikelihood, 7.0),
+      overallReaderExperienceScore: num(be.overallReaderExperienceScore, 7.4),
+    };
+
+    const gm = data.globalMemory || {};
+    const globalMemory = {
+      topObjections:     arr(gm.topObjections).map(String).filter(Boolean),
+      topQuestions:      arr(gm.topQuestions).map(String).filter(Boolean),
+      confusingConcepts: arr(gm.confusingConcepts).map(String).filter(Boolean),
+      strongestSections: arr(gm.strongestSections).map(String).filter(Boolean),
+    };
+
+    return res.json({
+      selectedPersonas: arr(data.selectedPersonas).map(String),
+      personas,
+      confusionPoints,
+      boredomRisks,
+      implementationGaps,
+      questionPredictions,
+      personaComparison,
+      bookExperience,
+      globalMemory,
+      _provider: usedProvider,
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

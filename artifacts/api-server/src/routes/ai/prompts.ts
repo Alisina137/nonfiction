@@ -7520,3 +7520,251 @@ Return ONLY valid JSON (no markdown fences, no explanation text):
   ]
 }`;
 }
+
+// ─── Reader Persona Simulation Engine (Prompt 18) ─────────────────────────────
+
+export function readerPersonaPrompt(opts: {
+  bookContext?: any;
+  manuscriptDigest?: any;
+  knowledgeGraph?: any;
+}): string {
+  const ctx = opts.bookContext  || {};
+  const md  = opts.manuscriptDigest || {};
+  const kg  = opts.knowledgeGraph || null;
+
+  const safeStr = (v: any) => (typeof v === "string" ? v.trim() : "");
+  const title    = safeStr(ctx.title)    || "Untitled";
+  const subtitle = safeStr(ctx.subtitle) || "";
+  const audience = safeStr(ctx.targetAudience) || safeStr(ctx.audience) || "general nonfiction readers";
+  const promise  = safeStr(ctx.corePromise)    || safeStr(ctx.promise)  || "";
+  const usp      = safeStr(ctx.uniqueSellingPoint) || safeStr(ctx.usp)  || "";
+  const genre    = safeStr(ctx.genre) || "nonfiction";
+  const tone     = safeStr(ctx.tone)  || "";
+
+  const chapters: any[] = Array.isArray(md.chapters) ? md.chapters : [];
+  const chapterBlock = chapters.length > 0 ? `
+════════════════════════════════════
+MANUSCRIPT DIGEST (${chapters.length} chapters | ${(md.totalWordsWritten || 0).toLocaleString()} words)
+════════════════════════════════════
+${chapters.map((ch: any) => {
+  const sections: any[] = Array.isArray(ch.sections) ? ch.sections : [];
+  const subs = sections.flatMap((s: any) => Array.isArray(s.subsections) ? s.subsections : []);
+  const titles = subs.slice(0, 6).map((s: any) => `    • ${s.title || ""}${s.keyTakeaway ? ` — ${s.keyTakeaway}` : ""}`).join("\n");
+  return `Ch ${ch.chapterNumber}: ${ch.title || "(untitled)"} (${ch.totalWords || 0}w)${ch.mission?.purpose ? ` — ${ch.mission.purpose}` : ""}\n${titles}`;
+}).join("\n\n")}` : "";
+
+  const kgBlock = kg ? `
+Unanswered Reader Questions: ${Array.isArray(kg.openQuestions) && kg.openQuestions.length ? kg.openQuestions.map((q: string) => `"${q}"`).join(", ") : "none listed"}` : "";
+
+  const PERSONA_POOL = [
+    "Complete Beginner",
+    "Intermediate Learner",
+    "Experienced Professional",
+    "Busy Reader",
+    "Analytical Thinker",
+    "Practical Learner",
+    "Visual Learner",
+    "Skeptical Reader",
+    "Highly Motivated Reader",
+    "Reader with Limited Background Knowledge",
+    "International Reader",
+    "Non-Native English Reader",
+  ];
+
+  return `You are an expert Reader Experience Analyst specialising in nonfiction books.
+
+Your task is to simulate how different reader personas experience this specific manuscript — detecting confusion, boredom, motivation drops, implementation barriers, and emotional high/low points before publication.
+
+════════════════════════════════════
+BOOK PROFILE
+════════════════════════════════════
+Title: ${title}${subtitle ? `\nSubtitle: ${subtitle}` : ""}
+Genre: ${genre}
+Target Reader: ${audience}
+Core Promise: ${promise || "(see title)"}
+Unique Angle: ${usp}
+Tone: ${tone}
+${chapterBlock}${kgBlock}
+
+════════════════════════════════════
+STEP 1 — SELECT PERSONAS
+════════════════════════════════════
+Choose exactly 3 or 4 reader personas from this pool that are MOST LIKELY to purchase and read this specific book:
+${PERSONA_POOL.map(p => `• ${p}`).join("\n")}
+
+Base your selection on the target reader description, book topic, and promise. Do NOT include personas that would never pick up this book.
+
+════════════════════════════════════
+STEP 2 — DEFINE EACH PERSONA
+════════════════════════════════════
+For each selected persona, briefly describe:
+• knowledgeLevel — their prior expertise (none/basic/intermediate/advanced)
+• learningStyle — how they prefer to learn (step-by-step/conceptual/example-based/analytical)
+• motivation — why they are reading this specific book
+• preferredStyle — their ideal teaching style in one sentence
+
+════════════════════════════════════
+STEP 3 — SIMULATE THE READING EXPERIENCE
+════════════════════════════════════
+For each persona, simulate reading chapter by chapter.
+After each chapter, estimate:
+• engagementLevel — high/medium/low
+• confusionRisk — high/medium/low (would they understand the content?)
+• wouldContinue — true/false (would they keep reading after this chapter?)
+• note — one sentence: most important observation for this persona and chapter
+
+Focus on chapters where engagement drops, confusion spikes, or the reader might stop.
+
+════════════════════════════════════
+STEP 4 — DETECT ISSUES
+════════════════════════════════════
+
+CONFUSION POINTS: Identify up to 5 specific moments where one or more personas would be confused.
+For each: chapter number, location, which personas are affected, type (undefined_concept | missing_prerequisite | ambiguous_wording | logical_jump | overloaded), one-sentence description, one-sentence recommendation.
+
+BOREDOM RISKS: Identify up to 4 specific moments where one or more personas would disengage.
+For each: chapter number, location, which personas are affected, type (too_basic | repetitive | slow_pacing | low_variety | excessive_theory), one-sentence description, one-sentence recommendation.
+
+IMPLEMENTATION GAPS: Identify up to 4 chapters where readers know WHAT to do but not HOW to actually start.
+For each: chapter number, location, one-sentence description, one-sentence recommendation.
+
+════════════════════════════════════
+STEP 5 — EMOTIONAL JOURNEY
+════════════════════════════════════
+For each persona, identify:
+• emotionalHighPoints — 1–3 moments of peak engagement, confidence, or motivation (cite specific chapters/sections)
+• emotionalLowPoints — 1–3 moments of confusion, overwhelm, or disengagement (cite specific chapters/sections)
+• topObjections — 2–3 objections this persona would have while reading ("This won't work for me because...", "This is too...")
+• topQuestions — 2–3 questions this persona would ask while reading
+
+════════════════════════════════════
+STEP 6 — QUESTION PREDICTIONS
+════════════════════════════════════
+For the 3 most question-generating chapters, predict the top 2–3 reader questions.
+For each: chapter number, list the top questions, whether they are answered later in the manuscript, and if so in which chapter.
+
+════════════════════════════════════
+STEP 7 — ENGAGEMENT SCORES (PER PERSONA)
+════════════════════════════════════
+Rate 0.0–10.0 (one decimal) for each persona:
+attention, understanding, motivation, retention, practicality, confidence, curiosity, momentum, overallExperience
+
+════════════════════════════════════
+STEP 8 — PERSONA COMPARISON
+════════════════════════════════════
+• Which persona benefits most from this book? (strongestFit)
+• Which persona is least served? (weakestFit)
+• Provide a comparison table for 2 dimensions: "Overall Engagement" and "Completion Likelihood" — scores per persona
+• Key insight: one sentence on the primary reader alignment finding
+
+════════════════════════════════════
+STEP 9 — OVERALL BOOK EXPERIENCE
+════════════════════════════════════
+From the aggregate reader simulation, assess:
+• overallFlow — one sentence
+• motivationConsistency — one sentence
+• implementationReadiness — one sentence
+• completionLikelihood — 0.0–10.0
+• recommendationLikelihood — 0.0–10.0
+• overallReaderExperienceScore — 0.0–10.0 weighted average across personas
+
+════════════════════════════════════
+STEP 10 — GLOBAL MEMORY
+════════════════════════════════════
+Across all personas, identify:
+• topObjections — top 3 objections (distinct, specific)
+• topQuestions — top 3 questions (distinct, specific)
+• confusingConcepts — up to 3 concepts that repeatedly caused confusion
+• strongestSections — up to 3 sections with highest cross-persona engagement
+
+════════════════════════════════════
+OUTPUT FORMAT
+════════════════════════════════════
+Return ONLY valid JSON (no markdown fences, no explanation):
+
+{
+  "selectedPersonas": ["Persona 1", "Persona 2", "Persona 3"],
+  "personas": [
+    {
+      "name": "Persona Name",
+      "profile": {
+        "knowledgeLevel": "basic",
+        "learningStyle": "step-by-step",
+        "motivation": "One sentence on why they are reading this book",
+        "preferredStyle": "Their ideal teaching style"
+      },
+      "engagementScores": {
+        "attention": 7.5, "understanding": 7.0, "motivation": 8.0,
+        "retention": 7.0, "practicality": 7.5, "confidence": 6.5,
+        "curiosity": 8.0, "momentum": 7.5, "overallExperience": 7.4
+      },
+      "chapterHighlights": [
+        { "chapterNumber": 1, "engagementLevel": "high", "confusionRisk": "low", "wouldContinue": true, "note": "One sentence observation" }
+      ],
+      "emotionalHighPoints": ["Chapter 1 — Opening hook creates immediate curiosity"],
+      "emotionalLowPoints": ["Chapter 3 — Dense theory section causes overwhelm"],
+      "topObjections": ["Objection 1", "Objection 2"],
+      "topQuestions": ["Question 1", "Question 2"]
+    }
+  ],
+  "confusionPoints": [
+    {
+      "chapterNumber": 3,
+      "location": "Chapter 3 — Section Title",
+      "affectedPersonas": ["Persona Name"],
+      "type": "missing_prerequisite",
+      "description": "One sentence describing the confusion trigger",
+      "recommendation": "One sentence actionable fix"
+    }
+  ],
+  "boredomRisks": [
+    {
+      "chapterNumber": 2,
+      "location": "Chapter 2 — Section Title",
+      "affectedPersonas": ["Persona Name"],
+      "type": "slow_pacing",
+      "description": "One sentence describing the boredom trigger",
+      "recommendation": "One sentence actionable fix"
+    }
+  ],
+  "implementationGaps": [
+    {
+      "chapterNumber": 4,
+      "location": "Chapter 4",
+      "description": "One sentence describing the implementation gap",
+      "recommendation": "One sentence actionable fix"
+    }
+  ],
+  "questionPredictions": [
+    {
+      "chapterNumber": 1,
+      "topQuestions": ["Question 1", "Question 2"],
+      "answeredLater": true,
+      "answerLocation": "Chapter 3"
+    }
+  ],
+  "personaComparison": {
+    "strongestFit": "Persona Name",
+    "weakestFit": "Persona Name",
+    "dimensionScores": [
+      { "dimension": "Overall Engagement", "scores": { "Persona 1": 7.5, "Persona 2": 8.0, "Persona 3": 6.5 } },
+      { "dimension": "Completion Likelihood", "scores": { "Persona 1": 7.0, "Persona 2": 8.5, "Persona 3": 6.0 } }
+    ],
+    "keyInsight": "One sentence on primary reader alignment finding"
+  },
+  "bookExperience": {
+    "overallFlow": "One sentence",
+    "motivationConsistency": "One sentence",
+    "implementationReadiness": "One sentence",
+    "completionLikelihood": 7.5,
+    "recommendationLikelihood": 7.0,
+    "overallReaderExperienceScore": 7.4
+  },
+  "globalMemory": {
+    "topObjections": ["Objection 1", "Objection 2", "Objection 3"],
+    "topQuestions": ["Question 1", "Question 2", "Question 3"],
+    "confusingConcepts": ["Concept 1", "Concept 2"],
+    "strongestSections": ["Section 1", "Section 2"]
+  }
+}`;
+}
