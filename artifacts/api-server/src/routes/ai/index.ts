@@ -44,7 +44,8 @@ import {
   backMatterReferencesPrompt,
   backMatterFurtherReadingPrompt,
   backMatterAcknowledgmentsGroupPrompt,
-  backMatterTheEndPrompt
+  backMatterTheEndPrompt,
+  developmentalEditPrompt
 } from "./prompts.js";
 import { buildCompetitorSummariesForPrompt } from "./analysisSummary.js";
 import {
@@ -258,6 +259,7 @@ const CONTENT_TYPE_TO_TASK: Record<string, TaskType> = {
   analysis:            "research",
   architecturePreview: "research",
   improve:             "edit",
+  devEdit:             "outline",
   default:             "write",
 };
 
@@ -879,6 +881,109 @@ router.post("/improve", async (req, res) => {
       "improve"
     );
     return res.json({ text, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/developmental-edit", async (req, res) => {
+  try {
+    const { bookContext, manuscriptDigest, knowledgeGraph } = req.body || {};
+    const { data, usedProvider } = await runLongJSON(
+      developmentalEditPrompt({ bookContext, manuscriptDigest, knowledgeGraph }),
+      systemPrompt(),
+      req,
+      res,
+      "devEdit",
+      (d: any) => d && typeof d === "object" && d.bookScorecard && d.bookApproval && Array.isArray(d.chapterReviews),
+      "developmental-edit"
+    );
+    const num = (v: any, def = 7.0) => (typeof v === "number" && isFinite(v) ? Math.min(10, Math.max(0, parseFloat(v.toFixed(1)))) : def);
+    const bool = (v: any, def = true) => (typeof v === "boolean" ? v : def);
+    const str = (v: any, def = "") => (typeof v === "string" ? v.trim() : def);
+    const arr = (v: any) => (Array.isArray(v) ? v : []);
+
+    const sc = data.bookScorecard || {};
+    const ap = data.bookApproval || {};
+    const tv = data.transformationVerification || {};
+    const aa = data.actionabilityAssessment || {};
+
+    const scorecard = {
+      commercialPotential:          num(sc.commercialPotential, 7.5),
+      educationalValue:             num(sc.educationalValue, 7.5),
+      practicalValue:               num(sc.practicalValue, 7.5),
+      originality:                  num(sc.originality, 7.0),
+      readerEngagement:             num(sc.readerEngagement, 7.5),
+      transformation:               num(sc.transformation, 7.5),
+      implementation:               num(sc.implementation, 7.0),
+      storytelling:                 num(sc.storytelling, 7.5),
+      frameworkQuality:             num(sc.frameworkQuality, 7.5),
+      evidenceQuality:              num(sc.evidenceQuality, 7.0),
+      readerSatisfactionPrediction: num(sc.readerSatisfactionPrediction, 7.5),
+      marketCompetitiveness:        num(sc.marketCompetitiveness, 7.0),
+      overallPublishingScore:       num(sc.overallPublishingScore, 7.3),
+    };
+
+    const bookApproval = {
+      approved:                  bool(ap.approved, scorecard.overallPublishingScore >= 7.5),
+      bookDNAAlignment:          bool(ap.bookDNAAlignment),
+      blueprintAlignment:        bool(ap.blueprintAlignment),
+      knowledgeGraphConsistency: bool(ap.knowledgeGraphConsistency),
+      commercialReadiness:       bool(ap.commercialReadiness),
+      educationalQuality:        bool(ap.educationalQuality),
+      transformationComplete:    bool(ap.transformationComplete),
+      consistency:               bool(ap.consistency),
+      readerExperience:          bool(ap.readerExperience),
+      approvalNotes:             str(ap.approvalNotes, "Review complete."),
+    };
+
+    const chapterReviews = arr(data.chapterReviews).map((cr: any) => ({
+      chapterNumber:           Number(cr.chapterNumber) || 1,
+      chapterTitle:            str(cr.chapterTitle),
+      missionClarity:          str(cr.missionClarity, "clear"),
+      advancesReader:          bool(cr.advancesReader),
+      weakensBookIfRemoved:    bool(cr.weakensBookIfRemoved),
+      repeatsChapters:         str(cr.repeatsChapters, "none"),
+      positionCorrect:         bool(cr.positionCorrect),
+      informationOverload:     bool(cr.informationOverload, false),
+      sufficientImplementation:bool(cr.sufficientImplementation),
+      readerEnjoyment:         str(cr.readerEnjoyment, "medium"),
+      score:                   num(cr.score, 7.5),
+      recommendation:          str(cr.recommendation, "No changes needed."),
+    }));
+
+    const weakAreas = arr(data.weakAreas).map((wa: any) => ({
+      level:    str(wa.level, "section"),
+      location: str(wa.location),
+      issue:    str(wa.issue),
+      action:   str(wa.action, "strengthen"),
+      priority: str(wa.priority, "medium"),
+    }));
+
+    const out = {
+      perspectiveReviews:     data.perspectiveReviews || {},
+      bookLevelAnalysis:      data.bookLevelAnalysis || {},
+      chapterReviews,
+      weakAreas,
+      unansweredQuestions:    arr(data.unansweredQuestions),
+      pacingIssues:           arr(data.pacingIssues),
+      valueDensityByChapter:  arr(data.valueDensityByChapter),
+      actionabilityAssessment: {
+        score:           num(aa.score, 7.0),
+        missingElements: arr(aa.missingElements),
+        recommendations: arr(aa.recommendations),
+      },
+      transformationVerification: {
+        transformationClear:        bool(tv.transformationClear),
+        transformationDelivered:    bool(tv.transformationDelivered),
+        weakTransformationChapters: arr(tv.weakTransformationChapters),
+        recommendation:             str(tv.recommendation),
+      },
+      bookScorecard:  scorecard,
+      bookApproval,
+      _provider: usedProvider,
+    };
+    return res.json(out);
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }

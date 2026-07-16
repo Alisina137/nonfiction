@@ -6801,3 +6801,215 @@ Return ONLY valid JSON (no markdown fences, no explanation text):
   ]
 }`;
 }
+
+// ─── Developmental Editor & Commercial Book Optimizer (Prompt 12) ─────────────
+
+export function developmentalEditPrompt(opts: {
+  bookContext?: any;
+  manuscriptDigest?: any;
+  knowledgeGraph?: any;
+}): string {
+  const ctx  = opts.bookContext  || {};
+  const md   = opts.manuscriptDigest || {};
+  const kg   = opts.knowledgeGraph || null;
+
+  const title       = safeStr(ctx.title)       || "Untitled Book";
+  const subtitle    = safeStr(ctx.subtitle)    || "";
+  const audience    = safeStr(ctx.audience)    || "general readers";
+  const promise     = safeStr(ctx.promise)     || "";
+  const usp         = safeStr(ctx.usp)         || "";
+  const tone        = safeStr(ctx.tone)        || "";
+  const genre       = safeStr(ctx.genre)       || "nonfiction";
+
+  // Build compact chapter digest block
+  const chapters: any[] = Array.isArray(md.chapters) ? md.chapters : [];
+  const chapterBlock = chapters.length > 0 ? `
+════════════════════════════════════
+MANUSCRIPT DIGEST (${chapters.length} chapters | ${(md.totalWordsWritten || 0).toLocaleString()} words | ${md.completionPercent || 0}% written)
+════════════════════════════════════
+${chapters.map((ch: any) => {
+  const sections: any[] = Array.isArray(ch.sections) ? ch.sections : [];
+  const sectionLines = sections.map((sec: any) => {
+    const subs: any[] = Array.isArray(sec.subsections) ? sec.subsections : [];
+    const subLines = subs.map((sub: any) =>
+      `      • ${sub.title || "(untitled)"}${sub.keyTakeaway ? ` — ${sub.keyTakeaway}` : ""}${sub.teachingMethod ? ` [${sub.teachingMethod}]` : ""}${sub.wordCount ? ` (${sub.wordCount}w)` : " (not yet written)"}`
+    ).join("\n");
+    return `    § ${sec.title || "(untitled)"} (${sec.totalWords || 0}w)\n${subLines}`;
+  }).join("\n");
+  const missionNote = ch.mission
+    ? `\n  Mission: ${ch.mission.purpose || ""} | Goal: ${ch.mission.practicalGoal || ""}`
+    : "";
+  return `Chapter ${ch.chapterNumber}: ${ch.title || "(untitled)"} (${ch.totalWords || 0}w)${missionNote}\n${sectionLines}`;
+}).join("\n\n")}` : "";
+
+  // Build knowledge graph block
+  const kgBlock = kg ? `
+════════════════════════════════════
+KNOWLEDGE GRAPH SUMMARY
+════════════════════════════════════
+Concepts Taught: ${(kg.totals?.concepts || 0)} | Frameworks: ${(kg.totals?.frameworks || 0)} | Open Reader Questions: ${(kg.totals?.openQuestions || 0)}
+${Array.isArray(kg.openQuestions) && kg.openQuestions.length ? `Unanswered Reader Questions:\n${kg.openQuestions.map((q: string) => `  — ${q}`).join("\n")}` : ""}` : "";
+
+  return `You are a world-class Developmental Editor specializing in nonfiction books for Amazon KDP.
+Your job is not to ask "Is this subsection well written?" — your job is to ask "Is this the BEST POSSIBLE BOOK for this reader?"
+
+════════════════════════════════════
+BOOK DNA
+════════════════════════════════════
+Title: ${title}${subtitle ? `\nSubtitle: ${subtitle}` : ""}
+Genre: ${genre}
+Target Reader: ${audience}
+Core Promise: ${promise || "(see title)"}
+Unique Selling Point: ${usp}
+Tone: ${tone}
+${chapterBlock}${kgBlock}
+
+════════════════════════════════════
+YOUR EDITORIAL TASK
+════════════════════════════════════
+
+Review this manuscript from FOUR independent perspectives before merging into recommendations:
+
+PERSPECTIVE 1 — READER
+Ask: Would I finish this book? Would I recommend it? Did it deliver the promised transformation? Was every chapter worth my time?
+
+PERSPECTIVE 2 — PUBLISHER
+Ask: Is this commercially viable? Does it stand out? Would it generate reviews and word-of-mouth? Does it justify shelf space?
+
+PERSPECTIVE 3 — SUBJECT MATTER EXPERT
+Ask: Is the content accurate, current, and credible? Are frameworks properly explained? Is the teaching methodology sound? Are key concepts missing?
+
+PERSPECTIVE 4 — COMMERCIAL REVIEWER
+Ask: Does it compete well on Amazon? Would readers buy it over similar books? Does it deliver measurable reader value?
+
+════════════════════════════════════
+EVALUATION CRITERIA
+════════════════════════════════════
+
+BOOK-LEVEL: Evaluate overall flow, reader transformation, chapter progression, learning progression, practical usefulness, emotional engagement, commercial appeal, originality, teaching quality, book completeness, knowledge progression, framework integration, story balance, evidence balance, exercise balance.
+
+CHAPTER-LEVEL: For every chapter — clear mission, advances reader, would removing it weaken the book, repeats prior chapters, correct position, information overload risk, sufficient implementation, reader enjoyment.
+
+WEAK AREAS: Identify specific weak chapters, sections, or subsections with actionable recommendations: rewrite | expand | condense | reorder | merge | split | replace | strengthen.
+
+VALUE DENSITY: Detect chapters with too much theory, too much repetition, too much storytelling, too little implementation, too little evidence.
+
+PACING: Detect slow sections, information overload, fatigue triggers, advanced/simple imbalances.
+
+TRANSFORMATION: For every chapter — does it move the reader measurably closer to the promised transformation?
+
+READER QUESTIONS: Cross-reference open Knowledge Graph questions — are they answered in the manuscript?
+
+ACTIONABILITY: Measure exercises, templates, worksheets, reflections, action plans, checklists, decision tools. Ensure readers know exactly what to do after each chapter.
+
+BOOK SCORECARD: Rate each of the 13 dimensions from 0.0–10.0 (one decimal). Calculate overallPublishingScore as the weighted average.
+
+BOOK APPROVAL: Evaluate all 8 quality gates. Only approve if ALL gates pass. If any gate fails, mark approved: false and explain in approvalNotes.
+
+════════════════════════════════════
+SCORING THRESHOLDS
+════════════════════════════════════
+Approved (publish-ready): overallPublishingScore ≥ 7.5 AND all 8 approval gates pass.
+Conditional (minor improvements needed): 6.5–7.4
+Not ready (significant work required): < 6.5
+
+════════════════════════════════════
+OUTPUT FORMAT
+════════════════════════════════════
+Return ONLY valid JSON (no markdown fences, no explanation text):
+
+{
+  "perspectiveReviews": {
+    "reader": { "summary": "2-3 sentence assessment from a reader's perspective", "strengths": ["strength 1", "strength 2"], "concerns": ["concern 1"] },
+    "publisher": { "summary": "2-3 sentence assessment from a publisher's perspective", "strengths": [], "concerns": [] },
+    "subjectMatterExpert": { "summary": "2-3 sentence SME assessment", "strengths": [], "concerns": [] },
+    "commercialReviewer": { "summary": "2-3 sentence commercial assessment", "strengths": [], "concerns": [] }
+  },
+  "bookLevelAnalysis": {
+    "overallFlow": "One sentence assessment",
+    "readerTransformation": "One sentence assessment",
+    "chapterProgression": "One sentence assessment",
+    "learningProgression": "One sentence assessment",
+    "practicalUsefulness": "One sentence assessment",
+    "emotionalEngagement": "One sentence assessment",
+    "commercialAppeal": "One sentence assessment",
+    "originality": "One sentence assessment",
+    "teachingQuality": "One sentence assessment",
+    "bookCompleteness": "One sentence assessment",
+    "knowledgeProgression": "One sentence assessment",
+    "frameworkIntegration": "One sentence assessment",
+    "storyBalance": "One sentence assessment",
+    "evidenceBalance": "One sentence assessment",
+    "exerciseBalance": "One sentence assessment"
+  },
+  "chapterReviews": [
+    {
+      "chapterNumber": 1,
+      "chapterTitle": "exact chapter title",
+      "missionClarity": "clear | unclear",
+      "advancesReader": true,
+      "weakensBookIfRemoved": true,
+      "repeatsChapters": "none | Chapter X title",
+      "positionCorrect": true,
+      "informationOverload": false,
+      "sufficientImplementation": true,
+      "readerEnjoyment": "high | medium | low",
+      "score": 8.5,
+      "recommendation": "One actionable sentence. If no issue, write 'No changes needed.'"
+    }
+  ],
+  "weakAreas": [
+    {
+      "level": "book | chapter | section | subsection",
+      "location": "e.g. Chapter 3 — Section 2",
+      "issue": "One sentence describing the problem",
+      "action": "rewrite | expand | condense | reorder | merge | split | replace | strengthen",
+      "priority": "high | medium | low"
+    }
+  ],
+  "unansweredQuestions": ["Reader questions from the Knowledge Graph that were NOT answered in the manuscript"],
+  "pacingIssues": [
+    { "location": "Chapter X or 'Chapters 3–5'", "type": "slow | overloaded | too_advanced | too_simple | fatigue", "recommendation": "One sentence fix" }
+  ],
+  "valueDensityByChapter": [
+    { "chapterNumber": 1, "score": 8.0, "issue": null }
+  ],
+  "actionabilityAssessment": {
+    "score": 7.5,
+    "missingElements": ["exercises | templates | worksheets | reflections | action plans | checklists"],
+    "recommendations": ["One sentence recommendation per missing element"]
+  },
+  "transformationVerification": {
+    "transformationClear": true,
+    "transformationDelivered": true,
+    "weakTransformationChapters": [3],
+    "recommendation": "One sentence on how to strengthen the transformation arc"
+  },
+  "bookScorecard": {
+    "commercialPotential": 8.0,
+    "educationalValue": 8.5,
+    "practicalValue": 7.5,
+    "originality": 7.0,
+    "readerEngagement": 8.0,
+    "transformation": 8.5,
+    "implementation": 7.5,
+    "storytelling": 8.0,
+    "frameworkQuality": 8.0,
+    "evidenceQuality": 7.5,
+    "readerSatisfactionPrediction": 8.0,
+    "marketCompetitiveness": 7.5,
+    "overallPublishingScore": 7.9
+  },
+  "bookApproval": {
+    "approved": true,
+    "bookDNAAlignment": true,
+    "blueprintAlignment": true,
+    "knowledgeGraphConsistency": true,
+    "commercialReadiness": true,
+    "educationalQuality": true,
+    "transformationComplete": true,
+    "consistency": true,
+    "readerExperience": true,
+    "approvalNotes": "One sentence summary of the approval decision and next step"
+  }
+}

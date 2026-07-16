@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { countManuscriptWords, buildPublishingBundle } from "@/lib/manuscript";
 import { resolveAuthorName, resolveBookTitle } from "@/lib/projectMeta";
@@ -7,8 +7,11 @@ import ExportSettingsPanel from "@/components/ExportSettingsPanel";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
 import { lessonToProse } from "@/lib/writeBlocks";
+import { buildManuscriptDigest } from "@/lib/manuscriptDigest";
+import { buildKnowledgeGraphSummary } from "@/lib/knowledgeGraph";
 
 const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
+const DEV_EDIT_KEY   = "nonfiction-ai-dev-edit";
 
 function loadFrontMatter() {
   try {
@@ -19,6 +22,213 @@ function loadFrontMatter() {
 
 function saveFrontMatter(data) {
   try { window.localStorage.setItem(FM_STORAGE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+}
+
+function loadDevEdit() {
+  try { return JSON.parse(window.localStorage.getItem(DEV_EDIT_KEY) || "null"); } catch { return null; }
+}
+
+function saveDevEdit(data) {
+  try { window.localStorage.setItem(DEV_EDIT_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+}
+
+const SCORECARD_LABELS = {
+  overallPublishingScore:       "Overall Publishing Score",
+  commercialPotential:          "Commercial Potential",
+  educationalValue:             "Educational Value",
+  practicalValue:               "Practical Value",
+  originality:                  "Originality",
+  readerEngagement:             "Reader Engagement",
+  transformation:               "Transformation",
+  implementation:               "Implementation",
+  storytelling:                 "Storytelling",
+  frameworkQuality:             "Framework Quality",
+  evidenceQuality:              "Evidence Quality",
+  readerSatisfactionPrediction: "Reader Satisfaction",
+  marketCompetitiveness:        "Market Competitiveness",
+};
+
+function ScoreBar({ score }) {
+  const pct = Math.min(100, Math.max(0, (score / 10) * 100));
+  const color = score >= 8 ? "bg-emerald-500" : score >= 6.5 ? "bg-sky-500" : "bg-amber-500";
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 flex-1 rounded-full bg-slate-100">
+        <div className={`h-1.5 rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-7 text-right text-xs font-semibold tabular-nums text-slate-700">{score.toFixed(1)}</span>
+    </div>
+  );
+}
+
+function PublishingReadinessPanel({ devEdit, devEditBusy, devEditError, onRetry }) {
+  const [showDetails, setShowDetails] = useState(false);
+
+  if (devEditBusy) {
+    return (
+      <section className="book-panel space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-violet-500" />
+          <div>
+            <p className="text-sm font-bold text-slate-900">Analyzing manuscript quality…</p>
+            <p className="text-xs text-slate-500">Running developmental edit — evaluating all chapters, value density, and publishing readiness.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (devEditError && !devEdit) {
+    return (
+      <section className="book-panel space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold text-slate-900">Publishing Readiness</p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+          >
+            Retry
+          </button>
+        </div>
+        <p className="text-xs text-red-600">{devEditError}</p>
+      </section>
+    );
+  }
+
+  if (!devEdit) return null;
+
+  const sc   = devEdit.bookScorecard  || {};
+  const ap   = devEdit.bookApproval   || {};
+  const weak = Array.isArray(devEdit.weakAreas) ? devEdit.weakAreas : [];
+  const overall = sc.overallPublishingScore ?? 0;
+  const approved = ap.approved;
+  const highPriority = weak.filter(w => w.priority === "high");
+
+  const gateKeys = ["bookDNAAlignment","blueprintAlignment","knowledgeGraphConsistency","commercialReadiness","educationalQuality","transformationComplete","consistency","readerExperience"];
+  const gateLabels = {
+    bookDNAAlignment:          "Book DNA Alignment",
+    blueprintAlignment:        "Blueprint Alignment",
+    knowledgeGraphConsistency: "Knowledge Consistency",
+    commercialReadiness:       "Commercial Readiness",
+    educationalQuality:        "Educational Quality",
+    transformationComplete:    "Transformation",
+    consistency:               "Consistency",
+    readerExperience:          "Reader Experience",
+  };
+
+  return (
+    <section className="book-panel space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Publishing Readiness</h3>
+          <p className="mt-0.5 text-xs text-slate-500">Developmental edit complete — manuscript evaluated across 13 quality dimensions.</p>
+        </div>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="shrink-0 text-xs font-semibold text-slate-400 hover:text-slate-600"
+          title="Re-run developmental edit"
+        >
+          ↻ Re-analyse
+        </button>
+      </div>
+
+      {/* Score + approval badge */}
+      <div className="flex items-center gap-5">
+        <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3">
+          <span className={`text-3xl font-extrabold tabular-nums ${overall >= 8 ? "text-emerald-600" : overall >= 6.5 ? "text-sky-600" : "text-amber-600"}`}>
+            {overall.toFixed(1)}
+          </span>
+          <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">out of 10</span>
+        </div>
+        <div className="flex-1 space-y-2">
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${approved ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"}`}>
+            {approved ? "✓ Approved for publication" : "⚠ Improvements recommended"}
+          </span>
+          {ap.approvalNotes && (
+            <p className="text-xs leading-relaxed text-slate-600">{ap.approvalNotes}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Quality gates */}
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        {gateKeys.map(key => (
+          <div key={key} className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium ${ap[key] ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+            <span>{ap[key] ? "✓" : "○"}</span>
+            <span>{gateLabels[key]}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* High priority weak areas */}
+      {highPriority.length > 0 && (
+        <div className="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Priority improvements</p>
+          {highPriority.slice(0, 4).map((w, i) => (
+            <div key={i} className="flex gap-2 text-xs text-amber-900">
+              <span className="mt-0.5 shrink-0 font-bold">→</span>
+              <span><span className="font-semibold">{w.location}:</span> {w.issue} <span className="text-amber-700">({w.action})</span></span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Expand/collapse detailed scorecard */}
+      <button
+        type="button"
+        onClick={() => setShowDetails(!showDetails)}
+        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+      >
+        {showDetails ? "Hide detailed scores ↑" : "Show detailed scores ↓"}
+      </button>
+
+      {showDetails && (
+        <div className="space-y-2.5 pt-1">
+          {/* 13-dimension scorecard */}
+          <div className="space-y-2">
+            {Object.entries(SCORECARD_LABELS).map(([key, label]) => (
+              <div key={key} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-0.5">
+                <span className="text-xs text-slate-600">{label}</span>
+                <div className="w-40">
+                  <ScoreBar score={sc[key] ?? 0} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Chapter reviews */}
+          {Array.isArray(devEdit.chapterReviews) && devEdit.chapterReviews.length > 0 && (
+            <div className="space-y-1.5 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Chapter Reviews</p>
+              {devEdit.chapterReviews.map((cr, i) => (
+                <div key={i} className={`flex items-start gap-2 rounded-lg px-2.5 py-1.5 text-xs ${cr.score >= 8 ? "bg-emerald-50" : cr.score >= 6.5 ? "bg-slate-50" : "bg-amber-50/60"}`}>
+                  <span className={`mt-0.5 shrink-0 rounded px-1 py-0.5 text-[10px] font-bold tabular-nums ${cr.score >= 8 ? "bg-emerald-100 text-emerald-700" : cr.score >= 6.5 ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`}>{(cr.score ?? 0).toFixed(1)}</span>
+                  <div>
+                    <p className="font-semibold text-slate-800">Ch {cr.chapterNumber}: {cr.chapterTitle}</p>
+                    {cr.recommendation && cr.recommendation !== "No changes needed." && (
+                      <p className="mt-0.5 text-slate-600">{cr.recommendation}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Unanswered reader questions */}
+          {Array.isArray(devEdit.unansweredQuestions) && devEdit.unansweredQuestions.length > 0 && (
+            <div className="space-y-1 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Unanswered Reader Questions</p>
+              {devEdit.unansweredQuestions.slice(0, 5).map((q, i) => (
+                <p key={i} className="flex gap-1.5 text-xs text-slate-600"><span className="shrink-0 text-amber-500">?</span>{q}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function writingTone(fp) {
@@ -71,10 +281,49 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [fmStatus, setFmStatus] = useState("");
   const [generatingAll, setGeneratingAll] = useState(false);
 
+  // ── Developmental Edit state ─────────────────────────────────────────────
+  const [devEdit, setDevEdit] = useState(() => loadDevEdit());
+  const [devEditBusy, setDevEditBusy] = useState(false);
+  const [devEditError, setDevEditError] = useState("");
+  const devEditTriggered = useRef(false);
+
   // Persist front matter to localStorage whenever any field changes
   useEffect(() => {
     saveFrontMatter({ dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
   }, [dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor]);
+
+  // Auto-trigger developmental edit when FinishStep first mounts (if no cached result)
+  useEffect(() => {
+    if (devEdit || devEditTriggered.current) return;
+    devEditTriggered.current = true;
+    runDevelopmentalEdit();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function runDevelopmentalEdit() {
+    setDevEditBusy(true);
+    setDevEditError("");
+    try {
+      const digest = buildManuscriptDigest(fullProject);
+      const kg     = buildKnowledgeGraphSummary(fullProject);
+      const ctx    = buildBookContext(fullProject);
+      const res = await fetch("/api/ai/developmental-edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookContext: ctx, manuscriptDigest: digest, knowledgeGraph: kg })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Developmental edit failed.");
+      }
+      const data = await res.json();
+      setDevEdit(data);
+      saveDevEdit(data);
+    } catch (e) {
+      setDevEditError(e.message || "Could not complete the developmental edit.");
+    } finally {
+      setDevEditBusy(false);
+    }
+  }
 
   const title = resolveBookTitle(project);
   const author = resolveAuthorName(project);
@@ -207,6 +456,14 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
           <p className="mt-1 text-xs font-medium text-slate-600">Listing description</p>
         </article>
       </section>
+
+      {/* Publishing Readiness — Developmental Edit */}
+      <PublishingReadinessPanel
+        devEdit={devEdit}
+        devEditBusy={devEditBusy}
+        devEditError={devEditError}
+        onRetry={() => { devEditTriggered.current = false; runDevelopmentalEdit(); }}
+      />
 
       {/* Export settings */}
       <section className="book-panel space-y-4">
