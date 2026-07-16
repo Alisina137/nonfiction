@@ -3639,7 +3639,143 @@ Before writing, note internally:
   • What quality history exists for adjacent subsections?
   Use this history when making decisions — trust validated upstream intelligence.
 
-Only after all 9 steps are complete should the AUTHOR THINKING PROCESS begin.
+Only after all 9 steps are complete should the ADAPTIVE GENERATION STRATEGY be built, then the AUTHOR THINKING PROCESS begin.
+
+════════════════════════════════════
+ADAPTIVE GENERATION STRATEGY ENGINE
+════════════════════════════════════
+Before writing, derive this book's unique Generation Strategy from its Book DNA. Run internally — do not output.
+
+STEP A — BOOK PROFILE (infer from Book DNA)
+Determine the following dimensions for this specific book:
+  Primary Category    — Business | Health | Finance | History | Psychology | Technology | Parenting | Education | Cooking | Biography | Other
+  Audience Level      — Complete Beginner | Beginner | Intermediate | Advanced | Expert | Mixed
+  Reading Goal        — Learn a skill | Solve a problem | Change behavior | Understand a topic | Reference | Inspiration
+  Commercial Goal     — Bestseller positioning | Niche authority | Lead generation | Course companion | Reference work
+  Learning Style      — Visual (models/diagrams) | Logical (systems/data) | Narrative (stories/cases) | Scientific (evidence) | Practical (step-by-step) | Conceptual (frameworks)
+  Transformation Type — Skill acquisition | Mindset shift | Behavior change | Knowledge expansion | Problem resolution
+  Complexity Level    — Simple and direct | Balanced | Dense and analytical
+  Pacing Style        — Fast-paced | Balanced | Deep learning | Reference | Workbook | Masterclass
+
+STEP B — NICHE STRATEGY (select the preset that best fits, then adapt)
+Apply this book's category-specific defaults:
+
+  BUSINESS / ENTREPRENEURSHIP
+    Research density:    High (★★★★★) — cite studies, data, market evidence
+    Framework density:   High (★★★★★) — models, systems, decision tools
+    Story density:       Medium (★★★) — case studies, startup journeys, business examples
+    Exercise density:    High (★★★★) — action plans, templates, implementation steps
+    Theory vs practice:  40% theory / 60% practice
+
+  HEALTH / WELLNESS / MEDICINE
+    Research density:    Very High (★★★★★) — scientific studies, clinical evidence, statistics
+    Story density:       Low–Medium (★★) — patient journeys, personal transformation
+    Exercise density:    High (★★★★) — protocols, habit trackers, routines
+    Theory vs practice:  35% theory / 65% practice
+
+  FINANCE / INVESTING / ECONOMICS
+    Research density:    High (★★★★★) — data, historical performance, economic models
+    Framework density:   High (★★★★★) — calculation systems, decision matrices
+    Story density:       Medium (★★★) — investor stories, market case studies
+    Exercise density:    Medium (★★★) — worksheets, scenario planning, calculations
+    Theory vs practice:  50% theory / 50% practice
+
+  HISTORY / BIOGRAPHY
+    Chronology weight:   High (★★★★★) — clear timeline, era context, cause-and-effect
+    Story density:       Very High (★★★★★) — vivid scenes, character development
+    Framework density:   Low (★) — light analytical overlays only
+    Research density:    High (★★★★★) — primary sources, historical accuracy
+    Theory vs practice:  70% narrative / 30% analysis
+
+  PSYCHOLOGY / PERSONAL DEVELOPMENT / SELF-HELP
+    Research density:    High (★★★★★) — behavioral science, studies, expert citations
+    Reflection density:  Very High (★★★★★) — journaling prompts, self-assessment
+    Exercise density:    Very High (★★★★★) — behavior change tools, habit design
+    Story density:       Medium–High (★★★★) — transformation stories, relatable scenarios
+    Theory vs practice:  45% theory / 55% practice
+
+  TECHNOLOGY / SCIENCE / DATA
+    Precision density:   Very High — accuracy and technical depth matter most
+    Framework density:   High (★★★★★) — architectures, workflows, technical models
+    Story density:       Low (★★) — use-case examples, implementation case studies
+    Exercise density:    High (★★★★) — code examples, step-by-step technical guides
+    Theory vs practice:  50% theory / 50% practice
+
+  PARENTING / EDUCATION / TEACHING
+    Story density:       High (★★★★) — relatable parent/teacher scenarios
+    Exercise density:    Very High (★★★★★) — activities, scripts, age-appropriate guides
+    Research density:    Medium (★★★) — developmental science, educational research
+    Reflection density:  High (★★★★) — reflection prompts for the adult reader
+    Theory vs practice:  30% theory / 70% practice
+
+  COOKING / FOOD / NUTRITION
+    Instruction density: Very High (★★★★★) — precise, sequential, failure-safe steps
+    Example density:     High (★★★★) — variations, substitutions, real use-cases
+    Story density:       Medium (★★★) — cultural context, origin stories, chef anecdotes
+    Research density:    Medium (★★★) — nutrition science where relevant
+    Theory vs practice:  20% theory / 80% practice
+
+STEP C — ENGINE CONFIGURATION (apply to all decisions in this subsection)
+Based on the Book Profile and Niche Strategy above, configure each engine:
+
+  RESEARCH ENGINE: Adjust evidence density, source credibility bar, and statistic frequency
+  COMPONENT ENGINE: Weight component selection toward niche-preferred types (see Niche Rules below)
+  WRITING ENGINE: Adjust sentence complexity, vocabulary level, and explanation depth
+  STORY ENGINE: Select story types preferred for this niche; adjust story frequency
+  FRAMEWORK ENGINE: Adjust framework complexity, depth, and visual structure preference
+  EXERCISE ENGINE: Adjust exercise frequency, format, and implementation depth
+  EDITORIAL ENGINE: Apply niche-appropriate quality standards
+
+STEP D — NICHE COMPONENT PREFERENCES
+Use this when selecting blueprint components:
+  Business:    Prefer → Case Study, Framework, Action Plan, Templates, Common Mistakes
+  Health:      Prefer → Research Insight, Brain Science, Practical Technique, Checklist, Statistics
+  Finance:     Prefer → Statistics, Templates, Common Mistakes, Case Study, FAQ
+  History:     Prefer → Story, Real-Life Example, Expert Quote, Research Insight
+  Psychology:  Prefer → Reflection Questions, Brain Science, Self-Assessment, Story, Exercise
+  Technology:  Prefer → Practical Technique, Templates, Checklist, FAQ, Common Mistakes
+  Parenting:   Prefer → Real-Life Example, Story, Exercise, Checklist, Reflection Questions
+  Cooking:     Prefer → Practical Technique, Checklist, Real-Life Example, Common Traps, Pro Tips
+  Default:     Use balanced selection from all 5 category groups (Engagement/Authority/Explanation/Action/Reinforcement)
+
+STEP E — CONTENT BALANCE TARGET
+Determine the ideal content balance for THIS book's subsection based on niche strategy above:
+  Theory %    — conceptual explanation, definitions, principles
+  Practice %  — exercises, action steps, implementation
+  Research %  — evidence, data, citations
+  Story %     — narratives, case studies, examples
+  Framework % — models, systems, structured tools
+  Reflection % — questions, journaling, self-assessment
+The sum must reach 100%. Apply this balance when deciding how much space to give each element.
+
+STEP F — DIFFICULTY CALIBRATION
+Based on Audience Level:
+  Vocabulary:          Simple (beginner) ↔ Technical (advanced) — choose appropriate tier
+  Sentence complexity: Short and clear (beginner) ↔ Dense and layered (expert) — choose appropriate tier
+  Framework depth:     Surface overview (beginner) ↔ Full system design (advanced) — choose appropriate tier
+  Research density:    Light citations (beginner) ↔ Full academic-level evidence (expert) — choose appropriate tier
+  Story complexity:    Simple and direct (beginner) ↔ Multi-layered and nuanced (advanced) — choose appropriate tier
+  Exercise complexity: Simple action (beginner) ↔ Multi-step implementation challenge (advanced) — choose appropriate tier
+
+STEP G — PACING RULE
+Apply this pacing style throughout:
+  Fast-paced:     Short paragraphs, punchy sentences, rapid concept delivery, minimal theory
+  Balanced:       Mixed length, alternates depth with action, moderate story frequency
+  Deep learning:  Longer exploration, multiple evidence layers, richer frameworks, reflective pauses
+  Workbook:       Heavy exercise density, minimal narrative, clear instruction sequences
+  Masterclass:    High depth, expert vocabulary, framework-heavy, assumes motivated reader
+  Reference:      Scannable structure, high precision, low story frequency
+
+STEP H — STRATEGY FEEDBACK LOOP
+During writing, monitor for these signals and adapt:
+  Reader confusion signal     → Simplify vocabulary, add analogy, add real-world anchor
+  Excessive theory signal     → Introduce exercise, story, or implementation step immediately
+  Weak evidence signal        → Add specific statistic or expert reference
+  Repetition signal           → Switch teaching approach, story type, or example domain
+  Fatigue signal              → Reduce pacing, add narrative relief, vary paragraph rhythm
+  Engagement drop signal      → Add contradiction, surprising fact, or reader-direct question
+
+Strategy adapts continuously. Every engine inherits the latest strategy settings for this book.
 
 ════════════════════════════════════
 AUTHOR THINKING PROCESS — answer these six questions internally before writing a single word
