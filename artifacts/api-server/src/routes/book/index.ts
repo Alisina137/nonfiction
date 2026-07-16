@@ -140,14 +140,14 @@ router.post("/contextual-titles", async (req, res) => {
     // ── Mode: bestseller / other named modes ─────────────────────────────────
     if (mode) {
       const prompt = titleCardsPrompt({ research, competitorSummaries, intelligence, mode });
-      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 1200 });
+      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 5000 });
 
       // titleCardsPrompt returns rich card objects — parse as-is, then normalize titles
       let data: any = {};
       try { data = extractJSON(text); } catch { /* ignore */ }
 
       let cards: any[] = Array.isArray(data.cards)
-        ? data.cards.filter((c: any) => c?.title).slice(0, 6)
+        ? data.cards.filter((c: any) => c?.title).slice(0, 25)
         : [];
 
       // If cards came back empty, fall back through normalizer
@@ -176,8 +176,9 @@ router.post("/contextual-titles", async (req, res) => {
         audience: Array.isArray(c.audienceResonance) ? c.audienceResonance[0] : "",
         angle:    c.pattern    || c.category || ""
       }));
+      const recommendations = (data.recommendations && typeof data.recommendations === "object") ? data.recommendations : {};
       res.setHeader("X-AI-Provider", usedProvider);
-      return res.json({ titles, enhanced, cards, _provider: usedProvider });
+      return res.json({ titles, enhanced, cards, recommendations, _provider: usedProvider });
     }
 
     // ── Default mode: contextual titles ──────────────────────────────────────

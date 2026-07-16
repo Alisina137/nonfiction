@@ -4466,33 +4466,18 @@ READER PAIN: ${intelligence.readerPainProfile || ""}
 EMOTIONAL TRIGGERS: ${(intelligence.emotionalTriggers || []).join(", ")}
 TRANSFORMATION PROMISE: ${intelligence.transformationPromise || ""}
 BESTSELLER DNA: ${intelligence.bestsellerDNA || ""}
-WRITING STYLE: ${intelligence.writingStyleFingerprint || ""}
-POSITIONING STRATEGY: ${intelligence.positioningStrategy || ""}
-MARKET GAP: ${intelligence.marketGapAnalysis || ""}`.trim()
+MARKET GAP: ${intelligence.marketGapAnalysis || ""}
+POSITIONING STRATEGY: ${intelligence.positioningStrategy || ""}`.trim()
     : "(not available — infer all signals from niche and competitor data)";
-
-  const modeMap: Record<string, string> = {
-    "bestseller":          "Commercial bestseller style — audience-named, transformation-forward, commercially polished. Like Atomic Habits, Deep Work, Can't Hurt Me.",
-    "masculine-authority": "Masculine authority — strong, disciplined, direct, no-nonsense. For ambitious men, leaders, high-performers. Commands respect.",
-    "emotional-transform": "Emotional transformation — vulnerability + hope + clear outcome. Feeling-forward, personal journey, empathy-driven.",
-    "scientific":          "Scientific/evidence-based — credibility signals, 'research-backed', 'the psychology of', 'the science of'. Analytical reader.",
-    "minimalist-premium":  "Minimalist premium — very short titles (2-4 words), elegant, timeless feel. Like 'Stillness Is the Key', 'Essentialism', 'Deep Work'.",
-    "bold-controversial":  "Bold/controversial — challenges assumptions, disrupts conventions, provocative framing. Grabs attention and sparks debate.",
-    "philosophical":       "Philosophical/wisdom — stoic or reflective, timeless principles, ancient meets modern. Contemplative, thoughtful readers.",
-    "viral-modern":        "Viral modern self-help — Gen Z / millennial resonance, TikTok-friendly, conversational, identity-based. Feels current."
-  };
-  const modeInstruction = modeMap[mode] || modeMap["bestseller"];
 
   return `You are an Amazon KDP bestseller-title strategist and consumer psychology expert.
 
-Generate 6 premium nonfiction title packages. Produce differentiated titles — vary patterns, categories, and emotional angles. Make each one genuinely distinct.
-
-STYLE MODE: ${mode || "bestseller"}
-MODE INSTRUCTION: ${modeInstruction}
+Generate exactly 18 unique, premium nonfiction title packages for this book. Every title must use a different pattern, angle, and wording. No two titles may share the same style or opening word.
 
 BOOK PROFILE:
 - NICHE: ${nicheLine}${deepNiche ? ` › ${deepNiche}` : ""}
-- CONCEPT: ${research.bookTopic?.trim() || deepNiche || nicheLine}
+- TOPIC: ${research.bookTopic?.trim() || deepNiche || nicheLine}
+- AUDIENCE: ${research.targetAudience?.trim() || "(infer from niche)"}
 - TRANSFORMATION: ${research.stanceOnTopic?.trim() || "(infer from niche)"}
 - CUSTOM NOTES: ${research.standout?.trim() || "(none)"}
 - COMPETITORS:
@@ -4501,46 +4486,81 @@ ${summariesBlock}
 MARKET INTELLIGENCE:
 ${intelBlock}
 
-SCORING RULES (must follow):
-- Scores should realistically vary — not all titles score equally. Range: 55-97.
-- A title can be strong on SEO but weaker on emotion, or vice versa. Reflect real tradeoffs.
-- isRecommended: true on the SINGLE best overall title only.
-- Use at least 3 different categories across the 6 cards.
+STYLE COVERAGE — generate at least one title per style, covering all 15:
+SEO | Emotional | Authority | Minimalist | Modern | Premium | Educational | Beginner | Business | Transformation | Problem-Solution | Framework | Blueprint | Number-Based | How-To
 
-TITLE RULES:
-- Every title must name or strongly imply a specific audience
+TITLE RULES (non-negotiable):
+- Every title must name or strongly imply the specific audience
 - No generic patterns: "Better Habits", "Success Blueprint", "Confidence Reset", "Motivation Mastery"
-- Commercially polished — feels like a $9.99 Amazon bestseller
-- Mix these patterns across the 6 titles: "Transformation for Audience" | "System for Audience" | "Identity Label" | "The [Noun] of [Topic]" | "Art/Science of [Topic]"
+- Commercially polished — feels like a top-10 Amazon bestseller in its category
+- Use varied patterns: "Transformation for Audience" | "System for Audience" | "Identity Label" | "The [Noun] of [Topic]" | "Art/Science of [Topic]" | "How to [Outcome]" | "[Number] [Things]" | "[Keyword] Blueprint/Method/Code/Formula"
+- No two titles may start with the same word
 
-Return STRICT JSON only — no markdown, no text outside the JSON:
+SCORING RULES:
+- All 12 scores must realistically vary (range 52–97). Reflect real tradeoffs.
+- A title can be strong on SEO but weaker on originality, or vice versa.
+- overallScore = weighted average of all 12 dimensions
+- isRecommended: true on the SINGLE best overall title only
+
+SUBTITLE RULES:
+- 3 subtitle options per title: SEO (keyword-rich), Emotional (feeling-forward), Minimalist (max 8 words)
+- Every subtitle communicates: transformation + benefit + audience + practical value
+
+WHY IT WORKS:
+- 3 bullet points per title explaining exactly why it will convert on Amazon
+
+KEYWORDS:
+- primaryKeyword: the single most important search term this title targets
+- keywords: 4–5 relevant Amazon search phrases
+
+Return STRICT JSON only — no markdown, no explanation, no text outside the JSON object:
 {
+  "recommendations": {
+    "bestOverall": "exact title string",
+    "bestSEO": "exact title string",
+    "bestBranding": "exact title string",
+    "bestAmazon": "exact title string",
+    "bestProfessional": "exact title string",
+    "bestEmotional": "exact title string"
+  },
   "cards": [
     {
       "title": "...",
-      "subtitle": "A [Adjective] System for [Transformation] Without [Pain]",
-      "subtitleOptions": [
-        {"style": "SEO", "text": "keyword-rich subtitle with search terms"},
-        {"style": "Emotional", "text": "feeling-forward subtitle"},
-        {"style": "Minimalist", "text": "short elegant subtitle (max 8 words)"}
-      ],
-      "seoScore": 84,
-      "emotionalScore": 91,
-      "clickabilityScore": 88,
-      "audienceMatch": 93,
-      "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-      "toneProfile": ["calm authority", "masculine mentor"],
+      "style": "SEO",
       "pattern": "Transformation for Audience",
-      "category": "Masculine Authority",
-      "hook": "One punchy sentence on why someone would impulse-buy this.",
-      "audienceResonance": ["ambitious men 25-45", "entrepreneurs", "stoicism readers"],
+      "category": "Scientific Authority",
+      "subtitleOptions": [
+        {"style": "SEO", "text": "keyword-rich subtitle targeting primary search terms"},
+        {"style": "Emotional", "text": "feeling-forward subtitle emphasizing transformation"},
+        {"style": "Minimalist", "text": "Short elegant subtitle (max 8 words)"}
+      ],
+      "seoStrength": 88,
+      "keywordMatch": 84,
+      "marketRelevance": 91,
+      "readerAppeal": 86,
+      "curiosity": 72,
+      "emotionalImpact": 68,
+      "clarity": 90,
+      "professionalism": 88,
+      "originality": 74,
+      "memorability": 80,
+      "amazonCTR": 86,
+      "overallScore": 83,
+      "primaryKeyword": "main search keyword",
+      "keywords": ["keyword 1", "keyword 2", "keyword 3", "keyword 4"],
+      "whyItWorks": [
+        "Uses the primary keyword naturally in the title position Amazon indexes first",
+        "Matches the exact transformation pattern of top-5 bestsellers in this niche",
+        "Names the audience explicitly, reducing click-through friction"
+      ],
+      "hook": "One punchy sentence on why a reader would impulse-buy this title.",
       "isRecommended": false
     }
   ]
 }
 
-Valid categories: "Masculine Authority" | "Emotional Transformation" | "Premium Minimalist" | "Scientific Authority" | "Viral Modern" | "Philosophical Wisdom" | "Bold Challenger"
-Valid patterns: "Transformation for Audience" | "System for Audience" | "Identity Label" | "How to [Outcome]" | "The [Noun] of [Topic]" | "Art/Science of [Topic]"`;
+Valid categories: "Masculine Authority" | "Emotional Transformation" | "Premium Minimalist" | "Scientific Authority" | "Viral Modern" | "Philosophical Wisdom" | "Bold Challenger" | "Outcome-Focused" | "Problem-Solution Focused" | "Audience-Focused"
+Valid styles: "SEO" | "Emotional" | "Authority" | "Minimalist" | "Modern" | "Premium" | "Educational" | "Beginner" | "Business" | "Transformation" | "Problem-Solution" | "Framework" | "Blueprint" | "Number-Based" | "How-To"`;
 }
 
 export function kdpPositioningTitlesPrompt({ research }: any) {
