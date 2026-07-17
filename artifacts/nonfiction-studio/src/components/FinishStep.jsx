@@ -52,6 +52,14 @@ function saveReaderPersonas(data) {
   try { window.localStorage.setItem(READER_PERSONA_KEY, JSON.stringify(data)); } catch { /* ignore */ }
 }
 
+const MULTI_FORMAT_KEY = "nonfiction-ai-multi-format";
+function loadMultiFormat() {
+  try { return JSON.parse(window.localStorage.getItem(MULTI_FORMAT_KEY) || "null"); } catch { return null; }
+}
+function saveMultiFormat(data) {
+  try { window.localStorage.setItem(MULTI_FORMAT_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+}
+
 const SCORECARD_LABELS = {
   overallPublishingScore:       "Overall Publishing Score",
   commercialPotential:          "Commercial Potential",
@@ -768,6 +776,313 @@ function ReaderPersonaPanel({ rp, rpBusy, rpError, onRetry }) {
   );
 }
 
+const EFFORT_COLOR = {
+  low:    "bg-emerald-50 text-emerald-700",
+  medium: "bg-amber-50 text-amber-700",
+  high:   "bg-red-50 text-red-700",
+};
+const BIZ_VALUE_COLOR = {
+  high:   "bg-emerald-50 text-emerald-700",
+  medium: "bg-sky-50 text-sky-700",
+  low:    "bg-slate-100 text-slate-600",
+};
+const READINESS_STYLE = {
+  publish_ready:  { bg: "bg-emerald-50", text: "text-emerald-700", ring: "ring-emerald-200", label: "✓ Ready to publish" },
+  needs_revision: { bg: "bg-amber-50",   text: "text-amber-700",   ring: "ring-amber-200",   label: "⚠ Needs revision" },
+  not_ready:      { bg: "bg-red-50",     text: "text-red-700",     ring: "ring-red-200",      label: "✕ Not ready" },
+};
+const SOURCE_ICON = { exercises: "✏", frameworks: "⬡", stories: "◈", concepts: "◉", glossary: "§" };
+const FORMAT_ICON = {
+  companion_workbook: "📓", study_guide: "📚", discussion_guide: "💬", facilitator_guide: "🎓",
+  executive_summary: "⚡", quick_reference_guide: "📋", cheat_sheet: "📄",
+  course_curriculum: "🎯", lesson_plans: "📐", email_course: "✉",
+  blog_article_series: "✍", newsletter_series: "📬",
+  podcast_outline: "🎙", audiobook_script: "🔊", video_script: "🎬",
+  presentation_deck: "📊", workshop_manual: "🛠", webinar_outline: "💻",
+  social_media_series: "📱", faq_guide: "❓", glossary: "§",
+};
+
+function AssetCount({ label, count, color }) {
+  if (!count) return null;
+  return (
+    <div className={`flex flex-col items-center rounded-xl border px-3 py-2 ${color}`}>
+      <span className="text-lg font-extrabold tabular-nums">{count}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-wide opacity-75">{label}</span>
+    </div>
+  );
+}
+
+function MultiFormatPanel({ mf, mfBusy, mfError, onRetry }) {
+  const [showDetails, setShowDetails] = useState(false);
+  const [expandedFormat, setExpandedFormat] = useState(null);
+
+  if (mfBusy) {
+    return (
+      <section className="book-panel space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500" />
+          <p className="text-xs font-medium text-slate-500">Building Publishing Content Model…</p>
+        </div>
+        <p className="text-[11px] text-slate-400">Analysing reusable assets and recommended publishing formats — 30–60 seconds.</p>
+      </section>
+    );
+  }
+
+  if (mfError) {
+    return (
+      <section className="book-panel space-y-2">
+        <p className="text-xs font-semibold text-amber-700">Publishing Model failed</p>
+        <p className="text-xs text-slate-500">{mfError}</p>
+        <button type="button" onClick={onRetry} className="text-xs font-semibold text-slate-500 hover:text-slate-800">↻ Retry</button>
+      </section>
+    );
+  }
+
+  if (!mf) return null;
+
+  const mcm = mf.masterContentModel || {};
+  const cas = mcm.contentAssetSummary || {};
+  const pp  = mf.publishingPipeline  || {};
+  const cfv = mf.crossFormatValidation || {};
+  const rs  = READINESS_STYLE[mf.publishingReadiness] || READINESS_STYLE.needs_revision;
+
+  return (
+    <section className="book-panel space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Publishing Formats</h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Master Content Model — {Array.isArray(mf.recommendedFormats) ? mf.recommendedFormats.length : 0} secondary formats recommended from your book's reusable assets.
+          </p>
+        </div>
+        <button type="button" onClick={onRetry} className="shrink-0 text-xs font-semibold text-slate-400 hover:text-slate-600">↻ Rebuild</button>
+      </div>
+
+      {/* Readiness + pipeline score */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${rs.bg} ${rs.text} ${rs.ring}`}>{rs.label}</span>
+        {pp.pipelineScore != null && (
+          <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
+            Pipeline {pp.pipelineScore.toFixed(1)}/10
+          </span>
+        )}
+        {cfv.consistencyScore != null && (
+          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${cfv.consistencyScore >= 8 ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : cfv.consistencyScore >= 6.5 ? "bg-sky-50 text-sky-700 ring-sky-200" : "bg-amber-50 text-amber-700 ring-amber-200"}`}>
+            Consistency {cfv.consistencyScore.toFixed(1)}/10
+          </span>
+        )}
+      </div>
+
+      {/* Content Asset Summary */}
+      {(cas.frameworks > 0 || cas.stories > 0 || cas.exercises > 0 || cas.concepts > 0) && (
+        <div>
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Reusable Content Assets</p>
+          <div className="flex flex-wrap gap-2">
+            <AssetCount label="Frameworks" count={cas.frameworks} color="border-violet-100 bg-violet-50/60 text-violet-800" />
+            <AssetCount label="Exercises"  count={cas.exercises}  color="border-emerald-100 bg-emerald-50/60 text-emerald-800" />
+            <AssetCount label="Stories"    count={cas.stories}    color="border-amber-100 bg-amber-50/60 text-amber-800" />
+            <AssetCount label="Concepts"   count={cas.concepts}   color="border-sky-100 bg-sky-50/60 text-sky-800" />
+            <AssetCount label="Glossary"   count={cas.glossaryTerms} color="border-slate-200 bg-slate-50 text-slate-700" />
+          </div>
+        </div>
+      )}
+
+      {/* Recommended formats grid */}
+      {Array.isArray(mf.recommendedFormats) && mf.recommendedFormats.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Recommended Secondary Formats</p>
+          {mf.recommendedFormats.map((fmt, i) => {
+            const icon = FORMAT_ICON[fmt.formatId] || "📄";
+            const isExpanded = expandedFormat === i;
+            return (
+              <div key={i} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{icon}</span>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">{fmt.formatName}</p>
+                      {fmt.idealLength && <p className="text-[10px] text-slate-500">{fmt.idealLength}</p>}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-1">
+                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${EFFORT_COLOR[fmt.estimatedEffort] || EFFORT_COLOR.medium}`}>{fmt.estimatedEffort} effort</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${BIZ_VALUE_COLOR[fmt.businessValue] || BIZ_VALUE_COLOR.medium}`}>{fmt.businessValue} value</span>
+                  </div>
+                </div>
+                {/* Readiness score bar */}
+                <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+                  <span className="text-[11px] text-slate-500">Content readiness</span>
+                  <div className="w-32"><ScoreBar score={fmt.readyToPublishScore} /></div>
+                </div>
+                {/* Sources + reuse ratio */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {fmt.primaryContentSources.map((src, j) => (
+                    <span key={j} className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">
+                      {SOURCE_ICON[src] || ""} {src}
+                    </span>
+                  ))}
+                  {fmt.contentReuseRatio > 0 && (
+                    <span className="ml-auto text-[10px] text-slate-400">{Math.round(fmt.contentReuseRatio * 100)}% reuse</span>
+                  )}
+                </div>
+                {/* Purpose (always visible) */}
+                {fmt.purpose && <p className="text-[11px] italic text-slate-500">{fmt.purpose}</p>}
+                {/* Adaptation strategy toggle */}
+                {fmt.adaptationStrategy && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedFormat(isExpanded ? null : i)}
+                      className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800"
+                    >
+                      {isExpanded ? "Hide strategy ↑" : "Adaptation strategy ↓"}
+                    </button>
+                    {isExpanded && (
+                      <p className="rounded-lg bg-indigo-50 px-3 py-2 text-[11px] leading-relaxed text-indigo-800">{fmt.adaptationStrategy}</p>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Expand/collapse full details */}
+      <button
+        type="button"
+        onClick={() => setShowDetails(!showDetails)}
+        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+      >
+        {showDetails ? "Hide content model details ↑" : "Show content model details ↓"}
+      </button>
+
+      {showDetails && (
+        <div className="space-y-4 pt-1">
+          {/* Frameworks */}
+          {mcm.frameworks?.length > 0 && (
+            <div className="space-y-1 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-violet-600">Frameworks ({mcm.frameworks.length})</p>
+              {mcm.frameworks.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-slate-700">
+                  <span className="shrink-0 text-violet-400">⬡</span>
+                  <span className="font-medium">{f.name}</span>
+                  <span className="text-[10px] text-slate-400">Ch {f.chapters?.join(", ")}</span>
+                  <span className={`ml-auto rounded px-1 py-0.5 text-[9px] font-bold ${f.reusability === "high" ? "bg-emerald-50 text-emerald-600" : f.reusability === "low" ? "bg-slate-100 text-slate-500" : "bg-sky-50 text-sky-600"}`}>{f.reusability}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Exercises */}
+          {mcm.exercises?.length > 0 && (
+            <div className="space-y-1 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Exercises ({mcm.exercises.length})</p>
+              {mcm.exercises.map((e, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-slate-700">
+                  <span className="shrink-0 text-emerald-400">✏</span>
+                  <span className="font-medium">{e.title}</span>
+                  <span className="text-[10px] text-slate-400">Ch {e.chapter} · {e.type}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Stories */}
+          {mcm.stories?.length > 0 && (
+            <div className="space-y-1 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Stories & Examples ({mcm.stories.length})</p>
+              {mcm.stories.map((s, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-slate-700">
+                  <span className="shrink-0 text-amber-400">◈</span>
+                  <span className="font-medium">{s.title}</span>
+                  <span className="text-[10px] text-slate-400">Ch {s.chapter} · {s.type}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Content Mapping */}
+          {Array.isArray(mf.contentMapping) && mf.contentMapping.length > 0 && (
+            <div className="space-y-1.5 border-t border-slate-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Content Mapping Rules</p>
+              {mf.contentMapping.map((m, i) => (
+                <div key={i} className="rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                  <div className="flex items-center gap-2 font-semibold text-slate-800">
+                    <span>{m.sourceElement}</span>
+                    <span className="text-slate-400">→</span>
+                    <span className="text-indigo-700">{m.targetElement}</span>
+                  </div>
+                  <p className="mt-0.5 text-slate-600">{m.transformationRule}</p>
+                  {m.benefitsFormats?.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {m.benefitsFormats.map((f, j) => (
+                        <span key={j} className="rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-600">{f}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Cross-format validation */}
+          <div className="border-t border-slate-100 pt-3 space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Cross-Format Validation</p>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              {[
+                { key: "terminologyConsistent",    label: "Terminology" },
+                { key: "frameworkNamesConsistent", label: "Framework Names" },
+                { key: "conceptOrderConsistent",   label: "Concept Order" },
+                { key: "knowledgeGraphIntegrity",  label: "Knowledge Graph" },
+                { key: "bookDNAAlignment",         label: "Book DNA" },
+              ].map(({ key, label }) => (
+                <div key={key} className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium ${cfv[key] ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+                  <span>{cfv[key] ? "✓" : "○"}</span>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+            {cfv.issues?.filter(i => i.description).length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                {cfv.issues.filter(i => i.description).map((issue, i) => (
+                  <div key={i} className="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2 text-xs">
+                    <p className="font-semibold text-amber-800">{issue.type}</p>
+                    <p className="text-amber-700">{issue.description}</p>
+                    {issue.recommendation && <p className="mt-0.5 italic text-amber-600">{issue.recommendation}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Key concepts + glossary */}
+          {(mcm.keyConcepts?.length > 0 || mcm.glossaryTerms?.length > 0) && (
+            <div className="grid gap-2 border-t border-slate-100 pt-3 sm:grid-cols-2">
+              {mcm.keyConcepts?.length > 0 && (
+                <div className="space-y-1 rounded-xl bg-sky-50/50 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">Key Concepts</p>
+                  {mcm.keyConcepts.map((c, i) => (
+                    <p key={i} className="text-xs text-sky-800">◉ {c}</p>
+                  ))}
+                </div>
+              )}
+              {mcm.glossaryTerms?.length > 0 && (
+                <div className="space-y-1 rounded-xl bg-slate-50 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Glossary Terms</p>
+                  {mcm.glossaryTerms.map((t, i) => (
+                    <p key={i} className="text-xs text-slate-700">§ {t}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function writingTone(fp) {
   const d = fp?.bookDetails || {};
   const r = fp?.research || {};
@@ -830,12 +1145,17 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [rpError, setRpError] = useState("");
   const rpTriggered = useRef(false);
 
+  const [mf, setMf] = useState(() => loadMultiFormat());
+  const [mfBusy, setMfBusy] = useState(false);
+  const [mfError, setMfError] = useState("");
+  const mfTriggered = useRef(false);
+
   // Persist front matter to localStorage whenever any field changes
   useEffect(() => {
     saveFrontMatter({ dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
   }, [dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor]);
 
-  // Auto-trigger both engines when FinishStep first mounts (if no cached result)
+  // Auto-trigger all three engines on mount (if no cached result)
   useEffect(() => {
     if (!devEdit && !devEditTriggered.current) {
       devEditTriggered.current = true;
@@ -844,6 +1164,10 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     if (!rp && !rpTriggered.current) {
       rpTriggered.current = true;
       runReaderPersonas();
+    }
+    if (!mf && !mfTriggered.current) {
+      mfTriggered.current = true;
+      runMultiFormat();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -899,6 +1223,32 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       setRpError(e.message || "Could not complete the reader simulation.");
     } finally {
       setRpBusy(false);
+    }
+  }
+
+  async function runMultiFormat() {
+    setMfBusy(true);
+    setMfError("");
+    try {
+      const digest = buildManuscriptDigest(fullProject);
+      const kg     = buildKnowledgeGraphSummary(fullProject);
+      const ctx    = buildBookContext(fullProject);
+      const res = await fetch("/api/ai/multi-format-publishing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookContext: ctx, manuscriptDigest: digest, knowledgeGraph: kg })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Publishing model failed.");
+      }
+      const data = await res.json();
+      setMf(data);
+      saveMultiFormat(data);
+    } catch (e) {
+      setMfError(e.message || "Could not complete the publishing model.");
+    } finally {
+      setMfBusy(false);
     }
   }
 
@@ -1049,6 +1399,14 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         rpBusy={rpBusy}
         rpError={rpError}
         onRetry={() => { rpTriggered.current = false; runReaderPersonas(); }}
+      />
+
+      {/* Multi-Format Publishing Engine */}
+      <MultiFormatPanel
+        mf={mf}
+        mfBusy={mfBusy}
+        mfError={mfError}
+        onRetry={() => { mfTriggered.current = false; runMultiFormat(); }}
       />
 
       {/* Export settings */}

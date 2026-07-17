@@ -7521,6 +7521,207 @@ Return ONLY valid JSON (no markdown fences, no explanation text):
 }`;
 }
 
+// ─── Multi-Format Publishing Engine (Prompt 19) ───────────────────────────────
+
+export function multiFormatPublishingPrompt(opts: {
+  bookContext?: any;
+  manuscriptDigest?: any;
+  knowledgeGraph?: any;
+}): string {
+  const ctx = opts.bookContext     || {};
+  const md  = opts.manuscriptDigest || {};
+  const kg  = opts.knowledgeGraph  || null;
+
+  const s = (v: any, d = "") => (typeof v === "string" ? v.trim() : d);
+
+  const title    = s(ctx.title)    || "Untitled";
+  const subtitle = s(ctx.subtitle) || "";
+  const audience = s(ctx.targetAudience) || s(ctx.audience) || "general nonfiction readers";
+  const promise  = s(ctx.corePromise) || s(ctx.promise) || "";
+  const usp      = s(ctx.uniqueSellingPoint) || s(ctx.usp) || "";
+  const genre    = s(ctx.genre) || "nonfiction";
+  const tone     = s(ctx.tone) || "";
+
+  const chapters: any[] = Array.isArray(md.chapters) ? md.chapters : [];
+  const chapterBlock = chapters.length > 0 ? `
+Chapters: ${chapters.length} | Words: ${(md.totalWordsWritten || 0).toLocaleString()}
+${chapters.map((ch: any) => {
+  const sections: any[] = Array.isArray(ch.sections) ? ch.sections : [];
+  const subs = sections.flatMap((s: any) => Array.isArray(s.subsections) ? s.subsections : []);
+  const exercises = subs.filter((s: any) => s.teachingMethod?.toLowerCase().includes("exercise") || s.teachingMethod?.toLowerCase().includes("worksheet") || s.teachingMethod?.toLowerCase().includes("checklist")).map((s: any) => s.title);
+  const frameworks = subs.filter((s: any) => s.teachingMethod?.toLowerCase().includes("framework") || s.teachingMethod?.toLowerCase().includes("model") || s.teachingMethod?.toLowerCase().includes("system")).map((s: any) => s.title);
+  const stories = subs.filter((s: any) => s.teachingMethod?.toLowerCase().includes("story") || s.teachingMethod?.toLowerCase().includes("case") || s.teachingMethod?.toLowerCase().includes("example")).map((s: any) => s.title);
+  return `Ch ${ch.chapterNumber}: ${ch.title || ""} (${ch.totalWords || 0}w)${frameworks.length ? ` | Frameworks: ${frameworks.slice(0,2).join(", ")}` : ""}${exercises.length ? ` | Exercises: ${exercises.slice(0,2).join(", ")}` : ""}${stories.length ? ` | Stories: ${stories.slice(0,2).join(", ")}` : ""}`;
+}).join("\n")}` : "(No manuscript written yet)";
+
+  const kgBlock = kg ? `
+Key Concepts: ${(kg.totals?.concepts || 0)} | Frameworks: ${(kg.totals?.frameworks || 0)} | Open Questions: ${(kg.totals?.openQuestions || 0)}` : "";
+
+  const FORMAT_CATALOGUE = [
+    "Ebook", "Paperback", "Hardcover", "Large Print Edition",
+    "Companion Workbook", "Study Guide", "Discussion Guide", "Facilitator Guide",
+    "Executive Summary", "Quick Reference Guide", "Cheat Sheet",
+    "Course Curriculum", "Lesson Plans", "Email Course",
+    "Blog Article Series", "Newsletter Series",
+    "Podcast Outline", "Audiobook Script", "Video Script",
+    "Presentation Deck", "Workshop Manual", "Webinar Outline",
+    "Social Media Series", "FAQ Guide", "Glossary",
+  ];
+
+  return `You are a Multi-Format Publishing Strategist specialising in nonfiction books.
+
+Your task is to:
+1. Extract a Master Content Model — an inventory of reusable content assets from this manuscript.
+2. Recommend the 5–7 highest-value secondary publishing formats for this book.
+3. Define an adaptation strategy and quality profile for each recommended format.
+4. Run a cross-format consistency validation.
+
+════════════════════════════════════
+BOOK PROFILE
+════════════════════════════════════
+Title: ${title}${subtitle ? `\nSubtitle: ${subtitle}` : ""}
+Genre: ${genre} | Tone: ${tone}
+Target Reader: ${audience}
+Core Promise: ${promise || "(see title)"}
+Unique Angle: ${usp}
+${chapterBlock}${kgBlock}
+
+════════════════════════════════════
+STEP 1 — MASTER CONTENT MODEL
+════════════════════════════════════
+Inventory the reusable content assets in the manuscript:
+
+FRAMEWORKS: Named models, systems, processes, or methodologies the reader can apply. List each with: name, chapters it appears in, and reusability rating (high/medium/low).
+
+STORIES: Case studies, examples, personal stories, or analogies used to illustrate concepts. List each with: a short title, the chapter it appears in, type (case_study | personal | analogy | example), and reusability.
+
+EXERCISES: All interactive elements — worksheets, checklists, reflection prompts, action plans, templates. List each with: title, chapter, type (worksheet | checklist | reflection | template | action_plan), and reusability.
+
+KEY CONCEPTS: 5–10 core concepts or ideas the reader must understand to apply the book's promise. List the concept name only.
+
+GLOSSARY TERMS: 3–6 specialised terms defined or coined in the book.
+
+════════════════════════════════════
+STEP 2 — FORMAT RECOMMENDATIONS
+════════════════════════════════════
+From this catalogue, choose the 5–7 formats that are the HIGHEST VALUE for this specific book:
+${FORMAT_CATALOGUE.map(f => `• ${f}`).join("\n")}
+
+Base your selection on:
+- What content assets are already present (exercises → workbook, stories → podcast, frameworks → presentation)
+- The target reader's consumption habits
+- Commercial opportunity
+- Content adaptation effort required
+
+For each recommended format provide:
+• formatId — lowercase snake_case identifier
+• formatName — display name
+• purpose — one sentence: what this format delivers to the reader
+• targetAudience — one sentence: who benefits most from this specific format (may differ from the book's primary reader)
+• idealLength — e.g. "40–60 pages" or "6–8 episodes"
+• readingStyle — e.g. "Linear" | "Reference" | "Sequential" | "Modular"
+• teachingStyle — e.g. "Exercise-led" | "Narrative" | "Framework-first" | "Q&A"
+• primaryContentSources — which content assets to draw from (["exercises", "frameworks", "stories", "concepts"])
+• adaptationStrategy — 2–3 sentences: HOW to transform the book into this format
+• qualityDimension — single most important quality metric for this format (e.g. "Interactivity", "Listening Flow", "Visual Simplicity")
+• readyToPublishScore — 0.0–10.0: how ready is the existing manuscript content for this format without additional work?
+• estimatedEffort — "low" | "medium" | "high"
+• businessValue — "high" | "medium" | "low"
+• contentReuseRatio — 0.0–1.0: what fraction of this format's content can come directly from the manuscript?
+
+════════════════════════════════════
+STEP 3 — CONTENT MAPPING
+════════════════════════════════════
+Define 4–6 content mapping rules showing how manuscript elements transform into secondary format elements.
+For each: source element type → target element type, the transformation rule (one sentence), and which formats benefit.
+
+════════════════════════════════════
+STEP 4 — CROSS-FORMAT VALIDATION
+════════════════════════════════════
+Assess whether the manuscript content is consistent enough to support multi-format publishing:
+• terminologyConsistent — are key terms used consistently throughout?
+• frameworkNamesConsistent — are framework/model names stable across chapters?
+• conceptOrderConsistent — does the knowledge progression hold across chapters?
+• knowledgeGraphIntegrity — are concepts properly built on each other?
+• bookDNAAlignment — does every chapter support the core promise?
+
+If any validation fails, list the issue, affected formats, and a one-sentence fix.
+
+Calculate: consistencyScore (0.0–10.0) = weighted average of above 5 gates.
+
+════════════════════════════════════
+STEP 5 — PUBLISHING PIPELINE STATUS
+════════════════════════════════════
+Evaluate the current manuscript's pipeline readiness:
+• masterContentModelComplete — true/false
+• contentAssetsExtracted — true/false
+• primaryFormatsReady — true/false (is the book ready as ebook/paperback?)
+• secondaryFormatsReady — true/false (can secondary formats be generated now?)
+• pipelineScore — 0.0–10.0
+
+════════════════════════════════════
+OUTPUT FORMAT
+════════════════════════════════════
+Return ONLY valid JSON (no markdown fences):
+
+{
+  "masterContentModel": {
+    "frameworks": [{ "name": "...", "chapters": [1, 2], "reusability": "high" }],
+    "stories": [{ "title": "...", "chapter": 1, "type": "case_study", "reusability": "high" }],
+    "exercises": [{ "title": "...", "chapter": 1, "type": "checklist", "reusability": "high" }],
+    "keyConcepts": ["Concept 1", "Concept 2"],
+    "glossaryTerms": ["Term 1", "Term 2"],
+    "contentAssetSummary": { "frameworks": 3, "stories": 5, "exercises": 8, "concepts": 10, "glossaryTerms": 4 }
+  },
+  "recommendedFormats": [
+    {
+      "formatId": "companion_workbook",
+      "formatName": "Companion Workbook",
+      "purpose": "One sentence",
+      "targetAudience": "One sentence",
+      "idealLength": "60–80 pages",
+      "readingStyle": "Reference",
+      "teachingStyle": "Exercise-led",
+      "primaryContentSources": ["exercises", "frameworks"],
+      "adaptationStrategy": "2-3 sentences on how to transform the book into this format",
+      "qualityDimension": "Interactivity",
+      "readyToPublishScore": 8.5,
+      "estimatedEffort": "low",
+      "businessValue": "high",
+      "contentReuseRatio": 0.85
+    }
+  ],
+  "contentMapping": [
+    {
+      "sourceElement": "Chapter",
+      "targetElement": "Course Module",
+      "transformationRule": "One sentence",
+      "benefitsFormats": ["course_curriculum", "email_course"]
+    }
+  ],
+  "crossFormatValidation": {
+    "terminologyConsistent": true,
+    "frameworkNamesConsistent": true,
+    "conceptOrderConsistent": true,
+    "knowledgeGraphIntegrity": true,
+    "bookDNAAlignment": true,
+    "consistencyScore": 9.0,
+    "issues": [
+      { "type": "terminology", "description": "One sentence", "affectedFormats": ["blog_series"], "recommendation": "One sentence" }
+    ]
+  },
+  "publishingPipeline": {
+    "masterContentModelComplete": true,
+    "contentAssetsExtracted": true,
+    "primaryFormatsReady": true,
+    "secondaryFormatsReady": true,
+    "pipelineScore": 8.5
+  },
+  "topFormat": "companion_workbook",
+  "publishingReadiness": "publish_ready | needs_revision | not_ready"
+}`;
+}
+
 // ─── Reader Persona Simulation Engine (Prompt 18) ─────────────────────────────
 
 export function readerPersonaPrompt(opts: {

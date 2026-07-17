@@ -46,7 +46,8 @@ import {
   backMatterAcknowledgmentsGroupPrompt,
   backMatterTheEndPrompt,
   developmentalEditPrompt,
-  readerPersonaPrompt
+  readerPersonaPrompt,
+  multiFormatPublishingPrompt
 } from "./prompts.js";
 import { buildCompetitorSummariesForPrompt } from "./analysisSummary.js";
 import {
@@ -1150,6 +1151,115 @@ router.post("/reader-personas", async (req, res) => {
       personaComparison,
       bookExperience,
       globalMemory,
+      _provider: usedProvider,
+    });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/multi-format-publishing", async (req, res) => {
+  try {
+    const { bookContext, manuscriptDigest, knowledgeGraph } = req.body || {};
+    const { data, usedProvider } = await runLongJSON(
+      multiFormatPublishingPrompt({ bookContext, manuscriptDigest, knowledgeGraph }),
+      systemPrompt(),
+      req, res, "multiFormat"
+    );
+
+    const str  = (v: any, d = "")  => (typeof v === "string" ? v.trim() : d);
+    const arr  = (v: any)           => (Array.isArray(v) ? v : []);
+    const num  = (v: any, d = 7.0) => (typeof v === "number" && isFinite(v) ? Math.min(10, Math.max(0, parseFloat(v.toFixed(1)))) : d);
+    const bool = (v: any)           => (typeof v === "boolean" ? v : false);
+    const frac = (v: any, d = 0.5) => (typeof v === "number" && isFinite(v) ? Math.min(1, Math.max(0, parseFloat(v.toFixed(2)))) : d);
+
+    const mcm = data.masterContentModel || {};
+    const masterContentModel = {
+      frameworks: arr(mcm.frameworks).map((f: any) => ({
+        name:        str(f.name),
+        chapters:    arr(f.chapters).map(Number),
+        reusability: str(f.reusability, "medium"),
+      })).filter((f: any) => f.name),
+      stories: arr(mcm.stories).map((s: any) => ({
+        title:       str(s.title),
+        chapter:     Number(s.chapter) || 0,
+        type:        str(s.type, "example"),
+        reusability: str(s.reusability, "medium"),
+      })).filter((s: any) => s.title),
+      exercises: arr(mcm.exercises).map((e: any) => ({
+        title:       str(e.title),
+        chapter:     Number(e.chapter) || 0,
+        type:        str(e.type, "reflection"),
+        reusability: str(e.reusability, "medium"),
+      })).filter((e: any) => e.title),
+      keyConcepts:  arr(mcm.keyConcepts).map(String).filter(Boolean),
+      glossaryTerms: arr(mcm.glossaryTerms).map(String).filter(Boolean),
+      contentAssetSummary: {
+        frameworks:    Number(mcm.contentAssetSummary?.frameworks)    || 0,
+        stories:       Number(mcm.contentAssetSummary?.stories)       || 0,
+        exercises:     Number(mcm.contentAssetSummary?.exercises)     || 0,
+        concepts:      Number(mcm.contentAssetSummary?.concepts)      || 0,
+        glossaryTerms: Number(mcm.contentAssetSummary?.glossaryTerms) || 0,
+      },
+    };
+
+    const recommendedFormats = arr(data.recommendedFormats).map((f: any) => ({
+      formatId:             str(f.formatId, "unknown"),
+      formatName:           str(f.formatName, "Format"),
+      purpose:              str(f.purpose),
+      targetAudience:       str(f.targetAudience),
+      idealLength:          str(f.idealLength),
+      readingStyle:         str(f.readingStyle),
+      teachingStyle:        str(f.teachingStyle),
+      primaryContentSources: arr(f.primaryContentSources).map(String),
+      adaptationStrategy:   str(f.adaptationStrategy),
+      qualityDimension:     str(f.qualityDimension),
+      readyToPublishScore:  num(f.readyToPublishScore, 7.0),
+      estimatedEffort:      str(f.estimatedEffort, "medium"),
+      businessValue:        str(f.businessValue, "medium"),
+      contentReuseRatio:    frac(f.contentReuseRatio, 0.6),
+    })).filter((f: any) => f.formatId !== "unknown");
+
+    const contentMapping = arr(data.contentMapping).map((m: any) => ({
+      sourceElement:     str(m.sourceElement),
+      targetElement:     str(m.targetElement),
+      transformationRule: str(m.transformationRule),
+      benefitsFormats:   arr(m.benefitsFormats).map(String),
+    }));
+
+    const cfv = data.crossFormatValidation || {};
+    const crossFormatValidation = {
+      terminologyConsistent:    bool(cfv.terminologyConsistent),
+      frameworkNamesConsistent: bool(cfv.frameworkNamesConsistent),
+      conceptOrderConsistent:   bool(cfv.conceptOrderConsistent),
+      knowledgeGraphIntegrity:  bool(cfv.knowledgeGraphIntegrity),
+      bookDNAAlignment:         bool(cfv.bookDNAAlignment),
+      consistencyScore:         num(cfv.consistencyScore, 7.5),
+      issues: arr(cfv.issues).map((i: any) => ({
+        type:            str(i.type),
+        description:     str(i.description),
+        affectedFormats: arr(i.affectedFormats).map(String),
+        recommendation:  str(i.recommendation),
+      })),
+    };
+
+    const pp = data.publishingPipeline || {};
+    const publishingPipeline = {
+      masterContentModelComplete: bool(pp.masterContentModelComplete),
+      contentAssetsExtracted:     bool(pp.contentAssetsExtracted),
+      primaryFormatsReady:        bool(pp.primaryFormatsReady),
+      secondaryFormatsReady:      bool(pp.secondaryFormatsReady),
+      pipelineScore:              num(pp.pipelineScore, 7.0),
+    };
+
+    return res.json({
+      masterContentModel,
+      recommendedFormats,
+      contentMapping,
+      crossFormatValidation,
+      publishingPipeline,
+      topFormat:          str(data.topFormat),
+      publishingReadiness: str(data.publishingReadiness, "needs_revision"),
       _provider: usedProvider,
     });
   } catch (error: any) {
