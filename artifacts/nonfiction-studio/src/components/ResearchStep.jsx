@@ -45,7 +45,8 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
   const [topicError, setTopicError]       = useState("");
   const [topicOptions, setTopicOptions]   = useState([]);
 
-  const subtitleDebounceRef = useRef(null);
+  const subtitleDebounceRef  = useRef(null);
+  const subtitlesLoadingRef  = useRef(false);
 
   useEffect(() => { setRegistry(loadNicheRegistry()); }, []);
 
