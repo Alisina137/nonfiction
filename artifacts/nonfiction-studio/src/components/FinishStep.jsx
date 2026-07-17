@@ -9,6 +9,7 @@ import { buildBookContext } from "@/lib/bookContext";
 import { lessonToProse } from "@/lib/writeBlocks";
 import { buildManuscriptDigest } from "@/lib/manuscriptDigest";
 import { buildKnowledgeGraphSummary } from "@/lib/knowledgeGraph";
+import { intelligenceService } from "@/intelligence";
 
 const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
 const DEV_EDIT_KEY       = "nonfiction-ai-dev-edit";
@@ -1193,6 +1194,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       setDevEdit(data);
       saveDevEdit(data);
       setBenchHistory(loadBenchHistory());
+      intelligenceService.recordEngineCompletion("devEdit", { qualityScore: data.overallPublishingScore, confidence: 0.85, provider: data._provider || "unknown" });
     } catch (e) {
       setDevEditError(e.message || "Could not complete the developmental edit.");
     } finally {
@@ -1219,6 +1221,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       const data = await res.json();
       setRp(data);
       saveReaderPersonas(data);
+      intelligenceService.recordEngineCompletion("readerPersonas", { qualityScore: data.overallExperienceScore ?? 7.5, confidence: 0.8, provider: data._provider || "unknown" });
     } catch (e) {
       setRpError(e.message || "Could not complete the reader simulation.");
     } finally {
@@ -1245,6 +1248,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       const data = await res.json();
       setMf(data);
       saveMultiFormat(data);
+      intelligenceService.recordEngineCompletion("multiFormat", { qualityScore: data.publishingPipeline?.pipelineScore ?? 7.5, confidence: 0.82, provider: data._provider || "unknown" });
     } catch (e) {
       setMfError(e.message || "Could not complete the publishing model.");
     } finally {
