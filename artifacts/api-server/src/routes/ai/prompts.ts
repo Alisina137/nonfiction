@@ -4472,7 +4472,7 @@ POSITIONING STRATEGY: ${intelligence.positioningStrategy || ""}`.trim()
 
   return `You are an Amazon KDP bestseller-title strategist and consumer psychology expert.
 
-Generate exactly 18 unique, premium nonfiction title packages for this book. Every title must use a different pattern, angle, and wording. No two titles may share the same style or opening word.
+Generate exactly 10 unique, premium nonfiction title packages for this book. Every title must use a different pattern, angle, and wording. No two titles may share the same style or opening word.
 
 BOOK PROFILE:
 - NICHE: ${nicheLine}${deepNiche ? ` › ${deepNiche}` : ""}
@@ -4486,7 +4486,7 @@ ${summariesBlock}
 MARKET INTELLIGENCE:
 ${intelBlock}
 
-STYLE COVERAGE — generate at least one title per style, covering all 15:
+STYLE COVERAGE — use 10 varied styles from this list (pick the most commercially relevant):
 SEO | Emotional | Authority | Minimalist | Modern | Premium | Educational | Beginner | Business | Transformation | Problem-Solution | Framework | Blueprint | Number-Based | How-To
 
 TITLE RULES (non-negotiable):

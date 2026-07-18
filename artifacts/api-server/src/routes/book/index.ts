@@ -140,7 +140,7 @@ router.post("/contextual-titles", async (req, res) => {
     // ── Mode: bestseller / other named modes ─────────────────────────────────
     if (mode) {
       const prompt = titleCardsPrompt({ research, competitorSummaries, intelligence, mode });
-      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 5000 });
+      const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), { ...opts, maxTokens: 7000, taskType: "idea" as const });
 
       // titleCardsPrompt returns rich card objects — parse as-is, then normalize titles
       let data: any = {};
