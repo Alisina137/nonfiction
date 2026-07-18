@@ -273,4 +273,129 @@ router.post("/title-variations", async (req, res) => {
   }
 });
 
+// ─── Cover Concept Generation (Imagen 3) ─────────────────────────────────────
+
+const CONCEPT_DEFINITIONS = [
+  {
+    name:     "Professional",
+    modifier: "Professional polished corporate design, premium executive aesthetic, authoritative refined typography, elegant business atmosphere"
+  },
+  {
+    name:     "Minimal",
+    modifier: "Minimalist clean design, generous whitespace, simple geometric composition, quiet refined elegance, stripped back purity"
+  },
+  {
+    name:     "Bold",
+    modifier: "High contrast bold graphic design, powerful visual impact, dramatic strong colors, commanding presence, striking eye-catching"
+  },
+  {
+    name:     "Creative",
+    modifier: "Unique artistic creative direction, innovative abstract illustration, expressive dynamic composition, imaginative modern art style"
+  },
+];
+
+async function generateImageWithImagen(prompt: string): Promise<{ base64: string; mimeType: string }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-008:predict?key=${apiKey}`;
+
+  const res = await fetch(url, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({
+      instances:  [{ prompt }],
+      parameters: {
+        sampleCount:    1,
+        aspectRatio:    "9:11",
+        safetySetting:  "block_some",
+        personGeneration: "dont_allow"
+      }
+    })
+  });
+
+  const rawText = await res.text();
+  if (!res.ok) {
+    let errMsg = rawText.slice(0, 400);
+    try { const d = JSON.parse(rawText); errMsg = d?.error?.message || errMsg; } catch {}
+    throw Object.assign(new Error(errMsg), { httpStatus: res.status });
+  }
+
+  let data: any = {};
+  try { data = JSON.parse(rawText); } catch {}
+
+  const prediction = data?.predictions?.[0];
+  if (!prediction?.bytesBase64Encoded) throw new Error("Imagen returned no image data");
+
+  return {
+    base64:   prediction.bytesBase64Encoded,
+    mimeType: prediction.mimeType || "image/png"
+  };
+}
+
+router.post("/generate-cover-concepts", async (req, res) => {
+  try {
+    const { finalPrompt, negativePrompt, conceptIndex } = req.body || {};
+    if (!finalPrompt) return res.status(400).json({ error: "finalPrompt is required." });
+
+    // Single concept regeneration
+    if (typeof conceptIndex === "number") {
+      const concept = CONCEPT_DEFINITIONS[conceptIndex];
+      if (!concept) return res.status(400).json({ error: "Invalid conceptIndex." });
+
+      const fullPrompt = `${finalPrompt} ${concept.modifier}. Do not include any text, words, or typography in the image.`;
+      const startedAt  = Date.now();
+      const image      = await generateImageWithImagen(fullPrompt);
+
+      return res.json({
+        concept: {
+          index:       conceptIndex,
+          name:        concept.name,
+          modifier:    concept.modifier,
+          imageDataUrl: `data:${image.mimeType};base64,${image.base64}`,
+          resolution:   "512×568 (9:11)",
+          generatedAt:  new Date().toISOString(),
+          generationMs: Date.now() - startedAt
+        }
+      });
+    }
+
+    // Generate all 4 in parallel
+    const results = await Promise.allSettled(
+      CONCEPT_DEFINITIONS.map(async (concept, idx) => {
+        const fullPrompt = `${finalPrompt} ${concept.modifier}. Do not include any text, words, or typography in the image.`;
+        const startedAt  = Date.now();
+        const image      = await generateImageWithImagen(fullPrompt);
+        return {
+          index:        idx,
+          name:         concept.name,
+          modifier:     concept.modifier,
+          imageDataUrl: `data:${image.mimeType};base64,${image.base64}`,
+          resolution:   "512×568 (9:11)",
+          generatedAt:  new Date().toISOString(),
+          generationMs: Date.now() - startedAt
+        };
+      })
+    );
+
+    const concepts = results.map((r, idx) => {
+      if (r.status === "fulfilled") return r.value;
+      return {
+        index:       idx,
+        name:        CONCEPT_DEFINITIONS[idx].name,
+        modifier:    CONCEPT_DEFINITIONS[idx].modifier,
+        imageDataUrl: null,
+        resolution:   null,
+        generatedAt:  new Date().toISOString(),
+        generationMs: 0,
+        error:        r.reason?.message || "Generation failed"
+      };
+    });
+
+    return res.json({ concepts });
+  } catch (error: any) {
+    return res.status(500).json({ error: error?.message || "Cover generation failed." });
+  }
+});
+
 export default router;

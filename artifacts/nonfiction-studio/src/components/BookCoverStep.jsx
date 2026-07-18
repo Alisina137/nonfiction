@@ -879,9 +879,18 @@ function buildCoverPrompt(strategy, visualDirection, metadata, fullProject) {
   };
 }
 
-function AiPromptCard({ prompt }) {
-  const [copied, setCopied] = React.useState(false);
-  const [copiedNeg, setCopiedNeg] = React.useState(false);
+function AiPromptCard({
+  prompt,
+  concepts,
+  selectedConceptIdx,
+  generatingAll,
+  regeneratingIdx,
+  onGenerate,
+  onRegenerateConcept,
+  onSelectConcept,
+}) {
+  const [copied, setCopied] = useState(false);
+  const [copiedNeg, setCopiedNeg] = useState(false);
 
   function handleCopy(text, setter) {
     navigator.clipboard?.writeText(text).then(() => {
@@ -909,6 +918,13 @@ function AiPromptCard({ prompt }) {
     { label: "Camera / View", value: prompt.cameraView   },
     { label: "Detail Level",  value: prompt.detailLevel  },
   ];
+
+  const CONCEPT_STYLE_COLORS = {
+    Professional: "bg-sky-50 border-sky-200 text-sky-800",
+    Minimal:      "bg-slate-50 border-slate-200 text-slate-700",
+    Bold:         "bg-rose-50 border-rose-200 text-rose-800",
+    Creative:     "bg-purple-50 border-purple-200 text-purple-800",
+  };
 
   return (
     <div className="space-y-3">
@@ -957,6 +973,124 @@ function AiPromptCard({ prompt }) {
           </p>
         </div>
       </div>
+
+      {/* ── Generate Cover Concepts button ── */}
+      <div className="border-t border-slate-100 pt-3">
+        <button
+          onClick={onGenerate}
+          disabled={generatingAll}
+          className={`w-full rounded-xl py-2.5 text-[11px] font-bold tracking-wide transition-all flex items-center justify-center gap-2 ${
+            generatingAll
+              ? "bg-indigo-100 text-indigo-400 cursor-not-allowed"
+              : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow"
+          }`}
+        >
+          {generatingAll ? (
+            <>
+              <span className="inline-block w-3 h-3 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin" />
+              Generating Cover Concepts...
+            </>
+          ) : (
+            <>✦ Generate Cover Concepts</>
+          )}
+        </button>
+      </div>
+
+      {/* ── Concepts Grid ── */}
+      {(concepts && concepts.length > 0) && (
+        <div className="border-t border-slate-100 pt-3 space-y-2">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Cover Concepts</p>
+          <div className="grid grid-cols-2 gap-2">
+            {concepts.map((concept, idx) => {
+              const isSelected   = selectedConceptIdx === idx;
+              const isRegenerating = regeneratingIdx === idx;
+              const styleCls     = CONCEPT_STYLE_COLORS[concept.name] || "bg-slate-50 border-slate-200 text-slate-700";
+
+              return (
+                <div
+                  key={idx}
+                  className={`relative rounded-xl border-2 overflow-hidden transition-all ${
+                    isSelected
+                      ? "border-indigo-500 shadow-md shadow-indigo-100"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  {/* Image area */}
+                  <div className="relative bg-slate-100" style={{ aspectRatio: "9/11" }}>
+                    {isRegenerating ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                        <span className="inline-block w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mb-2" />
+                        <span className="text-[9px] text-slate-400">Regenerating…</span>
+                      </div>
+                    ) : concept.error ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-rose-50 p-2">
+                        <span className="text-[10px] text-rose-500 font-medium text-center">Generation failed</span>
+                        <span className="text-[9px] text-rose-400 text-center mt-0.5">{concept.error}</span>
+                      </div>
+                    ) : concept.imageDataUrl ? (
+                      <img
+                        src={concept.imageDataUrl}
+                        alt={`${concept.name} concept`}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
+                        <span className="text-[9px] text-slate-400">No image</span>
+                      </div>
+                    )}
+
+                    {/* Selected badge */}
+                    {isSelected && !isRegenerating && (
+                      <div className="absolute top-1.5 right-1.5 bg-indigo-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow">
+                        ✓
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card footer */}
+                  <div className="p-1.5 bg-white space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[9px] font-bold rounded-full px-1.5 py-0.5 border ${styleCls}`}>
+                        {concept.name}
+                      </span>
+                      {concept.resolution && (
+                        <span className="text-[8px] text-slate-400">{concept.resolution}</span>
+                      )}
+                    </div>
+                    {concept.generatedAt && (
+                      <p className="text-[8px] text-slate-400">
+                        {concept.generationMs ? `${(concept.generationMs / 1000).toFixed(1)}s` : ""}
+                      </p>
+                    )}
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => onSelectConcept(idx)}
+                        disabled={isRegenerating}
+                        className={`flex-1 rounded-md py-0.5 text-[9px] font-semibold transition-colors ${
+                          isSelected
+                            ? "bg-indigo-100 text-indigo-700"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {isSelected ? "Selected" : "Select"}
+                      </button>
+                      <button
+                        onClick={() => onRegenerateConcept(idx)}
+                        disabled={isRegenerating || generatingAll}
+                        className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors disabled:opacity-40"
+                        title="Regenerate this concept"
+                      >
+                        ↻
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1409,6 +1543,16 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [validationErrors, setValidationErrors] = useState({});
   const [lastSaved, setLastSaved] = useState(null);
 
+  // Cover concepts generation state
+  const [concepts, setConceptsState] = useState(() =>
+    Array.isArray(bookCover?.concepts) ? bookCover.concepts : []
+  );
+  const [selectedConceptIdx, setSelectedConceptIdx] = useState(() =>
+    typeof bookCover?.selectedConceptIndex === "number" ? bookCover.selectedConceptIndex : null
+  );
+  const [generatingAll, setGeneratingAll] = useState(false);
+  const [regeneratingIdx, setRegeneratingIdx] = useState(null);
+
   const strategy = useMemo(
     () => deriveCoverStrategy(fullProject, metadata),
     [fullProject, metadata] // eslint-disable-line react-hooks/exhaustive-deps
@@ -1449,6 +1593,63 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
   }
 
+  async function handleGenerateConcepts() {
+    if (!coverPrompt || generatingAll) return;
+    setGeneratingAll(true);
+    try {
+      const res = await fetch("/api/book/generate-cover-concepts", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          finalPrompt:    coverPrompt.finalPrompt,
+          negativePrompt: coverPrompt.negativePrompt,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Generation failed");
+      if (Array.isArray(data.concepts)) setConceptsState(data.concepts);
+    } catch (err) {
+      console.error("[CoverConcepts] generation error:", err);
+      setConceptsState(prev => prev.length > 0 ? prev : []);
+    } finally {
+      setGeneratingAll(false);
+    }
+  }
+
+  async function handleRegenerateConcept(idx) {
+    if (!coverPrompt || regeneratingIdx !== null || generatingAll) return;
+    setRegeneratingIdx(idx);
+    try {
+      const res = await fetch("/api/book/generate-cover-concepts", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          finalPrompt:    coverPrompt.finalPrompt,
+          negativePrompt: coverPrompt.negativePrompt,
+          conceptIndex:   idx,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Regeneration failed");
+      if (data.concept) {
+        setConceptsState(prev => {
+          const next = [...prev];
+          next[idx]  = data.concept;
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error("[CoverConcepts] regen error:", err);
+      setConceptsState(prev => {
+        const next = [...prev];
+        if (next[idx]) next[idx] = { ...next[idx], error: err.message };
+        return next;
+      });
+    } finally {
+      setRegeneratingIdx(null);
+    }
+  }
+
   // Validate on every metadata change
   useEffect(() => {
     setValidationErrors(validateMetadata(metadata));
@@ -1468,7 +1669,9 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           authorLine:      metadata.author,
           coverStrategy:   { ...strategy },
           visualDirection: visualDirection ? { ...visualDirection } : null,
-          aiPrompt:        coverPrompt ? { ...coverPrompt } : null,
+          aiPrompt:             coverPrompt ? { ...coverPrompt } : null,
+          concepts:             concepts.length > 0 ? concepts : [],
+          selectedConceptIndex: selectedConceptIdx,
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -1480,7 +1683,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setLastSaved(new Date());
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -1533,7 +1736,16 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                 <VisualDirectionCard direction={visualDirection} />
               )}
               {section.id === "aiPrompt" && (
-                <AiPromptCard prompt={coverPrompt} />
+                <AiPromptCard
+                  prompt={coverPrompt}
+                  concepts={concepts}
+                  selectedConceptIdx={selectedConceptIdx}
+                  generatingAll={generatingAll}
+                  regeneratingIdx={regeneratingIdx}
+                  onGenerate={handleGenerateConcepts}
+                  onRegenerateConcept={handleRegenerateConcept}
+                  onSelectConcept={setSelectedConceptIdx}
+                />
               )}
             </SidebarSection>
           ))}
