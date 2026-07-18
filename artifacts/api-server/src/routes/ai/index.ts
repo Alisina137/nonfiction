@@ -685,6 +685,96 @@ Return ONLY this JSON with no markdown or extra text:
   }
 });
 
+// ─── Layout & Composition Engine ─────────────────────────────────────────────
+router.post("/layout", async (req, res) => {
+  try {
+    const {
+      title, subtitle, author, series,
+      conceptType, conceptLabel, bg, accent,
+      typographyAlignment, typographyPosition,
+      strategy, visualDirection,
+      bookSize,
+    } = req.body || {};
+
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+
+    const prompt = `You are a professional book cover layout and composition expert specializing in Amazon KDP nonfiction books.
+
+Generate a layout profile for this book cover.
+
+Book Title: ${title}
+Subtitle: ${subtitle || "(none)"}
+Author: ${author || ""}
+Series: ${series || "(none)"}
+Cover Concept: ${conceptType || "authority"} — ${conceptLabel || "Business Bestseller"}
+Background Color: ${bg || "#0f1923"}
+Accent Color: ${accent || "#d4961a"}
+Typography Alignment: ${typographyAlignment || "left"}
+Typography Text Position: ${typographyPosition || "Upper Third"}
+Cover Strategy: ${strategy || ""}
+Visual Direction: ${visualDirection || ""}
+Book Size: ${bookSize || '6" × 9"'}
+
+Rules:
+- layoutType must be exactly one of: "Title Top", "Title Center", "Title Bottom", "Split Layout", "Full Image", "Minimal Layout", "Image Focus", "Typography Focus"
+- visualBalance must be exactly one of: "Balanced", "Left Weighted", "Right Weighted", "Top Weighted", "Bottom Weighted"
+- focalArea must be exactly one of: "Upper Third", "Center", "Lower Third"
+- alignment must be exactly one of: "Left", "Center", "Right"
+- safeMargin is a percentage string, e.g. "8%"
+- textOverlapRisk must be exactly one of: "None", "Low", "Medium", "High"
+- If textOverlapRisk is Medium or High, provide a repositionSuggestion
+
+Return ONLY this JSON with no markdown or extra text:
+{
+  "layoutType": "Typography Focus",
+  "visualBalance": "Balanced",
+  "textPosition": "Upper 60% of cover — title dominates top, subtitle below mid-band, author at base",
+  "imagePosition": "Geometric pattern fills lower 40%, accent band separates text from imagery",
+  "safeMargin": "8%",
+  "whiteSpace": "Generous breathing room between title and subtitle; author zone has clear separation",
+  "alignment": "Left",
+  "focalArea": "Upper Third",
+  "textOverlapRisk": "None",
+  "repositionSuggestion": "",
+  "compositionNotes": "Bold upper-dominant layout reinforces authority positioning; accent band creates strong visual anchor"
+}`;
+
+    const { text: raw, usedProvider } = await runShort(
+      prompt,
+      "You are a book cover layout expert. Respond with valid JSON only.",
+      req, res, "conceptGen"
+    );
+
+    const data = extractJSON(raw);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "Layout generation returned no parseable data." });
+    }
+
+    const layoutTypes   = ["Title Top","Title Center","Title Bottom","Split Layout","Full Image","Minimal Layout","Image Focus","Typography Focus"] as const;
+    const balanceTypes  = ["Balanced","Left Weighted","Right Weighted","Top Weighted","Bottom Weighted"] as const;
+    const focalAreas    = ["Upper Third","Center","Lower Third"] as const;
+    const alignments    = ["Left","Center","Right"] as const;
+    const overlapLevels = ["None","Low","Medium","High"] as const;
+
+    return res.json({
+      layoutType:            layoutTypes.find(t => t === data.layoutType)      ?? "Typography Focus",
+      visualBalance:         balanceTypes.find(b => b === data.visualBalance)  ?? "Balanced",
+      textPosition:          String(data.textPosition         || ""),
+      imagePosition:         String(data.imagePosition        || ""),
+      safeMargin:            String(data.safeMargin           || "8%"),
+      whiteSpace:            String(data.whiteSpace           || ""),
+      alignment:             alignments.find(a => a === data.alignment)        ?? "Left",
+      focalArea:             focalAreas.find(f => f === data.focalArea)        ?? "Upper Third",
+      textOverlapRisk:       overlapLevels.find(o => o === data.textOverlapRisk) ?? "None",
+      repositionSuggestion:  String(data.repositionSuggestion || ""),
+      compositionNotes:      String(data.compositionNotes     || ""),
+      _provider: usedProvider,
+    });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 router.post("/outline", async (req, res) => {
   try {
     const { text, usedProvider } = await runShort(outlinePrompt(req.body), systemPrompt(), req, res, "outline");

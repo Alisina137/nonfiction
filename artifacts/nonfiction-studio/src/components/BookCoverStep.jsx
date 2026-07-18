@@ -62,7 +62,7 @@ const LEFT_SECTIONS = [
   { id: "visualDir",      label: "Visual Direction",  icon: "🎨", functional: true  },
   { id: "aiPrompt",       label: "AI Prompt",         icon: "✦",  functional: true  },
   { id: "typography",     label: "Typography",        icon: "Tt", functional: true  },
-  { id: "layouts",        label: "Layouts",           icon: "⊡",  functional: false },
+  { id: "layouts",        label: "Layouts",           icon: "⊡",  functional: true  },
   { id: "assets",         label: "Assets",            icon: "🖼", functional: false },
   { id: "versions",       label: "Versions",          icon: "⎇",  functional: false },
   { id: "export",         label: "Export",            icon: "⬇",  functional: false },
@@ -1271,6 +1271,165 @@ function TypographyCard({ profile, generating, onRegenerate }) {
   );
 }
 
+// ─── Layout & Composition Engine ─────────────────────────────────────────────
+
+function LayoutCard({ profile, generating, onRegenerate }) {
+  if (generating) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 py-5">
+        <div className="flex gap-1">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"
+              style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
+        </div>
+        <span className="text-[10px] text-slate-400">Generating layout profile…</span>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-4 text-center">
+        <p className="text-[10px] text-slate-400 leading-relaxed">
+          Select a cover concept to automatically generate a layout profile.
+        </p>
+        <button
+          type="button"
+          onClick={onRegenerate}
+          className="text-[10px] font-semibold text-indigo-500 hover:text-indigo-700 transition"
+        >
+          Generate Now ↻
+        </button>
+      </div>
+    );
+  }
+
+  const overlapColor = {
+    None:   "bg-emerald-50 text-emerald-700 border-emerald-200",
+    Low:    "bg-sky-50 text-sky-700 border-sky-200",
+    Medium: "bg-amber-50 text-amber-700 border-amber-200",
+    High:   "bg-red-50 text-red-700 border-red-200",
+  }[profile.textOverlapRisk] || "bg-slate-50 text-slate-600 border-slate-200";
+
+  const balanceDot = {
+    "Balanced":       "◉",
+    "Left Weighted":  "◧",
+    "Right Weighted": "◨",
+    "Top Weighted":   "⬒",
+    "Bottom Weighted":"⬓",
+  }[profile.visualBalance] || "◉";
+
+  const focalIcon = {
+    "Upper Third": "▲",
+    "Center":      "●",
+    "Lower Third": "▼",
+  }[profile.focalArea] || "●";
+
+  return (
+    <div className="space-y-3 text-[10px]">
+
+      {/* Layout Type */}
+      <div className="space-y-1">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Layout Type</p>
+        <div className="rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-1.5 font-bold text-indigo-800">
+          {profile.layoutType}
+        </div>
+      </div>
+
+      {/* Visual Balance + Focal Area side by side */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Balance</p>
+          <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 border border-slate-100 px-2 py-1.5">
+            <span className="text-slate-500">{balanceDot}</span>
+            <span className="font-semibold text-slate-700 leading-tight">{profile.visualBalance}</span>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Focal Area</p>
+          <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 border border-slate-100 px-2 py-1.5">
+            <span className="text-slate-400 text-[8px]">{focalIcon}</span>
+            <span className="font-semibold text-slate-700 leading-tight">{profile.focalArea}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Alignment + Safe Margin side by side */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Alignment</p>
+          <div className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-1 text-center font-semibold text-indigo-700">
+            {profile.alignment}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Safe Margin</p>
+          <div className="rounded-md bg-slate-100 border border-slate-200 px-2 py-1 text-center font-semibold text-slate-600">
+            {profile.safeMargin}
+          </div>
+        </div>
+      </div>
+
+      {/* Text Position */}
+      {profile.textPosition && (
+        <div className="space-y-0.5">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Text Position</p>
+          <p className="text-slate-700 leading-relaxed">{profile.textPosition}</p>
+        </div>
+      )}
+
+      {/* Image Position */}
+      {profile.imagePosition && (
+        <div className="space-y-0.5">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Image Position</p>
+          <p className="text-slate-700 leading-relaxed">{profile.imagePosition}</p>
+        </div>
+      )}
+
+      {/* White Space */}
+      {profile.whiteSpace && (
+        <div className="space-y-0.5">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">White Space</p>
+          <p className="text-slate-600 leading-relaxed">{profile.whiteSpace}</p>
+        </div>
+      )}
+
+      {/* Text Overlap Check */}
+      <div className="space-y-1">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Text Overlap Risk</p>
+        <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-bold ${overlapColor}`}>
+          <span>{ { None:"✓", Low:"~", Medium:"!", High:"⚠" }[profile.textOverlapRisk] }</span>
+          {profile.textOverlapRisk}
+        </div>
+        {(profile.textOverlapRisk === "Medium" || profile.textOverlapRisk === "High") &&
+          profile.repositionSuggestion && (
+          <p className="text-[9px] text-amber-600 leading-relaxed mt-0.5">
+            → {profile.repositionSuggestion}
+          </p>
+        )}
+      </div>
+
+      {/* Composition Notes */}
+      {profile.compositionNotes && (
+        <div className="rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-2 space-y-0.5">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Composition Notes</p>
+          <p className="text-slate-700 leading-relaxed">{profile.compositionNotes}</p>
+        </div>
+      )}
+
+      {/* Regenerate */}
+      <button
+        type="button"
+        onClick={onRegenerate}
+        className="w-full text-center text-[9px] font-semibold text-indigo-400 hover:text-indigo-600 py-1 transition"
+      >
+        ↻ Regenerate Layout
+      </button>
+    </div>
+  );
+}
+
 // ─── Studio Sub-Components ────────────────────────────────────────────────────
 
 function SidebarSection({ label, icon, expanded, onToggle, children, functional }) {
@@ -1737,6 +1896,14 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const typoDebounceRef = useRef(null);
   const typoKeyRef = useRef("");
 
+  // Layout & Composition Engine state
+  const [layoutProfile, setLayoutProfile] = useState(() =>
+    bookCover?.layoutProfile || bookCover?.coverStudio?.layout || null
+  );
+  const [layoutGenerating, setLayoutGenerating] = useState(false);
+  const layoutDebounceRef = useRef(null);
+  const layoutKeyRef = useRef("");
+
   const strategy = useMemo(
     () => deriveCoverStrategy(fullProject, metadata),
     [fullProject, metadata] // eslint-disable-line react-hooks/exhaustive-deps
@@ -1834,6 +2001,71 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     }
   }
 
+  // ── Layout & Composition Engine ───────────────────────────────────────────
+  async function generateLayout(force = false) {
+    if (layoutGenerating) return;
+
+    const concept = Array.isArray(concepts) && concepts.length > 0 && selectedConceptIdx !== null
+      ? concepts[selectedConceptIdx]
+      : DEFAULT_CONCEPT;
+    const conceptType  = concept?.type  || "authority";
+    const conceptLabel = concept?.label || conceptType;
+    const key = `${metadata.title}|${metadata.subtitle}|${conceptType}|${metadata.bookSize}|${typographyProfile?.titleAlignment || ""}`;
+
+    if (!force && key === layoutKeyRef.current && layoutProfile?.generatedForKey === key) return;
+    if (!metadata.title?.trim()) return;
+
+    layoutKeyRef.current = key;
+    setLayoutGenerating(true);
+    try {
+      const res = await fetch("/api/ai/layout", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:               metadata.title,
+          subtitle:            metadata.subtitle || "",
+          author:              metadata.author   || "",
+          series:              metadata.series   || "",
+          conceptType,
+          conceptLabel,
+          bg:                  concept?.bg     || DEFAULT_CONCEPT.bg,
+          accent:              concept?.accent || DEFAULT_CONCEPT.accent,
+          typographyAlignment: typographyProfile?.titleAlignment || "",
+          typographyPosition:  typographyProfile?.textPosition   || "",
+          strategy:            strategy?.coverPurpose  || "",
+          visualDirection:     visualDirection?.imageStyle || "",
+          bookSize:            metadata.bookSize || '6" × 9"',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Layout generation failed");
+      const profile = { ...data, generatedForKey: key };
+      setLayoutProfile(profile);
+    } catch (err) {
+      console.error("[Layout] generation error:", err);
+    } finally {
+      setLayoutGenerating(false);
+    }
+  }
+
+  // Auto-generate layout when concept, typography, metadata, or canvas size changes
+  useEffect(() => {
+    const concept = Array.isArray(concepts) && concepts.length > 0 && selectedConceptIdx !== null
+      ? concepts[selectedConceptIdx]
+      : null;
+    const conceptType = concept?.type || "";
+    const key = `${metadata.title}|${metadata.subtitle}|${conceptType}|${metadata.bookSize}|${typographyProfile?.titleAlignment || ""}`;
+
+    if (!metadata.title?.trim()) return;
+    if (key === layoutKeyRef.current && layoutProfile?.generatedForKey === key) return;
+
+    if (layoutDebounceRef.current) clearTimeout(layoutDebounceRef.current);
+    layoutDebounceRef.current = setTimeout(() => {
+      generateLayout(false);
+    }, 1800);
+    return () => { if (layoutDebounceRef.current) clearTimeout(layoutDebounceRef.current); };
+  }, [metadata.title, metadata.subtitle, metadata.bookSize, selectedConceptIdx, typographyProfile?.titleAlignment]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Typography Intelligence Engine ────────────────────────────────────────
   async function generateTypography(force = false) {
     if (typographyGenerating) return;
@@ -1920,19 +2152,21 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           concepts:             concepts.length > 0 ? concepts : [],
           selectedConceptIndex: selectedConceptIdx,
           typographyProfile:    typographyProfile || null,
+          layoutProfile:        layoutProfile     || null,
           // Extended cover studio state
           coverStudio: {
             ...project,
             metadata:   { ...metadata },
             canvas:     { ...canvas },
             typography: typographyProfile || null,
+            layout:     layoutProfile     || null,
           },
         };
       });
       setLastSaved(new Date());
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -2001,6 +2235,13 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                   profile={typographyProfile}
                   generating={typographyGenerating}
                   onRegenerate={() => generateTypography(true)}
+                />
+              )}
+              {section.id === "layouts" && (
+                <LayoutCard
+                  profile={layoutProfile}
+                  generating={layoutGenerating}
+                  onRegenerate={() => generateLayout(true)}
                 />
               )}
             </SidebarSection>
