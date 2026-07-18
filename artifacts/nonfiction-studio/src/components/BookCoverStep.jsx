@@ -59,7 +59,7 @@ const DEFAULT_CONCEPT = {
 const LEFT_SECTIONS = [
   { id: "bookInfo",       label: "Book Information",  icon: "📖", functional: true  },
   { id: "coverStrategy",  label: "Cover Strategy",    icon: "🎯", functional: true  },
-  { id: "visualDir",      label: "Visual Direction",  icon: "🎨", functional: false },
+  { id: "visualDir",      label: "Visual Direction",  icon: "🎨", functional: true  },
   { id: "typography",     label: "Typography",        icon: "Tt", functional: false },
   { id: "layouts",        label: "Layouts",           icon: "⊡",  functional: false },
   { id: "assets",         label: "Assets",            icon: "🖼", functional: false },
@@ -490,6 +490,225 @@ function CoverStrategyCard({ strategy }) {
             Complete Book Details, Research, and Proposed Book for a higher confidence strategy.
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Visual Direction Engine ──────────────────────────────────────────────────
+
+const STRATEGY_TO_VISUAL_STYLE = {
+  "Dark Professional": { style: "Corporate",    mood: "Confident"   },
+  "Bright Modern":     { style: "Modern",       mood: "Energetic"   },
+  "High Contrast":     { style: "Bold",         mood: "Powerful"    },
+  "Calm Neutral":      { style: "Clean",        mood: "Calm"        },
+  "Luxury":            { style: "Luxury",       mood: "Elegant"     },
+  "Academic":          { style: "Academic",     mood: "Serious"     },
+};
+
+const PURPOSE_TO_MOOD = {
+  Authority:     "Confident",
+  Trust:         "Trustworthy",
+  Curiosity:     "Innovative",
+  Premium:       "Elegant",
+  Professional:  "Serious",
+  Educational:   "Trustworthy",
+  Inspirational: "Inspirational",
+};
+
+const IMAGE_TO_COMPOSITION = {
+  "Typography First": "Typography First",
+  "Abstract":         "Center Focus",
+  "Illustration":     "Object Focus",
+  "Photography":      "Full Image",
+  "Vector":           "Center Focus",
+  "Icon Based":       "Minimal Layout",
+  "Mixed":            "Split Layout",
+};
+
+const IMAGE_TO_FOCAL = {
+  "Typography First": "Typography",
+  "Abstract":         "Pattern",
+  "Illustration":     "Illustration",
+  "Photography":      "Main Object",
+  "Vector":           "Symbol",
+  "Icon Based":       "Symbol",
+  "Mixed":            "Title",
+};
+
+const COMPOSITION_TO_HIERARCHY = {
+  "Typography First": ["Title", "Subtitle", "Author", "Visual Element"],
+  "Full Image":       ["Main Visual", "Title", "Subtitle", "Author"],
+  "Center Focus":     ["Title", "Main Visual", "Subtitle", "Author"],
+  "Minimal Layout":   ["Title", "Author", "Subtitle"],
+  "Object Focus":     ["Main Visual", "Title", "Subtitle", "Author"],
+  "Split Layout":     ["Title", "Main Visual", "Author", "Subtitle"],
+  "Top Focus":        ["Title", "Subtitle", "Main Visual", "Author"],
+};
+
+const COMPLEXITY_TO_LEVEL = {
+  Professional: "Balanced",
+  Accessible:   "Simple",
+  Advanced:     "Detailed",
+  Academic:     "Detailed",
+  Narrative:    "Balanced",
+  Reflective:   "Simple",
+};
+
+function deriveVisualDirection(strategy, metadata, fullProject) {
+  if (!strategy) return null;
+
+  const tl = (strategy.tone || "").toLowerCase();
+  const category = metadata?.primaryCategory || "";
+
+  // Visual Style
+  let { style = "Professional", mood = "Confident" } =
+    STRATEGY_TO_VISUAL_STYLE[strategy.colorDirection] || {};
+
+  if (PURPOSE_TO_MOOD[strategy.coverPurpose]) mood = PURPOSE_TO_MOOD[strategy.coverPurpose];
+
+  // Tone modifiers for style
+  if (/minimal|clean|simple/i.test(tl))           style = "Minimal";
+  else if (/premium|prestig/i.test(tl))            style = "Premium";
+  else if (/luxury/i.test(tl))                     style = "Luxury";
+  else if (/elegant/i.test(tl))                    style = "Elegant";
+  else if (/friendly|warm|approachable/i.test(tl)) style = "Friendly";
+  else if (/creative|dynamic|fresh/i.test(tl))     style = "Creative";
+
+  // Tone modifiers for mood
+  if (/energetic|bold|powerful|dynamic/i.test(tl)) mood = "Energetic";
+  else if (/calm|gentle|soothing|peaceful/i.test(tl)) mood = "Calm";
+  else if (/serious|rigorous|academic/i.test(tl))  mood = "Serious";
+  else if (/inspir/i.test(tl))                     mood = "Inspirational";
+  else if (/confident|authorit/i.test(tl))         mood = "Confident";
+
+  // Composition
+  let composition = IMAGE_TO_COMPOSITION[strategy.imageStyle] || "Center Focus";
+  if (strategy.coverPurpose === "Authority" && composition !== "Typography First")
+    composition = "Top Focus";
+  if (category === "Business & Money" && composition === "Object Focus")
+    composition = "Typography First";
+
+  // Visual Complexity
+  const complexity = COMPLEXITY_TO_LEVEL[strategy.complexity] || "Balanced";
+
+  // Focal Point
+  let focalPoint = IMAGE_TO_FOCAL[strategy.imageStyle] || "Title";
+  if (strategy.coverPurpose === "Authority" || strategy.coverPurpose === "Professional")
+    focalPoint = "Title";
+  if (style === "Minimal" || style === "Clean") focalPoint = "Typography";
+
+  // Visual Hierarchy
+  const hierarchy = COMPOSITION_TO_HIERARCHY[composition] || ["Title", "Main Visual", "Subtitle", "Author"];
+
+  // Style Summary
+  const summary = `This cover should feel ${style.toLowerCase()}, ${mood.toLowerCase()} and ${(strategy.coverPurpose || "professional").toLowerCase()} while emphasizing ${focalPoint.toLowerCase()} and ${(strategy.colorDirection || "contrast").toLowerCase().replace(/ /g, " ")}.`;
+
+  return {
+    visualStyle:   style,
+    designMood:    mood,
+    composition,
+    complexity,
+    focalPoint,
+    hierarchy,
+    summary,
+    derivedAt: new Date().toISOString(),
+  };
+}
+
+function VisualDirectionCard({ direction }) {
+  if (!direction) return null;
+
+  const STYLE_COLORS = {
+    Minimal:      "bg-slate-100 text-slate-700",
+    Modern:       "bg-sky-100 text-sky-800",
+    Premium:      "bg-amber-100 text-amber-800",
+    Elegant:      "bg-purple-100 text-purple-800",
+    Corporate:    "bg-slate-800 text-white",
+    Luxury:       "bg-amber-900 text-amber-100",
+    Academic:     "bg-indigo-100 text-indigo-800",
+    Bold:         "bg-rose-100 text-rose-800",
+    Clean:        "bg-emerald-100 text-emerald-800",
+    Creative:     "bg-pink-100 text-pink-800",
+    Friendly:     "bg-orange-100 text-orange-800",
+    Professional: "bg-sky-800 text-white",
+  };
+
+  const MOOD_ICONS = {
+    Confident:     "◆",
+    Calm:          "◎",
+    Energetic:     "▲",
+    Serious:       "■",
+    Inspirational: "✦",
+    Innovative:    "◈",
+    Trustworthy:   "●",
+    Powerful:      "★",
+    Elegant:       "◇",
+  };
+
+  const styleCls = STYLE_COLORS[direction.visualStyle] || "bg-slate-100 text-slate-700";
+  const moodIcon = MOOD_ICONS[direction.designMood] || "◉";
+
+  return (
+    <div className="space-y-3">
+      {/* Visual Style */}
+      <div className="flex items-center justify-between">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Visual Style</p>
+        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${styleCls}`}>
+          {direction.visualStyle}
+        </span>
+      </div>
+
+      {/* Design Mood */}
+      <div className="flex items-center justify-between">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Design Mood</p>
+        <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+          <span className="text-[10px] text-slate-400">{moodIcon}</span>
+          {direction.designMood}
+        </span>
+      </div>
+
+      {/* Composition */}
+      <div className="flex items-center justify-between">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Composition</p>
+        <span className="text-[11px] font-semibold text-slate-700">{direction.composition}</span>
+      </div>
+
+      {/* Visual Complexity */}
+      <div className="flex items-center justify-between">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Complexity</p>
+        <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${
+          direction.complexity === "Simple"   ? "bg-emerald-50 text-emerald-700" :
+          direction.complexity === "Detailed" ? "bg-purple-50 text-purple-700"  :
+          "bg-sky-50 text-sky-700"
+        }`}>{direction.complexity}</span>
+      </div>
+
+      {/* Focal Point */}
+      <div className="flex items-center justify-between">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Focal Point</p>
+        <span className="text-[11px] font-semibold text-slate-700">{direction.focalPoint}</span>
+      </div>
+
+      {/* Visual Hierarchy */}
+      <div className="border-t border-slate-100 pt-2.5">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Visual Hierarchy</p>
+        <ol className="space-y-1">
+          {direction.hierarchy.map((item, i) => (
+            <li key={i} className="flex items-center gap-2">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-500 text-[9px] font-bold flex items-center justify-center shrink-0">
+                {i + 1}
+              </span>
+              <span className="text-[10px] text-slate-700 font-medium">{item}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Style Summary */}
+      <div className="rounded-lg bg-gradient-to-br from-indigo-50 to-sky-50 border border-indigo-100 px-3 py-2.5">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-indigo-400 mb-1">Style Summary</p>
+        <p className="text-[10px] text-indigo-900 leading-relaxed italic">"{direction.summary}"</p>
       </div>
     </div>
   );
@@ -939,13 +1158,18 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   const [metadata, setMetadataState] = useState(() => initMetadata(bookCover, fullProject));
   const [canvas, setCanvasState] = useState(() => initCanvas(bookCover));
-  const [openSections, setOpenSections] = useState({ bookInfo: true, coverStrategy: true });
+  const [openSections, setOpenSections] = useState({ bookInfo: true, coverStrategy: true, visualDir: true });
   const [validationErrors, setValidationErrors] = useState({});
   const [lastSaved, setLastSaved] = useState(null);
 
   const strategy = useMemo(
     () => deriveCoverStrategy(fullProject, metadata),
     [fullProject, metadata] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const visualDirection = useMemo(
+    () => deriveVisualDirection(strategy, metadata, fullProject),
+    [strategy, metadata, fullProject] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const bookSize = useMemo(
@@ -988,9 +1212,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
         return {
           ...p,
           // Backward-compatible fields (DashboardPage reads these)
-          subtitle:      metadata.subtitle,
-          authorLine:    metadata.author,
-          coverStrategy: { ...strategy },
+          subtitle:        metadata.subtitle,
+          authorLine:      metadata.author,
+          coverStrategy:   { ...strategy },
+          visualDirection: visualDirection ? { ...visualDirection } : null,
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -1002,7 +1227,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setLastSaved(new Date());
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -1050,6 +1275,9 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
               )}
               {section.id === "coverStrategy" && (
                 <CoverStrategyCard strategy={strategy} />
+              )}
+              {section.id === "visualDir" && (
+                <VisualDirectionCard direction={visualDirection} />
               )}
             </SidebarSection>
           ))}

@@ -141,6 +141,7 @@ const emptyBookCover = {
   trimSizeIndex: 4,
   generatedAt: null,
   coverStrategy: null,
+  visualDirection: null,
 };
 
 const emptyResearch = {
@@ -495,6 +496,9 @@ function migrateProject(raw) {
       generatedAt: p.bookCover.generatedAt ?? null,
       coverStrategy: p.bookCover.coverStrategy && typeof p.bookCover.coverStrategy === "object"
         ? p.bookCover.coverStrategy
+        : null,
+      visualDirection: p.bookCover.visualDirection && typeof p.bookCover.visualDirection === "object"
+        ? p.bookCover.visualDirection
         : null,
     };
   }
