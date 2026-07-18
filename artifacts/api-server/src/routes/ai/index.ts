@@ -578,6 +578,113 @@ router.post("/cover-concepts", async (req, res) => {
   }
 });
 
+// ─── Typography Intelligence Engine ──────────────────────────────────────────
+router.post("/typography", async (req, res) => {
+  try {
+    const {
+      title, subtitle, author, series,
+      conceptType, conceptLabel,
+      bg, accent,
+      strategy, visualDirection,
+    } = req.body || {};
+
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+
+    const prompt = `You are a professional book cover typography expert specializing in Amazon Kindle Direct Publishing nonfiction books.
+
+Generate a typography profile for this cover concept.
+
+Book Title: ${title}
+Subtitle: ${subtitle || "(none)"}
+Author: ${author || ""}
+Series: ${series || "(none)"}
+Cover Concept: ${conceptType || "authority"} — ${conceptLabel || "Business Bestseller"}
+Background Color: ${bg || "#0f1923"}
+Accent Color: ${accent || "#d4961a"}
+Cover Strategy: ${strategy || ""}
+Visual Direction: ${visualDirection || ""}
+
+Rules:
+- Recommend font CATEGORIES only (e.g. "Bold Condensed Sans Serif") — never specific font families
+- titleAlignment must be exactly one of: "left", "center", "right"
+- textPosition must be exactly one of: "Top", "Upper Third", "Center", "Lower Third", "Bottom"
+- thumbnailReadability must be exactly one of: "Excellent", "Good", "Fair", "Poor"
+- textHierarchy values are integers 1–5 (star count) for title, subtitle, author, series
+- textSizes.title is always 100; subtitle/author/series are percentages relative to title
+- Recommend a textColor (hex) that provides high contrast against the background color
+
+Return ONLY this JSON with no markdown or extra text:
+{
+  "titleFontCategory": "Bold Condensed Sans Serif",
+  "subtitleFontCategory": "Light Sans Serif",
+  "authorFontCategory": "Medium Sans Serif",
+  "fontPairing": "Title: Bold Impact-style / Subtitle: Clean Light Sans / Author: Medium Sans Serif",
+  "titleAlignment": "left",
+  "textPosition": "Upper Third",
+  "textColor": "#ffffff",
+  "textContrast": "High — 9.5:1 on dark background",
+  "colorReason": "White maximizes legibility on dark navy",
+  "textHierarchy": { "title": 5, "subtitle": 3, "author": 2, "series": 1 },
+  "textSizes": { "title": 100, "subtitle": 45, "author": 30, "series": 20 },
+  "thumbnailReadability": "Excellent",
+  "thumbnailReason": "Bold condensed title reads clearly at Amazon thumbnail size"
+}`;
+
+    const { text: raw, usedProvider } = await runShort(
+      prompt,
+      "You are a book cover typography expert. Respond with valid JSON only.",
+      req, res, "conceptGen"
+    );
+
+    const data = extractJSON(raw);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "Typography generation returned no parseable data." });
+    }
+
+    const alignments   = ["left", "center", "right"] as const;
+    const positions    = ["Top", "Upper Third", "Center", "Lower Third", "Bottom"] as const;
+    const readabilities = ["Excellent", "Good", "Fair", "Poor"] as const;
+
+    const align      = alignments.find(a => a === data.titleAlignment)      ?? "center";
+    const pos        = positions.find(p => p === data.textPosition)         ?? "Upper Third";
+    const readability = readabilities.find(r => r === data.thumbnailReadability) ?? "Good";
+
+    const starClamp = (v: any) =>
+      typeof v === "number" && isFinite(v) ? Math.max(1, Math.min(5, Math.round(v))) : 3;
+    const pctClamp = (v: any, def: number) =>
+      typeof v === "number" && isFinite(v) ? Math.max(10, Math.min(100, Math.round(v))) : def;
+
+    return res.json({
+      titleFontCategory:    String(data.titleFontCategory    || "Bold Sans Serif"),
+      subtitleFontCategory: String(data.subtitleFontCategory || "Light Sans Serif"),
+      authorFontCategory:   String(data.authorFontCategory   || "Medium Sans Serif"),
+      fontPairing:          String(data.fontPairing          || ""),
+      titleAlignment:       align,
+      textPosition:         pos,
+      textColor:            /^#[0-9a-fA-F]{3,6}$/.test(data.textColor) ? data.textColor : "#ffffff",
+      textContrast:         String(data.textContrast  || ""),
+      colorReason:          String(data.colorReason   || ""),
+      textHierarchy: {
+        title:    starClamp(data.textHierarchy?.title),
+        subtitle: starClamp(data.textHierarchy?.subtitle),
+        author:   starClamp(data.textHierarchy?.author),
+        series:   starClamp(data.textHierarchy?.series),
+      },
+      textSizes: {
+        title:    100,
+        subtitle: pctClamp(data.textSizes?.subtitle, 45),
+        author:   pctClamp(data.textSizes?.author,   30),
+        series:   pctClamp(data.textSizes?.series,   20),
+      },
+      thumbnailReadability: readability,
+      thumbnailReason:      String(data.thumbnailReason || ""),
+      _provider: usedProvider,
+    });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 router.post("/outline", async (req, res) => {
   try {
     const { text, usedProvider } = await runShort(outlinePrompt(req.body), systemPrompt(), req, res, "outline");

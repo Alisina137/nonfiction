@@ -61,7 +61,7 @@ const LEFT_SECTIONS = [
   { id: "coverStrategy",  label: "Cover Strategy",    icon: "🎯", functional: true  },
   { id: "visualDir",      label: "Visual Direction",  icon: "🎨", functional: true  },
   { id: "aiPrompt",       label: "AI Prompt",         icon: "✦",  functional: true  },
-  { id: "typography",     label: "Typography",        icon: "Tt", functional: false },
+  { id: "typography",     label: "Typography",        icon: "Tt", functional: true  },
   { id: "layouts",        label: "Layouts",           icon: "⊡",  functional: false },
   { id: "assets",         label: "Assets",            icon: "🖼", functional: false },
   { id: "versions",       label: "Versions",          icon: "⎇",  functional: false },
@@ -1095,6 +1095,182 @@ function AiPromptCard({
   );
 }
 
+// ─── Typography Intelligence Engine ──────────────────────────────────────────
+
+function TypographyStars({ count }) {
+  const n = Math.max(1, Math.min(5, count || 0));
+  return (
+    <span style={{ letterSpacing: 1 }}>
+      <span className="text-amber-400">{"★".repeat(n)}</span>
+      <span className="text-slate-200">{"★".repeat(5 - n)}</span>
+    </span>
+  );
+}
+
+function TypographyCard({ profile, generating, onRegenerate }) {
+  if (generating) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 py-5">
+        <div className="flex gap-1">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"
+              style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
+        </div>
+        <span className="text-[10px] text-slate-400">Generating typography profile…</span>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-4 text-center">
+        <p className="text-[10px] text-slate-400 leading-relaxed">
+          Select a cover concept to automatically generate a typography profile.
+        </p>
+        <button
+          type="button"
+          onClick={onRegenerate}
+          className="text-[10px] font-semibold text-indigo-500 hover:text-indigo-700 transition"
+        >
+          Generate Now ↻
+        </button>
+      </div>
+    );
+  }
+
+  const readabilityStyle = {
+    Excellent: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    Good:      "bg-sky-50 text-sky-700 border-sky-200",
+    Fair:      "bg-amber-50 text-amber-700 border-amber-200",
+    Poor:      "bg-red-50 text-red-700 border-red-200",
+  }[profile.thumbnailReadability] || "bg-slate-50 text-slate-600 border-slate-200";
+
+  const readabilityIcon = { Excellent: "★", Good: "✓", Fair: "~", Poor: "!" }[profile.thumbnailReadability] || "";
+
+  return (
+    <div className="space-y-3 text-[10px]">
+
+      {/* Font Categories */}
+      <div className="space-y-1.5">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Font Categories</p>
+        {[
+          { label: "Title",    value: profile.titleFontCategory    },
+          { label: "Subtitle", value: profile.subtitleFontCategory },
+          { label: "Author",   value: profile.authorFontCategory   },
+        ].map(({ label, value }) => (
+          <div key={label} className="flex items-start justify-between gap-2">
+            <span className="text-slate-400 shrink-0">{label}</span>
+            <span className="font-semibold text-slate-800 text-right leading-tight">{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Font Pairing */}
+      {profile.fontPairing && (
+        <div className="rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-2 space-y-0.5">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Font Pairing</p>
+          <p className="text-slate-700 leading-relaxed">{profile.fontPairing}</p>
+        </div>
+      )}
+
+      {/* Text Hierarchy */}
+      {profile.textHierarchy && (
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Text Hierarchy</p>
+          {[
+            { label: "Title",    n: profile.textHierarchy.title    },
+            { label: "Subtitle", n: profile.textHierarchy.subtitle },
+            { label: "Author",   n: profile.textHierarchy.author   },
+            { label: "Series",   n: profile.textHierarchy.series   },
+          ].map(({ label, n }) => (
+            <div key={label} className="flex items-center justify-between">
+              <span className="text-slate-500">{label}</span>
+              <TypographyStars count={n} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Alignment + Position */}
+      <div className="flex flex-wrap gap-1.5">
+        {profile.titleAlignment && (
+          <div className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 capitalize">
+            {profile.titleAlignment} aligned
+          </div>
+        )}
+        {profile.textPosition && (
+          <div className="rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+            {profile.textPosition}
+          </div>
+        )}
+      </div>
+
+      {/* Relative Text Sizes */}
+      {profile.textSizes && (
+        <div className="space-y-1.5">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Relative Sizes</p>
+          {[
+            { label: "Title",    pct: 100 },
+            { label: "Subtitle", pct: profile.textSizes.subtitle },
+            { label: "Author",   pct: profile.textSizes.author   },
+            { label: "Series",   pct: profile.textSizes.series   },
+          ].filter(x => x.pct).map(({ label, pct }) => (
+            <div key={label} className="space-y-0.5">
+              <div className="flex justify-between">
+                <span className="text-slate-500">{label}</span>
+                <span className="font-semibold text-slate-700">{pct}%</span>
+              </div>
+              <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full rounded-full bg-indigo-400 transition-all" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Color Recommendation */}
+      {profile.textColor && (
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Recommended Text Color</p>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded border border-slate-200 shrink-0 shadow-sm"
+              style={{ background: profile.textColor }} />
+            <span className="font-mono font-semibold text-slate-700">{profile.textColor}</span>
+          </div>
+          {profile.textContrast && (
+            <p className="text-slate-500 leading-relaxed">{profile.textContrast}</p>
+          )}
+          {profile.colorReason && (
+            <p className="text-[9px] text-slate-400 leading-relaxed">{profile.colorReason}</p>
+          )}
+        </div>
+      )}
+
+      {/* Thumbnail Readability */}
+      <div className="space-y-1">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Thumbnail Readability</p>
+        <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${readabilityStyle}`}>
+          <span>{readabilityIcon}</span>
+          {profile.thumbnailReadability}
+        </div>
+        {profile.thumbnailReason && (
+          <p className="text-[9px] text-slate-400 leading-relaxed mt-0.5">{profile.thumbnailReason}</p>
+        )}
+      </div>
+
+      {/* Regenerate */}
+      <button
+        type="button"
+        onClick={onRegenerate}
+        className="w-full text-center text-[9px] font-semibold text-indigo-400 hover:text-indigo-600 py-1 transition"
+      >
+        ↻ Regenerate Profile
+      </button>
+    </div>
+  );
+}
+
 // ─── Studio Sub-Components ────────────────────────────────────────────────────
 
 function SidebarSection({ label, icon, expanded, onToggle, children, functional }) {
@@ -1553,6 +1729,14 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [generatingAll, setGeneratingAll] = useState(false);
   const [regeneratingIdx, setRegeneratingIdx] = useState(null);
 
+  // Typography Intelligence Engine state
+  const [typographyProfile, setTypographyProfile] = useState(() =>
+    bookCover?.typographyProfile || bookCover?.coverStudio?.typography || null
+  );
+  const [typographyGenerating, setTypographyGenerating] = useState(false);
+  const typoDebounceRef = useRef(null);
+  const typoKeyRef = useRef("");
+
   const strategy = useMemo(
     () => deriveCoverStrategy(fullProject, metadata),
     [fullProject, metadata] // eslint-disable-line react-hooks/exhaustive-deps
@@ -1650,6 +1834,69 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     }
   }
 
+  // ── Typography Intelligence Engine ────────────────────────────────────────
+  async function generateTypography(force = false) {
+    if (typographyGenerating) return;
+
+    const concept = Array.isArray(concepts) && concepts.length > 0 && selectedConceptIdx !== null
+      ? concepts[selectedConceptIdx]
+      : DEFAULT_CONCEPT;
+    const conceptType  = concept?.type  || "authority";
+    const conceptLabel = concept?.label || conceptType;
+    const key = `${metadata.title}|${metadata.subtitle}|${conceptType}`;
+
+    // Skip if nothing changed (unless forced)
+    if (!force && key === typoKeyRef.current && typographyProfile?.generatedForKey === key) return;
+    if (!metadata.title?.trim()) return;
+
+    typoKeyRef.current = key;
+    setTypographyGenerating(true);
+    try {
+      const res = await fetch("/api/ai/typography", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:          metadata.title,
+          subtitle:       metadata.subtitle || "",
+          author:         metadata.author   || "",
+          series:         metadata.series   || "",
+          conceptType,
+          conceptLabel,
+          bg:             concept?.bg     || DEFAULT_CONCEPT.bg,
+          accent:         concept?.accent || DEFAULT_CONCEPT.accent,
+          strategy:       strategy?.coverPurpose || "",
+          visualDirection: visualDirection?.imageStyle || "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Typography generation failed");
+      const profile = { ...data, generatedForKey: key };
+      setTypographyProfile(profile);
+    } catch (err) {
+      console.error("[Typography] generation error:", err);
+    } finally {
+      setTypographyGenerating(false);
+    }
+  }
+
+  // Auto-generate typography when title, subtitle, or selected concept changes
+  useEffect(() => {
+    const concept = Array.isArray(concepts) && concepts.length > 0 && selectedConceptIdx !== null
+      ? concepts[selectedConceptIdx]
+      : null;
+    const conceptType = concept?.type || "";
+    const key = `${metadata.title}|${metadata.subtitle}|${conceptType}`;
+
+    if (!metadata.title?.trim()) return;
+    if (key === typoKeyRef.current && typographyProfile?.generatedForKey === key) return;
+
+    if (typoDebounceRef.current) clearTimeout(typoDebounceRef.current);
+    typoDebounceRef.current = setTimeout(() => {
+      generateTypography(false);
+    }, 1200);
+    return () => { if (typoDebounceRef.current) clearTimeout(typoDebounceRef.current); };
+  }, [metadata.title, metadata.subtitle, selectedConceptIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Validate on every metadata change
   useEffect(() => {
     setValidationErrors(validateMetadata(metadata));
@@ -1672,18 +1919,20 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           aiPrompt:             coverPrompt ? { ...coverPrompt } : null,
           concepts:             concepts.length > 0 ? concepts : [],
           selectedConceptIndex: selectedConceptIdx,
+          typographyProfile:    typographyProfile || null,
           // Extended cover studio state
           coverStudio: {
             ...project,
-            metadata: { ...metadata },
-            canvas:   { ...canvas },
+            metadata:   { ...metadata },
+            canvas:     { ...canvas },
+            typography: typographyProfile || null,
           },
         };
       });
       setLastSaved(new Date());
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -1745,6 +1994,13 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                   onGenerate={handleGenerateConcepts}
                   onRegenerateConcept={handleRegenerateConcept}
                   onSelectConcept={setSelectedConceptIdx}
+                />
+              )}
+              {section.id === "typography" && (
+                <TypographyCard
+                  profile={typographyProfile}
+                  generating={typographyGenerating}
+                  onRegenerate={() => generateTypography(true)}
                 />
               )}
             </SidebarSection>
