@@ -60,6 +60,7 @@ const LEFT_SECTIONS = [
   { id: "bookInfo",       label: "Book Information",  icon: "📖", functional: true  },
   { id: "coverStrategy",  label: "Cover Strategy",    icon: "🎯", functional: true  },
   { id: "visualDir",      label: "Visual Direction",  icon: "🎨", functional: true  },
+  { id: "aiPrompt",       label: "AI Prompt",         icon: "✦",  functional: true  },
   { id: "typography",     label: "Typography",        icon: "Tt", functional: false },
   { id: "layouts",        label: "Layouts",           icon: "⊡",  functional: false },
   { id: "assets",         label: "Assets",            icon: "🖼", functional: false },
@@ -714,6 +715,252 @@ function VisualDirectionCard({ direction }) {
   );
 }
 
+// ─── AI Cover Prompt Builder ──────────────────────────────────────────────────
+
+const STYLE_MAP = {
+  Minimal:      "Minimal geometric artwork",
+  Modern:       "Modern digital illustration",
+  Premium:      "Premium vector artwork",
+  Corporate:    "Professional corporate design",
+  Luxury:       "High-end luxury editorial design",
+  Academic:     "Clean academic illustration",
+  Bold:         "Bold graphic design",
+  Clean:        "Clean minimal design",
+  Creative:     "Creative dynamic illustration",
+  Friendly:     "Warm friendly illustration",
+  Elegant:      "Elegant editorial design",
+  Professional: "Professional polished design",
+};
+
+const LIGHTING_MAP = {
+  Minimal:      "Soft",
+  Modern:       "Natural",
+  Premium:      "Studio",
+  Corporate:    "Cinematic",
+  Luxury:       "Studio",
+  Academic:     "Natural",
+  Bold:         "High Contrast",
+  Clean:        "Soft",
+  Creative:     "Dramatic",
+  Friendly:     "Natural",
+  Elegant:      "Studio",
+  Professional: "Cinematic",
+};
+
+const BACKGROUND_MAP = {
+  "Typography First": "Minimal",
+  "Full Image":       "Nature",
+  "Center Focus":     "Gradient",
+  "Minimal Layout":   "Solid Color",
+  "Object Focus":     "Abstract",
+  "Split Layout":     "Gradient",
+  "Top Focus":        "Solid Color",
+};
+
+const CAMERA_MAP = {
+  "Typography First": "Flat, front-facing editorial view",
+  "Full Image":       "Wide establishing shot",
+  "Center Focus":     "Centered, balanced frame",
+  "Minimal Layout":   "Minimal top-down view",
+  "Object Focus":     "Close-up focused view",
+  "Split Layout":     "Balanced two-column view",
+  "Top Focus":        "Strong top-weighted composition",
+};
+
+const IMAGE_STYLE_SUBJECT = {
+  "Typography First": "Bold typographic layout with professional lettering and strong visual hierarchy",
+  "Abstract":         "Abstract geometric shapes and flowing forms evoking the book's core theme",
+  "Illustration":     "Custom illustration representing the book's central concept",
+  "Photography":      "Professional lifestyle photograph representing the book's subject matter",
+  "Vector":           "Clean vector illustration symbolizing the book's core idea",
+  "Icon Based":       "Minimal icon-driven composition representing the key concept",
+  "Mixed":            "Combined typographic and illustrative design conveying the book's message",
+};
+
+const CATEGORY_SUBJECT_MODIFIER = {
+  "Business & Money":        "a confident professional in a modern business environment",
+  "Self-Help":               "an empowered individual achieving a personal breakthrough",
+  "Health, Fitness & Dieting": "a healthy active person in a motivating environment",
+  "Computers & Technology":  "a sleek modern technology-inspired abstract composition",
+  "Education & Teaching":    "a clear structured learning environment with academic elements",
+  "Politics & Social Sciences": "a thought-provoking symbolic composition with depth and gravitas",
+  "Parenting & Relationships": "a warm human connection in a welcoming environment",
+  "Religion & Spirituality": "a serene transcendent composition with spiritual symbolism",
+  "Travel":                  "an inspiring destination scene with a sense of adventure",
+  "Crafts, Hobbies & Home":  "a warm creative workspace with craft materials",
+  "Humor & Entertainment":   "a playful dynamic composition with lively energy",
+  "Biographies & Memoirs":   "a compelling individual portrait with cinematic depth",
+};
+
+const COLOR_DIRECTION_PALETTE = {
+  "Dark Professional": "Deep navy and charcoal with white and gold accents",
+  "Bright Modern":     "Vibrant blues and teals with clean white and bright accents",
+  "High Contrast":     "High contrast black and white with a bold accent color",
+  "Calm Neutral":      "Warm greys and beige with muted earth tones",
+  "Luxury":            "Deep black and rich gold with cream and platinum accents",
+  "Academic":          "Deep indigo and slate with ivory and warm amber accents",
+};
+
+const NEGATIVE_PROMPT = "No watermarks, no blurry or low-quality image, no distorted anatomy, no extra limbs, no cropped objects, no unreadable text overlaid, no low resolution, no pixelation, no cartoonish style unless intended, no cluttered composition, no amateur design.";
+
+function buildCoverPrompt(strategy, visualDirection, metadata, fullProject) {
+  if (!strategy || !visualDirection) return null;
+
+  const category   = metadata?.primaryCategory || "";
+  const category2  = metadata?.secondaryCategory || "";
+  const imageStyle = strategy.imageStyle || "Typography First";
+  const audience   = fullProject?.audience || fullProject?.proposedBook?.targetAudience || "";
+  const archetype  = fullProject?.bookDetails?.bookArchetype || "";
+
+  // Subject
+  let subjectBase = IMAGE_STYLE_SUBJECT[imageStyle] || "Professional design representing the book's core concept";
+  const catMod    = CATEGORY_SUBJECT_MODIFIER[category] || CATEGORY_SUBJECT_MODIFIER[category2] || "";
+  if (catMod && imageStyle !== "Typography First") {
+    subjectBase = catMod.charAt(0).toUpperCase() + catMod.slice(1);
+  }
+  if (archetype && imageStyle !== "Typography First") {
+    subjectBase += `, with a ${archetype.toLowerCase()} narrative feel`;
+  }
+  const subject = subjectBase;
+
+  // Style
+  const style = STYLE_MAP[visualDirection.visualStyle] || "Professional polished design";
+
+  // Mood
+  const mood = visualDirection.designMood || "Professional";
+
+  // Composition
+  const composition = visualDirection.composition || "Center Focus";
+
+  // Color Palette
+  const colorPalette = COLOR_DIRECTION_PALETTE[strategy.colorDirection]
+    || `${strategy.colorDirection || "Professional"} color scheme`;
+
+  // Lighting
+  const lighting = LIGHTING_MAP[visualDirection.visualStyle] || "Natural";
+
+  // Background
+  const background = BACKGROUND_MAP[composition] || "Gradient";
+
+  // Camera/View
+  const cameraView = CAMERA_MAP[composition] || "Centered, balanced frame";
+
+  // Detail Level
+  const detailLevel = visualDirection.complexity || "Balanced";
+
+  // Final Prompt
+  const finalPrompt =
+    `Book cover image. ` +
+    `Subject: ${subject}. ` +
+    `Style: ${style}. ` +
+    `Mood: ${mood}. ` +
+    `Composition: ${composition}. ` +
+    `Color palette: ${colorPalette}. ` +
+    `Lighting: ${lighting}. ` +
+    `Background: ${background}. ` +
+    `View: ${cameraView}. ` +
+    `Detail level: ${detailLevel}. ` +
+    `No text, no titles, no words on the image. ` +
+    `Ultra high quality, publishing-ready cover art.`;
+
+  return {
+    subject,
+    style,
+    mood,
+    composition,
+    colorPalette,
+    lighting,
+    background,
+    cameraView,
+    detailLevel,
+    negativePrompt: NEGATIVE_PROMPT,
+    finalPrompt,
+    builtAt: new Date().toISOString(),
+  };
+}
+
+function AiPromptCard({ prompt }) {
+  const [copied, setCopied] = React.useState(false);
+  const [copiedNeg, setCopiedNeg] = React.useState(false);
+
+  function handleCopy(text, setter) {
+    navigator.clipboard?.writeText(text).then(() => {
+      setter(true);
+      setTimeout(() => setter(false), 1800);
+    });
+  }
+
+  if (!prompt) {
+    return (
+      <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-4 text-center">
+        <p className="text-[10px] text-slate-400">Complete Cover Strategy to generate prompt.</p>
+      </div>
+    );
+  }
+
+  const fields = [
+    { label: "Subject",       value: prompt.subject      },
+    { label: "Style",         value: prompt.style        },
+    { label: "Mood",          value: prompt.mood         },
+    { label: "Composition",   value: prompt.composition  },
+    { label: "Color Palette", value: prompt.colorPalette },
+    { label: "Lighting",      value: prompt.lighting     },
+    { label: "Background",    value: prompt.background   },
+    { label: "Camera / View", value: prompt.cameraView   },
+    { label: "Detail Level",  value: prompt.detailLevel  },
+  ];
+
+  return (
+    <div className="space-y-3">
+      {/* Field breakdown */}
+      <div className="space-y-2">
+        {fields.map(({ label, value }) => (
+          <div key={label}>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{label}</p>
+            <p className="text-[10px] text-slate-700 leading-relaxed">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Final Prompt */}
+      <div className="border-t border-slate-100 pt-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Final Prompt</p>
+          <button
+            onClick={() => handleCopy(prompt.finalPrompt, setCopied)}
+            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+          >
+            {copied ? "✓ Copied" : "Copy"}
+          </button>
+        </div>
+        <div className="rounded-lg bg-slate-900 px-3 py-2.5">
+          <p className="text-[10px] text-slate-200 leading-relaxed font-mono break-words whitespace-pre-wrap select-all">
+            {prompt.finalPrompt}
+          </p>
+        </div>
+      </div>
+
+      {/* Negative Prompt */}
+      <div className="border-t border-slate-100 pt-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Negative Prompt</p>
+          <button
+            onClick={() => handleCopy(prompt.negativePrompt, setCopiedNeg)}
+            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-semibold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors"
+          >
+            {copiedNeg ? "✓ Copied" : "Copy"}
+          </button>
+        </div>
+        <div className="rounded-lg bg-rose-50 border border-rose-100 px-3 py-2.5">
+          <p className="text-[10px] text-rose-800 leading-relaxed font-mono break-words whitespace-pre-wrap select-all">
+            {prompt.negativePrompt}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Studio Sub-Components ────────────────────────────────────────────────────
 
 function SidebarSection({ label, icon, expanded, onToggle, children, functional }) {
@@ -1158,7 +1405,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   const [metadata, setMetadataState] = useState(() => initMetadata(bookCover, fullProject));
   const [canvas, setCanvasState] = useState(() => initCanvas(bookCover));
-  const [openSections, setOpenSections] = useState({ bookInfo: true, coverStrategy: true, visualDir: true });
+  const [openSections, setOpenSections] = useState({ bookInfo: true, coverStrategy: true, visualDir: true, aiPrompt: true });
   const [validationErrors, setValidationErrors] = useState({});
   const [lastSaved, setLastSaved] = useState(null);
 
@@ -1170,6 +1417,11 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const visualDirection = useMemo(
     () => deriveVisualDirection(strategy, metadata, fullProject),
     [strategy, metadata, fullProject] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const coverPrompt = useMemo(
+    () => buildCoverPrompt(strategy, visualDirection, metadata, fullProject),
+    [strategy, visualDirection, metadata, fullProject] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const bookSize = useMemo(
@@ -1216,6 +1468,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           authorLine:      metadata.author,
           coverStrategy:   { ...strategy },
           visualDirection: visualDirection ? { ...visualDirection } : null,
+          aiPrompt:        coverPrompt ? { ...coverPrompt } : null,
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -1227,7 +1480,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setLastSaved(new Date());
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -1278,6 +1531,9 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
               )}
               {section.id === "visualDir" && (
                 <VisualDirectionCard direction={visualDirection} />
+              )}
+              {section.id === "aiPrompt" && (
+                <AiPromptCard prompt={coverPrompt} />
               )}
             </SidebarSection>
           ))}

@@ -142,6 +142,7 @@ const emptyBookCover = {
   generatedAt: null,
   coverStrategy: null,
   visualDirection: null,
+  aiPrompt: null,
 };
 
 const emptyResearch = {
@@ -499,6 +500,9 @@ function migrateProject(raw) {
         : null,
       visualDirection: p.bookCover.visualDirection && typeof p.bookCover.visualDirection === "object"
         ? p.bookCover.visualDirection
+        : null,
+      aiPrompt: p.bookCover.aiPrompt && typeof p.bookCover.aiPrompt === "object"
+        ? p.bookCover.aiPrompt
         : null,
     };
   }
