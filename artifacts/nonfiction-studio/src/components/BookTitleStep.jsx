@@ -90,6 +90,7 @@ function OverallRing({ score }) {
 function TitleCard({
   card, isSelected, isFavorite, isInCompare, compareCount,
   activeSubIdx, onSelect, onFavorite, onCompare, onSubChange, onPreview,
+  onRegenerate, isRegenerating,
 }) {
   const [expanded, setExpanded] = useState(false);
   const subtitle = card.subtitleOptions?.[activeSubIdx]?.text || card.subtitle || "";
@@ -201,6 +202,19 @@ function TitleCard({
             className="rounded-full w-8 h-8 flex items-center justify-center text-sm text-slate-300 hover:text-slate-600 transition"
           >
             ⧉
+          </button>
+          <button
+            type="button"
+            onClick={() => onRegenerate?.(card)}
+            disabled={isRegenerating}
+            title="Regenerate this title"
+            className={`rounded-full w-8 h-8 flex items-center justify-center text-sm transition ${
+              isRegenerating
+                ? "text-sky-400 animate-spin cursor-not-allowed"
+                : "text-slate-300 hover:text-sky-500"
+            }`}
+          >
+            ↻
           </button>
           <button
             type="button"
@@ -482,14 +496,15 @@ function ComparePanel({ cards, compareList, onRemove, onSelect }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function BookTitleStep({ research, analysis, bookTitle, errors, setBookTitleBlock }) {
-  const [loading, setLoading]         = useState(false);
-  const [apiError, setApiError]       = useState("");
-  const [activeTab, setActiveTab]     = useState("browse");
-  const [search, setSearch]           = useState("");
-  const [filterStyle, setFilterStyle] = useState("All");
-  const [sortBy, setSortBy]           = useState("overallScore");
-  const [previewCard, setPreviewCard] = useState(null);
-  const [previewSub, setPreviewSub]   = useState("");
+  const [loading, setLoading]           = useState(false);
+  const [apiError, setApiError]         = useState("");
+  const [activeTab, setActiveTab]       = useState("browse");
+  const [search, setSearch]             = useState("");
+  const [filterStyle, setFilterStyle]   = useState("All");
+  const [sortBy, setSortBy]             = useState("overallScore");
+  const [previewCard, setPreviewCard]   = useState(null);
+  const [previewSub, setPreviewSub]     = useState("");
+  const [regenLoading, setRegenLoading] = useState({});
 
   const cards           = Array.isArray(bookTitle.cards) ? bookTitle.cards : [];
   const recommendations = bookTitle.recommendations || {};
@@ -571,6 +586,35 @@ export default function BookTitleStep({ research, analysis, bookTitle, errors, s
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function regenCard(card) {
+    const oldTitle = card.title;
+    setRegenLoading(prev => ({ ...prev, [oldTitle]: true }));
+    try {
+      const data = await aiFetch("/api/book/regenerate-card", {
+        research,
+        analysis,
+        intelligence,
+        avoidTitles: cards.map(c => c.title),
+        style: card.style,
+      });
+      const newCard = data?.card;
+      if (newCard?.title) {
+        const updatedCards = bookTitle.cards.map(c =>
+          c.title === oldTitle ? { ...newCard, _recKeys: [] } : c
+        );
+        setBookTitleBlock({ ...bookTitle, cards: updatedCards });
+      }
+    } catch {
+      /* card stays unchanged on error */
+    } finally {
+      setRegenLoading(prev => {
+        const next = { ...prev };
+        delete next[oldTitle];
+        return next;
+      });
     }
   }
 
@@ -763,6 +807,8 @@ export default function BookTitleStep({ research, analysis, bookTitle, errors, s
                   onCompare={toggleCompare}
                   onSubChange={setSubChoice}
                   onPreview={(c, sub) => { setPreviewCard(c); setPreviewSub(sub); }}
+                  onRegenerate={regenCard}
+                  isRegenerating={!!regenLoading[card.title]}
                 />
               ))}
             </div>

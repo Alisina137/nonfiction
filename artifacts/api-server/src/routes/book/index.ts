@@ -4,6 +4,7 @@ import {
   titleCardsPrompt,
   titleVariationsPrompt,
   kdpSuggestPrompt,
+  regenTitleCardPrompt,
   systemPrompt
 } from "../ai/prompts.js";
 import { buildCompetitorSummariesForPrompt } from "../ai/analysisSummary.js";
@@ -223,6 +224,35 @@ router.post("/contextual-titles", async (req, res) => {
     return res.json({ titles, enhanced, _provider: usedProvider });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || "Failed to generate titles" });
+  }
+});
+
+router.post("/regenerate-card", async (req, res) => {
+  try {
+    const { research, analysis, intelligence, avoidTitles, style } = req.body || {};
+    if (!research || typeof research !== "object")
+      return res.status(400).json({ error: "Research payload required." });
+
+    const competitorSummaries = buildCompetitorSummariesForPrompt(analysis?.books || []);
+    const opts = aiOptsFromReq(req);
+    const prompt = regenTitleCardPrompt({ research, competitorSummaries, intelligence, avoidTitles, style });
+
+    const { text, usedProvider } = await generateContentFast(prompt, systemPrompt(), {
+      ...opts, maxTokens: 1500, taskType: "idea" as const
+    });
+
+    let card: any = null;
+    try { card = extractJSON(text); } catch { /* ignore */ }
+
+    if (!card?.title) {
+      return res.status(500).json({ error: "Failed to generate a replacement title card." });
+    }
+
+    card.isRecommended = false;
+    res.setHeader("X-AI-Provider", usedProvider);
+    return res.json({ card, _provider: usedProvider });
+  } catch (error: any) {
+    return res.status(500).json({ error: error?.message || "Generation failed." });
   }
 });
 

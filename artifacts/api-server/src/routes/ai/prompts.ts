@@ -1009,6 +1009,59 @@ Return ONLY valid JSON — no markdown, no code fences, no explanation before or
 CRITICAL: Output raw JSON only. Start your response with { and end with }.`;
 }
 
+export function regenTitleCardPrompt({
+  research, competitorSummaries, intelligence, avoidTitles, style
+}: any) {
+  const nicheLine = research.mainNicheLabel && research.subNicheLabel
+    ? `${research.mainNicheLabel} › ${research.subNicheLabel}`
+    : research.genre?.trim() || "Nonfiction";
+  const deepNiche  = research.deepNicheLabel?.trim() || "";
+
+  const avoidBlock = Array.isArray(avoidTitles) && avoidTitles.length
+    ? avoidTitles.map((t: string) => `- ${t}`).join("\n")
+    : "(none)";
+
+  const summariesBlock = Array.isArray(competitorSummaries) && competitorSummaries.length
+    ? competitorSummaries.slice(0, 4).map((l: string, i: number) => `${i + 1}. ${l}`).join("\n")
+    : "(none)";
+
+  const intelBlock = intelligence
+    ? `AUDIENCE: ${intelligence.targetAudience || ""}
+TRANSFORMATION: ${intelligence.transformationPromise || ""}
+MARKET GAP: ${intelligence.marketGapAnalysis || ""}`.trim()
+    : "(infer from niche)";
+
+  const styleHint = style && style !== "All"
+    ? `Use style: "${style}" or a fresh complementary style.`
+    : "Choose the style with the best commercial opportunity not already covered.";
+
+  return `You are an Amazon KDP bestseller-title strategist.
+
+Generate exactly 1 unique, premium nonfiction title package. Do NOT use or closely paraphrase any of these existing titles:
+${avoidBlock}
+
+BOOK PROFILE:
+- NICHE: ${nicheLine}${deepNiche ? ` › ${deepNiche}` : ""}
+- TOPIC: ${research.bookTopic?.trim() || deepNiche || nicheLine}
+- AUDIENCE: ${research.targetAudience?.trim() || "(infer from niche)"}
+- TRANSFORMATION: ${research.stanceOnTopic?.trim() || "(infer from niche)"}
+- COMPETITORS:
+${summariesBlock}
+- INTELLIGENCE: ${intelBlock}
+
+STYLE: ${styleHint}
+
+TITLE RULES:
+- Names or strongly implies the specific audience
+- Commercially polished — feels like a top-10 Amazon bestseller
+- No generic patterns ("Better Habits", "Success Blueprint", "Confidence Reset")
+- All 12 scores must vary realistically (range 52–97)
+- overallScore = weighted average of all 12 scores
+
+Return STRICT JSON for a single card object — no array, no wrapper, start with { end with }:
+{"title":"...","style":"SEO","pattern":"Transformation for Audience","category":"Scientific Authority","subtitleOptions":[{"style":"SEO","text":"..."},{"style":"Emotional","text":"..."},{"style":"Minimalist","text":"..."}],"seoStrength":88,"keywordMatch":84,"marketRelevance":91,"readerAppeal":86,"curiosity":72,"emotionalImpact":68,"clarity":90,"professionalism":88,"originality":74,"memorability":80,"amazonCTR":86,"overallScore":83,"primaryKeyword":"...","keywords":["...","...","...","..."],"whyItWorks":["...","...","..."],"hook":"...","isRecommended":false}`;
+}
+
 export function analyzeBookConceptPrompt({ niche, subNiche, deepNiche, title }: any) {
   return `You are an Amazon KDP publishing strategist and consumer psychology expert.
 
