@@ -139,7 +139,8 @@ const emptyBookCover = {
   pageCount: 200,
   paperType: "white",
   trimSizeIndex: 4,
-  generatedAt: null
+  generatedAt: null,
+  coverStrategy: null,
 };
 
 const emptyResearch = {
@@ -491,7 +492,10 @@ function migrateProject(raw) {
       accentColor: typeof p.bookCover.accentColor === "string" ? p.bookCover.accentColor : emptyBookCover.accentColor,
       textColor: typeof p.bookCover.textColor === "string" ? p.bookCover.textColor : emptyBookCover.textColor,
       designNotes: typeof p.bookCover.designNotes === "string" ? p.bookCover.designNotes : "",
-      generatedAt: p.bookCover.generatedAt ?? null
+      generatedAt: p.bookCover.generatedAt ?? null,
+      coverStrategy: p.bookCover.coverStrategy && typeof p.bookCover.coverStrategy === "object"
+        ? p.bookCover.coverStrategy
+        : null,
     };
   }
 

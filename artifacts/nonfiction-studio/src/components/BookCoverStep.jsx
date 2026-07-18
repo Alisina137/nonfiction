@@ -58,7 +58,7 @@ const DEFAULT_CONCEPT = {
 
 const LEFT_SECTIONS = [
   { id: "bookInfo",       label: "Book Information",  icon: "📖", functional: true  },
-  { id: "coverStrategy",  label: "Cover Strategy",    icon: "🎯", functional: false },
+  { id: "coverStrategy",  label: "Cover Strategy",    icon: "🎯", functional: true  },
   { id: "visualDir",      label: "Visual Direction",  icon: "🎨", functional: false },
   { id: "typography",     label: "Typography",        icon: "Tt", functional: false },
   { id: "layouts",        label: "Layouts",           icon: "⊡",  functional: false },
@@ -317,6 +317,182 @@ function ConceptRenderer({ cd }) {
     case "dynamic":  return <DynamicRenderer  cd={cd} />;
     default:         return <AuthorityRenderer cd={cd} />;
   }
+}
+
+// ─── Cover Strategy ───────────────────────────────────────────────────────────
+
+const CATEGORY_PROFILES = {
+  "Business & Money":           { purpose: "Authority",      color: "Dark Professional", image: "Typography First", vis: "business",    complexity: "Professional" },
+  "Self-Help":                  { purpose: "Inspirational",  color: "Bright Modern",     image: "Illustration",     vis: "self-help",   complexity: "Accessible"   },
+  "Health, Fitness & Dieting":  { purpose: "Trust",          color: "Bright Modern",     image: "Icon Based",       vis: "wellness",    complexity: "Accessible"   },
+  "Computers & Technology":     { purpose: "Professional",   color: "High Contrast",     image: "Abstract",         vis: "tech",        complexity: "Advanced"     },
+  "Science & Math":             { purpose: "Educational",    color: "Academic",          image: "Vector",           vis: "scientific",  complexity: "Academic"     },
+  "Biographies & Memoirs":      { purpose: "Trust",          color: "Calm Neutral",      image: "Photography",      vis: "memoir",      complexity: "Narrative"    },
+  "History":                    { purpose: "Authority",      color: "Luxury",            image: "Photography",      vis: "historical",  complexity: "Academic"     },
+  "Religion & Spirituality":    { purpose: "Inspirational",  color: "Calm Neutral",      image: "Illustration",     vis: "spiritual",   complexity: "Reflective"   },
+  "Politics & Social Sciences": { purpose: "Curiosity",      color: "High Contrast",     image: "Typography First", vis: "political",   complexity: "Advanced"     },
+  "Education & Teaching":       { purpose: "Educational",    color: "Academic",          image: "Illustration",     vis: "educational", complexity: "Academic"     },
+  "Professional & Technical":   { purpose: "Professional",   color: "Dark Professional", image: "Icon Based",       vis: "technical",   complexity: "Advanced"     },
+  "Parenting & Relationships":  { purpose: "Trust",          color: "Calm Neutral",      image: "Illustration",     vis: "personal",    complexity: "Accessible"   },
+  "Crafts, Hobbies & Home":     { purpose: "Inspirational",  color: "Bright Modern",     image: "Photography",      vis: "practical",   complexity: "Accessible"   },
+  "Sports & Outdoors":          { purpose: "Inspirational",  color: "High Contrast",     image: "Photography",      vis: "active",      complexity: "Accessible"   },
+  "Travel":                     { purpose: "Curiosity",      color: "Bright Modern",     image: "Photography",      vis: "adventurous", complexity: "Narrative"    },
+  "True Crime":                 { purpose: "Curiosity",      color: "High Contrast",     image: "Typography First", vis: "suspenseful", complexity: "Narrative"    },
+  "Humor & Entertainment":      { purpose: "Curiosity",      color: "Bright Modern",     image: "Illustration",     vis: "playful",     complexity: "Accessible"   },
+};
+
+function deriveCoverStrategy(fullProject, metadata) {
+  const category  = metadata?.primaryCategory   || "";
+  const category2 = metadata?.secondaryCategory || "";
+  const audience  = metadata?.audience
+    || fullProject?.bookDetails?.audience
+    || fullProject?.research?.audiencePreset
+    || "";
+  const rawTone   = fullProject?.bookDetails?.tone
+    || (fullProject?.research?.authorTones || []).join(", ");
+  const title     = metadata?.title    || "";
+  const subtitle  = metadata?.subtitle || "";
+  const dna       = fullProject?.proposedBook?.content || {};
+  const niche     = fullProject?.research?.mainNicheLabel || "";
+  const subNiche  = fullProject?.research?.subNicheLabel  || "";
+
+  const base = CATEGORY_PROFILES[category]
+    || CATEGORY_PROFILES[category2]
+    || { purpose: "Professional", color: "High Contrast", image: "Typography First", vis: "nonfiction", complexity: "Professional" };
+
+  let { purpose, color, image } = base;
+  const tl = rawTone.toLowerCase();
+  if (/premium|luxury|prestig/i.test(tl))         color = "Luxury";
+  if (/academic|scholarly|rigorous/i.test(tl))    { color = "Academic"; image = "Vector"; }
+  if (/bold|energetic|powerful|strong/i.test(tl)) color = "High Contrast";
+  if (/calm|gentle|soothing|soft/i.test(tl))      color = "Calm Neutral";
+  if (/minimal|clean|simple/i.test(tl))           { color = "Calm Neutral"; image = "Typography First"; }
+  if (/dark|serious/i.test(tl) && color !== "Luxury") color = "Dark Professional";
+
+  const genreLabel = category || niche || "Nonfiction";
+  const coverGoal  = `${base.complexity} ${base.vis} cover`;
+
+  let confidence = 0;
+  if (title)    confidence += 20;
+  if (category) confidence += 20;
+  if (audience) confidence += 15;
+  if (rawTone)  confidence += 15;
+  if (subtitle) confidence += 10;
+  if (Object.keys(dna).length > 0) confidence += 15;
+  if (niche)    confidence += 5;
+
+  return {
+    genre:           genreLabel,
+    subgenre:        category2 || subNiche || "",
+    audience:        audience || "",
+    tone:            rawTone  || "",
+    complexity:      base.complexity,
+    visualStyle:     base.vis,
+    coverGoal,
+    coverPurpose:    purpose,
+    colorDirection:  color,
+    imageStyle:      image,
+    confidenceScore: Math.min(100, confidence),
+    derivedAt:       new Date().toISOString(),
+  };
+}
+
+const PURPOSE_COLORS = {
+  Authority:     "bg-slate-800 text-white",
+  Trust:         "bg-emerald-600 text-white",
+  Curiosity:     "bg-purple-600 text-white",
+  Premium:       "bg-amber-600 text-white",
+  Professional:  "bg-sky-700 text-white",
+  Educational:   "bg-indigo-600 text-white",
+  Inspirational: "bg-rose-600 text-white",
+};
+
+function CoverStrategyCard({ strategy }) {
+  if (!strategy) return null;
+
+  const confColor = strategy.confidenceScore >= 80
+    ? "text-emerald-600 bg-emerald-50 border-emerald-200"
+    : strategy.confidenceScore >= 50
+    ? "text-amber-600 bg-amber-50 border-amber-200"
+    : "text-rose-600 bg-rose-50 border-rose-200";
+
+  const barColor = strategy.confidenceScore >= 80
+    ? "bg-emerald-400" : strategy.confidenceScore >= 50
+    ? "bg-amber-400" : "bg-rose-400";
+
+  return (
+    <div className="space-y-3">
+      {/* Visual Goal */}
+      <div className="rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 px-3 py-2.5">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Visual Goal</p>
+        <p className="text-[12px] font-bold text-white leading-tight capitalize">{strategy.coverGoal}</p>
+      </div>
+
+      {/* Cover Purpose */}
+      <div>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Cover Purpose</p>
+        <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${PURPOSE_COLORS[strategy.coverPurpose] || "bg-slate-700 text-white"}`}>
+          {strategy.coverPurpose}
+        </span>
+      </div>
+
+      {/* Color Direction */}
+      <div>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Color Direction</p>
+        <p className="text-[11px] font-semibold text-slate-800">{strategy.colorDirection}</p>
+      </div>
+
+      {/* Image Style */}
+      <div>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Image Style</p>
+        <p className="text-[11px] font-semibold text-slate-800">{strategy.imageStyle}</p>
+      </div>
+
+      {/* Details */}
+      <div className="border-t border-slate-100 pt-2 space-y-1.5">
+        {strategy.genre && (
+          <div className="flex justify-between items-start gap-2">
+            <span className="text-[9px] text-slate-400 shrink-0 mt-px">Genre</span>
+            <span className="text-[10px] font-medium text-slate-600 text-right leading-tight">{strategy.genre}</span>
+          </div>
+        )}
+        {strategy.subgenre && (
+          <div className="flex justify-between items-start gap-2">
+            <span className="text-[9px] text-slate-400 shrink-0 mt-px">Subgenre</span>
+            <span className="text-[10px] font-medium text-slate-600 text-right leading-tight">{strategy.subgenre}</span>
+          </div>
+        )}
+        {strategy.audience && (
+          <div className="flex justify-between items-start gap-2">
+            <span className="text-[9px] text-slate-400 shrink-0 mt-px">Audience</span>
+            <span className="text-[10px] font-medium text-slate-600 text-right leading-tight max-w-[110px]">{strategy.audience}</span>
+          </div>
+        )}
+        {strategy.complexity && (
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-[9px] text-slate-400 shrink-0">Complexity</span>
+            <span className="text-[10px] font-medium text-slate-600">{strategy.complexity}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Confidence */}
+      <div className={`rounded-lg border px-2.5 py-2 ${confColor}`}>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[9px] font-bold uppercase tracking-widest opacity-70">Confidence</span>
+          <span className="text-[11px] font-bold">{strategy.confidenceScore}%</span>
+        </div>
+        <div className="h-1 rounded-full bg-black/10 overflow-hidden">
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${strategy.confidenceScore}%` }} />
+        </div>
+        {strategy.confidenceScore < 60 && (
+          <p className="text-[9px] mt-1.5 leading-relaxed opacity-80">
+            Complete Book Details, Research, and Proposed Book for a higher confidence strategy.
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── Studio Sub-Components ────────────────────────────────────────────────────
@@ -763,9 +939,14 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   const [metadata, setMetadataState] = useState(() => initMetadata(bookCover, fullProject));
   const [canvas, setCanvasState] = useState(() => initCanvas(bookCover));
-  const [openSections, setOpenSections] = useState({ bookInfo: true });
+  const [openSections, setOpenSections] = useState({ bookInfo: true, coverStrategy: true });
   const [validationErrors, setValidationErrors] = useState({});
   const [lastSaved, setLastSaved] = useState(null);
+
+  const strategy = useMemo(
+    () => deriveCoverStrategy(fullProject, metadata),
+    [fullProject, metadata] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const bookSize = useMemo(
     () => BOOK_SIZES.find(s => s.label === metadata.bookSize) || BOOK_SIZES[4],
@@ -797,7 +978,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     setValidationErrors(validateMetadata(metadata));
   }, [metadata]);
 
-  // Auto-save: debounced 600ms after any metadata/canvas change
+  // Auto-save: debounced 600ms after any metadata/canvas/strategy change
   useEffect(() => {
     if (!initRef.current) return;
     const timer = setTimeout(() => {
@@ -807,8 +988,9 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
         return {
           ...p,
           // Backward-compatible fields (DashboardPage reads these)
-          subtitle:   metadata.subtitle,
-          authorLine: metadata.author,
+          subtitle:      metadata.subtitle,
+          authorLine:    metadata.author,
+          coverStrategy: { ...strategy },
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -820,7 +1002,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setLastSaved(new Date());
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -865,6 +1047,9 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             >
               {section.id === "bookInfo" && (
                 <BookInformationCard fullProject={fullProject} metadata={metadata} />
+              )}
+              {section.id === "coverStrategy" && (
+                <CoverStrategyCard strategy={strategy} />
               )}
             </SidebarSection>
           ))}
