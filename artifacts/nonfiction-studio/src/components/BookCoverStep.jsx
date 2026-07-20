@@ -56,16 +56,17 @@ const DEFAULT_CONCEPT = {
   secondary: "#1a2c3d",
 };
 
-const LEFT_SECTIONS = [
-  { id: "bookInfo",       label: "Book Information",  icon: "📖", functional: true  },
-  { id: "coverStrategy",  label: "Cover Strategy",    icon: "🎯", functional: true  },
-  { id: "visualDir",      label: "Visual Direction",  icon: "🎨", functional: true  },
-  { id: "aiPrompt",       label: "AI Prompt",         icon: "✦",  functional: true  },
-  { id: "typography",     label: "Typography",        icon: "Tt", functional: true  },
-  { id: "layouts",        label: "Layouts",           icon: "⊡",  functional: true  },
-  { id: "assets",         label: "Assets",            icon: "🖼", functional: false },
-  { id: "versions",       label: "Versions",          icon: "⎇",  functional: false },
-  { id: "export",         label: "Export",            icon: "⬇",  functional: false },
+const WORKFLOW_STEPS = [
+  { id: "bookInfo",    num: 1,  label: "Book Information",    state: "active" },
+  { id: "market",      num: 2,  label: "Market Analysis",     state: "locked" },
+  { id: "strategy",    num: 3,  label: "Cover Strategy",      state: "locked" },
+  { id: "visual",      num: 4,  label: "Visual Direction",    state: "locked" },
+  { id: "mood",        num: 5,  label: "Mood Board",          state: "locked" },
+  { id: "color",       num: 6,  label: "Color Palette",       state: "locked" },
+  { id: "typography",  num: 7,  label: "Typography",          state: "locked" },
+  { id: "layout",      num: 8,  label: "Layout & Composition",state: "locked" },
+  { id: "concepts",    num: 9,  label: "Generate Concepts",   state: "locked" },
+  { id: "review",      num: 10, label: "Review & Refine",     state: "locked" },
 ];
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -1430,134 +1431,179 @@ function LayoutCard({ profile, generating, onRegenerate }) {
   );
 }
 
-// ─── Studio Sub-Components ────────────────────────────────────────────────────
+// ─── Workflow Navigator ───────────────────────────────────────────────────────
 
-function SidebarSection({ label, icon, expanded, onToggle, children, functional }) {
+function WorkflowNavigator() {
   return (
-    <div className="border-b border-slate-100 last:border-b-0">
-      <button
-        type="button"
-        onClick={functional ? onToggle : undefined}
-        className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
-          functional ? "hover:bg-slate-50 cursor-pointer" : "cursor-default"
-        }`}
-      >
-        <span className="flex items-center gap-2 text-[11px] font-semibold text-slate-700 select-none">
-          <span className="text-[13px] leading-none">{icon}</span>
-          {label}
-        </span>
-        {functional ? (
-          <span className="text-slate-400 text-xs">{expanded ? "▲" : "▼"}</span>
-        ) : (
-          <span className="text-[9px] font-semibold rounded bg-slate-100 text-slate-400 px-1.5 py-0.5 uppercase tracking-wide">
-            Soon
-          </span>
-        )}
-      </button>
-      {functional && expanded && (
-        <div className="px-4 pb-4">{children}</div>
-      )}
-      {!functional && expanded && (
-        <div className="px-4 pb-3">
-          <p className="text-[11px] text-slate-400 italic">
-            Coming in upcoming implementation.
+    <div className="flex-1 overflow-y-auto py-4 px-3">
+      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 px-2 mb-3">
+        Workflow
+      </p>
+      <div className="space-y-0.5">
+        {WORKFLOW_STEPS.map((step) => {
+          const isActive   = step.state === "active";
+          const isComplete = step.state === "complete";
+          const isLocked   = step.state === "locked";
+          return (
+            <div
+              key={step.id}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+                isActive
+                  ? "bg-indigo-600/15 border border-indigo-500/25"
+                  : "hover:bg-gray-800/40"
+              }`}
+            >
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
+                  isActive
+                    ? "bg-indigo-500 text-white shadow-sm shadow-indigo-500/40"
+                    : isComplete
+                    ? "bg-emerald-500 text-white"
+                    : "bg-gray-800 text-gray-600 border border-gray-700"
+                }`}
+              >
+                {isComplete ? "✓" : step.num}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-[11px] font-semibold truncate ${
+                  isActive   ? "text-indigo-300"  :
+                  isComplete ? "text-emerald-400" :
+                               "text-gray-500"
+                }`}>
+                  {step.label}
+                </p>
+                {isLocked && (
+                  <p className="text-[9px] text-gray-700 truncate leading-tight">
+                    Available in upcoming implementation.
+                  </p>
+                )}
+              </div>
+              {isLocked && (
+                <svg className="w-3 h-3 text-gray-700 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Project Status Card ──────────────────────────────────────────────────────
+
+function ProjectStatusCard({ metadata, lastSaved, validationErrors }) {
+  const hasErrors = Object.keys(validationErrors).length > 0;
+  const filled    = [metadata.title, metadata.author, metadata.subtitle, metadata.primaryCategory, metadata.language, metadata.bookSize].filter(Boolean).length;
+  const pct       = Math.round((filled / 6) * 100);
+  const statusLabel = hasErrors ? "Draft" : pct === 100 ? "Ready" : "Draft";
+  const statusColor = hasErrors
+    ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+    : pct === 100
+    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
+    : "bg-blue-500/15 text-blue-400 border-blue-500/25";
+
+  return (
+    <div className="shrink-0 border-t border-gray-800 px-3 py-4 space-y-2">
+      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600">Project Status</p>
+      <div className="rounded-xl bg-gray-800/50 border border-gray-700/40 px-3 py-3 space-y-2.5">
+        <div>
+          <p className="text-[8px] uppercase tracking-widest text-gray-600 mb-0.5">Project</p>
+          <p className="text-[11px] font-semibold text-gray-200 truncate">
+            {metadata.title || "Untitled Book"}
           </p>
         </div>
-      )}
-    </div>
-  );
-}
-
-function InfoRow({ label, value, source }) {
-  return (
-    <div className="space-y-0.5">
-      <div className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">{label}</div>
-      {value ? (
-        <div className="text-[11px] text-slate-800 leading-snug font-medium">{value}</div>
-      ) : (
-        <div className="text-[11px] text-slate-300 italic">Not set</div>
-      )}
-      {source && value && (
-        <div className="text-[9px] text-slate-300">from {source}</div>
-      )}
-    </div>
-  );
-}
-
-function BookInformationCard({ fullProject, metadata }) {
-  const genre = resolveGenre(fullProject) || "";
-
-  return (
-    <div className="space-y-3">
-      <InfoRow label="Title"    value={metadata.title}    source="Book Title step"  />
-      <InfoRow label="Author"   value={metadata.author}   source="Author Bio step"  />
-      <InfoRow label="Subtitle" value={metadata.subtitle}                            />
-      <InfoRow label="Audience" value={metadata.audience} source="Book Details step" />
-      <InfoRow label="Genre"    value={genre}             source="Research step"    />
-      <InfoRow label="Category" value={metadata.primaryCategory}                    />
-      <InfoRow label="Language" value={metadata.language}                           />
-      <InfoRow label="Size"     value={metadata.bookSize}                           />
-      <p className="text-[9px] text-slate-300 pt-1 leading-relaxed">
-        Edit these values in the Metadata panel on the right. Changes auto-save and update the cover preview instantly.
-      </p>
-    </div>
-  );
-}
-
-function ProjectStatusBadge({ validationErrors, lastSaved }) {
-  const hasErrors = Object.keys(validationErrors).length > 0;
-  return (
-    <div className="flex items-center gap-3">
-      <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-        hasErrors
-          ? "bg-amber-50 text-amber-700 border border-amber-200"
-          : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-      }`}>
-        <span>{hasErrors ? "●" : "✓"}</span>
-        <span>{hasErrors ? "Incomplete" : "Ready"}</span>
-      </div>
-      {lastSaved && (
-        <span className="text-[10px] text-slate-400">
-          Saved {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        <div className="flex items-center justify-between">
+          <p className="text-[9px] text-gray-500">Last Saved</p>
+          <p className="text-[9px] text-gray-400">
+            {lastSaved
+              ? lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : "Not yet saved"}
+          </p>
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-[9px] text-gray-500">Current Step</p>
+          <p className="text-[9px] text-indigo-400 font-medium">Book Information</p>
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] text-gray-500">Completion</p>
+            <p className="text-[9px] font-semibold text-gray-300">{pct}%</p>
+          </div>
+          <div className="h-1.5 rounded-full bg-gray-700 overflow-hidden">
+            <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold ${statusColor}`}>
+          {statusLabel}
         </span>
-      )}
+      </div>
     </div>
   );
 }
 
-function WorkspaceHeader({ metadata, validationErrors, lastSaved }) {
+function WorkspaceHeader({ metadata, lastSaved }) {
   return (
-    <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-white shrink-0">
+    <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 bg-gray-900 shrink-0">
       <div className="flex items-center gap-3 min-w-0">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-          <h2 className="text-sm font-bold text-slate-900 truncate">
-            Book Cover Studio
-          </h2>
+          <h2 className="text-sm font-bold text-gray-100 truncate">Book Cover Studio</h2>
         </div>
         {metadata.title && (
           <>
-            <span className="text-slate-300 text-xs">·</span>
-            <span className="text-xs text-slate-500 truncate max-w-[200px]">{metadata.title}</span>
+            <span className="text-gray-700 text-xs">·</span>
+            <span className="text-xs text-gray-400 truncate max-w-[220px]">{metadata.title}</span>
           </>
         )}
       </div>
-      <ProjectStatusBadge validationErrors={validationErrors} lastSaved={lastSaved} />
+      <div className="flex items-center gap-3 shrink-0">
+        {lastSaved && (
+          <span className="text-[10px] text-gray-600 hidden sm:block">
+            Saved {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
+        <button
+          type="button"
+          className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-[11px] font-semibold text-gray-300 hover:bg-gray-700 hover:text-white transition"
+        >
+          Preview
+        </button>
+        <button
+          type="button"
+          disabled
+          className="rounded-lg border border-gray-800 bg-gray-900 px-3 py-1.5 text-[11px] font-semibold text-gray-700 cursor-not-allowed select-none"
+        >
+          Export
+        </button>
+      </div>
     </div>
   );
 }
 
-function CanvasToolbar({ zoom, onZoom, onFitToScreen, canvasBg, onCanvasBg, bookSizeLabel }) {
+function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel }) {
+  function handleZoomIn() {
+    if (zoom === "fit") { onZoom(1.0); return; }
+    const idx = ZOOM_STEPS.indexOf(zoom);
+    if (idx < ZOOM_STEPS.length - 1) onZoom(ZOOM_STEPS[idx + 1]);
+  }
+  function handleZoomOut() {
+    if (zoom === "fit") { onZoom(0.75); return; }
+    const idx = ZOOM_STEPS.indexOf(zoom);
+    if (idx > 0) onZoom(ZOOM_STEPS[idx - 1]);
+  }
+
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-white shrink-0 gap-4">
+    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-gray-900/90 shrink-0 gap-4">
       <div className="flex items-center gap-0.5">
         <button
           type="button"
           onClick={onFitToScreen}
           className={`rounded px-2.5 py-1 text-[10px] font-semibold transition ${
             zoom === "fit"
-              ? "bg-slate-900 text-white"
-              : "text-slate-500 hover:bg-slate-100"
+              ? "bg-indigo-600 text-white"
+              : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
           }`}
         >
           Fit
@@ -1569,30 +1615,46 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, canvasBg, onCanvasBg, book
             onClick={() => onZoom(z)}
             className={`rounded px-2.5 py-1 text-[10px] font-semibold transition ${
               zoom === z
-                ? "bg-slate-900 text-white"
-                : "text-slate-500 hover:bg-slate-100"
+                ? "bg-indigo-600 text-white"
+                : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
             }`}
           >
             {Math.round(z * 100)}%
           </button>
         ))}
+        <div className="w-px h-4 bg-gray-700 mx-1.5" />
+        <button
+          type="button"
+          onClick={handleZoomOut}
+          title="Zoom out"
+          className="rounded px-2 py-1 text-[13px] font-bold text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition leading-none"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          onClick={handleZoomIn}
+          title="Zoom in"
+          className="rounded px-2 py-1 text-[13px] font-bold text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition leading-none"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          title="Fullscreen"
+          className="rounded px-2 py-1 text-[11px] text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition leading-none"
+          onClick={() => {
+            const el = document.documentElement;
+            if (!document.fullscreenElement) el.requestFullscreen?.();
+            else document.exitFullscreen?.();
+          }}
+        >
+          ⛶
+        </button>
       </div>
-
-      <div className="flex items-center gap-3">
-        {bookSizeLabel && (
-          <span className="text-[10px] text-slate-400 hidden sm:block">{bookSizeLabel}</span>
-        )}
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-slate-400">Canvas</span>
-          <input
-            type="color"
-            value={canvasBg}
-            onChange={e => onCanvasBg(e.target.value)}
-            className="h-5 w-6 cursor-pointer rounded border border-slate-200 p-0"
-            title="Workspace background color"
-          />
-        </div>
-      </div>
+      {bookSizeLabel && (
+        <span className="text-[10px] text-gray-600 hidden sm:block">{bookSizeLabel}</span>
+      )}
     </div>
   );
 }
@@ -1671,14 +1733,14 @@ function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize }) {
 function FormField({ label, required, error, hint, children }) {
   return (
     <div className="space-y-1">
-      <label className="flex items-center gap-1 text-[11px] font-semibold text-slate-700">
+      <label className="flex items-center gap-1 text-[11px] font-semibold text-gray-300">
         {label}
         {required && <span className="text-red-400">*</span>}
       </label>
-      {hint && <p className="text-[9px] text-slate-400">{hint}</p>}
+      {hint && <p className="text-[9px] text-gray-500">{hint}</p>}
       {children}
       {error && (
-        <p className="text-[10px] text-red-500 font-medium">{error}</p>
+        <p className="text-[10px] text-red-400 font-medium">{error}</p>
       )}
     </div>
   );
@@ -1690,24 +1752,24 @@ function MetadataPanel({ metadata, onChange, errors }) {
   }
 
   const inputCls = (key) =>
-    `w-full rounded-lg border px-2.5 py-1.5 text-[11px] text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition ${
+    `w-full rounded-lg border px-2.5 py-1.5 text-[11px] text-gray-200 bg-gray-800 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition ${
       errors[key]
-        ? "border-red-300 bg-red-50"
-        : "border-slate-200 bg-white hover:border-slate-300"
+        ? "border-red-500/50 bg-red-900/10"
+        : "border-gray-700 hover:border-gray-600"
     }`;
 
   const selectCls = (key) =>
-    `w-full rounded-lg border px-2.5 py-1.5 text-[11px] text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 transition appearance-none ${
-      errors[key] ? "border-red-300" : "border-slate-200 hover:border-slate-300"
+    `w-full rounded-lg border px-2.5 py-1.5 text-[11px] text-gray-200 bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition appearance-none ${
+      errors[key] ? "border-red-500/50" : "border-gray-700 hover:border-gray-600"
     }`;
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-100 shrink-0">
-        <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-wider">
+      <div className="px-4 py-3 border-b border-gray-800 shrink-0">
+        <h3 className="text-[10px] font-bold text-gray-100 uppercase tracking-wider">
           Book Metadata
         </h3>
-        <p className="text-[9px] text-slate-400 mt-0.5 leading-relaxed">
+        <p className="text-[9px] text-gray-500 mt-0.5 leading-relaxed">
           Drives the live preview and future AI generation.
         </p>
       </div>
@@ -1724,7 +1786,7 @@ function MetadataPanel({ metadata, onChange, errors }) {
             maxLength={120}
           />
           {!errors.title && metadata.title && (
-            <p className="text-[9px] text-slate-300">{metadata.title.length}/80 chars</p>
+            <p className="text-[9px] text-gray-600">{metadata.title.length}/80 chars</p>
           )}
         </FormField>
 
@@ -1748,8 +1810,8 @@ function MetadataPanel({ metadata, onChange, errors }) {
           />
         </FormField>
 
-        <div className="border-t border-slate-100 pt-3.5">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-3">
+        <div className="border-t border-gray-800 pt-3.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-3">
             Optional Details
           </p>
           <div className="space-y-3.5">
@@ -1782,86 +1844,134 @@ function MetadataPanel({ metadata, onChange, errors }) {
           </div>
         </div>
 
-        <div className="border-t border-slate-100 pt-3.5">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-3">
+        <div className="border-t border-gray-800 pt-3.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-3">
             Classification
           </p>
           <div className="space-y-3.5">
             <FormField label="Primary Category">
-              <div className="relative">
-                <select
-                  className={selectCls("primaryCategory")}
-                  value={metadata.primaryCategory}
-                  onChange={e => field("primaryCategory", e)}
-                >
-                  <option value="">Select category…</option>
-                  {NONFICTION_CATEGORIES.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                className={selectCls("primaryCategory")}
+                value={metadata.primaryCategory}
+                onChange={e => field("primaryCategory", e)}
+              >
+                <option value="">Select category…</option>
+                {NONFICTION_CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Secondary Category">
-              <div className="relative">
-                <select
-                  className={selectCls("secondaryCategory")}
-                  value={metadata.secondaryCategory}
-                  onChange={e => field("secondaryCategory", e)}
-                >
-                  <option value="">Select category…</option>
-                  {NONFICTION_CATEGORIES.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            </FormField>
-
-            <FormField label="Target Audience">
-              <input
-                className={inputCls("audience")}
-                value={metadata.audience}
-                onChange={e => field("audience", e)}
-                placeholder="Who is this book for?"
-              />
+              <select
+                className={selectCls("secondaryCategory")}
+                value={metadata.secondaryCategory}
+                onChange={e => field("secondaryCategory", e)}
+              >
+                <option value="">Select category…</option>
+                {NONFICTION_CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Language">
-              <div className="relative">
-                <select
-                  className={selectCls("language")}
-                  value={metadata.language}
-                  onChange={e => field("language", e)}
-                >
-                  {LANGUAGES.map(l => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                className={selectCls("language")}
+                value={metadata.language}
+                onChange={e => field("language", e)}
+              >
+                {LANGUAGES.map(l => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
             </FormField>
           </div>
         </div>
 
-        <div className="border-t border-slate-100 pt-3.5">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-3">
+        <div className="border-t border-gray-800 pt-3.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-3">
             Print Specifications
           </p>
           <FormField label="Book Size" required error={errors.bookSize}
             hint="KDP trim size for print-on-demand.">
-            <div className="relative">
-              <select
-                className={selectCls("bookSize")}
-                value={metadata.bookSize}
-                onChange={e => field("bookSize", e)}
-              >
-                {BOOK_SIZES.map(s => (
-                  <option key={s.label} value={s.label}>{s.label}</option>
-                ))}
-              </select>
-            </div>
+            <select
+              className={selectCls("bookSize")}
+              value={metadata.bookSize}
+              onChange={e => field("bookSize", e)}
+            >
+              {BOOK_SIZES.map(s => (
+                <option key={s.label} value={s.label}>{s.label}</option>
+              ))}
+            </select>
           </FormField>
         </div>
 
+      </div>
+    </div>
+  );
+}
+
+// ─── Filmstrip Bar ────────────────────────────────────────────────────────────
+
+function FilmstripBar() {
+  return (
+    <div
+      className="shrink-0 border-t border-gray-800 bg-gray-950/80 px-4 py-3 flex items-center gap-3 overflow-x-auto"
+      style={{ height: 84 }}
+    >
+      <div className="flex items-center justify-center rounded-xl border border-dashed border-gray-700 bg-gray-800/40 px-6 h-full min-w-[140px]">
+        <p className="text-[9px] text-gray-600 text-center leading-snug select-none">
+          Cover Concepts<br />will appear here.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Right Panel (tabbed) ─────────────────────────────────────────────────────
+
+const RIGHT_TABS = [
+  { id: "design",     label: "Design"     },
+  { id: "typography", label: "Typography" },
+  { id: "layout",     label: "Layout"     },
+  { id: "effects",    label: "Effects"    },
+];
+
+function RightPanel({ metadata, onChange, errors }) {
+  const [activeTab, setActiveTab] = useState("design");
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Tab bar */}
+      <div className="flex shrink-0 border-b border-gray-800">
+        {RIGHT_TABS.map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 py-2.5 text-[10px] font-semibold tracking-wide transition-colors ${
+              activeTab === tab.id
+                ? "text-indigo-400 border-b-2 border-indigo-500"
+                : "text-gray-600 hover:text-gray-300"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "design" ? (
+          <MetadataPanel metadata={metadata} onChange={onChange} errors={errors} />
+        ) : (
+          <div className="flex items-start justify-center pt-10 px-4">
+            <p className="text-[11px] text-gray-600 text-center italic">
+              Coming in upcoming implementation.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1874,7 +1984,6 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   const [metadata, setMetadataState] = useState(() => initMetadata(bookCover, fullProject));
   const [canvas, setCanvasState] = useState(() => initCanvas(bookCover));
-  const [openSections, setOpenSections] = useState({ bookInfo: true, coverStrategy: true, visualDir: true, aiPrompt: true });
   const [validationErrors, setValidationErrors] = useState({});
   const [lastSaved, setLastSaved] = useState(null);
 
@@ -1938,10 +2047,6 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   function handleFitToScreen() {
     setCanvas("zoomLevel", "fit");
-  }
-
-  function toggleSection(id) {
-    setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
   }
 
   async function handleGenerateConcepts() {
@@ -2179,98 +2284,63 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   return (
     <div
-      className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
-      style={{ minHeight: "calc(100vh - 12rem)", minWidth: 0 }}
+      className="flex flex-col overflow-hidden"
+      style={{ minHeight: "calc(100vh - 12rem)", minWidth: 0, background: "#0d1117" }}
     >
       {/* ── Header ── */}
       <WorkspaceHeader
         metadata={metadata}
-        validationErrors={validationErrors}
         lastSaved={lastSaved}
       />
 
       {/* ── Three-panel layout ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* ── LEFT SIDEBAR ── */}
-        <div className="w-52 shrink-0 border-r border-slate-100 bg-slate-50 overflow-y-auto flex flex-col">
-          <div className="px-4 py-3 border-b border-slate-100 shrink-0">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-              Cover Controls
-            </p>
-          </div>
-
-          {LEFT_SECTIONS.map(section => (
-            <SidebarSection
-              key={section.id}
-              label={section.label}
-              icon={section.icon}
-              expanded={!!openSections[section.id]}
-              onToggle={() => toggleSection(section.id)}
-              functional={section.functional}
-            >
-              {section.id === "bookInfo" && (
-                <BookInformationCard fullProject={fullProject} metadata={metadata} />
-              )}
-              {section.id === "coverStrategy" && (
-                <CoverStrategyCard strategy={strategy} />
-              )}
-              {section.id === "visualDir" && (
-                <VisualDirectionCard direction={visualDirection} />
-              )}
-              {section.id === "aiPrompt" && (
-                <AiPromptCard
-                  prompt={coverPrompt}
-                  concepts={concepts}
-                  selectedConceptIdx={selectedConceptIdx}
-                  generatingAll={generatingAll}
-                  regeneratingIdx={regeneratingIdx}
-                  onGenerate={handleGenerateConcepts}
-                  onRegenerateConcept={handleRegenerateConcept}
-                  onSelectConcept={setSelectedConceptIdx}
-                />
-              )}
-              {section.id === "typography" && (
-                <TypographyCard
-                  profile={typographyProfile}
-                  generating={typographyGenerating}
-                  onRegenerate={() => generateTypography(true)}
-                />
-              )}
-              {section.id === "layouts" && (
-                <LayoutCard
-                  profile={layoutProfile}
-                  generating={layoutGenerating}
-                  onRegenerate={() => generateLayout(true)}
-                />
-              )}
-            </SidebarSection>
-          ))}
+        {/* ── LEFT PANEL (~300px) — Workflow Navigator + Project Status ── */}
+        <div
+          className="shrink-0 border-r border-gray-800 flex flex-col overflow-hidden"
+          style={{ width: 300, background: "#111827" }}
+        >
+          <WorkflowNavigator />
+          <ProjectStatusCard
+            metadata={metadata}
+            lastSaved={lastSaved}
+            validationErrors={validationErrors}
+          />
         </div>
 
-        {/* ── CENTER WORKSPACE ── */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-slate-100 overflow-hidden">
+        {/* ── CENTER WORKSPACE — Toolbar + Canvas + Filmstrip ── */}
+        <div
+          className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden"
+          style={{ background: "#1a1f2e" }}
+        >
           <CanvasToolbar
             zoom={canvas.zoomLevel}
             onZoom={handleZoom}
             onFitToScreen={handleFitToScreen}
-            canvasBg={canvas.background}
-            onCanvasBg={v => setCanvas("background", v)}
             bookSizeLabel={bookSize.label}
           />
 
-          <CoverPreviewCanvas
-            metadata={metadata}
-            bookCover={bookCover}
-            zoom={canvas.zoomLevel}
-            canvasBg={canvas.background}
-            bookSize={bookSize}
-          />
+          {/* Canvas occupies ~70% of remaining height via flex */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <CoverPreviewCanvas
+              metadata={metadata}
+              bookCover={bookCover}
+              zoom={canvas.zoomLevel}
+              canvasBg={canvas.background}
+              bookSize={bookSize}
+            />
+          </div>
+
+          <FilmstripBar />
         </div>
 
-        {/* ── RIGHT SIDEBAR ── */}
-        <div className="w-64 shrink-0 border-l border-slate-100 bg-white overflow-hidden flex flex-col">
-          <MetadataPanel
+        {/* ── RIGHT PANEL (~360px) — Tabbed Design Properties ── */}
+        <div
+          className="shrink-0 border-l border-gray-800 flex flex-col overflow-hidden"
+          style={{ width: 360, background: "#111827" }}
+        >
+          <RightPanel
             metadata={metadata}
             onChange={setMetadata}
             errors={validationErrors}
@@ -2279,10 +2349,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
       </div>
 
-      {/* ── Validation summary (from DashboardPage step errors) ── */}
+      {/* ── Step errors from parent ── */}
       {stepErrors?.form && (
-        <div className="px-5 py-3 border-t border-red-100 bg-red-50 shrink-0">
-          <p className="text-xs text-red-600 font-medium">⚠ {stepErrors.form}</p>
+        <div className="px-5 py-3 border-t border-red-900/40 bg-red-950/60 shrink-0">
+          <p className="text-xs text-red-400 font-medium">⚠ {stepErrors.form}</p>
         </div>
       )}
     </div>
