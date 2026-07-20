@@ -685,6 +685,81 @@ Return ONLY this JSON with no markdown or extra text:
   }
 });
 
+// ─── Market Analysis Engine ───────────────────────────────────────────────────
+router.post("/market-analysis", async (req, res) => {
+  try {
+    const {
+      title, subtitle, author,
+      primaryCategory, secondaryCategory,
+      audience, language, genre,
+    } = req.body || {};
+
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+
+    const prompt = `You are a professional book cover market strategist for Amazon KDP nonfiction books.
+
+Analyze this book and return a market-informed cover design direction.
+
+Book Title: ${title}
+Subtitle: ${subtitle || "(none)"}
+Author: ${author || ""}
+Primary Category: ${primaryCategory || "Not specified"}
+Secondary Category: ${secondaryCategory || "Not specified"}
+Target Audience: ${audience || "General readers"}
+Language: ${language || "English"}
+Genre: ${genre || "Nonfiction"}
+
+Rules:
+- designDirection must be one of exactly: "Professional Business", "Modern Self-Help", "Academic", "Luxury", "Minimal", "Bold", "Inspirational", "Corporate"
+- coverGoal must be one of exactly: "Build Trust", "Create Curiosity", "Look Premium", "Show Authority", "Feel Friendly", "Feel Educational", "Inspire Action"
+- readerExpectation must be 2–3 sentences describing what readers in this category expect from a cover
+- confidence is an integer 0–100 representing how clearly the category/audience signals a specific design direction
+- keySignals is an array of 3–5 short strings (each under 8 words) explaining what drove your direction
+
+Return ONLY this JSON, no markdown:
+{
+  "designDirection": "Professional Business",
+  "readerExpectation": "Readers expect a clean, authoritative cover that signals expertise and results. Bold typography and minimal design elements communicate credibility. Strong color contrast and professional imagery reinforce a business-first aesthetic.",
+  "coverGoal": "Show Authority",
+  "confidence": 87,
+  "keySignals": ["Business & Money category", "Professional audience", "Action-oriented subtitle", "Authority framing in title"]
+}`;
+
+    const { text: raw, usedProvider } = await runShort(
+      prompt,
+      "You are a book cover market strategist. Respond with valid JSON only.",
+      req, res, "conceptGen"
+    );
+
+    const data = extractJSON(raw);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "Market analysis returned no parseable data." });
+    }
+
+    const directions = ["Professional Business","Modern Self-Help","Academic","Luxury","Minimal","Bold","Inspirational","Corporate"] as const;
+    const goals      = ["Build Trust","Create Curiosity","Look Premium","Show Authority","Feel Friendly","Feel Educational","Inspire Action"] as const;
+
+    const confidence = typeof data.confidence === "number" && isFinite(data.confidence)
+      ? Math.max(0, Math.min(100, Math.round(data.confidence)))
+      : 75;
+
+    const signals = Array.isArray(data.keySignals)
+      ? data.keySignals.filter((s: any) => typeof s === "string").slice(0, 5)
+      : [];
+
+    return res.json({
+      designDirection:    directions.find(d => d === data.designDirection)   ?? "Professional Business",
+      readerExpectation:  String(data.readerExpectation || ""),
+      coverGoal:          goals.find(g => g === data.coverGoal)              ?? "Show Authority",
+      confidence,
+      keySignals:         signals,
+      _provider: usedProvider,
+    });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 // ─── Layout & Composition Engine ─────────────────────────────────────────────
 router.post("/layout", async (req, res) => {
   try {

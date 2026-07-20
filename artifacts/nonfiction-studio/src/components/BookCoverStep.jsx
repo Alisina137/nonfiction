@@ -63,9 +63,9 @@ const DEFAULT_CONCEPT = {
 };
 
 const WORKFLOW_STEPS = [
-  { id: "bookInfo",    num: 1,  label: "Book Information",    state: "active" },
-  { id: "market",      num: 2,  label: "Market Analysis",     state: "locked" },
-  { id: "strategy",    num: 3,  label: "Cover Strategy",      state: "locked" },
+  { id: "bookInfo",    num: 1,  label: "Book Information",    state: "unlocked" },
+  { id: "market",      num: 2,  label: "Market Analysis",     state: "unlocked" },
+  { id: "strategy",    num: 3,  label: "Cover Strategy",      state: "locked"   },
   { id: "visual",      num: 4,  label: "Visual Direction",    state: "locked" },
   { id: "mood",        num: 5,  label: "Mood Board",          state: "locked" },
   { id: "color",       num: 6,  label: "Color Palette",       state: "locked" },
@@ -1461,7 +1461,7 @@ function LayoutCard({ profile, generating, onRegenerate }) {
 
 // ─── Workflow Navigator ───────────────────────────────────────────────────────
 
-function WorkflowNavigator() {
+function WorkflowNavigator({ currentStep, onStepChange }) {
   return (
     <div className="flex-1 overflow-y-auto py-4 px-3">
       <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 px-2 mb-3">
@@ -1469,16 +1469,23 @@ function WorkflowNavigator() {
       </p>
       <div className="space-y-0.5">
         {WORKFLOW_STEPS.map((step) => {
-          const isActive   = step.state === "active";
+          const isActive   = step.id === currentStep;
           const isComplete = step.state === "complete";
           const isLocked   = step.state === "locked";
+          const isUnlocked = step.state === "unlocked";
+          const isClickable = isUnlocked || isComplete;
           return (
-            <div
+            <button
               key={step.id}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+              type="button"
+              disabled={!isClickable}
+              onClick={isClickable ? () => onStepChange(step.id) : undefined}
+              className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-left ${
                 isActive
                   ? "bg-indigo-600/15 border border-indigo-500/25"
-                  : "hover:bg-gray-800/40"
+                  : isClickable
+                  ? "hover:bg-gray-800/40 cursor-pointer"
+                  : "cursor-default"
               }`}
             >
               <div
@@ -1487,6 +1494,8 @@ function WorkflowNavigator() {
                     ? "bg-indigo-500 text-white shadow-sm shadow-indigo-500/40"
                     : isComplete
                     ? "bg-emerald-500 text-white"
+                    : isUnlocked
+                    ? "bg-gray-700 text-gray-400 border border-gray-600"
                     : "bg-gray-800 text-gray-600 border border-gray-700"
                 }`}
               >
@@ -1496,7 +1505,8 @@ function WorkflowNavigator() {
                 <p className={`text-[11px] font-semibold truncate ${
                   isActive   ? "text-indigo-300"  :
                   isComplete ? "text-emerald-400" :
-                               "text-gray-500"
+                  isUnlocked ? "text-gray-400"    :
+                               "text-gray-600"
                 }`}>
                   {step.label}
                 </p>
@@ -1511,7 +1521,7 @@ function WorkflowNavigator() {
                   <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
                 </svg>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -2035,6 +2045,189 @@ function RightPanel({ metadata, onChange, errors }) {
   );
 }
 
+// ─── Market Analysis Panel ────────────────────────────────────────────────────
+
+function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
+  const coverGoalColor = {
+    "Build Trust":       "bg-sky-500/15 text-sky-300 border-sky-500/30",
+    "Create Curiosity":  "bg-violet-500/15 text-violet-300 border-violet-500/30",
+    "Look Premium":      "bg-amber-500/15 text-amber-300 border-amber-500/30",
+    "Show Authority":    "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+    "Feel Friendly":     "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+    "Feel Educational":  "bg-teal-500/15 text-teal-300 border-teal-500/30",
+    "Inspire Action":    "bg-orange-500/15 text-orange-300 border-orange-500/30",
+  };
+
+  const directionIcon = {
+    "Professional Business": "💼",
+    "Modern Self-Help":      "🚀",
+    "Academic":              "🎓",
+    "Luxury":                "✦",
+    "Minimal":               "◻",
+    "Bold":                  "⬛",
+    "Inspirational":         "✨",
+    "Corporate":             "🏢",
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      {/* ── Step header ── */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Step 2</p>
+        </div>
+        <h2 className="text-lg font-bold text-gray-100">Market Analysis</h2>
+        <p className="text-[12px] text-gray-500 leading-relaxed">
+          AI-powered design direction based on your book's category and audience.
+        </p>
+      </div>
+
+      {/* ── Genre section ── */}
+      <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">📚</span>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Genre</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <p className="text-[9px] uppercase tracking-wider text-gray-600">Primary</p>
+            <p className={`text-[12px] font-semibold ${metadata.primaryCategory ? "text-gray-200" : "text-gray-600 italic"}`}>
+              {metadata.primaryCategory || "Not set"}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[9px] uppercase tracking-wider text-gray-600">Secondary</p>
+            <p className={`text-[12px] font-semibold ${metadata.secondaryCategory ? "text-gray-200" : "text-gray-600 italic"}`}>
+              {metadata.secondaryCategory || "Not set"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Target Audience ── */}
+      <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">🎯</span>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Target Audience</p>
+        </div>
+        <p className={`text-[12px] font-medium ${metadata.audience ? "text-gray-200" : "text-gray-600 italic"}`}>
+          {metadata.audience || "Not available."}
+        </p>
+      </div>
+
+      {/* ── AI Analysis results ── */}
+      {generating ? (
+        <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-6 flex flex-col items-center justify-center gap-3">
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"
+                style={{ animationDelay: `${i * 0.2}s` }} />
+            ))}
+          </div>
+          <p className="text-[11px] text-indigo-400 font-medium">Analyzing market signals…</p>
+        </div>
+      ) : !analysis ? (
+        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-800/20 p-6 flex flex-col items-center gap-3 text-center">
+          <p className="text-[12px] text-gray-500 leading-relaxed">
+            Set a category and audience to generate the market analysis.
+          </p>
+          <button
+            type="button"
+            onClick={onRegenerate}
+            className="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold px-4 py-2 transition"
+          >
+            Analyze Now
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Design Direction — highlighted card */}
+          <div className="rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-900/40 via-indigo-900/20 to-indigo-800/10 p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🎨</span>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Design Direction</p>
+              <div className="ml-auto">
+                <p className="text-[9px] text-indigo-600 font-semibold uppercase tracking-wide">Recommended</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl leading-none">
+                {directionIcon[analysis.designDirection] || "🎨"}
+              </span>
+              <p className="text-xl font-bold text-white">{analysis.designDirection}</p>
+            </div>
+            {Array.isArray(analysis.keySignals) && analysis.keySignals.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {analysis.keySignals.map((sig, i) => (
+                  <span key={i} className="rounded-full bg-indigo-500/15 border border-indigo-500/20 text-indigo-300 text-[9px] font-medium px-2 py-0.5">
+                    {sig}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Reader Expectation */}
+          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">👁</span>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Reader Expectation</p>
+            </div>
+            <p className="text-[12px] text-gray-300 leading-relaxed">{analysis.readerExpectation}</p>
+          </div>
+
+          {/* Cover Goal + Confidence row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🎯</span>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Cover Goal</p>
+              </div>
+              <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[11px] font-bold ${coverGoalColor[analysis.coverGoal] || "bg-gray-700/50 text-gray-300 border-gray-600"}`}>
+                {analysis.coverGoal}
+              </span>
+            </div>
+
+            <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📊</span>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Confidence</p>
+              </div>
+              <p className="text-2xl font-bold text-white">{analysis.confidence}%</p>
+              <div className="h-1.5 rounded-full bg-gray-700 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${analysis.confidence}%`,
+                    background: analysis.confidence >= 80
+                      ? "rgb(52 211 153)"
+                      : analysis.confidence >= 60
+                      ? "rgb(99 102 241)"
+                      : "rgb(251 191 36)",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Regenerate button */}
+      <div className="pt-1">
+        <button
+          type="button"
+          onClick={onRegenerate}
+          disabled={generating}
+          className="w-full rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700/60 text-gray-400 hover:text-gray-200 text-[11px] font-semibold py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {generating ? "Analyzing…" : "↻ Regenerate Analysis"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function BookCoverStep({ bookCover, setBookCover, fullProject, errors: stepErrors }) {
@@ -2045,6 +2238,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [validationErrors, setValidationErrors] = useState({});
   const [lastSaved, setLastSaved] = useState(null);
   const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "saving" | "unsaved"
+  const [currentStep, setCurrentStep] = useState("bookInfo");
 
   // Cover concepts generation state
   const [concepts, setConceptsState] = useState(() =>
@@ -2071,6 +2265,14 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [layoutGenerating, setLayoutGenerating] = useState(false);
   const layoutDebounceRef = useRef(null);
   const layoutKeyRef = useRef("");
+
+  // Market Analysis Engine state
+  const [marketAnalysis, setMarketAnalysis] = useState(() =>
+    bookCover?.marketAnalysis || bookCover?.coverStudio?.marketAnalysis || null
+  );
+  const [marketGenerating, setMarketGenerating] = useState(false);
+  const marketDebounceRef = useRef(null);
+  const marketKeyRef = useRef("");
 
   const strategy = useMemo(
     () => deriveCoverStrategy(fullProject, metadata),
@@ -2230,6 +2432,51 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     return () => { if (layoutDebounceRef.current) clearTimeout(layoutDebounceRef.current); };
   }, [metadata.title, metadata.subtitle, metadata.bookSize, selectedConceptIdx, typographyProfile?.titleAlignment]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Market Analysis Engine ────────────────────────────────────────────────
+  async function generateMarketAnalysis(force = false) {
+    if (marketGenerating) return;
+
+    const key = `${metadata.primaryCategory}|${metadata.secondaryCategory}|${metadata.audience}|${metadata.language}`;
+    if (!force && key === marketKeyRef.current && marketAnalysis?.generatedForKey === key) return;
+    if (!metadata.title?.trim()) return;
+
+    marketKeyRef.current = key;
+    setMarketGenerating(true);
+    try {
+      const res = await fetch("/api/ai/market-analysis", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:             metadata.title,
+          subtitle:          metadata.subtitle          || "",
+          author:            metadata.author            || "",
+          primaryCategory:   metadata.primaryCategory   || "",
+          secondaryCategory: metadata.secondaryCategory || "",
+          audience:          metadata.audience          || "",
+          language:          metadata.language          || "English",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Market analysis failed");
+      setMarketAnalysis({ ...data, generatedForKey: key });
+    } catch (err) {
+      console.error("[MarketAnalysis] generation error:", err);
+    } finally {
+      setMarketGenerating(false);
+    }
+  }
+
+  // Auto-regenerate when category, audience, or language changes
+  useEffect(() => {
+    const key = `${metadata.primaryCategory}|${metadata.secondaryCategory}|${metadata.audience}|${metadata.language}`;
+    if (!metadata.title?.trim()) return;
+    if (key === marketKeyRef.current && marketAnalysis?.generatedForKey === key) return;
+
+    if (marketDebounceRef.current) clearTimeout(marketDebounceRef.current);
+    marketDebounceRef.current = setTimeout(() => generateMarketAnalysis(false), 1400);
+    return () => { if (marketDebounceRef.current) clearTimeout(marketDebounceRef.current); };
+  }, [metadata.primaryCategory, metadata.secondaryCategory, metadata.audience, metadata.language, metadata.title]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Typography Intelligence Engine ────────────────────────────────────────
   async function generateTypography(force = false) {
     if (typographyGenerating) return;
@@ -2319,13 +2566,15 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           selectedConceptIndex: selectedConceptIdx,
           typographyProfile:    typographyProfile || null,
           layoutProfile:        layoutProfile     || null,
+          marketAnalysis:       marketAnalysis    || null,
           // Extended cover studio state
           coverStudio: {
             ...project,
-            metadata:   { ...metadata },
-            canvas:     { ...canvas },
-            typography: typographyProfile || null,
-            layout:     layoutProfile     || null,
+            metadata:       { ...metadata },
+            canvas:         { ...canvas },
+            typography:     typographyProfile || null,
+            layout:         layoutProfile     || null,
+            marketAnalysis: marketAnalysis    || null,
           },
         };
       });
@@ -2333,7 +2582,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile, marketAnalysis]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -2364,7 +2613,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           className="shrink-0 border-r border-gray-800 flex flex-col overflow-hidden"
           style={{ width: 300, background: "#111827" }}
         >
-          <WorkflowNavigator />
+          <WorkflowNavigator currentStep={currentStep} onStepChange={setCurrentStep} />
           <ProjectStatusCard
             metadata={metadata}
             lastSaved={lastSaved}
@@ -2377,27 +2626,38 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden"
           style={{ background: "#1a1f2e" }}
         >
-          <CanvasToolbar
-            zoom={canvas.zoomLevel}
-            onZoom={handleZoom}
-            onFitToScreen={handleFitToScreen}
-            bookSizeLabel={bookSize.label}
-            canvasBg={canvas.background}
-            onBgChange={bg => setCanvas("background", bg)}
-          />
-
-          {/* Canvas occupies ~70% of remaining height via flex */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <CoverPreviewCanvas
+          {currentStep === "market" ? (
+            <MarketAnalysisPanel
               metadata={metadata}
-              bookCover={bookCover}
-              zoom={canvas.zoomLevel}
-              canvasBg={canvas.background}
-              bookSize={bookSize}
+              analysis={marketAnalysis}
+              generating={marketGenerating}
+              onRegenerate={() => generateMarketAnalysis(true)}
             />
-          </div>
+          ) : (
+            <>
+              <CanvasToolbar
+                zoom={canvas.zoomLevel}
+                onZoom={handleZoom}
+                onFitToScreen={handleFitToScreen}
+                bookSizeLabel={bookSize.label}
+                canvasBg={canvas.background}
+                onBgChange={bg => setCanvas("background", bg)}
+              />
 
-          <FilmstripBar />
+              {/* Canvas occupies ~70% of remaining height via flex */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <CoverPreviewCanvas
+                  metadata={metadata}
+                  bookCover={bookCover}
+                  zoom={canvas.zoomLevel}
+                  canvasBg={canvas.background}
+                  bookSize={bookSize}
+                />
+              </div>
+
+              <FilmstripBar />
+            </>
+          )}
         </div>
 
         {/* ── RIGHT PANEL (~360px) — Tabbed Design Properties ── */}
