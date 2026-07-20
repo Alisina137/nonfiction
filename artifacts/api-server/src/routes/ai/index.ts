@@ -760,6 +760,88 @@ Return ONLY this JSON, no markdown:
   }
 });
 
+// ─── Cover Strategy Engine ───────────────────────────────────────────────────
+router.post("/cover-strategy", async (req, res) => {
+  try {
+    const {
+      title, subtitle, author,
+      primaryCategory, secondaryCategory,
+      audience, language,
+      marketDesignDirection, marketCoverGoal, marketReaderExpectation,
+    } = req.body || {};
+
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+
+    const marketContext = marketDesignDirection
+      ? `Market Analysis Context:\n- Design Direction: ${marketDesignDirection}\n- Cover Goal: ${marketCoverGoal || ""}\n- Reader Expectation: ${marketReaderExpectation || ""}`
+      : "";
+
+    const prompt = `You are a senior book cover creative strategist for Amazon KDP nonfiction books.
+
+Convert the market analysis into a precise cover design strategy that will guide all AI cover generation.
+
+Book Title: ${title}
+Subtitle: ${subtitle || "(none)"}
+Author: ${author || ""}
+Primary Category: ${primaryCategory || "Not specified"}
+Secondary Category: ${secondaryCategory || "Not specified"}
+Target Audience: ${audience || "General readers"}
+Language: ${language || "English"}
+${marketContext}
+
+Rules:
+- primaryMessage: one sentence (under 20 words) describing the single core thing the cover must communicate
+- emotionalTone: must be exactly one of: "Professional", "Calm", "Bold", "Inspirational", "Friendly", "Serious", "Premium", "Elegant"
+- visualFocus: must be exactly one of: "Typography", "Illustration", "Photography", "Abstract Shapes", "Icon Based", "Mixed"
+- visualFocusExplanation: one sentence explaining WHY this visual focus fits the book (under 20 words)
+- coverPersonality: array of exactly 3 single-word or two-word descriptive keywords (e.g. "Modern", "Clean", "Trustworthy")
+- readerFirstImpression: 2–3 sentences describing what readers should feel at first glance
+- strategySummary: concise summary of the overall design direction, maximum 80 words
+
+Return ONLY this JSON, no markdown:
+{
+  "primaryMessage": "...",
+  "emotionalTone": "Professional",
+  "visualFocus": "Typography",
+  "visualFocusExplanation": "...",
+  "coverPersonality": ["Modern", "Clean", "Trustworthy"],
+  "readerFirstImpression": "...",
+  "strategySummary": "..."
+}`;
+
+    const { text: raw, usedProvider } = await runShort(
+      prompt,
+      "You are a book cover creative strategist. Respond with valid JSON only.",
+      req, res, "conceptGen"
+    );
+
+    const data = extractJSON(raw);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "Cover strategy returned no parseable data." });
+    }
+
+    const tones     = ["Professional","Calm","Bold","Inspirational","Friendly","Serious","Premium","Elegant"] as const;
+    const focuses   = ["Typography","Illustration","Photography","Abstract Shapes","Icon Based","Mixed"] as const;
+
+    const personality = Array.isArray(data.coverPersonality)
+      ? data.coverPersonality.filter((k: any) => typeof k === "string").slice(0, 3)
+      : [];
+
+    return res.json({
+      primaryMessage:        String(data.primaryMessage || "").slice(0, 200),
+      emotionalTone:         tones.find(t => t === data.emotionalTone)     ?? "Professional",
+      visualFocus:           focuses.find(f => f === data.visualFocus)     ?? "Typography",
+      visualFocusExplanation: String(data.visualFocusExplanation || "").slice(0, 200),
+      coverPersonality:      personality,
+      readerFirstImpression: String(data.readerFirstImpression || "").slice(0, 600),
+      strategySummary:       String(data.strategySummary || "").slice(0, 600),
+      _provider: usedProvider,
+    });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 // ─── Layout & Composition Engine ─────────────────────────────────────────────
 router.post("/layout", async (req, res) => {
   try {
