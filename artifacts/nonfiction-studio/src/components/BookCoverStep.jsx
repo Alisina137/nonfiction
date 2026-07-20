@@ -72,7 +72,7 @@ const WORKFLOW_STEPS = [
   { id: "elements",    num: 7,  label: "Design Elements",     state: "unlocked" },
   { id: "typography",  num: 8,  label: "Typography",          state: "locked" },
   { id: "layout",      num: 9,  label: "Layout & Composition",state: "locked" },
-  { id: "concepts",    num: 10, label: "Generate Concepts",   state: "locked" },
+  { id: "concepts",    num: 10, label: "Generate Concepts",   state: "unlocked" },
   { id: "review",      num: 11, label: "Review & Refine",     state: "locked" },
 ];
 
