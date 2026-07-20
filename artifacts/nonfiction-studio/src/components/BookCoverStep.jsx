@@ -73,7 +73,7 @@ const WORKFLOW_STEPS = [
   { id: "typography",  num: 8,  label: "Typography",          state: "locked" },
   { id: "layout",      num: 9,  label: "Layout & Composition",state: "locked" },
   { id: "concepts",    num: 10, label: "Generate Concepts",   state: "unlocked" },
-  { id: "review",      num: 11, label: "Review & Refine",     state: "locked" },
+  { id: "review",      num: 11, label: "Review",               state: "unlocked" },
 ];
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -2720,7 +2720,7 @@ function MoodBoardPanel({ metadata, moodBoards, selectedMoodBoardIdx, generating
 // ─── Cover Strategy Panel ────────────────────────────────────────────────────
 
 function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onRegenerate }) {
-  const [summaryOpen, setSummaryOpen] = React.useState(true);
+  const [summaryOpen, setSummaryOpen] = useState(true);
 
   const toneColor = {
     Professional: "bg-sky-500/15 text-sky-300 border-sky-500/30",
@@ -3072,6 +3072,314 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
   );
 }
 
+// ─── Review Panel ────────────────────────────────────────────────────────────
+
+const SCORE_DIMS = [
+  { key: "readability",           label: "Readability"           },
+  { key: "visualHierarchy",       label: "Visual Hierarchy"      },
+  { key: "colorHarmony",          label: "Color Harmony"         },
+  { key: "contrast",              label: "Contrast"              },
+  { key: "genreMatch",            label: "Genre Match"           },
+  { key: "professionalAppearance",label: "Professional"          },
+  { key: "thumbnailVisibility",   label: "Thumbnail Visibility"  },
+];
+
+const SORT_OPTIONS = [
+  { value: "highest",            label: "Highest Score"    },
+  { value: "readability",        label: "Readability"      },
+  { value: "genreMatch",         label: "Genre Match"      },
+  { value: "thumbnailVisibility",label: "Thumbnail Score"  },
+];
+
+function scoreColor(n) {
+  if (n >= 75) return { bar: "bg-emerald-500", text: "text-emerald-400", ring: "ring-emerald-500/30" };
+  if (n >= 50) return { bar: "bg-amber-500",   text: "text-amber-400",   ring: "ring-amber-500/30"   };
+  return             { bar: "bg-rose-500",     text: "text-rose-400",    ring: "ring-rose-500/30"    };
+}
+
+function OverallRing({ score }) {
+  const { text } = scoreColor(score);
+  const grade = score >= 90 ? "A+" : score >= 80 ? "A" : score >= 70 ? "B" : score >= 60 ? "C" : "D";
+  return (
+    <div className="flex flex-col items-center justify-center gap-0.5">
+      <span className={`text-3xl font-black tabular-nums ${text}`}>{score}</span>
+      <span className="text-[9px] text-gray-500 font-semibold uppercase tracking-widest">/ 100</span>
+      <span className={`text-[10px] font-bold ${text}`}>{grade}</span>
+    </div>
+  );
+}
+
+function ScoreBar({ label, value }) {
+  const { bar, text } = scoreColor(value);
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[9px] text-gray-500">{label}</span>
+        <span className={`text-[9px] font-bold tabular-nums ${text}`}>{value}</span>
+      </div>
+      <div className="h-1 rounded-full bg-gray-700/60 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${bar}`}
+          style={{ width: `${value}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ReviewConceptCard({ concept, review, isRecommended }) {
+  if (!review) return null;
+  const { text: oText } = scoreColor(review.overallScore);
+  return (
+    <div
+      className={`rounded-2xl border overflow-hidden flex flex-col ${
+        isRecommended
+          ? "border-amber-500/60 shadow-lg shadow-amber-500/10"
+          : "border-gray-700/50"
+      }`}
+      style={{ background: "#1a2235" }}
+    >
+      {/* Header */}
+      <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-gray-700/40">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0"
+            style={{ background: concept.bg || "#1a2235", color: concept.accent || "#d4961a", border: `2px solid ${concept.accent || "#d4961a"}40` }}
+          >
+            {concept.conceptLabel}
+          </div>
+          <div>
+            <p className="text-[12px] font-bold text-gray-100 leading-tight">{concept.conceptName}</p>
+            <p className="text-[9px] text-gray-500 uppercase tracking-wider">{concept.primaryStyle}</p>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <OverallRing score={review.overallScore} />
+        </div>
+      </div>
+
+      {/* AI Recommended badge */}
+      {isRecommended && (
+        <div className="px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-1.5">
+          <span className="text-amber-400 text-[10px]">★</span>
+          <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest">AI Recommended</span>
+        </div>
+      )}
+
+      {/* Score bars */}
+      <div className="px-4 py-3 space-y-1.5 border-b border-gray-700/30">
+        {SCORE_DIMS.map(({ key, label }) => (
+          <ScoreBar key={key} label={label} value={review.scores?.[key] ?? 50} />
+        ))}
+      </div>
+
+      {/* Strengths */}
+      {review.strengths?.length > 0 && (
+        <div className="px-4 py-3 border-b border-gray-700/30">
+          <p className="text-[8px] font-bold uppercase tracking-widest text-emerald-500/70 mb-1.5">Strengths</p>
+          <ul className="space-y-1">
+            {review.strengths.map((s, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <span className="text-emerald-500 text-[9px] mt-0.5 shrink-0">✓</span>
+                <span className="text-[10px] text-gray-300 leading-tight">{s}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Improvements */}
+      {review.improvements?.length > 0 && (
+        <div className="px-4 py-3 border-b border-gray-700/30">
+          <p className="text-[8px] font-bold uppercase tracking-widest text-amber-500/70 mb-1.5">Improvements</p>
+          <ul className="space-y-1">
+            {review.improvements.map((s, i) => (
+              <li key={i} className="flex items-start gap-1.5">
+                <span className="text-amber-400 text-[9px] mt-0.5 shrink-0">→</span>
+                <span className="text-[10px] text-gray-300 leading-tight">{s}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Best use case */}
+      {review.bestUseCase && (
+        <div className="px-4 py-3">
+          <p className="text-[8px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">Best For</p>
+          <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+            {review.bestUseCase}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReviewCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-gray-700/50 overflow-hidden bg-gray-800/40 animate-pulse">
+      <div className="px-4 pt-4 pb-3 border-b border-gray-700/40 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-gray-700/60" />
+          <div className="space-y-1">
+            <div className="h-3 w-24 rounded bg-gray-700/60" />
+            <div className="h-2 w-16 rounded bg-gray-700/40" />
+          </div>
+        </div>
+        <div className="space-y-1 text-right">
+          <div className="h-8 w-12 rounded bg-gray-700/60 ml-auto" />
+          <div className="h-2 w-10 rounded bg-gray-700/40 ml-auto" />
+        </div>
+      </div>
+      <div className="px-4 py-3 space-y-2">
+        {[...Array(7)].map((_, i) => (
+          <div key={i} className="space-y-0.5">
+            <div className="h-2 w-20 rounded bg-gray-700/40" />
+            <div className="h-1 rounded-full bg-gray-700/50" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReviewPanel({ concepts, conceptReviews, recommendedConceptLabel, reviewGenerating, onReview }) {
+  const [sortBy, setSortBy] = useState("highest");
+
+  const hasReviews = Array.isArray(conceptReviews) && conceptReviews.length > 0;
+  const hasConcepts = Array.isArray(concepts) && concepts.length > 0;
+
+  // Build a map: conceptLabel → review
+  const reviewMap = {};
+  (conceptReviews || []).forEach(r => { reviewMap[r.conceptLabel] = r; });
+
+  // Merge concepts with their reviews and sort
+  const items = (concepts || []).map((concept, idx) => ({
+    concept,
+    review: reviewMap[concept.conceptLabel] || null,
+    idx,
+  }));
+
+  const sorted = [...items].sort((a, b) => {
+    if (!a.review) return 1;
+    if (!b.review) return -1;
+    if (sortBy === "highest")             return (b.review.overallScore               ?? 0) - (a.review.overallScore               ?? 0);
+    if (sortBy === "readability")         return (b.review.scores?.readability         ?? 0) - (a.review.scores?.readability         ?? 0);
+    if (sortBy === "genreMatch")          return (b.review.scores?.genreMatch          ?? 0) - (a.review.scores?.genreMatch          ?? 0);
+    if (sortBy === "thumbnailVisibility") return (b.review.scores?.thumbnailVisibility ?? 0) - (a.review.scores?.thumbnailVisibility ?? 0);
+    return 0;
+  });
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: "#0d1117" }}>
+      {/* Header */}
+      <div className="shrink-0 px-6 py-4 border-b border-gray-800 flex items-center justify-between" style={{ background: "#111827" }}>
+        <div>
+          <h2 className="text-[13px] font-bold text-gray-100 tracking-wide">AI Review</h2>
+          <p className="text-[10px] text-gray-500 mt-0.5">
+            {hasReviews
+              ? `${conceptReviews.length} concept${conceptReviews.length !== 1 ? "s" : ""} analyzed · Recommended: Concept ${recommendedConceptLabel || "–"}`
+              : reviewGenerating
+              ? "Analyzing concepts…"
+              : "Generate concepts first, then review"}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {hasReviews && (
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="text-[10px] rounded-lg border border-gray-700 bg-gray-800 text-gray-300 px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              {SORT_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => onReview()}
+            disabled={reviewGenerating || !hasConcepts}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold tracking-wide transition-all ${
+              reviewGenerating
+                ? "bg-indigo-500/30 text-indigo-400 cursor-not-allowed"
+                : !hasConcepts
+                ? "bg-gray-700/50 text-gray-500 cursor-not-allowed"
+                : "bg-indigo-600 text-white hover:bg-indigo-500"
+            }`}
+          >
+            {reviewGenerating ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin" />
+                Analyzing…
+              </>
+            ) : (
+              <>★ {hasReviews ? "Re-analyze" : "Analyze Concepts"}</>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-5">
+        {reviewGenerating ? (
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[11px] text-gray-500">Evaluating each concept against professional design criteria…</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+              {[0, 1, 2, 3].map(i => <ReviewCardSkeleton key={i} />)}
+            </div>
+          </div>
+        ) : hasReviews ? (
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            {sorted.map(({ concept, review }) => (
+              <ReviewConceptCard
+                key={concept.conceptLabel}
+                concept={concept}
+                review={review}
+                isRecommended={concept.conceptLabel === recommendedConceptLabel}
+              />
+            ))}
+          </div>
+        ) : hasConcepts ? (
+          <div className="flex flex-col items-center justify-center h-full min-h-64 text-center gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center">
+              <span className="text-3xl">★</span>
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-gray-300 mb-1.5">Ready to review</p>
+              <p className="text-[11px] text-gray-600 max-w-xs leading-relaxed">
+                {concepts.length} concept{concepts.length !== 1 ? "s" : ""} ready to be evaluated. Click <strong className="text-gray-400">Analyze Concepts</strong> to score each one against professional design criteria.
+              </p>
+            </div>
+            <button
+              onClick={() => onReview()}
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-500 transition-colors"
+            >
+              ★ Analyze Concepts
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full min-h-64 text-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center">
+              <span className="text-3xl text-gray-700">★</span>
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-gray-400 mb-1.5">No concepts yet</p>
+              <p className="text-[11px] text-gray-600 max-w-xs leading-relaxed">
+                Go to <strong className="text-gray-500">Generate Concepts</strong> first, then come back to analyze them.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Generate Concepts Panel ─────────────────────────────────────────────────
 
 const STYLE_TO_RENDERER_TYPE = {
@@ -3374,6 +3682,16 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [generatingAll, setGeneratingAll] = useState(false);
   const [regeneratingIdx, setRegeneratingIdx] = useState(null);
 
+  // Concept Review Engine state
+  const [conceptReviews, setConceptReviews] = useState(() =>
+    Array.isArray(bookCover?.conceptReviews) ? bookCover.conceptReviews :
+    Array.isArray(bookCover?.coverStudio?.conceptReviews) ? bookCover.coverStudio.conceptReviews : []
+  );
+  const [reviewGenerating, setReviewGenerating] = useState(false);
+  const [recommendedConceptLabel, setRecommendedConceptLabel] = useState(() =>
+    bookCover?.recommendedConceptLabel || bookCover?.coverStudio?.recommendedConceptLabel || null
+  );
+
   // Typography Intelligence Engine state
   const [typographyProfile, setTypographyProfile] = useState(() =>
     bookCover?.typographyProfile || bookCover?.coverStudio?.typography || null
@@ -3518,6 +3836,35 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     };
   }
 
+  async function handleReviewConcepts(conceptsToReview) {
+    const toReview = conceptsToReview || concepts;
+    if (!toReview?.length || reviewGenerating) return;
+    setReviewGenerating(true);
+    try {
+      const res = await fetch("/api/ai/concept-review", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          title:           metadata.title       || "",
+          subtitle:        metadata.subtitle    || "",
+          primaryCategory: metadata.primaryCategory || "",
+          audience:        metadata.audience    || "",
+          concepts:        toReview,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Review failed");
+      if (Array.isArray(data.reviews)) {
+        setConceptReviews(data.reviews);
+        if (data.recommendedConceptLabel) setRecommendedConceptLabel(data.recommendedConceptLabel);
+      }
+    } catch (err) {
+      console.error("[ConceptReview] error:", err);
+    } finally {
+      setReviewGenerating(false);
+    }
+  }
+
   async function handleGenerateConcepts() {
     if (generatingAll) return;
     setGeneratingAll(true);
@@ -3538,6 +3885,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
         setConceptsState(data.concepts);
         // Auto-select first concept if none selected
         setSelectedConceptIdx(prev => prev !== null ? prev : 0);
+        // Auto-trigger review for the newly generated concepts
+        handleReviewConcepts(data.concepts).catch(err =>
+          console.warn("[CoverConcepts] auto-review failed:", err)
+        );
       }
     } catch (err) {
       console.error("[CoverConcepts] generation error:", err);
@@ -4054,6 +4405,8 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           aiPrompt:             coverPrompt ? { ...coverPrompt } : null,
           concepts:             concepts.length > 0 ? concepts : [],
           selectedConceptIndex: selectedConceptIdx,
+          conceptReviews:       conceptReviews.length > 0 ? conceptReviews : [],
+          recommendedConceptLabel: recommendedConceptLabel || null,
           typographyProfile:    typographyProfile || null,
           layoutProfile:        layoutProfile     || null,
           marketAnalysis:       marketAnalysis        || null,
@@ -4077,6 +4430,8 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             colorPalettes:        colorPalettes.length > 0 ? colorPalettes : [],
             selectedPaletteIdx:   selectedPaletteIdx        ?? null,
             designElements:       designElements            || null,
+            conceptReviews:       conceptReviews.length > 0 ? conceptReviews : [],
+            recommendedConceptLabel: recommendedConceptLabel || null,
           },
         };
       });
@@ -4084,7 +4439,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -4128,7 +4483,15 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden"
           style={{ background: "#1a1f2e" }}
         >
-          {currentStep === "concepts" ? (
+          {currentStep === "review" ? (
+            <ReviewPanel
+              concepts={concepts}
+              conceptReviews={conceptReviews}
+              recommendedConceptLabel={recommendedConceptLabel}
+              reviewGenerating={reviewGenerating}
+              onReview={() => handleReviewConcepts()}
+            />
+          ) : currentStep === "concepts" ? (
             <GenerateConceptsPanel
               metadata={metadata}
               concepts={concepts}

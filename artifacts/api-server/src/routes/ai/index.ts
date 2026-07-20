@@ -1224,6 +1224,115 @@ Return ONLY valid JSON, no markdown:
   }
 });
 
+// ─── Concept Review Engine ───────────────────────────────────────────────────
+router.post("/concept-review", async (req, res) => {
+  try {
+    const { title, subtitle, primaryCategory, audience, concepts } = req.body || {};
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+    if (!Array.isArray(concepts) || concepts.length === 0)
+      return res.status(400).json({ error: "concepts array is required" });
+
+    const conceptsDesc = concepts.map((c: any) =>
+      `Concept ${c.conceptLabel} — "${c.conceptName}"
+  Primary Style: ${c.primaryStyle}
+  Style Tags: ${(c.styleTags || []).join(", ")}
+  Description: ${c.description || "(none)"}
+  Background: ${c.bg}, Accent: ${c.accent}, Text: ${c.text}
+  Composition Focus: ${c.compositionFocus}
+  Shape Motif: ${c.shapeMotif}`
+    ).join("\n\n");
+
+    const prompt = `You are a senior book cover design critic specializing in Amazon KDP nonfiction bestsellers.
+
+Evaluate each of these ${concepts.length} cover concepts for the book "${title}"${subtitle ? ` — ${subtitle}` : ""} (Category: ${primaryCategory || "Nonfiction"}, Audience: ${audience || "General readers"}).
+
+${conceptsDesc}
+
+Score each concept 0–100 on all seven dimensions. Make scores genuinely reflect each concept's actual design characteristics — bold/dark designs score differently than minimal/light ones.
+
+Dimensions to score:
+- readability: ease of reading title/text at first glance
+- visualHierarchy: how well the design guides the viewer's eye
+- colorHarmony: how well the colors work together aesthetically
+- contrast: how well key elements stand out from the background
+- genreMatch: how appropriate the design is for this book's category/audience
+- professionalAppearance: how polished and market-ready it looks
+- thumbnailVisibility: impact and recognizability at small (thumbnail) sizes
+
+Also provide:
+- overallScore: weighted average of all 7 scores (integer 0–100)
+- strengths: exactly 3 concise strengths (max 8 words each)
+- improvements: exactly 3 actionable improvement suggestions (max 10 words each)
+- bestUseCase: one of "Kindle Ebook", "Paperback", "Hardcover Premium", "Academic Book", "Business Book", "Self-Help Market", "Gift Book", "International Market"
+
+Return ONLY valid JSON, no markdown:
+{
+  "reviews": [
+    {
+      "conceptLabel": "A",
+      "scores": {
+        "readability": 85,
+        "visualHierarchy": 78,
+        "colorHarmony": 90,
+        "contrast": 82,
+        "genreMatch": 88,
+        "professionalAppearance": 91,
+        "thumbnailVisibility": 75
+      },
+      "overallScore": 84,
+      "strengths": ["Strong title typography", "Excellent color contrast", "Clear focal point"],
+      "improvements": ["Increase title font size", "Simplify background texture", "Improve subtitle legibility"],
+      "bestUseCase": "Paperback"
+    }${concepts.length > 1 ? `,
+    { "conceptLabel": "B", ... },
+    { "conceptLabel": "C", ... },
+    { "conceptLabel": "D", ... }` : ""}
+  ]
+}`;
+
+    const { text: raw, usedProvider } = await runLong(
+      prompt,
+      "You are a professional book cover design critic. Return valid JSON only.",
+      req, res, "conceptGen"
+    );
+
+    const data = extractJSON(raw);
+    if (!data?.reviews || !Array.isArray(data.reviews)) {
+      return res.status(500).json({ error: "Review returned no parseable data." });
+    }
+
+    const scoreKeys = ["readability","visualHierarchy","colorHarmony","contrast","genreMatch","professionalAppearance","thumbnailVisibility"] as const;
+    const useCases  = ["Kindle Ebook","Paperback","Hardcover Premium","Academic Book","Business Book","Self-Help Market","Gift Book","International Market"] as const;
+    const labels    = ["A","B","C","D"] as const;
+
+    function clamp(n: any): number {
+      const v = parseInt(n, 10);
+      return isNaN(v) ? 50 : Math.max(0, Math.min(100, v));
+    }
+
+    const reviews = data.reviews.slice(0, concepts.length).map((r: any, i: number) => {
+      const scores: Record<string, number> = {};
+      for (const k of scoreKeys) scores[k] = clamp(r.scores?.[k]);
+      const overall = clamp(r.overallScore) ||
+        Math.round(Object.values(scores).reduce((a, b) => (a as number) + (b as number), 0) as number / scoreKeys.length);
+      return {
+        conceptLabel:         labels[i],
+        scores,
+        overallScore:         overall,
+        strengths:            Array.isArray(r.strengths)    ? r.strengths.slice(0, 3).map(String)   : [],
+        improvements:         Array.isArray(r.improvements) ? r.improvements.slice(0, 3).map(String): [],
+        bestUseCase:          useCases.find(u => u === r.bestUseCase) ?? String(r.bestUseCase || "Paperback"),
+        reviewedAt:           new Date().toISOString(),
+      };
+    });
+
+    const best = reviews.reduce((prev, cur) => cur.overallScore > prev.overallScore ? cur : prev, reviews[0]);
+    return res.json({ reviews, recommendedConceptLabel: best?.conceptLabel ?? "A", _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 // ─── Design Elements Engine ──────────────────────────────────────────────────
 router.post("/design-elements", async (req, res) => {
   try {
