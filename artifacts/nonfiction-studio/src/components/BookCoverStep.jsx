@@ -3072,6 +3072,286 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
   );
 }
 
+// ─── Generate Concepts Panel ─────────────────────────────────────────────────
+
+const STYLE_TO_RENDERER_TYPE = {
+  Minimal:   "minimal",
+  Bold:      "dynamic",
+  Elegant:   "premium",
+  Corporate: "authority",
+  Creative:  "metaphor",
+  Modern:    "dynamic",
+};
+
+const TAG_COLORS = {
+  Professional:  "bg-sky-900/60 text-sky-300 border-sky-700/50",
+  Minimal:       "bg-slate-800/60 text-slate-300 border-slate-600/50",
+  Bold:          "bg-rose-900/60 text-rose-300 border-rose-700/50",
+  Corporate:     "bg-blue-900/60 text-blue-300 border-blue-700/50",
+  Modern:        "bg-indigo-900/60 text-indigo-300 border-indigo-700/50",
+  Elegant:       "bg-purple-900/60 text-purple-300 border-purple-700/50",
+  Creative:      "bg-violet-900/60 text-violet-300 border-violet-700/50",
+  Dynamic:       "bg-orange-900/60 text-orange-300 border-orange-700/50",
+  Classic:       "bg-amber-900/60 text-amber-300 border-amber-700/50",
+  Premium:       "bg-yellow-900/60 text-yellow-300 border-yellow-700/50",
+  Authoritative: "bg-emerald-900/60 text-emerald-300 border-emerald-700/50",
+  Vibrant:       "bg-pink-900/60 text-pink-300 border-pink-700/50",
+};
+
+function ConceptCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-gray-700/50 overflow-hidden bg-gray-800/40 animate-pulse">
+      <div className="bg-gray-700/50" style={{ aspectRatio: "9/11" }} />
+      <div className="p-3 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-gray-700/60" />
+          <div className="h-3 rounded bg-gray-700/60 flex-1" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="h-2.5 rounded bg-gray-700/50 w-full" />
+          <div className="h-2.5 rounded bg-gray-700/50 w-4/5" />
+          <div className="h-2.5 rounded bg-gray-700/50 w-3/5" />
+        </div>
+        <div className="flex gap-1.5">
+          <div className="h-5 w-16 rounded-full bg-gray-700/50" />
+          <div className="h-5 w-14 rounded-full bg-gray-700/50" />
+        </div>
+        <div className="flex gap-2 pt-1">
+          <div className="flex-1 h-7 rounded-lg bg-gray-700/50" />
+          <div className="w-8 h-7 rounded-lg bg-gray-700/50" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, onSelect, onRegenerate, metadata }) {
+  const rendererType = STYLE_TO_RENDERER_TYPE[concept.primaryStyle] || "authority";
+  const cd = buildCoverData(
+    { ...concept, type: rendererType },
+    { subtitle: metadata?.subtitle || "", authorLine: metadata?.author || "", tagline: "" },
+    metadata?.title || "Book Title"
+  );
+
+  return (
+    <div
+      className={`rounded-2xl border-2 overflow-hidden transition-all duration-200 hover:scale-[1.01] flex flex-col ${
+        isSelected
+          ? "border-indigo-500 shadow-lg shadow-indigo-500/25 ring-1 ring-indigo-400/30"
+          : "border-gray-700/60 hover:border-gray-500/70"
+      }`}
+      style={{ background: "#1a2235" }}
+    >
+      {/* Mini Cover Preview */}
+      <div className="relative flex-shrink-0" style={{ aspectRatio: "9/11" }}>
+        {isRegenerating ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/80">
+            <div className="w-7 h-7 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mb-2.5" />
+            <span className="text-[10px] text-gray-400">Regenerating…</span>
+          </div>
+        ) : (
+          <div className="absolute inset-0">
+            <ConceptRenderer cd={cd} />
+          </div>
+        )}
+
+        {/* Concept letter badge */}
+        <div className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-md ${
+          isSelected ? "bg-indigo-500 text-white" : "bg-black/60 text-gray-300"
+        }`}>
+          {concept.conceptLabel}
+        </div>
+
+        {/* Selected checkmark */}
+        {isSelected && !isRegenerating && (
+          <div className="absolute top-2 right-2 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center shadow-md">
+            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+              <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            </svg>
+          </div>
+        )}
+      </div>
+
+      {/* Card body */}
+      <div className="p-3 flex flex-col gap-2 flex-1">
+        {/* Concept name */}
+        <div>
+          <p className="text-[12px] font-bold text-gray-100 leading-tight">{concept.conceptName}</p>
+          <p className="text-[9px] text-gray-500 uppercase tracking-wider mt-0.5">{concept.primaryStyle}</p>
+        </div>
+
+        {/* Description */}
+        {concept.description && (
+          <p className="text-[10px] text-gray-400 leading-relaxed line-clamp-3 flex-1">
+            {concept.description}
+          </p>
+        )}
+
+        {/* Style tags */}
+        {concept.styleTags && concept.styleTags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {concept.styleTags.map((tag, tagIdx) => (
+              <span
+                key={`${tag}-${tagIdx}`}
+                className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-full border ${TAG_COLORS[tag] || "bg-gray-800 text-gray-400 border-gray-700"}`}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Primary color swatch */}
+        <div className="flex items-center gap-2">
+          <div
+            className="w-4 h-4 rounded-full border border-white/20 shadow-sm flex-shrink-0"
+            style={{ background: concept.bg }}
+            title={`Background: ${concept.bg}`}
+          />
+          <div
+            className="w-4 h-4 rounded-full border border-white/20 shadow-sm flex-shrink-0"
+            style={{ background: concept.accent }}
+            title={`Accent: ${concept.accent}`}
+          />
+          <span className="text-[9px] text-gray-600 font-mono">{concept.bg}</span>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex gap-2 pt-0.5">
+          <button
+            onClick={() => onSelect(idx)}
+            disabled={isRegenerating}
+            className={`flex-1 rounded-lg py-1.5 text-[10px] font-semibold transition-all ${
+              isSelected
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-700/70 text-gray-300 hover:bg-gray-600/70 hover:text-white"
+            } disabled:opacity-40 disabled:cursor-not-allowed`}
+          >
+            {isSelected ? "✓ Selected" : "Select"}
+          </button>
+          <button
+            onClick={() => onRegenerate(idx)}
+            disabled={isRegenerating || generatingAll}
+            title="Regenerate this concept"
+            className="w-8 rounded-lg bg-gray-700/70 text-gray-400 hover:bg-gray-600/70 hover:text-gray-200 text-[12px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            ↻
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GenerateConceptsPanel({
+  metadata,
+  concepts,
+  selectedConceptIdx,
+  generatingAll,
+  regeneratingIdx,
+  onGenerate,
+  onRegenerate,
+  onSelect,
+}) {
+  const hasContext = !!(metadata?.title?.trim());
+  const hasConcepts = Array.isArray(concepts) && concepts.length > 0;
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: "#0d1117" }}>
+      {/* Panel header */}
+      <div
+        className="shrink-0 px-6 py-4 border-b border-gray-800 flex items-center justify-between"
+        style={{ background: "#111827" }}
+      >
+        <div>
+          <h2 className="text-[13px] font-bold text-gray-100 tracking-wide">Generate Concepts</h2>
+          <p className="text-[10px] text-gray-500 mt-0.5">
+            {hasConcepts
+              ? `${concepts.length} concept${concepts.length !== 1 ? "s" : ""} generated · Click to select`
+              : "Generate four unique cover design directions"}
+          </p>
+        </div>
+
+        <button
+          onClick={onGenerate}
+          disabled={generatingAll || !hasContext}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[11px] font-bold tracking-wide transition-all shadow-sm ${
+            generatingAll
+              ? "bg-indigo-500/30 text-indigo-400 cursor-not-allowed"
+              : !hasContext
+              ? "bg-gray-700/50 text-gray-500 cursor-not-allowed"
+              : "bg-indigo-600 text-white hover:bg-indigo-500 hover:shadow-indigo-500/25 hover:shadow-md"
+          }`}
+        >
+          {generatingAll ? (
+            <>
+              <span className="w-3.5 h-3.5 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin" />
+              Generating…
+            </>
+          ) : (
+            <>✦ Generate Concepts</>
+          )}
+        </button>
+      </div>
+
+      {/* Main content area */}
+      <div className="flex-1 overflow-y-auto px-6 py-5">
+        {generatingAll ? (
+          /* Loading state: 4 skeleton cards */
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[11px] text-gray-500">Generating four unique cover concepts…</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+              {[0, 1, 2, 3].map(i => (
+                <ConceptCardSkeleton key={i} />
+              ))}
+            </div>
+          </div>
+        ) : hasConcepts ? (
+          /* Concepts grid */
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            {concepts.map((concept, idx) => (
+              <ConceptCard
+                key={idx}
+                concept={concept}
+                idx={idx}
+                isSelected={selectedConceptIdx === idx}
+                isRegenerating={regeneratingIdx === idx}
+                generatingAll={generatingAll}
+                onSelect={onSelect}
+                onRegenerate={onRegenerate}
+                metadata={metadata}
+              />
+            ))}
+          </div>
+        ) : (
+          /* Empty state */
+          <div className="flex flex-col items-center justify-center h-full min-h-64 text-center gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center">
+              <span className="text-3xl">✦</span>
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-gray-300 mb-1.5">No concepts yet</p>
+              <p className="text-[11px] text-gray-600 max-w-xs leading-relaxed">
+                Click <strong className="text-gray-400">Generate Concepts</strong> to create four unique cover design directions based on your Market Analysis, Cover Strategy, Mood Board, Color Palette and Design Elements.
+              </p>
+            </div>
+            <button
+              onClick={onGenerate}
+              disabled={generatingAll || !hasContext}
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-500 transition-colors disabled:opacity-40"
+            >
+              ✦ Generate Concepts
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function BookCoverStep({ bookCover, setBookCover, fullProject, errors: stepErrors }) {
@@ -3198,40 +3478,86 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     setCanvas("zoomLevel", "fit");
   }
 
+  function buildConceptProfilePayload() {
+    const selectedMoodBoard   = (Array.isArray(moodBoards) && selectedMoodBoardIdx !== null)
+      ? moodBoards[selectedMoodBoardIdx] : null;
+    const selectedPalette     = (Array.isArray(colorPalettes) && selectedPaletteIdx !== null)
+      ? colorPalettes[selectedPaletteIdx] : null;
+    const paletteColorsStr    = selectedPalette
+      ? [selectedPalette.primary, selectedPalette.secondary, selectedPalette.accent, selectedPalette.background].filter(Boolean).join(", ")
+      : "";
+
+    return {
+      title:                  metadata.title       || "",
+      subtitle:               metadata.subtitle    || "",
+      author:                 metadata.author      || "",
+      primaryCategory:        metadata.primaryCategory || "",
+      audience:               metadata.audience    || "",
+      // Market Analysis
+      marketDesignDirection:  marketAnalysis?.designDirection      || "",
+      marketCompetitiveStyle: marketAnalysis?.coverGoal            || "",
+      // Cover Strategy
+      strategyTone:           coverStrategyProfile?.emotionalTone  || "",
+      strategyVisualFocus:    coverStrategyProfile?.visualFocus    || "",
+      strategyPrimaryMessage: coverStrategyProfile?.primaryMessage || "",
+      strategyUniqueHook:     (coverStrategyProfile?.coverPersonality || []).join(", "),
+      // Mood Board
+      moodStyle:              selectedMoodBoard?.styleName         || "",
+      moodDesignStyle:        selectedMoodBoard?.designStyle       || "",
+      moodMood:               selectedMoodBoard?.mood              || "",
+      moodColorStory:         selectedMoodBoard?.colorDirection    || "",
+      // Color Palette
+      paletteName:            selectedPalette?.paletteName         || "",
+      paletteColors:          paletteColorsStr,
+      // Design Elements
+      deMainSubject:          designElements?.mainSubject          || "",
+      deBackground:           designElements?.backgroundStyle      || "",
+      deImageStyle:           designElements?.imageStyle           || "",
+      deVisualComplexity:     designElements?.visualComplexity     || "",
+      deFocalPoint:           designElements?.focalPoint           || "",
+    };
+  }
+
   async function handleGenerateConcepts() {
-    if (!coverPrompt || generatingAll) return;
+    if (generatingAll) return;
     setGeneratingAll(true);
     try {
-      const res = await fetch("/api/book/generate-cover-concepts", {
+      const payload = buildConceptProfilePayload();
+      if (!payload.title.trim()) {
+        console.warn("[CoverConcepts] No book title — skipping generation.");
+        return;
+      }
+      const res = await fetch("/api/ai/concept-profiles", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          finalPrompt:    coverPrompt.finalPrompt,
-          negativePrompt: coverPrompt.negativePrompt,
-        }),
+        body:    JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Generation failed");
-      if (Array.isArray(data.concepts)) setConceptsState(data.concepts);
+      if (Array.isArray(data.concepts)) {
+        setConceptsState(data.concepts);
+        // Auto-select first concept if none selected
+        setSelectedConceptIdx(prev => prev !== null ? prev : 0);
+      }
     } catch (err) {
       console.error("[CoverConcepts] generation error:", err);
-      setConceptsState(prev => prev.length > 0 ? prev : []);
     } finally {
       setGeneratingAll(false);
     }
   }
 
   async function handleRegenerateConcept(idx) {
-    if (!coverPrompt || regeneratingIdx !== null || generatingAll) return;
+    if (regeneratingIdx !== null || generatingAll) return;
     setRegeneratingIdx(idx);
     try {
-      const res = await fetch("/api/book/generate-cover-concepts", {
+      const payload = buildConceptProfilePayload();
+      const res = await fetch("/api/ai/concept-profiles", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          finalPrompt:    coverPrompt.finalPrompt,
-          negativePrompt: coverPrompt.negativePrompt,
-          conceptIndex:   idx,
+          ...payload,
+          singleIndex:      idx,
+          existingConcepts: concepts,
         }),
       });
       const data = await res.json();
@@ -3247,7 +3573,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       console.error("[CoverConcepts] regen error:", err);
       setConceptsState(prev => {
         const next = [...prev];
-        if (next[idx]) next[idx] = { ...next[idx], error: err.message };
+        if (next[idx]) next[idx] = { ...next[idx], _error: err.message };
         return next;
       });
     } finally {
@@ -3802,7 +4128,18 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden"
           style={{ background: "#1a1f2e" }}
         >
-          {currentStep === "elements" ? (
+          {currentStep === "concepts" ? (
+            <GenerateConceptsPanel
+              metadata={metadata}
+              concepts={concepts}
+              selectedConceptIdx={selectedConceptIdx}
+              generatingAll={generatingAll}
+              regeneratingIdx={regeneratingIdx}
+              onGenerate={handleGenerateConcepts}
+              onRegenerate={handleRegenerateConcept}
+              onSelect={setSelectedConceptIdx}
+            />
+          ) : currentStep === "elements" ? (
             <DesignElementsPanel
               designElements={designElements}
               generating={designElementsGenerating}

@@ -1057,6 +1057,8 @@ router.post("/concept-profiles", async (req, res) => {
       moodStyle, moodDesignStyle, moodMood, moodColorStory,
       paletteName, paletteColors,
       deMainSubject, deBackground, deImageStyle, deVisualComplexity, deFocalPoint,
+      singleIndex,      // 0-3: regenerate just one concept at this position
+      existingConcepts, // existing array when singleIndex is set (for exclusion hints)
     } = req.body || {};
 
     if (!title?.trim()) return res.status(400).json({ error: "title is required" });
@@ -1079,7 +1081,51 @@ router.post("/concept-profiles", async (req, res) => {
       deFocalPoint            ? `Focal Point: ${deFocalPoint}` : "",
     ].filter(Boolean).join("\n");
 
-    const prompt = `You are a senior book cover art director for Amazon KDP nonfiction bestsellers.
+    const isSingle = typeof singleIndex === "number" && singleIndex >= 0 && singleIndex <= 3;
+    const singleLabel = ["A","B","C","D"][singleIndex as number] ?? "A";
+
+    // Build exclusion hint for single regeneration
+    const excludeNames = isSingle && Array.isArray(existingConcepts)
+      ? existingConcepts
+          .filter((_: any, i: number) => i !== singleIndex)
+          .map((c: any) => c?.conceptName)
+          .filter(Boolean)
+      : [];
+    const excludeHint = excludeNames.length > 0
+      ? `\nDo NOT use any of these concept names (already used): ${excludeNames.join(", ")}.`
+      : "";
+
+    const prompt = isSingle
+      ? `You are a senior book cover art director for Amazon KDP nonfiction bestsellers.
+
+Generate ONE new cover concept (Concept ${singleLabel}) to replace an existing concept in a set of four.
+It must be DIFFERENT from the other concepts already in the set.
+
+Book Title: "${title}"
+Subtitle: "${subtitle || ""}"
+Author: ${author || ""}
+Category: ${primaryCategory || "Nonfiction"}
+Audience: ${audience || "General readers"}
+
+${ctx}
+${excludeHint}
+
+Rules:
+- conceptLabel: "${singleLabel}"
+- conceptName: 1–3 word evocative name
+- description: max 40 words — what makes this concept unique
+- styleTags: array of 2–4 single-word tags from: Professional, Minimal, Bold, Corporate, Modern, Elegant, Creative, Dynamic, Classic, Premium, Authoritative, Vibrant
+- primaryStyle: exactly one of: "Minimal", "Bold", "Elegant", "Corporate", "Creative", "Modern"
+- bg: dark background hex
+- accent: primary accent hex — high contrast with bg
+- text: text-on-bg hex
+- secondaryBg: slightly lighter variant of bg
+- compositionFocus: exactly one of: "Title", "Center Object", "Bottom Third", "Asymmetric", "Diagonal"
+- shapeMotif: exactly one of: "Geometric", "Organic", "Typographic", "Minimal Lines", "Abstract Fill"
+
+Return ONLY valid JSON for ONE concept, no markdown:
+{"conceptLabel":"${singleLabel}","conceptName":"...","description":"...","styleTags":["..."],"primaryStyle":"...","bg":"#...","accent":"#...","text":"#...","secondaryBg":"#...","compositionFocus":"...","shapeMotif":"..."}`
+      : `You are a senior book cover art director for Amazon KDP nonfiction bestsellers.
 
 Generate FOUR completely different professional cover concepts for this book. Each concept must represent a distinct visual approach — do NOT make four similar covers.
 
@@ -1120,43 +1166,58 @@ Return ONLY valid JSON, no markdown:
       "compositionFocus": "Title",
       "shapeMotif": "Geometric"
     },
-    { "conceptLabel": "B", ... },
-    { "conceptLabel": "C", ... },
-    { "conceptLabel": "D", ... }
+    { "conceptLabel": "B", "conceptName": "...", ... },
+    { "conceptLabel": "C", "conceptName": "...", ... },
+    { "conceptLabel": "D", "conceptName": "...", ... }
   ]
 }`;
 
     const { text: raw, usedProvider } = await runLong(
       prompt,
-      "You are a book cover art director. Return exactly four concepts as valid JSON only.",
+      "You are a book cover art director. Return exactly the requested concept(s) as valid JSON only.",
       req, res, "conceptGen"
     );
 
     const data = extractJSON(raw);
-    if (!data?.concepts || !Array.isArray(data.concepts)) {
-      return res.status(500).json({ error: "Concept profile generation returned no parseable data." });
-    }
 
     const primaryStyles = ["Minimal","Bold","Elegant","Corporate","Creative","Modern"] as const;
     const compFoci      = ["Title","Center Object","Bottom Third","Asymmetric","Diagonal"] as const;
     const shapeMotifs   = ["Geometric","Organic","Typographic","Minimal Lines","Abstract Fill"] as const;
     const validTags     = new Set(["Professional","Minimal","Bold","Corporate","Modern","Elegant","Creative","Dynamic","Classic","Premium","Authoritative","Vibrant"]);
+    const labels        = ["A","B","C","D"] as const;
+    const hexRe         = /^#[0-9a-fA-F]{6}$/;
 
-    const concepts = data.concepts.slice(0, 4).map((c: any, i: number) => ({
-      conceptLabel:     ["A","B","C","D"][i],
-      conceptName:      String(c.conceptName || `Concept ${["A","B","C","D"][i]}`).slice(0,50),
-      description:      String(c.description || "").split(/\s+/).slice(0,40).join(" "),
-      styleTags:        Array.isArray(c.styleTags) ? c.styleTags.filter((t: any) => validTags.has(t)).slice(0,4) : [],
-      primaryStyle:     primaryStyles.find(s => s === c.primaryStyle) ?? "Modern",
-      bg:               /^#[0-9a-fA-F]{6}$/.test(c.bg)          ? c.bg          : "#0f1923",
-      accent:           /^#[0-9a-fA-F]{6}$/.test(c.accent)      ? c.accent      : "#d4961a",
-      text:             /^#[0-9a-fA-F]{6}$/.test(c.text)        ? c.text        : "#ffffff",
-      secondaryBg:      /^#[0-9a-fA-F]{6}$/.test(c.secondaryBg) ? c.secondaryBg : "#1a2c3d",
-      compositionFocus: compFoci.find(f => f === c.compositionFocus) ?? "Title",
-      shapeMotif:       shapeMotifs.find(m => m === c.shapeMotif) ?? "Geometric",
-      generatedAt:      new Date().toISOString(),
-    }));
+    function sanitizeConcept(c: any, i: number) {
+      return {
+        conceptLabel:     labels[i] ?? labels[0],
+        conceptName:      String(c.conceptName || `Concept ${labels[i] ?? "A"}`).slice(0, 50),
+        description:      String(c.description || "").split(/\s+/).slice(0, 40).join(" "),
+        styleTags:        Array.isArray(c.styleTags) ? c.styleTags.filter((t: any) => validTags.has(t)).slice(0, 4) : [],
+        primaryStyle:     primaryStyles.find(s => s === c.primaryStyle) ?? "Modern",
+        bg:               hexRe.test(c.bg)          ? c.bg          : "#0f1923",
+        accent:           hexRe.test(c.accent)      ? c.accent      : "#d4961a",
+        text:             hexRe.test(c.text)        ? c.text        : "#ffffff",
+        secondaryBg:      hexRe.test(c.secondaryBg) ? c.secondaryBg : "#1a2c3d",
+        compositionFocus: compFoci.find(f => f === c.compositionFocus) ?? "Title",
+        shapeMotif:       shapeMotifs.find(m => m === c.shapeMotif) ?? "Geometric",
+        generatedAt:      new Date().toISOString(),
+      };
+    }
 
+    // Single concept regeneration
+    if (isSingle) {
+      if (!data || typeof data !== "object") {
+        return res.status(500).json({ error: "Concept regeneration returned no parseable data." });
+      }
+      const raw_concept = Array.isArray(data) ? data[0] : data;
+      return res.json({ concept: sanitizeConcept(raw_concept, singleIndex as number), singleIndex, _provider: usedProvider });
+    }
+
+    // All four concepts
+    if (!data?.concepts || !Array.isArray(data.concepts)) {
+      return res.status(500).json({ error: "Concept profile generation returned no parseable data." });
+    }
+    const concepts = data.concepts.slice(0, 4).map((c: any, i: number) => sanitizeConcept(c, i));
     return res.json({ concepts, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
