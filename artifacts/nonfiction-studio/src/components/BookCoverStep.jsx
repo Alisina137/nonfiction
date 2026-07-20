@@ -48,6 +48,12 @@ const LANGUAGES = [
 
 const ZOOM_STEPS = [0.5, 0.75, 1.0, 1.25, 1.5];
 
+const CANVAS_BACKGROUNDS = [
+  { id: "dark",         label: "Dark Workspace",           shortLabel: "Dark"  },
+  { id: "light",        label: "Light Workspace",          shortLabel: "Light" },
+  { id: "checkerboard", label: "Transparent Checkerboard", shortLabel: "⊞"     },
+];
+
 const DEFAULT_CONCEPT = {
   type: "authority",
   bg: "#0f1923",
@@ -153,12 +159,34 @@ function initMetadata(bookCover, fullProject) {
 
 function initCanvas(bookCover) {
   const cs = bookCover?.coverStudio?.canvas;
+  // Normalize: accept stored ID or fall back to "dark" (legacy hex values → dark)
+  const rawBg = cs?.background;
+  const bg = CANVAS_BACKGROUNDS.some(b => b.id === rawBg) ? rawBg : "dark";
   return {
-    background:   cs?.background   ?? "#d1d5db",
+    background:   bg,
     zoomLevel:    cs?.zoomLevel    ?? "fit",
     safeMargin:   cs?.safeMargin   ?? 0.125,
     bleedMargin:  cs?.bleedMargin  ?? 0.125,
   };
+}
+
+// Returns a CSS style object for the canvas wrapper background
+function resolveCanvasBgStyle(bgId) {
+  if (bgId === "checkerboard") {
+    return {
+      backgroundImage: [
+        "linear-gradient(45deg, #b0b0b0 25%, transparent 25%)",
+        "linear-gradient(-45deg, #b0b0b0 25%, transparent 25%)",
+        "linear-gradient(45deg, transparent 75%, #b0b0b0 75%)",
+        "linear-gradient(-45deg, transparent 75%, #b0b0b0 75%)",
+      ].join(", "),
+      backgroundSize:     "20px 20px",
+      backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
+      backgroundColor:    "#f8f8f8",
+    };
+  }
+  if (bgId === "light") return { background: "#e5e7eb" };
+  return { background: "#111827" }; // "dark" (default)
 }
 
 function validateMetadata(meta) {
@@ -1543,7 +1571,14 @@ function ProjectStatusCard({ metadata, lastSaved, validationErrors }) {
   );
 }
 
-function WorkspaceHeader({ metadata, lastSaved }) {
+function WorkspaceHeader({ metadata, lastSaved, saveStatus }) {
+  const statusMap = {
+    saved:   { dot: "bg-emerald-500", text: "text-emerald-500", label: lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Saved" },
+    saving:  { dot: "bg-amber-400 animate-pulse", text: "text-amber-400", label: "Saving…" },
+    unsaved: { dot: "bg-amber-400", text: "text-amber-400", label: "Unsaved changes" },
+  };
+  const st = statusMap[saveStatus] || statusMap.saved;
+
   return (
     <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 bg-gray-900 shrink-0">
       <div className="flex items-center gap-3 min-w-0">
@@ -1559,11 +1594,11 @@ function WorkspaceHeader({ metadata, lastSaved }) {
         )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        {lastSaved && (
-          <span className="text-[10px] text-gray-600 hidden sm:block">
-            Saved {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
-        )}
+        {/* Auto-save status indicator */}
+        <div className="hidden sm:flex items-center gap-1.5">
+          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.dot}`} />
+          <span className={`text-[10px] font-medium ${st.text}`}>{st.label}</span>
+        </div>
         <button
           type="button"
           className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-[11px] font-semibold text-gray-300 hover:bg-gray-700 hover:text-white transition"
@@ -1582,7 +1617,7 @@ function WorkspaceHeader({ metadata, lastSaved }) {
   );
 }
 
-function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel }) {
+function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, onBgChange }) {
   function handleZoomIn() {
     if (zoom === "fit") { onZoom(1.0); return; }
     const idx = ZOOM_STEPS.indexOf(zoom);
@@ -1596,6 +1631,7 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel }) {
 
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-gray-900/90 shrink-0 gap-4">
+      {/* Left: zoom controls */}
       <div className="flex items-center gap-0.5">
         <button
           type="button"
@@ -1652,9 +1688,31 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel }) {
           ⛶
         </button>
       </div>
-      {bookSizeLabel && (
-        <span className="text-[10px] text-gray-600 hidden sm:block">{bookSizeLabel}</span>
-      )}
+
+      {/* Right: canvas background + book size label */}
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Background switcher */}
+        <div className="flex items-center gap-0.5 rounded-lg bg-gray-800/60 border border-gray-700/50 p-0.5">
+          {CANVAS_BACKGROUNDS.map(bg => (
+            <button
+              key={bg.id}
+              type="button"
+              onClick={() => onBgChange(bg.id)}
+              title={bg.label}
+              className={`rounded px-2.5 py-1 text-[10px] font-semibold transition ${
+                canvasBg === bg.id
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-gray-500 hover:text-gray-200"
+              }`}
+            >
+              {bg.shortLabel}
+            </button>
+          ))}
+        </div>
+        {bookSizeLabel && (
+          <span className="text-[10px] text-gray-600 hidden sm:block">{bookSizeLabel}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -1707,7 +1765,7 @@ function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize }) {
     <div
       ref={containerRef}
       className="flex-1 flex items-center justify-center overflow-auto"
-      style={{ background: canvasBg, minHeight: 0 }}
+      style={{ ...resolveCanvasBgStyle(canvasBg), minHeight: 0 }}
     >
       <div style={{ position: "relative", flexShrink: 0 }}>
         <div
@@ -1986,6 +2044,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [canvas, setCanvasState] = useState(() => initCanvas(bookCover));
   const [validationErrors, setValidationErrors] = useState({});
   const [lastSaved, setLastSaved] = useState(null);
+  const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "saving" | "unsaved"
 
   // Cover concepts generation state
   const [concepts, setConceptsState] = useState(() =>
@@ -2242,7 +2301,9 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   // Auto-save: debounced 600ms after any metadata/canvas/strategy change
   useEffect(() => {
     if (!initRef.current) return;
+    setSaveStatus("unsaved");
     const timer = setTimeout(() => {
+      setSaveStatus("saving");
       const project = createCoverProject(bookCover, fullProject, metadata);
       setBookCover(prev => {
         const p = (prev && typeof prev === "object") ? prev : {};
@@ -2269,6 +2330,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
         };
       });
       setLastSaved(new Date());
+      setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
   }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -2291,6 +2353,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       <WorkspaceHeader
         metadata={metadata}
         lastSaved={lastSaved}
+        saveStatus={saveStatus}
       />
 
       {/* ── Three-panel layout ── */}
@@ -2319,6 +2382,8 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             onZoom={handleZoom}
             onFitToScreen={handleFitToScreen}
             bookSizeLabel={bookSize.label}
+            canvasBg={canvas.background}
+            onBgChange={bg => setCanvas("background", bg)}
           />
 
           {/* Canvas occupies ~70% of remaining height via flex */}
