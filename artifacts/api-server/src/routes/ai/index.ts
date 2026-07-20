@@ -947,6 +947,106 @@ ${boardCount > 1 ? `[
   }
 });
 
+// ─── Color Palette Engine ────────────────────────────────────────────────────
+router.post("/color-palette", async (req, res) => {
+  try {
+    const {
+      title, subtitle, primaryCategory, audience,
+      moodBoardStyle, moodBoardColorDirection, moodBoardMood,
+      coverStrategyTone, coverStrategyVisualFocus,
+      marketDesignDirection,
+      regenerateIndex, existingPalettes,
+    } = req.body || {};
+
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+
+    const context = [
+      moodBoardStyle        ? `Selected Mood Board: ${moodBoardStyle} (${moodBoardColorDirection || ""}, ${moodBoardMood || ""})` : "",
+      coverStrategyTone     ? `Emotional Tone: ${coverStrategyTone}` : "",
+      coverStrategyVisualFocus ? `Visual Focus: ${coverStrategyVisualFocus}` : "",
+      marketDesignDirection ? `Design Direction: ${marketDesignDirection}` : "",
+    ].filter(Boolean).join("\n");
+
+    const isSingle = typeof regenerateIndex === "number" && regenerateIndex >= 0 && regenerateIndex <= 3;
+    const existingNames = isSingle && Array.isArray(existingPalettes)
+      ? existingPalettes.filter((_: any, i: number) => i !== regenerateIndex).map((p: any) => p?.paletteName).filter(Boolean)
+      : [];
+    const exclusion = existingNames.length > 0
+      ? `Do NOT use any of these palette names (already used): ${existingNames.join(", ")}.`
+      : "";
+
+    const count = isSingle ? 1 : 4;
+
+    const prompt = `You are a professional book cover color strategist for Amazon KDP nonfiction books.
+
+Generate ${count} complete color palette${count > 1 ? "s" : ""} for this book cover.
+
+Book Title: ${title}
+Subtitle: ${subtitle || "(none)"}
+Primary Category: ${primaryCategory || "Not specified"}
+Target Audience: ${audience || "General readers"}
+${context}
+${exclusion}
+
+Rules for each palette:
+- paletteName: a creative 2–4 word name (e.g. "Corporate Blue", "Midnight Premium", "Warm Authority")
+- description: max 30 words describing the palette's feel and best use
+- primary: hex color — the dominant cover color (backgrounds, large areas)
+- secondary: hex color — supporting color (panels, headers)
+- accent: hex color — call-to-action, highlights, key design elements
+- background: hex color — overall page/canvas background
+- text: hex color — main body and title text color
+- readability: one of "Excellent", "Good", "Fair" — contrast between text and background
+
+${count > 1 ? "Make all 4 palettes visually distinct from each other." : "Generate one fresh palette distinct from the others."}
+
+Return ONLY valid JSON, no markdown:
+${count > 1 ? `[
+  {"paletteName":"...","description":"...","primary":"#...","secondary":"#...","accent":"#...","background":"#...","text":"#...","readability":"Excellent"},
+  {"paletteName":"...","description":"...","primary":"#...","secondary":"#...","accent":"#...","background":"#...","text":"#...","readability":"Good"},
+  {"paletteName":"...","description":"...","primary":"#...","secondary":"#...","accent":"#...","background":"#...","text":"#...","readability":"Excellent"},
+  {"paletteName":"...","description":"...","primary":"#...","secondary":"#...","accent":"#...","background":"#...","text":"#...","readability":"Fair"}
+]` : `{"paletteName":"...","description":"...","primary":"#...","secondary":"#...","accent":"#...","background":"#...","text":"#...","readability":"Excellent"}`}`;
+
+    const { text: raw, usedProvider } = await runShort(
+      prompt,
+      "You are a book cover color strategist. Respond with valid JSON only.",
+      req, res, "conceptGen"
+    );
+
+    const data = extractJSON(raw);
+    if (!data) return res.status(500).json({ error: "Color palette returned no parseable data." });
+
+    const readabilities = ["Excellent", "Good", "Fair"] as const;
+    const hexRe = /^#[0-9a-fA-F]{3,8}$/;
+
+    function sanitizePalette(p: any) {
+      return {
+        paletteName:  String(p?.paletteName  || "").slice(0, 60),
+        description:  String(p?.description  || "").slice(0, 300),
+        primary:      hexRe.test(p?.primary)    ? p.primary    : "#1a2c4e",
+        secondary:    hexRe.test(p?.secondary)  ? p.secondary  : "#2d4a7a",
+        accent:       hexRe.test(p?.accent)     ? p.accent     : "#c8a84b",
+        background:   hexRe.test(p?.background) ? p.background : "#f5f5f0",
+        text:         hexRe.test(p?.text)       ? p.text       : "#1a1a1a",
+        readability:  readabilities.find(r => r === p?.readability) ?? "Good",
+      };
+    }
+
+    if (isSingle) {
+      const palette = Array.isArray(data) ? data[0] : data;
+      return res.json({ palette: sanitizePalette(palette), regenerateIndex, _provider: usedProvider });
+    }
+
+    const arr = Array.isArray(data) ? data.slice(0, 4) : [data];
+    while (arr.length < 4) arr.push({});
+    return res.json({ palettes: arr.map(sanitizePalette), _provider: usedProvider });
+
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 // ─── Layout & Composition Engine ─────────────────────────────────────────────
 router.post("/layout", async (req, res) => {
   try {

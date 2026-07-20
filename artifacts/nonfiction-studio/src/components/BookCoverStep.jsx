@@ -68,7 +68,7 @@ const WORKFLOW_STEPS = [
   { id: "strategy",    num: 3,  label: "Cover Strategy",      state: "unlocked" },
   { id: "visual",      num: 4,  label: "Visual Direction",    state: "locked" },
   { id: "mood",        num: 5,  label: "Mood Board",          state: "unlocked" },
-  { id: "color",       num: 6,  label: "Color Palette",       state: "locked" },
+  { id: "color",       num: 6,  label: "Color Palette",       state: "unlocked" },
   { id: "typography",  num: 7,  label: "Typography",          state: "locked" },
   { id: "layout",      num: 8,  label: "Layout & Composition",state: "locked" },
   { id: "concepts",    num: 9,  label: "Generate Concepts",   state: "locked" },
@@ -2045,6 +2045,217 @@ function RightPanel({ metadata, onChange, errors }) {
   );
 }
 
+// ─── Color Palette Panel ──────────────────────────────────────────────────────
+
+const READABILITY_STYLE = {
+  Excellent: { bar: "bg-emerald-500", text: "text-emerald-400", label: "Excellent" },
+  Good:      { bar: "bg-sky-500",     text: "text-sky-400",     label: "Good"      },
+  Fair:      { bar: "bg-amber-500",   text: "text-amber-400",   label: "Fair"      },
+};
+
+function ColorSwatch({ color, role, size = "md" }) {
+  const sz = size === "lg" ? "h-10 flex-1" : "h-8 w-8 shrink-0";
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div
+        className={`${sz} rounded-lg border border-black/20 shadow-sm`}
+        style={{ background: color }}
+        title={`${role}: ${color}`}
+      />
+      <p className="text-[8px] text-gray-600 font-mono uppercase leading-none">{color}</p>
+    </div>
+  );
+}
+
+function ColorPaletteCard({ palette, index, isSelected, isRegenerating, onSelect, onRegenerate }) {
+  const rd = READABILITY_STYLE[palette.readability] || READABILITY_STYLE.Good;
+
+  return (
+    <div
+      className={`relative rounded-xl border overflow-hidden flex flex-col transition-all duration-200 cursor-pointer group ${
+        isSelected
+          ? "border-indigo-500 shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500/40"
+          : "border-gray-700/60 hover:border-gray-600 hover:shadow-md hover:shadow-black/30 hover:-translate-y-0.5"
+      }`}
+      style={{ background: "#1a2035" }}
+      onClick={() => !isSelected && onSelect(index)}
+    >
+      {isSelected && (
+        <div className="absolute top-2 right-2 z-10 rounded-full bg-indigo-500 text-white text-[9px] font-bold px-2 py-0.5 shadow">
+          ✓ Selected
+        </div>
+      )}
+
+      {/* Color bar preview — top strip */}
+      {isRegenerating ? (
+        <div className="h-10 flex items-center justify-center bg-gray-800/60">
+          <div className="flex gap-1">
+            {[0,1,2].map(i => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" style={{ animationDelay: `${i*0.2}s` }} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex h-10 shrink-0">
+          {[palette.primary, palette.secondary, palette.accent, palette.background, palette.text].map((c, i) => (
+            <div key={i} className="flex-1" style={{ background: c }} />
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col flex-1 p-3 gap-3">
+        {/* Name + description */}
+        <div>
+          <p className="text-[13px] font-bold text-gray-100 leading-tight">{palette.paletteName}</p>
+          <p className="text-[11px] text-gray-500 leading-snug mt-1 line-clamp-2">{palette.description}</p>
+        </div>
+
+        {/* Five swatches with role labels */}
+        {!isRegenerating && (
+          <div className="space-y-1.5">
+            {[
+              { role: "Primary",    color: palette.primary    },
+              { role: "Secondary",  color: palette.secondary  },
+              { role: "Accent",     color: palette.accent     },
+              { role: "Background", color: palette.background },
+              { role: "Text",       color: palette.text       },
+            ].map(({ role, color }) => (
+              <div key={role} className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md border border-black/20 shrink-0 shadow-sm" style={{ background: color }} />
+                <p className="text-[10px] text-gray-500 w-16 shrink-0">{role}</p>
+                <p className="text-[10px] font-mono text-gray-600">{color}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Readability indicator */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] uppercase tracking-wider text-gray-600">Readability</p>
+            <span className={`text-[10px] font-bold ${rd.text}`}>{rd.label}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+            <div className={`h-full rounded-full ${rd.bar}`}
+              style={{ width: palette.readability === "Excellent" ? "100%" : palette.readability === "Good" ? "67%" : "33%" }} />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 mt-auto">
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onSelect(index); }}
+            disabled={isSelected}
+            className={`flex-1 rounded-lg text-[11px] font-bold py-2 transition ${
+              isSelected
+                ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 cursor-default"
+                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+            }`}
+          >
+            {isSelected ? "✓ Selected" : "Select"}
+          </button>
+          <button
+            type="button"
+            title="Regenerate this palette"
+            onClick={e => { e.stopPropagation(); onRegenerate(index); }}
+            disabled={isRegenerating}
+            className="w-8 h-8 rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700 text-gray-500 hover:text-gray-200 flex items-center justify-center transition text-sm disabled:opacity-40"
+          >
+            ↻
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ColorPalettePanel({ metadata, palettes, selectedPaletteIdx, generating, regeneratingIdx, onSelect, onRegenerate, onGenerateAll }) {
+  const selected = selectedPaletteIdx !== null ? palettes[selectedPaletteIdx] : null;
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      {/* Header */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400">Step 6</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-100">Color Palette</h2>
+            <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">
+              Four curated color systems matched to your cover strategy and mood.
+            </p>
+          </div>
+          {palettes.length > 0 && (
+            <button
+              type="button"
+              onClick={onGenerateAll}
+              disabled={generating}
+              className="shrink-0 rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700 text-gray-400 hover:text-gray-200 text-[10px] font-bold px-3 py-1.5 transition disabled:opacity-40"
+            >
+              ↻ Regenerate All
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Loading */}
+      {generating && palettes.length === 0 ? (
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-10 flex flex-col items-center gap-3">
+          <div className="flex gap-1.5">
+            {[0,1,2].map(i => (
+              <div key={i} className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" style={{ animationDelay: `${i*0.2}s` }} />
+            ))}
+          </div>
+          <p className="text-[11px] text-rose-400 font-medium">Generating color palettes…</p>
+        </div>
+      ) : palettes.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-800/20 p-10 flex flex-col items-center gap-3 text-center">
+          <p className="text-[12px] text-gray-500">Set a book title to generate color palettes.</p>
+          <button type="button" onClick={onGenerateAll}
+            className="rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-semibold px-4 py-2 transition">
+            Generate Palettes
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* 2×2 grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {palettes.map((palette, idx) => (
+              <ColorPaletteCard
+                key={idx}
+                palette={palette}
+                index={idx}
+                isSelected={selectedPaletteIdx === idx}
+                isRegenerating={regeneratingIdx === idx}
+                onSelect={onSelect}
+                onRegenerate={onRegenerate}
+              />
+            ))}
+          </div>
+
+          {/* Selected palette preview bar */}
+          {selected && (
+            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">✓</span>
+                <p className="text-[11px] text-indigo-300 font-semibold">{selected.paletteName} selected</p>
+              </div>
+              <div className="flex h-6 rounded-lg overflow-hidden">
+                {[selected.primary, selected.secondary, selected.accent, selected.background, selected.text].map((c, i) => (
+                  <div key={i} className="flex-1" style={{ background: c }} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Mood Board Helpers ───────────────────────────────────────────────────────
 
 const COLOR_DIRECTION_PALETTES = {
@@ -2774,6 +2985,20 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const moodBoardDebounceRef = useRef(null);
   const moodBoardKeyRef = useRef("");
 
+  // Color Palette Engine state
+  const [colorPalettes, setColorPalettes] = useState(() =>
+    Array.isArray(bookCover?.colorPalettes) ? bookCover.colorPalettes :
+    Array.isArray(bookCover?.coverStudio?.colorPalettes) ? bookCover.coverStudio.colorPalettes : []
+  );
+  const [selectedPaletteIdx, setSelectedPaletteIdx] = useState(() =>
+    typeof bookCover?.selectedPaletteIdx === "number" ? bookCover.selectedPaletteIdx :
+    typeof bookCover?.coverStudio?.selectedPaletteIdx === "number" ? bookCover.coverStudio.selectedPaletteIdx : null
+  );
+  const [paletteGenerating, setPaletteGenerating] = useState(false);
+  const [paletteRegeneratingIdx, setPaletteRegeneratingIdx] = useState(null);
+  const paletteDebounceRef = useRef(null);
+  const paletteKeyRef = useRef("");
+
   const strategy = useMemo(
     () => deriveCoverStrategy(fullProject, metadata),
     [fullProject, metadata] // eslint-disable-line react-hooks/exhaustive-deps
@@ -2976,6 +3201,91 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     marketDebounceRef.current = setTimeout(() => generateMarketAnalysis(false), 1400);
     return () => { if (marketDebounceRef.current) clearTimeout(marketDebounceRef.current); };
   }, [metadata.primaryCategory, metadata.secondaryCategory, metadata.audience, metadata.language, metadata.title]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Color Palette Engine ──────────────────────────────────────────────────
+  async function generateColorPalettes(force = false) {
+    if (paletteGenerating) return;
+    const selectedBoard = moodBoards.length > 0 && selectedMoodBoardIdx !== null ? moodBoards[selectedMoodBoardIdx] : null;
+    const key = `${metadata.title}|${metadata.primaryCategory}|${selectedBoard?.colorDirection}|${coverStrategyProfile?.emotionalTone}`;
+    if (!force && key === paletteKeyRef.current && colorPalettes.length === 4) return;
+    if (!metadata.title?.trim()) return;
+
+    paletteKeyRef.current = key;
+    setPaletteGenerating(true);
+    try {
+      const res = await fetch("/api/ai/color-palette", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:                   metadata.title,
+          subtitle:                metadata.subtitle        || "",
+          primaryCategory:         metadata.primaryCategory || "",
+          audience:                metadata.audience        || "",
+          moodBoardStyle:          selectedBoard?.styleName          || "",
+          moodBoardColorDirection: selectedBoard?.colorDirection     || "",
+          moodBoardMood:           selectedBoard?.mood               || "",
+          coverStrategyTone:       coverStrategyProfile?.emotionalTone   || "",
+          coverStrategyVisualFocus: coverStrategyProfile?.visualFocus    || "",
+          marketDesignDirection:   marketAnalysis?.designDirection    || "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Color palette generation failed");
+      if (Array.isArray(data.palettes)) setColorPalettes(data.palettes);
+    } catch (err) {
+      console.error("[ColorPalette] generation error:", err);
+    } finally {
+      setPaletteGenerating(false);
+    }
+  }
+
+  async function regenerateSinglePalette(idx) {
+    if (paletteRegeneratingIdx !== null) return;
+    setPaletteRegeneratingIdx(idx);
+    try {
+      const selectedBoard = moodBoards.length > 0 && selectedMoodBoardIdx !== null ? moodBoards[selectedMoodBoardIdx] : null;
+      const res = await fetch("/api/ai/color-palette", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:                   metadata.title,
+          subtitle:                metadata.subtitle        || "",
+          primaryCategory:         metadata.primaryCategory || "",
+          audience:                metadata.audience        || "",
+          moodBoardStyle:          selectedBoard?.styleName          || "",
+          moodBoardColorDirection: selectedBoard?.colorDirection     || "",
+          moodBoardMood:           selectedBoard?.mood               || "",
+          coverStrategyTone:       coverStrategyProfile?.emotionalTone   || "",
+          coverStrategyVisualFocus: coverStrategyProfile?.visualFocus    || "",
+          marketDesignDirection:   marketAnalysis?.designDirection    || "",
+          regenerateIndex:         idx,
+          existingPalettes:        colorPalettes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Palette regeneration failed");
+      if (data.palette) {
+        setColorPalettes(prev => { const next = [...prev]; next[idx] = data.palette; return next; });
+        if (selectedPaletteIdx === idx) setSelectedPaletteIdx(null);
+      }
+    } catch (err) {
+      console.error("[ColorPalette] single regeneration error:", err);
+    } finally {
+      setPaletteRegeneratingIdx(null);
+    }
+  }
+
+  // Auto-generate palettes when title, category, mood board selection, or strategy tone changes
+  useEffect(() => {
+    const selectedBoard = moodBoards.length > 0 && selectedMoodBoardIdx !== null ? moodBoards[selectedMoodBoardIdx] : null;
+    const key = `${metadata.title}|${metadata.primaryCategory}|${selectedBoard?.colorDirection}|${coverStrategyProfile?.emotionalTone}`;
+    if (!metadata.title?.trim()) return;
+    if (key === paletteKeyRef.current && colorPalettes.length === 4) return;
+
+    if (paletteDebounceRef.current) clearTimeout(paletteDebounceRef.current);
+    paletteDebounceRef.current = setTimeout(() => generateColorPalettes(false), 2200);
+    return () => { if (paletteDebounceRef.current) clearTimeout(paletteDebounceRef.current); };
+  }, [metadata.title, metadata.primaryCategory, selectedMoodBoardIdx, coverStrategyProfile?.emotionalTone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Mood Board Engine ─────────────────────────────────────────────────────
   async function generateMoodBoards(force = false) {
@@ -3199,8 +3509,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           layoutProfile:        layoutProfile     || null,
           marketAnalysis:       marketAnalysis        || null,
           coverStrategyProfile:   coverStrategyProfile   || null,
-          moodBoards:             moodBoards.length > 0  ? moodBoards : [],
-          selectedMoodBoardIdx:   selectedMoodBoardIdx   ?? null,
+          moodBoards:             moodBoards.length > 0     ? moodBoards     : [],
+          selectedMoodBoardIdx:   selectedMoodBoardIdx      ?? null,
+          colorPalettes:          colorPalettes.length > 0  ? colorPalettes  : [],
+          selectedPaletteIdx:     selectedPaletteIdx         ?? null,
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -3210,8 +3522,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             layout:               layoutProfile        || null,
             marketAnalysis:       marketAnalysis       || null,
             coverStrategy:        coverStrategyProfile || null,
-            moodBoards:           moodBoards.length > 0 ? moodBoards : [],
-            selectedMoodBoardIdx: selectedMoodBoardIdx ?? null,
+            moodBoards:           moodBoards.length > 0    ? moodBoards    : [],
+            selectedMoodBoardIdx: selectedMoodBoardIdx     ?? null,
+            colorPalettes:        colorPalettes.length > 0 ? colorPalettes : [],
+            selectedPaletteIdx:   selectedPaletteIdx        ?? null,
           },
         };
       });
@@ -3219,7 +3533,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -3263,7 +3577,18 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden"
           style={{ background: "#1a1f2e" }}
         >
-          {currentStep === "mood" ? (
+          {currentStep === "color" ? (
+            <ColorPalettePanel
+              metadata={metadata}
+              palettes={colorPalettes}
+              selectedPaletteIdx={selectedPaletteIdx}
+              generating={paletteGenerating}
+              regeneratingIdx={paletteRegeneratingIdx}
+              onSelect={setSelectedPaletteIdx}
+              onRegenerate={regenerateSinglePalette}
+              onGenerateAll={() => generateColorPalettes(true)}
+            />
+          ) : currentStep === "mood" ? (
             <MoodBoardPanel
               metadata={metadata}
               moodBoards={moodBoards}
