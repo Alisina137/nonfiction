@@ -227,7 +227,7 @@ export const TOKEN_LIMITS: Record<string, number> = {
 
 const MAX_TOKENS_CAP       = 8000;
 const LOW_COST_TOKEN_CAP   = 1800;
-const MAX_INPUT_CHARS      = 12_000;
+const MAX_INPUT_CHARS      = 20_000;
 const CHARS_PER_TOKEN      = 4;
 
 function capTokens(n: number): number {

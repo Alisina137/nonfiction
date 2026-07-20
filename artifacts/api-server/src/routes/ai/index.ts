@@ -2121,7 +2121,21 @@ router.post("/generate-subsections", async (req, res) => {
           }));
       }
       if (Array.isArray(raw)) {
-        // Legacy format: string array
+        // Check if it's an array of rich subsection objects (model returned top-level array
+        // instead of the wrapped {"subsections":[...]} format)
+        const richItems = raw.filter(
+          (s: any) => s && typeof s === "object" && typeof s.subsectionTitle === "string" && s.subsectionTitle.trim()
+        );
+        if (richItems.length > 0) {
+          return richItems.map((s: any) => ({
+            title:   stripSectionColon(String(s.subsectionTitle).trim()),
+            purpose: typeof s.subsectionPurpose === "string" ? s.subsectionPurpose.trim() : "",
+            blueprintComponents: Array.isArray(s.blueprintComponents)
+              ? s.blueprintComponents.filter((c: any) => typeof c === "string" && VALID_BLUEPRINT_COMPONENTS.has(c)).slice(0, 4)
+              : [],
+          }));
+        }
+        // Legacy format: plain string array
         return raw
           .filter((t: any) => typeof t === "string" && t.trim())
           .map((t: any) => ({ title: stripSectionColon(String(t).trim()), purpose: "", blueprintComponents: [] }));
