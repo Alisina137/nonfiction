@@ -69,10 +69,11 @@ const WORKFLOW_STEPS = [
   { id: "visual",      num: 4,  label: "Visual Direction",    state: "locked" },
   { id: "mood",        num: 5,  label: "Mood Board",          state: "unlocked" },
   { id: "color",       num: 6,  label: "Color Palette",       state: "unlocked" },
-  { id: "typography",  num: 7,  label: "Typography",          state: "locked" },
-  { id: "layout",      num: 8,  label: "Layout & Composition",state: "locked" },
-  { id: "concepts",    num: 9,  label: "Generate Concepts",   state: "locked" },
-  { id: "review",      num: 10, label: "Review & Refine",     state: "locked" },
+  { id: "elements",    num: 7,  label: "Design Elements",     state: "unlocked" },
+  { id: "typography",  num: 8,  label: "Typography",          state: "locked" },
+  { id: "layout",      num: 9,  label: "Layout & Composition",state: "locked" },
+  { id: "concepts",    num: 10, label: "Generate Concepts",   state: "locked" },
+  { id: "review",      num: 11, label: "Review & Refine",     state: "locked" },
 ];
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -2045,6 +2046,160 @@ function RightPanel({ metadata, onChange, errors }) {
   );
 }
 
+// ─── Design Elements Panel ────────────────────────────────────────────────────
+
+const COMPLEXITY_STYLE = {
+  Minimal:  { bar: "w-1/3",  color: "bg-sky-500",     text: "text-sky-400"     },
+  Balanced: { bar: "w-2/3",  color: "bg-indigo-500",  text: "text-indigo-400"  },
+  Detailed: { bar: "w-full", color: "bg-violet-500",  text: "text-violet-400"  },
+};
+
+const FOCAL_ICON = { Title: "T", "Main Object": "◉", Illustration: "🖼", Symbol: "◆", Icon: "⬡" };
+
+function DesignElementsPanel({ designElements: de, generating, onRegenerate, onRemoveSupportingElement }) {
+  return (
+    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      {/* Header */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Step 7</p>
+        </div>
+        <h2 className="text-lg font-bold text-gray-100">Design Elements</h2>
+        <p className="text-[12px] text-gray-500 leading-relaxed">
+          Visual elements that will guide AI cover generation — auto-updated as you refine strategy and palette.
+        </p>
+      </div>
+
+      {/* Loading */}
+      {generating && !de ? (
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-10 flex flex-col items-center gap-3">
+          <div className="flex gap-1.5">
+            {[0,1,2].map(i => (
+              <div key={i} className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" style={{ animationDelay: `${i*0.2}s` }} />
+            ))}
+          </div>
+          <p className="text-[11px] text-cyan-400 font-medium">Analysing design elements…</p>
+        </div>
+      ) : !de ? (
+        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-800/20 p-10 flex flex-col items-center gap-3 text-center">
+          <p className="text-[12px] text-gray-500">Set a book title to generate design elements.</p>
+          <button type="button" onClick={onRegenerate}
+            className="rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-semibold px-4 py-2 transition">
+            Generate Elements
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* 1 — Main Subject (highlighted) */}
+          <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-900/40 via-cyan-900/20 to-cyan-800/10 p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🎯</span>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Main Subject</p>
+            </div>
+            <p className="text-[17px] font-bold text-white leading-tight">{de.mainSubject}</p>
+            <p className="text-[11px] text-cyan-300/70 leading-snug italic">{de.mainSubjectReason}</p>
+          </div>
+
+          {/* 2 — Supporting Elements */}
+          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">✦</span>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Supporting Elements</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(de.supportingElements || []).map((el, i) => (
+                <span key={i}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-gray-700/60 border border-gray-600 text-gray-300 text-[11px] font-semibold px-3 py-1">
+                  {el}
+                  <button type="button" onClick={() => onRemoveSupportingElement(i)}
+                    className="text-gray-500 hover:text-gray-200 leading-none transition text-[10px]">×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* 3+4 — Background Style + Image Style row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🖼</span>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Background</p>
+              </div>
+              <p className="text-[13px] font-bold text-gray-200">{de.backgroundStyle}</p>
+            </div>
+            <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🎨</span>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Image Style</p>
+              </div>
+              <span className="inline-flex items-center rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold px-3 py-1">
+                {de.imageStyle}
+              </span>
+            </div>
+          </div>
+
+          {/* 5 — Visual Complexity */}
+          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">⚖</span>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Visual Complexity</p>
+              </div>
+              <span className={`text-[11px] font-bold ${(COMPLEXITY_STYLE[de.visualComplexity] || COMPLEXITY_STYLE.Balanced).text}`}>
+                {de.visualComplexity}
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-gray-700 overflow-hidden">
+              <div className={`h-full rounded-full ${(COMPLEXITY_STYLE[de.visualComplexity] || COMPLEXITY_STYLE.Balanced).color} ${(COMPLEXITY_STYLE[de.visualComplexity] || COMPLEXITY_STYLE.Balanced).bar}`} />
+            </div>
+            <div className="flex justify-between text-[9px] text-gray-700 font-semibold uppercase tracking-wide">
+              <span>Minimal</span><span>Balanced</span><span>Detailed</span>
+            </div>
+          </div>
+
+          {/* 6 — Focal Point */}
+          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">👁</span>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Focal Point</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-gray-700 border border-gray-600 flex items-center justify-center text-lg shrink-0">
+                {FOCAL_ICON[de.focalPoint] ?? "◉"}
+              </div>
+              <p className="text-[14px] font-bold text-gray-200">{de.focalPoint}</p>
+            </div>
+          </div>
+
+          {/* 7 — Avoid Elements */}
+          <div className="rounded-xl border border-red-900/30 bg-red-950/20 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🚫</span>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-red-400/70">Avoid</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(de.avoidElements || []).map((el, i) => (
+                <span key={i} className="rounded-full bg-red-950/40 border border-red-800/40 text-red-400/80 text-[10px] font-semibold px-3 py-1">
+                  {el}
+                </span>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Regenerate */}
+      <div className="pt-1">
+        <button type="button" onClick={onRegenerate} disabled={generating}
+          className="w-full rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700/60 text-gray-400 hover:text-gray-200 text-[11px] font-semibold py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed">
+          {generating ? "Analysing…" : "↻ Regenerate Design Elements"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Color Palette Panel ──────────────────────────────────────────────────────
 
 const READABILITY_STYLE = {
@@ -2999,6 +3154,14 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const paletteDebounceRef = useRef(null);
   const paletteKeyRef = useRef("");
 
+  // Design Elements Engine state
+  const [designElements, setDesignElements] = useState(() =>
+    bookCover?.designElements || bookCover?.coverStudio?.designElements || null
+  );
+  const [designElementsGenerating, setDesignElementsGenerating] = useState(false);
+  const designElementsDebounceRef = useRef(null);
+  const designElementsKeyRef = useRef("");
+
   const strategy = useMemo(
     () => deriveCoverStrategy(fullProject, metadata),
     [fullProject, metadata] // eslint-disable-line react-hooks/exhaustive-deps
@@ -3201,6 +3364,66 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     marketDebounceRef.current = setTimeout(() => generateMarketAnalysis(false), 1400);
     return () => { if (marketDebounceRef.current) clearTimeout(marketDebounceRef.current); };
   }, [metadata.primaryCategory, metadata.secondaryCategory, metadata.audience, metadata.language, metadata.title]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Design Elements Engine ────────────────────────────────────────────────
+  async function generateDesignElements(force = false) {
+    if (designElementsGenerating) return;
+    const selectedBoard   = moodBoards.length > 0 && selectedMoodBoardIdx !== null ? moodBoards[selectedMoodBoardIdx] : null;
+    const selectedPalette = colorPalettes.length > 0 && selectedPaletteIdx !== null ? colorPalettes[selectedPaletteIdx] : null;
+    const key = `${metadata.title}|${selectedBoard?.styleName}|${selectedPalette?.paletteName}|${coverStrategyProfile?.emotionalTone}`;
+    if (!force && key === designElementsKeyRef.current && designElements?.generatedForKey === key) return;
+    if (!metadata.title?.trim()) return;
+
+    designElementsKeyRef.current = key;
+    setDesignElementsGenerating(true);
+    try {
+      const res = await fetch("/api/ai/design-elements", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:                       metadata.title,
+          subtitle:                    metadata.subtitle        || "",
+          primaryCategory:             metadata.primaryCategory || "",
+          audience:                    metadata.audience        || "",
+          moodBoardStyle:              selectedBoard?.styleName          || "",
+          moodBoardDesignStyle:        selectedBoard?.designStyle        || "",
+          moodBoardMood:               selectedBoard?.mood               || "",
+          coverStrategyTone:           coverStrategyProfile?.emotionalTone    || "",
+          coverStrategyVisualFocus:    coverStrategyProfile?.visualFocus      || "",
+          coverStrategyPrimaryMessage: coverStrategyProfile?.primaryMessage   || "",
+          selectedPaletteName:         selectedPalette?.paletteName           || "",
+          marketDesignDirection:       marketAnalysis?.designDirection        || "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Design elements generation failed");
+      setDesignElements({ ...data, generatedForKey: key });
+    } catch (err) {
+      console.error("[DesignElements] generation error:", err);
+    } finally {
+      setDesignElementsGenerating(false);
+    }
+  }
+
+  function removeDesignSupportingElement(idx) {
+    setDesignElements(prev => prev
+      ? { ...prev, supportingElements: prev.supportingElements.filter((_, i) => i !== idx) }
+      : prev
+    );
+  }
+
+  // Auto-regenerate when mood board, palette, or strategy changes
+  useEffect(() => {
+    const selectedBoard   = moodBoards.length > 0 && selectedMoodBoardIdx !== null ? moodBoards[selectedMoodBoardIdx] : null;
+    const selectedPalette = colorPalettes.length > 0 && selectedPaletteIdx !== null ? colorPalettes[selectedPaletteIdx] : null;
+    const key = `${metadata.title}|${selectedBoard?.styleName}|${selectedPalette?.paletteName}|${coverStrategyProfile?.emotionalTone}`;
+    if (!metadata.title?.trim()) return;
+    if (key === designElementsKeyRef.current && designElements?.generatedForKey === key) return;
+
+    if (designElementsDebounceRef.current) clearTimeout(designElementsDebounceRef.current);
+    designElementsDebounceRef.current = setTimeout(() => generateDesignElements(false), 2400);
+    return () => { if (designElementsDebounceRef.current) clearTimeout(designElementsDebounceRef.current); };
+  }, [metadata.title, selectedMoodBoardIdx, selectedPaletteIdx, coverStrategyProfile?.emotionalTone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Color Palette Engine ──────────────────────────────────────────────────
   async function generateColorPalettes(force = false) {
@@ -3513,6 +3736,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           selectedMoodBoardIdx:   selectedMoodBoardIdx      ?? null,
           colorPalettes:          colorPalettes.length > 0  ? colorPalettes  : [],
           selectedPaletteIdx:     selectedPaletteIdx         ?? null,
+          designElements:         designElements             || null,
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -3526,6 +3750,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             selectedMoodBoardIdx: selectedMoodBoardIdx     ?? null,
             colorPalettes:        colorPalettes.length > 0 ? colorPalettes : [],
             selectedPaletteIdx:   selectedPaletteIdx        ?? null,
+            designElements:       designElements            || null,
           },
         };
       });
@@ -3533,7 +3758,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -3577,7 +3802,14 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden"
           style={{ background: "#1a1f2e" }}
         >
-          {currentStep === "color" ? (
+          {currentStep === "elements" ? (
+            <DesignElementsPanel
+              designElements={designElements}
+              generating={designElementsGenerating}
+              onRegenerate={() => generateDesignElements(true)}
+              onRemoveSupportingElement={removeDesignSupportingElement}
+            />
+          ) : currentStep === "color" ? (
             <ColorPalettePanel
               metadata={metadata}
               palettes={colorPalettes}

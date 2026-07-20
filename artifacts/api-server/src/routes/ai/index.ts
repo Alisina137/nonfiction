@@ -1047,6 +1047,98 @@ ${count > 1 ? `[
   }
 });
 
+// ─── Design Elements Engine ──────────────────────────────────────────────────
+router.post("/design-elements", async (req, res) => {
+  try {
+    const {
+      title, subtitle, primaryCategory, audience,
+      moodBoardStyle, moodBoardDesignStyle, moodBoardMood,
+      coverStrategyTone, coverStrategyVisualFocus, coverStrategyPrimaryMessage,
+      selectedPaletteName, marketDesignDirection,
+    } = req.body || {};
+
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+
+    const context = [
+      moodBoardStyle        ? `Selected Mood Board: ${moodBoardStyle} (${moodBoardDesignStyle || ""}, ${moodBoardMood || ""})` : "",
+      coverStrategyTone     ? `Emotional Tone: ${coverStrategyTone}` : "",
+      coverStrategyVisualFocus ? `Visual Focus: ${coverStrategyVisualFocus}` : "",
+      coverStrategyPrimaryMessage ? `Primary Message: ${coverStrategyPrimaryMessage}` : "",
+      selectedPaletteName   ? `Selected Palette: ${selectedPaletteName}` : "",
+      marketDesignDirection ? `Design Direction: ${marketDesignDirection}` : "",
+    ].filter(Boolean).join("\n");
+
+    const prompt = `You are a professional book cover art director for Amazon KDP nonfiction books.
+
+Determine the specific design elements that should appear on this book cover before image generation begins.
+
+Book Title: ${title}
+Subtitle: ${subtitle || "(none)"}
+Primary Category: ${primaryCategory || "Not specified"}
+Target Audience: ${audience || "General readers"}
+${context}
+
+Rules:
+- mainSubject: the single primary visual element (e.g. "Business Professional", "Mountain Landscape", "Brain Illustration", "Abstract Growth Symbol", "Financial Chart", "Rocket", "Compass")
+- mainSubjectReason: one sentence (under 20 words) explaining why this subject fits the book
+- supportingElements: array of exactly 3 supporting visual elements (e.g. "Geometric Shapes", "Abstract Lines", "Light Effects", "Icons", "Texture", "Minimal Patterns")
+- backgroundStyle: exactly one of: "Solid Color", "Gradient", "Abstract", "Office", "Nature", "City", "Texture", "Minimal"
+- imageStyle: exactly one of: "Realistic", "Flat Illustration", "Digital Painting", "Vector", "3D Render", "Minimal Graphic"
+- visualComplexity: exactly one of: "Minimal", "Balanced", "Detailed"
+- focalPoint: exactly one of: "Title", "Main Object", "Illustration", "Symbol", "Icon"
+- avoidElements: array of 3–5 short strings describing what should NOT appear on the cover
+
+Return ONLY this JSON, no markdown:
+{
+  "mainSubject": "...",
+  "mainSubjectReason": "...",
+  "supportingElements": ["...", "...", "..."],
+  "backgroundStyle": "Gradient",
+  "imageStyle": "Flat Illustration",
+  "visualComplexity": "Balanced",
+  "focalPoint": "Title",
+  "avoidElements": ["...", "...", "..."]
+}`;
+
+    const { text: raw, usedProvider } = await runShort(
+      prompt,
+      "You are a book cover art director. Respond with valid JSON only.",
+      req, res, "conceptGen"
+    );
+
+    const data = extractJSON(raw);
+    if (!data || typeof data !== "object") {
+      return res.status(500).json({ error: "Design elements returned no parseable data." });
+    }
+
+    const bgStyles     = ["Solid Color","Gradient","Abstract","Office","Nature","City","Texture","Minimal"] as const;
+    const imgStyles    = ["Realistic","Flat Illustration","Digital Painting","Vector","3D Render","Minimal Graphic"] as const;
+    const complexities = ["Minimal","Balanced","Detailed"] as const;
+    const focalPoints  = ["Title","Main Object","Illustration","Symbol","Icon"] as const;
+
+    const supporting = Array.isArray(data.supportingElements)
+      ? data.supportingElements.filter((s: any) => typeof s === "string").slice(0, 3)
+      : [];
+    const avoid = Array.isArray(data.avoidElements)
+      ? data.avoidElements.filter((s: any) => typeof s === "string").slice(0, 5)
+      : [];
+
+    return res.json({
+      mainSubject:        String(data.mainSubject       || "").slice(0, 80),
+      mainSubjectReason:  String(data.mainSubjectReason || "").slice(0, 200),
+      supportingElements: supporting,
+      backgroundStyle:    bgStyles.find(s => s === data.backgroundStyle)       ?? "Gradient",
+      imageStyle:         imgStyles.find(s => s === data.imageStyle)           ?? "Flat Illustration",
+      visualComplexity:   complexities.find(c => c === data.visualComplexity) ?? "Balanced",
+      focalPoint:         focalPoints.find(f => f === data.focalPoint)         ?? "Title",
+      avoidElements:      avoid,
+      _provider: usedProvider,
+    });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 // ─── Layout & Composition Engine ─────────────────────────────────────────────
 router.post("/layout", async (req, res) => {
   try {
