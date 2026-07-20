@@ -67,7 +67,7 @@ const WORKFLOW_STEPS = [
   { id: "market",      num: 2,  label: "Market Analysis",     state: "unlocked" },
   { id: "strategy",    num: 3,  label: "Cover Strategy",      state: "unlocked" },
   { id: "visual",      num: 4,  label: "Visual Direction",    state: "locked" },
-  { id: "mood",        num: 5,  label: "Mood Board",          state: "locked" },
+  { id: "mood",        num: 5,  label: "Mood Board",          state: "unlocked" },
   { id: "color",       num: 6,  label: "Color Palette",       state: "locked" },
   { id: "typography",  num: 7,  label: "Typography",          state: "locked" },
   { id: "layout",      num: 8,  label: "Layout & Composition",state: "locked" },
@@ -2045,6 +2045,312 @@ function RightPanel({ metadata, onChange, errors }) {
   );
 }
 
+// ─── Mood Board Helpers ───────────────────────────────────────────────────────
+
+const COLOR_DIRECTION_PALETTES = {
+  "Light & Airy":       { bg: "#f8f9fa", primary: "#e9ecef", accent: "#6c757d", text: "#212529", shape: "#dee2e6" },
+  "Dark & Dramatic":    { bg: "#0d1117", primary: "#161b22", accent: "#d4a017", text: "#f0f6fc", shape: "#21262d" },
+  "Warm Professional":  { bg: "#fef3e2", primary: "#f5deb3", accent: "#c0392b", text: "#2c1810", shape: "#f0c080" },
+  "Cool Minimal":       { bg: "#eef2f7", primary: "#dbe7f3", accent: "#2c6fad", text: "#1a2b3c", shape: "#b8d4ea" },
+  "Bold & Vibrant":     { bg: "#1a0533", primary: "#2d1264", accent: "#f72585", text: "#ffffff", shape: "#7b2ff7" },
+  "Earthy & Natural":   { bg: "#f4ede3", primary: "#ddd0b3", accent: "#6b5344", text: "#2c1e10", shape: "#c4a882" },
+  "Monochrome":         { bg: "#ffffff", primary: "#e0e0e0", accent: "#1a1a1a", text: "#1a1a1a", shape: "#9e9e9e" },
+  "Soft Pastels":       { bg: "#fdf4fb", primary: "#f8d7f5", accent: "#9b59b6", text: "#3d1a4a", shape: "#e8b4e3" },
+};
+
+const DESIGN_STYLE_SHAPES = {
+  Minimal:       "rect",
+  Editorial:     "lines",
+  Bold:          "block",
+  Classic:       "border",
+  Geometric:     "triangle",
+  Organic:       "circles",
+  Typographic:   "text",
+  Photographic:  "frame",
+};
+
+function MoodBoardPreviewSVG({ colorDirection, designStyle, styleName }) {
+  const pal = COLOR_DIRECTION_PALETTES[colorDirection] || COLOR_DIRECTION_PALETTES["Light & Airy"];
+  const shapeType = DESIGN_STYLE_SHAPES[designStyle] || "rect";
+  const w = 280, h = 160;
+
+  const shapes = () => {
+    switch (shapeType) {
+      case "block":
+        return <>
+          <rect x="0" y="0" width={w} height={h} fill={pal.primary} />
+          <rect x="0" y="0" width={w} height="8" fill={pal.accent} />
+          <rect x="20" y="30" width="180" height="28" rx="2" fill={pal.accent} opacity="0.9" />
+          <rect x="20" y="70" width="120" height="12" rx="2" fill={pal.text} opacity="0.5" />
+          <rect x="20" y="90" width="80"  height="8"  rx="2" fill={pal.text} opacity="0.3" />
+          <rect x={w - 40} y={h - 40} width="30" height="30" rx="2" fill={pal.accent} opacity="0.6" />
+        </>;
+      case "lines":
+        return <>
+          <rect x="0" y="0" width={w} height={h} fill={pal.bg} />
+          <rect x="20" y="20" width="200" height="3" fill={pal.accent} />
+          <rect x="20" y="35" width="150" height="22" rx="1" fill={pal.text} opacity="0.85" />
+          <rect x="20" y="65" width="180" height="2" fill={pal.shape} />
+          <rect x="20" y="75" width="130" height="10" rx="1" fill={pal.text} opacity="0.35" />
+          <rect x="20" y="92" width="100" height="10" rx="1" fill={pal.text} opacity="0.25" />
+          <rect x="20" y={h - 25} width="200" height="2" fill={pal.accent} opacity="0.4" />
+        </>;
+      case "triangle":
+        return <>
+          <rect x="0" y="0" width={w} height={h} fill={pal.primary} />
+          <polygon points={`${w - 20},20 ${w - 20},${h - 20} 60,${h / 2}`} fill={pal.accent} opacity="0.25" />
+          <polygon points={`${w},0 ${w},${h} ${w / 2},0`} fill={pal.shape} opacity="0.3" />
+          <rect x="20" y="40" width="160" height="22" rx="3" fill={pal.text} opacity="0.8" />
+          <rect x="20" y="72" width="100" height="10" rx="2" fill={pal.text} opacity="0.4" />
+        </>;
+      case "circles":
+        return <>
+          <rect x="0" y="0" width={w} height={h} fill={pal.bg} />
+          <circle cx={w - 30} cy="30" r="55" fill={pal.accent} opacity="0.15" />
+          <circle cx="30" cy={h - 30} r="40" fill={pal.shape} opacity="0.2" />
+          <circle cx={w / 2} cy={h / 2} r="20" fill={pal.accent} opacity="0.1" />
+          <rect x="20" y="38" width="170" height="22" rx="3" fill={pal.text} opacity="0.8" />
+          <rect x="20" y="68" width="100" height="10" rx="2" fill={pal.text} opacity="0.4" />
+        </>;
+      case "frame":
+        return <>
+          <rect x="0" y="0" width={w} height={h} fill={pal.primary} />
+          <rect x="12" y="12" width={w - 24} height={h - 24} fill="none" stroke={pal.accent} strokeWidth="2" rx="2" />
+          <rect x="24" y="24" width={w - 48} height={h - 48} fill={pal.shape} opacity="0.2" />
+          <rect x="30" y="50" width="160" height="20" rx="2" fill={pal.text} opacity="0.75" />
+          <rect x="30" y="78" width="100" height="8"  rx="2" fill={pal.text} opacity="0.4" />
+        </>;
+      case "text":
+        return <>
+          <rect x="0" y="0" width={w} height={h} fill={pal.bg} />
+          <rect x="20" y="20" width="220" height="36" rx="2" fill={pal.accent} opacity="0.9" />
+          <rect x="20" y="64" width="200" height="18" rx="2" fill={pal.text} opacity="0.5" />
+          <rect x="20" y="90" width="160" height="14" rx="2" fill={pal.text} opacity="0.3" />
+          <rect x="20" y="112" width="80" height="14" rx="2" fill={pal.text} opacity="0.2" />
+          <rect x="20" y={h - 18} width="220" height="2" fill={pal.accent} opacity="0.5" />
+        </>;
+      case "border":
+        return <>
+          <rect x="0" y="0" width={w} height={h} fill={pal.bg} />
+          <rect x="0" y="0" width="6" height={h} fill={pal.accent} />
+          <rect x="0" y="0" width={w} height="6" fill={pal.accent} />
+          <rect x={w - 6} y="0" width="6" height={h} fill={pal.accent} />
+          <rect x="0" y={h - 6} width={w} height="6" fill={pal.accent} />
+          <rect x="20" y="30" width="180" height="24" rx="2" fill={pal.text} opacity="0.8" />
+          <rect x="20" y="62" width="120" height="10" rx="2" fill={pal.text} opacity="0.4" />
+          <rect x="20" y="80" width="80"  height="10" rx="2" fill={pal.text} opacity="0.25" />
+        </>;
+      default: // rect / Minimal
+        return <>
+          <rect x="0" y="0" width={w} height={h} fill={pal.bg} />
+          <rect x="20" y="30" width="180" height="26" rx="3" fill={pal.accent} opacity="0.85" />
+          <rect x="20" y="66" width="220" height="2"  fill={pal.shape} />
+          <rect x="20" y="76" width="120" height="10" rx="2" fill={pal.text} opacity="0.4" />
+          <rect x="20" y="94" width="80"  height="10" rx="2" fill={pal.text} opacity="0.25" />
+        </>;
+    }
+  };
+
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-full rounded-t-xl"
+      style={{ display: "block", aspectRatio: `${w}/${h}` }}
+    >
+      {shapes()}
+      {/* Subtle label */}
+      <rect x="8" y={h - 22} width={Math.min(styleName.length * 6.2 + 10, w - 16)} height="16" rx="8" fill="rgba(0,0,0,0.45)" />
+      <text x="13" y={h - 11} fill="#ffffff" fontSize="8.5" fontFamily="system-ui, sans-serif" fontWeight="600" opacity="0.9">
+        {styleName}
+      </text>
+    </svg>
+  );
+}
+
+function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onRegenerate }) {
+  const tagColor = {
+    Minimal:           "bg-gray-700/50 text-gray-400 border-gray-600",
+    Editorial:         "bg-slate-700/50 text-slate-300 border-slate-600",
+    Bold:              "bg-rose-900/40 text-rose-300 border-rose-700",
+    Classic:           "bg-amber-900/40 text-amber-300 border-amber-700",
+    Geometric:         "bg-blue-900/40 text-blue-300 border-blue-700",
+    Organic:           "bg-emerald-900/40 text-emerald-300 border-emerald-700",
+    Typographic:       "bg-violet-900/40 text-violet-300 border-violet-700",
+    Photographic:      "bg-cyan-900/40 text-cyan-300 border-cyan-700",
+  };
+
+  return (
+    <div
+      className={`relative rounded-xl border overflow-hidden flex flex-col transition-all duration-200 cursor-pointer group ${
+        isSelected
+          ? "border-indigo-500 shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500/40"
+          : "border-gray-700/60 hover:border-gray-600 hover:shadow-md hover:shadow-black/30 hover:-translate-y-0.5"
+      }`}
+      style={{ background: "#1a2035" }}
+      onClick={() => !isSelected && onSelect(index)}
+    >
+      {/* Selected badge */}
+      {isSelected && (
+        <div className="absolute top-2 right-2 z-10 rounded-full bg-indigo-500 text-white text-[9px] font-bold px-2 py-0.5 shadow">
+          ✓ Selected
+        </div>
+      )}
+
+      {/* Preview SVG */}
+      <div className="shrink-0 overflow-hidden rounded-t-xl">
+        {isRegenerating ? (
+          <div className="w-full flex items-center justify-center bg-gray-800/60" style={{ aspectRatio: "280/160" }}>
+            <div className="flex gap-1">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"
+                  style={{ animationDelay: `${i * 0.2}s` }} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <MoodBoardPreviewSVG
+            colorDirection={board.colorDirection}
+            designStyle={board.designStyle}
+            styleName={board.styleName}
+          />
+        )}
+      </div>
+
+      {/* Card body */}
+      <div className="flex flex-col flex-1 p-3 gap-2">
+        <div>
+          <p className="text-[13px] font-bold text-gray-100 leading-tight">{board.styleName}</p>
+          <p className="text-[11px] text-gray-500 leading-snug mt-1 line-clamp-3">{board.description}</p>
+        </div>
+
+        {/* Attribute tags */}
+        <div className="flex flex-wrap gap-1">
+          {[
+            { label: board.designStyle,      base: tagColor[board.designStyle] || "bg-gray-700/50 text-gray-400 border-gray-600" },
+            { label: board.mood,             base: "bg-gray-800/60 text-gray-400 border-gray-700" },
+            { label: board.colorDirection,   base: "bg-gray-800/60 text-gray-400 border-gray-700" },
+            { label: board.typographyStyle,  base: "bg-gray-800/60 text-gray-400 border-gray-700" },
+            { label: board.visualComplexity, base: "bg-gray-800/60 text-gray-400 border-gray-700" },
+          ].map(({ label, base }) => (
+            <span key={label} className={`rounded-full border text-[9px] font-semibold px-2 py-0.5 ${base}`}>
+              {label}
+            </span>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 mt-auto pt-1">
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onSelect(index); }}
+            disabled={isSelected}
+            className={`flex-1 rounded-lg text-[11px] font-bold py-2 transition ${
+              isSelected
+                ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 cursor-default"
+                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+            }`}
+          >
+            {isSelected ? "✓ Selected" : "Select"}
+          </button>
+          <button
+            type="button"
+            title="Regenerate this card"
+            onClick={e => { e.stopPropagation(); onRegenerate(index); }}
+            disabled={isRegenerating}
+            className="w-8 h-8 rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700 text-gray-500 hover:text-gray-200 flex items-center justify-center transition text-sm disabled:opacity-40"
+          >
+            ↻
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MoodBoardPanel({ metadata, moodBoards, selectedMoodBoardIdx, generating, regeneratingIdx, onSelect, onRegenerate, onGenerateAll }) {
+  return (
+    <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      {/* Header */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Step 5</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-100">Mood Board</h2>
+            <p className="text-[12px] text-gray-500 leading-relaxed mt-0.5">
+              Four visual directions for your cover. Select one to guide AI generation.
+            </p>
+          </div>
+          {moodBoards.length > 0 && (
+            <button
+              type="button"
+              onClick={onGenerateAll}
+              disabled={generating}
+              className="shrink-0 rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700 text-gray-400 hover:text-gray-200 text-[10px] font-bold px-3 py-1.5 transition disabled:opacity-40"
+            >
+              ↻ Regenerate All
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {generating && moodBoards.length === 0 ? (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-10 flex flex-col items-center gap-3">
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"
+                style={{ animationDelay: `${i * 0.2}s` }} />
+            ))}
+          </div>
+          <p className="text-[11px] text-amber-400 font-medium">Generating mood boards…</p>
+        </div>
+      ) : moodBoards.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-800/20 p-10 flex flex-col items-center gap-3 text-center">
+          <p className="text-[12px] text-gray-500">Set a book title to generate mood boards.</p>
+          <button
+            type="button"
+            onClick={onGenerateAll}
+            className="rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-semibold px-4 py-2 transition"
+          >
+            Generate Mood Boards
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* 2×2 grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {moodBoards.map((board, idx) => (
+              <MoodBoardCard
+                key={idx}
+                board={board}
+                index={idx}
+                isSelected={selectedMoodBoardIdx === idx}
+                isRegenerating={regeneratingIdx === idx}
+                onSelect={onSelect}
+                onRegenerate={onRegenerate}
+              />
+            ))}
+          </div>
+
+          {selectedMoodBoardIdx !== null && (
+            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 flex items-center gap-3">
+              <span className="text-sm">✓</span>
+              <p className="text-[11px] text-indigo-300">
+                <span className="font-bold">{moodBoards[selectedMoodBoardIdx]?.styleName}</span>
+                {" "}selected — canvas preview updated.
+              </p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Cover Strategy Panel ────────────────────────────────────────────────────
 
 function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onRegenerate }) {
@@ -2454,6 +2760,20 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const strategyDebounceRef = useRef(null);
   const strategyKeyRef = useRef("");
 
+  // Mood Board Engine state
+  const [moodBoards, setMoodBoards] = useState(() =>
+    Array.isArray(bookCover?.moodBoards) ? bookCover.moodBoards :
+    Array.isArray(bookCover?.coverStudio?.moodBoards) ? bookCover.coverStudio.moodBoards : []
+  );
+  const [selectedMoodBoardIdx, setSelectedMoodBoardIdx] = useState(() =>
+    typeof bookCover?.selectedMoodBoardIdx === "number" ? bookCover.selectedMoodBoardIdx :
+    typeof bookCover?.coverStudio?.selectedMoodBoardIdx === "number" ? bookCover.coverStudio.selectedMoodBoardIdx : null
+  );
+  const [moodBoardsGenerating, setMoodBoardsGenerating] = useState(false);
+  const [moodBoardRegeneratingIdx, setMoodBoardRegeneratingIdx] = useState(null);
+  const moodBoardDebounceRef = useRef(null);
+  const moodBoardKeyRef = useRef("");
+
   const strategy = useMemo(
     () => deriveCoverStrategy(fullProject, metadata),
     [fullProject, metadata] // eslint-disable-line react-hooks/exhaustive-deps
@@ -2657,6 +2977,89 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     return () => { if (marketDebounceRef.current) clearTimeout(marketDebounceRef.current); };
   }, [metadata.primaryCategory, metadata.secondaryCategory, metadata.audience, metadata.language, metadata.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Mood Board Engine ─────────────────────────────────────────────────────
+  async function generateMoodBoards(force = false) {
+    if (moodBoardsGenerating) return;
+    const key = `${metadata.title}|${metadata.primaryCategory}|${metadata.audience}|${coverStrategyProfile?.emotionalTone}`;
+    if (!force && key === moodBoardKeyRef.current && moodBoards.length === 4) return;
+    if (!metadata.title?.trim()) return;
+
+    moodBoardKeyRef.current = key;
+    setMoodBoardsGenerating(true);
+    try {
+      const res = await fetch("/api/ai/mood-board", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:               metadata.title,
+          subtitle:            metadata.subtitle          || "",
+          author:              metadata.author            || "",
+          primaryCategory:     metadata.primaryCategory   || "",
+          secondaryCategory:   metadata.secondaryCategory || "",
+          audience:            metadata.audience          || "",
+          marketDesignDirection: marketAnalysis?.designDirection || "",
+          coverStrategy:       coverStrategyProfile || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Mood board generation failed");
+      if (Array.isArray(data.boards)) setMoodBoards(data.boards);
+    } catch (err) {
+      console.error("[MoodBoard] generation error:", err);
+    } finally {
+      setMoodBoardsGenerating(false);
+    }
+  }
+
+  async function regenerateSingleMoodBoard(idx) {
+    if (moodBoardRegeneratingIdx !== null) return;
+    setMoodBoardRegeneratingIdx(idx);
+    try {
+      const res = await fetch("/api/ai/mood-board", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:               metadata.title,
+          subtitle:            metadata.subtitle          || "",
+          author:              metadata.author            || "",
+          primaryCategory:     metadata.primaryCategory   || "",
+          secondaryCategory:   metadata.secondaryCategory || "",
+          audience:            metadata.audience          || "",
+          marketDesignDirection: marketAnalysis?.designDirection || "",
+          coverStrategy:       coverStrategyProfile || null,
+          regenerateIndex:     idx,
+          existingBoards:      moodBoards,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Regeneration failed");
+      if (data.board) {
+        setMoodBoards(prev => {
+          const next = [...prev];
+          next[idx] = data.board;
+          return next;
+        });
+        // If the regenerated card was selected, deselect it
+        if (selectedMoodBoardIdx === idx) setSelectedMoodBoardIdx(null);
+      }
+    } catch (err) {
+      console.error("[MoodBoard] single regeneration error:", err);
+    } finally {
+      setMoodBoardRegeneratingIdx(null);
+    }
+  }
+
+  // Auto-generate mood boards when title, category, or cover strategy changes
+  useEffect(() => {
+    const key = `${metadata.title}|${metadata.primaryCategory}|${metadata.audience}|${coverStrategyProfile?.emotionalTone}`;
+    if (!metadata.title?.trim()) return;
+    if (key === moodBoardKeyRef.current && moodBoards.length === 4) return;
+
+    if (moodBoardDebounceRef.current) clearTimeout(moodBoardDebounceRef.current);
+    moodBoardDebounceRef.current = setTimeout(() => generateMoodBoards(false), 2000);
+    return () => { if (moodBoardDebounceRef.current) clearTimeout(moodBoardDebounceRef.current); };
+  }, [metadata.title, metadata.primaryCategory, metadata.audience, coverStrategyProfile?.emotionalTone]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Cover Strategy Engine ─────────────────────────────────────────────────
   async function generateCoverStrategy(force = false) {
     if (strategyGenerating) return;
@@ -2795,16 +3198,20 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           typographyProfile:    typographyProfile || null,
           layoutProfile:        layoutProfile     || null,
           marketAnalysis:       marketAnalysis        || null,
-          coverStrategyProfile: coverStrategyProfile  || null,
+          coverStrategyProfile:   coverStrategyProfile   || null,
+          moodBoards:             moodBoards.length > 0  ? moodBoards : [],
+          selectedMoodBoardIdx:   selectedMoodBoardIdx   ?? null,
           // Extended cover studio state
           coverStudio: {
             ...project,
-            metadata:           { ...metadata },
-            canvas:             { ...canvas },
-            typography:         typographyProfile    || null,
-            layout:             layoutProfile        || null,
-            marketAnalysis:     marketAnalysis       || null,
-            coverStrategy:      coverStrategyProfile || null,
+            metadata:             { ...metadata },
+            canvas:               { ...canvas },
+            typography:           typographyProfile    || null,
+            layout:               layoutProfile        || null,
+            marketAnalysis:       marketAnalysis       || null,
+            coverStrategy:        coverStrategyProfile || null,
+            moodBoards:           moodBoards.length > 0 ? moodBoards : [],
+            selectedMoodBoardIdx: selectedMoodBoardIdx ?? null,
           },
         };
       });
@@ -2812,7 +3219,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -2856,7 +3263,18 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden"
           style={{ background: "#1a1f2e" }}
         >
-          {currentStep === "strategy" ? (
+          {currentStep === "mood" ? (
+            <MoodBoardPanel
+              metadata={metadata}
+              moodBoards={moodBoards}
+              selectedMoodBoardIdx={selectedMoodBoardIdx}
+              generating={moodBoardsGenerating}
+              regeneratingIdx={moodBoardRegeneratingIdx}
+              onSelect={setSelectedMoodBoardIdx}
+              onRegenerate={regenerateSingleMoodBoard}
+              onGenerateAll={() => generateMoodBoards(true)}
+            />
+          ) : currentStep === "strategy" ? (
             <CoverStrategyPanel
               metadata={metadata}
               strategy={coverStrategyProfile}

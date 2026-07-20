@@ -842,6 +842,111 @@ Return ONLY this JSON, no markdown:
   }
 });
 
+// ─── Mood Board Engine ───────────────────────────────────────────────────────
+router.post("/mood-board", async (req, res) => {
+  try {
+    const {
+      title, subtitle, author,
+      primaryCategory, secondaryCategory, audience,
+      coverStrategy: strategyCtx,
+      marketDesignDirection,
+      regenerateIndex, // 0-3 if regenerating a single board, undefined for all
+      existingBoards,  // existing array when regenerating single
+    } = req.body || {};
+
+    if (!title?.trim()) return res.status(400).json({ error: "title is required" });
+
+    const strategyBlock = strategyCtx
+      ? `Cover Strategy Context:\n- Primary Message: ${strategyCtx.primaryMessage || ""}\n- Emotional Tone: ${strategyCtx.emotionalTone || ""}\n- Visual Focus: ${strategyCtx.visualFocus || ""}`
+      : "";
+
+    const isSingle = typeof regenerateIndex === "number" && regenerateIndex >= 0 && regenerateIndex <= 3;
+
+    // Build existing board names to avoid duplicates on single regenerate
+    const existingNames = isSingle && Array.isArray(existingBoards)
+      ? existingBoards.filter((_: any, i: number) => i !== regenerateIndex).map((b: any) => b?.styleName).filter(Boolean)
+      : [];
+
+    const exclusion = existingNames.length > 0
+      ? `Do NOT use any of these style names (already used for the other cards): ${existingNames.join(", ")}.`
+      : "";
+
+    const boardCount = isSingle ? 1 : 4;
+
+    const prompt = `You are a creative book cover art director for Amazon KDP nonfiction books.
+
+Generate ${boardCount} unique visual design direction${boardCount > 1 ? "s" : ""} for this book's cover mood board.
+
+Book Title: ${title}
+Subtitle: ${subtitle || "(none)"}
+Author: ${author || ""}
+Primary Category: ${primaryCategory || "Not specified"}
+Secondary Category: ${secondaryCategory || "Not specified"}
+Target Audience: ${audience || "General readers"}
+Market Direction: ${marketDesignDirection || "Professional"}
+${strategyBlock}
+${exclusion}
+
+Rules for each board:
+- styleName: a unique 2–4 word creative direction name (e.g. "Modern Minimal", "Bold Editorial", "Warm Premium")
+- description: max 40 words describing the visual feel
+- designStyle: one of "Minimal", "Editorial", "Bold", "Classic", "Geometric", "Organic", "Typographic", "Photographic"
+- mood: one of "Calm", "Energetic", "Serious", "Playful", "Sophisticated", "Trustworthy", "Inspiring", "Mysterious"
+- colorDirection: one of "Light & Airy", "Dark & Dramatic", "Warm Professional", "Cool Minimal", "Bold & Vibrant", "Earthy & Natural", "Monochrome", "Soft Pastels"
+- typographyStyle: one of "Sans-Serif Modern", "Serif Classic", "Slab Bold", "Script Elegant", "Mixed Hierarchy", "All-Caps Impact"
+- visualComplexity: one of "Minimal", "Moderate", "Complex"
+
+${boardCount > 1 ? "Make all 4 directions distinctly different from each other." : "Generate one fresh direction different from the others."}
+
+Return ONLY this JSON, no markdown:
+${boardCount > 1 ? `[
+  { "styleName": "...", "description": "...", "designStyle": "...", "mood": "...", "colorDirection": "...", "typographyStyle": "...", "visualComplexity": "..." },
+  { "styleName": "...", "description": "...", "designStyle": "...", "mood": "...", "colorDirection": "...", "typographyStyle": "...", "visualComplexity": "..." },
+  { "styleName": "...", "description": "...", "designStyle": "...", "mood": "...", "colorDirection": "...", "typographyStyle": "...", "visualComplexity": "..." },
+  { "styleName": "...", "description": "...", "designStyle": "...", "mood": "...", "colorDirection": "...", "typographyStyle": "...", "visualComplexity": "..." }
+]` : `{ "styleName": "...", "description": "...", "designStyle": "...", "mood": "...", "colorDirection": "...", "typographyStyle": "...", "visualComplexity": "..." }`}`;
+
+    const { text: raw, usedProvider } = await runShort(
+      prompt,
+      "You are a book cover art director. Respond with valid JSON only.",
+      req, res, "conceptGen"
+    );
+
+    const data = extractJSON(raw);
+    if (!data) return res.status(500).json({ error: "Mood board returned no parseable data." });
+
+    const designStyles   = ["Minimal","Editorial","Bold","Classic","Geometric","Organic","Typographic","Photographic"] as const;
+    const moods          = ["Calm","Energetic","Serious","Playful","Sophisticated","Trustworthy","Inspiring","Mysterious"] as const;
+    const colorDirs      = ["Light & Airy","Dark & Dramatic","Warm Professional","Cool Minimal","Bold & Vibrant","Earthy & Natural","Monochrome","Soft Pastels"] as const;
+    const typoStyles     = ["Sans-Serif Modern","Serif Classic","Slab Bold","Script Elegant","Mixed Hierarchy","All-Caps Impact"] as const;
+    const complexities   = ["Minimal","Moderate","Complex"] as const;
+
+    function sanitizeBoard(b: any) {
+      return {
+        styleName:        String(b?.styleName   || "").slice(0, 60),
+        description:      String(b?.description || "").slice(0, 300),
+        designStyle:      designStyles.find(s => s === b?.designStyle)     ?? "Minimal",
+        mood:             moods.find(m => m === b?.mood)                   ?? "Calm",
+        colorDirection:   colorDirs.find(c => c === b?.colorDirection)     ?? "Light & Airy",
+        typographyStyle:  typoStyles.find(t => t === b?.typographyStyle)   ?? "Sans-Serif Modern",
+        visualComplexity: complexities.find(c => c === b?.visualComplexity) ?? "Moderate",
+      };
+    }
+
+    if (isSingle) {
+      const board = Array.isArray(data) ? data[0] : data;
+      return res.json({ board: sanitizeBoard(board), regenerateIndex, _provider: usedProvider });
+    }
+
+    const arr = Array.isArray(data) ? data.slice(0, 4) : [data];
+    while (arr.length < 4) arr.push({});
+    return res.json({ boards: arr.map(sanitizeBoard), _provider: usedProvider });
+
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 // ─── Layout & Composition Engine ─────────────────────────────────────────────
 router.post("/layout", async (req, res) => {
   try {
