@@ -242,66 +242,133 @@ function buildAuthoritySVG(cd) {
 </svg>`;
 }
 
+// ─── Typography Editor Constants & Helpers ───────────────────────────────────
+
+const FONT_CATEGORIES = ["Serif","Sans Serif","Modern","Classic","Elegant","Bold","Condensed","Geometric"];
+const FONT_WEIGHTS    = ["Light","Regular","Medium","Semi Bold","Bold","Extra Bold"];
+const TEXT_CASES      = ["original","uppercase","lowercase","titleCase"];
+
+const FONT_CATEGORY_CSS = {
+  "Serif":      "Georgia,'Times New Roman',serif",
+  "Sans Serif": "Arial,Helvetica,sans-serif",
+  "Modern":     "'Arial Black',Impact,sans-serif",
+  "Classic":    "'Palatino Linotype',Georgia,serif",
+  "Elegant":    "Georgia,'Palatino Linotype',serif",
+  "Bold":       "Impact,'Arial Black',sans-serif",
+  "Condensed":  "Impact,'Arial Narrow',sans-serif",
+  "Geometric":  "'Trebuchet MS','Century Gothic',sans-serif",
+};
+
+const FONT_WEIGHT_CSS = {
+  "Light":      300,
+  "Regular":    400,
+  "Medium":     500,
+  "Semi Bold":  600,
+  "Bold":       700,
+  "Extra Bold": 800,
+};
+
+function applyTextCase(str, textCase) {
+  if (!str) return str;
+  switch (textCase) {
+    case "uppercase": return str.toUpperCase();
+    case "lowercase": return str.toLowerCase();
+    case "titleCase": return str.replace(/\b\w/g, c => c.toUpperCase());
+    default:          return str;
+  }
+}
+
+// Returns partial style overrides for a text element based on typography settings
+function getTypoStyle(typo, element, baseSize) {
+  if (!typo) return {};
+  const s = {};
+  if (typo.fontCategory && FONT_CATEGORY_CSS[typo.fontCategory]) s.fontFamily = FONT_CATEGORY_CSS[typo.fontCategory];
+  if (typo.fontWeight   && FONT_WEIGHT_CSS[typo.fontWeight])      s.fontWeight = FONT_WEIGHT_CSS[typo.fontWeight];
+  if (baseSize != null) {
+    const sKey = { title: "titleSize", subtitle: "subtitleSize", author: "authorSize" }[element];
+    if (sKey && typo[sKey] != null && typo[sKey] !== 1) s.fontSize = baseSize * typo[sKey];
+  }
+  const cKey = { title: "titleColor", subtitle: "subtitleColor", author: "authorColor" }[element];
+  if (cKey && typo[cKey]) s.color = typo[cKey];
+  if (typo.alignment) s.textAlign = typo.alignment;
+  if (typeof typo.letterSpacing === "number" && typo.letterSpacing !== 0) s.letterSpacing = `${typo.letterSpacing}em`;
+  if (typeof typo.lineHeight    === "number" && typo.lineHeight    !== 1) s.lineHeight    = typo.lineHeight;
+  // When a textCase override is active, neutralise any renderer-level textTransform
+  if (typo.textCase && typo.textCase !== "original") s.textTransform = "none";
+  return s;
+}
+
 // ─── React Renderers ──────────────────────────────────────────────────────────
 
-function AuthorityRenderer({ cd, thumb }) {
+function AuthorityRenderer({ cd, typo, thumb }) {
   const { bg, accent, text, title, subtitle, author, tagline } = cd;
   const TS = thumb ? 8.5 : 27, SS = thumb ? 4 : 11.5, AS = thumb ? 3 : 9, TGS = thumb ? 2.5 : 7.5;
+  const t = !thumb ? typo : null;
+  const displayTitle = applyTextCase(title, t?.textCase);
+  const pSp = t?.paragraphSpacing ? { marginBottom: `${t.paragraphSpacing}em` } : {};
   return (
     <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,0.025) 10px,rgba(255,255,255,0.025) 11px)", pointerEvents: "none" }} />
       <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: thumb ? "5% 7% 3%" : "6% 8% 3.5%" }}>
         {tagline && <div style={{ fontSize: TGS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 700, color: accent, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", marginBottom: thumb ? 1.5 : "2.5%" }}>{tagline}</div>}
-        <div style={{ fontSize: TS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 900, lineHeight: 0.95, letterSpacing: -0.5, textTransform: "uppercase", color: text }}>{title}</div>
+        <div style={{ fontSize: TS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 900, lineHeight: 0.95, letterSpacing: -0.5, textTransform: "uppercase", color: text, ...getTypoStyle(t, "title", TS) }}>{displayTitle}</div>
       </div>
       <div style={{ background: accent, flexShrink: 0, height: thumb ? 2.5 : 7 }} />
       <div style={{ flexShrink: 0, padding: thumb ? "2% 7% 5%" : "2.5% 8% 5.5%" }}>
-        {subtitle && <div style={{ fontSize: SS, fontFamily: "Arial,sans-serif", fontWeight: 400, lineHeight: 1.4, color: text, opacity: 0.82, marginBottom: thumb ? 1.5 : "3%" }}>{subtitle}</div>}
-        <div style={{ fontSize: AS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 600, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", color: accent }}>{author}</div>
+        {subtitle && <div style={{ fontSize: SS, fontFamily: "Arial,sans-serif", fontWeight: 400, lineHeight: 1.4, color: text, opacity: 0.82, marginBottom: thumb ? 1.5 : "3%", ...pSp, ...getTypoStyle(t, "subtitle", SS) }}>{subtitle}</div>}
+        <div style={{ fontSize: AS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 600, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", color: accent, ...getTypoStyle(t, "author", AS) }}>{author}</div>
       </div>
     </div>
   );
 }
 
-function PremiumRenderer({ cd, thumb }) {
+function PremiumRenderer({ cd, typo, thumb }) {
   const { accent, text, secondary, title, subtitle, author, tagline } = cd;
   const bgCol = secondary || "#f5f0e8";
   const TS = thumb ? 8 : 25, SS = thumb ? 3.5 : 10, AS = thumb ? 2.8 : 8, TGS = thumb ? 2.2 : 6.5;
+  const t = !thumb ? typo : null;
+  const displayTitle = applyTextCase(title, t?.textCase);
+  const pSp = t?.paragraphSpacing ? { marginBottom: `${t.paragraphSpacing}em` } : {};
   return (
     <div style={{ background: bgCol, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
       <div style={{ width: "76%", textAlign: "center" }}>
         {tagline && <div style={{ fontSize: TGS, fontFamily: "Georgia,serif", fontStyle: "italic", color: accent, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase", marginBottom: thumb ? 2 : "5%", opacity: 0.9 }}>{tagline}</div>}
         <div style={{ height: thumb ? 0.5 : 1, background: accent, opacity: 0.65, marginBottom: thumb ? 2.5 : "5%" }} />
-        <div style={{ fontSize: TS, fontFamily: "Georgia,'Times New Roman',serif", fontWeight: 700, lineHeight: 1.15, letterSpacing: -0.3, color: text }}>{title}</div>
+        <div style={{ fontSize: TS, fontFamily: "Georgia,'Times New Roman',serif", fontWeight: 700, lineHeight: 1.15, letterSpacing: -0.3, color: text, ...getTypoStyle(t, "title", TS) }}>{displayTitle}</div>
         <div style={{ height: thumb ? 0.5 : 1, background: accent, opacity: 0.65, marginTop: thumb ? 2.5 : "5%", marginBottom: thumb ? 2 : "4%" }} />
-        {subtitle && <div style={{ fontSize: SS, fontFamily: "Georgia,serif", fontStyle: "italic", lineHeight: 1.4, color: text, opacity: 0.72 }}>{subtitle}</div>}
+        {subtitle && <div style={{ fontSize: SS, fontFamily: "Georgia,serif", fontStyle: "italic", lineHeight: 1.4, color: text, opacity: 0.72, ...pSp, ...getTypoStyle(t, "subtitle", SS) }}>{subtitle}</div>}
       </div>
-      <div style={{ position: "absolute", bottom: thumb ? "4%" : "5.5%", textAlign: "center", fontSize: AS, fontFamily: "Georgia,serif", fontWeight: 700, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", color: text, opacity: 0.55 }}>{author}</div>
+      <div style={{ position: "absolute", bottom: thumb ? "4%" : "5.5%", textAlign: "center", fontSize: AS, fontFamily: "Georgia,serif", fontWeight: 700, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", color: text, opacity: 0.55, ...getTypoStyle(t, "author", AS) }}>{author}</div>
     </div>
   );
 }
 
-function MinimalRenderer({ cd, thumb }) {
+function MinimalRenderer({ cd, typo, thumb }) {
   const { bg, accent, text, title, author, tagline } = cd;
   const TS = thumb ? 9 : 27, AS = thumb ? 3 : 8, TGS = thumb ? 2 : 6.5;
+  const t = !thumb ? typo : null;
+  const displayTitle = applyTextCase(title, t?.textCase);
   return (
     <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: thumb ? "-14%" : "-12%", right: thumb ? "-30%" : "-25%", width: "88%", paddingBottom: "88%", borderRadius: "50%", background: accent, opacity: 0.17, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: "4%", right: thumb ? "-13%" : "-10%", width: "60%", paddingBottom: "60%", borderRadius: "50%", background: accent, opacity: 0.13, pointerEvents: "none" }} />
       <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: thumb ? "5% 7% 5%" : "7% 9% 5.5%" }}>
         {tagline && <div style={{ fontSize: TGS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.45, letterSpacing: thumb ? 0.5 : 3.5, textTransform: "uppercase", marginBottom: thumb ? 1 : "2%" }}>{tagline}</div>}
-        <div style={{ fontSize: TS, fontFamily: "'Arial Black',Impact,sans-serif", fontWeight: 900, lineHeight: 0.97, letterSpacing: -1, color: text }}>{title}</div>
+        <div style={{ fontSize: TS, fontFamily: "'Arial Black',Impact,sans-serif", fontWeight: 900, lineHeight: 0.97, letterSpacing: -1, color: text, ...getTypoStyle(t, "title", TS) }}>{displayTitle}</div>
         <div style={{ height: thumb ? 1.5 : 4, background: accent, width: thumb ? "18%" : "22%", marginTop: thumb ? 1.5 : "3.5%", marginBottom: thumb ? 1.5 : "3.5%" }} />
-        <div style={{ fontSize: AS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.7 }}>{author}</div>
+        <div style={{ fontSize: AS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.7, ...getTypoStyle(t, "author", AS) }}>{author}</div>
       </div>
     </div>
   );
 }
 
-function MetaphorRenderer({ cd, thumb }) {
+function MetaphorRenderer({ cd, typo, thumb }) {
   const { bg, accent, text, secondary, title, subtitle, author, tagline } = cd;
   const TS = thumb ? 7.5 : 22, SS = thumb ? 3.5 : 9.5, AS = thumb ? 2.8 : 7.5, TGS = thumb ? 2 : 6.5;
   const hex = "polygon(50% 0%,95% 25%,95% 75%,50% 100%,5% 75%,5% 25%)";
+  const t = !thumb ? typo : null;
+  const displayTitle = applyTextCase(title, t?.textCase);
+  const pSp = t?.paragraphSpacing ? { marginBottom: `${t.paragraphSpacing}em` } : {};
   return (
     <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", background: secondary, opacity: 0.3 }} />
@@ -310,43 +377,46 @@ function MetaphorRenderer({ cd, thumb }) {
       ))}
       <div style={{ position: "relative", flex: "0 0 42%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: thumb ? "5% 8%" : "5% 10%" }}>
         {tagline && <div style={{ fontSize: TGS, fontFamily: "Arial,sans-serif", color: accent, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase", marginBottom: thumb ? 1 : "2%", opacity: 0.9 }}>{tagline}</div>}
-        <div style={{ fontSize: TS, fontFamily: "Georgia,'Times New Roman',serif", fontWeight: 700, lineHeight: 1.1, color: text }}>{title}</div>
+        <div style={{ fontSize: TS, fontFamily: "Georgia,'Times New Roman',serif", fontWeight: 700, lineHeight: 1.1, color: text, ...getTypoStyle(t, "title", TS) }}>{displayTitle}</div>
       </div>
       <div style={{ position: "relative", flex: "0 0 18%", display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", textAlign: "center", padding: thumb ? "0 8% 5%" : "0 10% 6%" }}>
-        {subtitle && <div style={{ fontSize: SS, fontFamily: "Georgia,serif", fontStyle: "italic", color: text, opacity: 0.75, marginBottom: thumb ? 1 : "2.5%" }}>{subtitle}</div>}
-        <div style={{ fontSize: AS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.6, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase" }}>{author}</div>
+        {subtitle && <div style={{ fontSize: SS, fontFamily: "Georgia,serif", fontStyle: "italic", color: text, opacity: 0.75, marginBottom: thumb ? 1 : "2.5%", ...pSp, ...getTypoStyle(t, "subtitle", SS) }}>{subtitle}</div>}
+        <div style={{ fontSize: AS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.6, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", ...getTypoStyle(t, "author", AS) }}>{author}</div>
       </div>
     </div>
   );
 }
 
-function DynamicRenderer({ cd, thumb }) {
+function DynamicRenderer({ cd, typo, thumb }) {
   const { bg, accent, text, title, subtitle, author, tagline } = cd;
   const TS = thumb ? 8.5 : 24, SS = thumb ? 3.5 : 9, AS = thumb ? 2.8 : 7.5, TGS = thumb ? 2 : 6.5;
+  const t = !thumb ? typo : null;
+  const displayTitle = applyTextCase(title, t?.textCase);
+  const pSp = t?.paragraphSpacing ? { marginBottom: `${t.paragraphSpacing}em` } : {};
   return (
     <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: 0, left: 0, right: "-20%", height: thumb ? "19%" : "18%", background: accent, transform: `skewY(${thumb ? -5 : -4}deg)`, transformOrigin: "top left" }} />
       <div style={{ position: "absolute", top: "22%", bottom: "15%", right: thumb ? "8%" : "9%", width: thumb ? 0.5 : 1.5, background: accent, opacity: 0.28 }} />
       <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: thumb ? "21% 7% 5%" : "22% 8% 5.5%" }}>
         {tagline && <div style={{ fontSize: TGS, fontFamily: "'Arial Black',Impact,sans-serif", color: text, opacity: 0.42, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase", marginBottom: thumb ? 1 : "2%" }}>{tagline}</div>}
-        <div style={{ fontSize: TS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 900, lineHeight: 0.95, letterSpacing: -0.5, textTransform: "uppercase", color: text }}>{title}</div>
-        {subtitle && <div style={{ fontSize: SS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.65, lineHeight: 1.4, marginTop: thumb ? 1.5 : "3%", paddingRight: thumb ? "14%" : "13%" }}>{subtitle}</div>}
+        <div style={{ fontSize: TS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 900, lineHeight: 0.95, letterSpacing: -0.5, textTransform: "uppercase", color: text, ...getTypoStyle(t, "title", TS) }}>{displayTitle}</div>
+        {subtitle && <div style={{ fontSize: SS, fontFamily: "Arial,sans-serif", color: text, opacity: 0.65, lineHeight: 1.4, marginTop: thumb ? 1.5 : "3%", paddingRight: thumb ? "14%" : "13%", ...pSp, ...getTypoStyle(t, "subtitle", SS) }}>{subtitle}</div>}
       </div>
       <div style={{ position: "relative", padding: thumb ? "0 7% 5%" : "0 8% 5.5%" }}>
-        <div style={{ fontSize: AS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 700, color: accent, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase" }}>{author}</div>
+        <div style={{ fontSize: AS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 700, color: accent, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase", ...getTypoStyle(t, "author", AS) }}>{author}</div>
       </div>
     </div>
   );
 }
 
-function ConceptRenderer({ cd }) {
+function ConceptRenderer({ cd, typo }) {
   if (!cd) return null;
   switch (cd.type) {
-    case "premium":  return <PremiumRenderer  cd={cd} />;
-    case "minimal":  return <MinimalRenderer  cd={cd} />;
-    case "metaphor": return <MetaphorRenderer cd={cd} />;
-    case "dynamic":  return <DynamicRenderer  cd={cd} />;
-    default:         return <AuthorityRenderer cd={cd} />;
+    case "premium":  return <PremiumRenderer  cd={cd} typo={typo} />;
+    case "minimal":  return <MinimalRenderer  cd={cd} typo={typo} />;
+    case "metaphor": return <MetaphorRenderer cd={cd} typo={typo} />;
+    case "dynamic":  return <DynamicRenderer  cd={cd} typo={typo} />;
+    default:         return <AuthorityRenderer cd={cd} typo={typo} />;
   }
 }
 
@@ -1728,7 +1798,7 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
   );
 }
 
-function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize }) {
+function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typographyOverrides }) {
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ w: 600, h: 500 });
 
@@ -1766,11 +1836,12 @@ function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize }) {
     ? bookCover.concepts[bookCover.selectedConceptIndex ?? 0]
     : DEFAULT_CONCEPT;
 
+  const to = typographyOverrides;
   const cd = buildCoverData(rawConcept, {
-    subtitle:   metadata.subtitle,
-    authorLine: metadata.author,
+    subtitle:   to?.subtitle   ?? metadata.subtitle,
+    authorLine: to?.author     ?? metadata.author,
     tagline:    "",
-  }, metadata.title || "Your Book Title");
+  }, to?.title ?? metadata.title || "Your Book Title");
 
   return (
     <div
@@ -1789,7 +1860,7 @@ function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize }) {
             borderRadius: 2,
           }}
         >
-          <ConceptRenderer cd={cd} />
+          <ConceptRenderer cd={cd} typo={to} />
         </div>
         <div className="text-center mt-3 text-[9px] text-slate-400 font-medium tracking-wide select-none">
           {bookSize.label} · {zoom === "fit" ? "Fit" : `${Math.round((typeof zoom === "number" ? zoom : 1) * 100)}%`}
@@ -1998,6 +2069,209 @@ function FilmstripBar() {
   );
 }
 
+// ─── Typography Editor Panel ─────────────────────────────────────────────────
+
+function CollapsibleCard({ title: cardTitle, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-gray-800 rounded-xl overflow-hidden">
+      <button
+        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-800/40 transition-colors"
+        onClick={() => setOpen(o => !o)}
+      >
+        <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">{cardTitle}</span>
+        <span className="text-[9px] text-gray-600">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div className="px-3 pb-3 pt-1.5 space-y-2.5 bg-gray-900/40">{children}</div>}
+    </div>
+  );
+}
+
+function TypoTextInput({ label, value, placeholder, onChange }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">{label}</label>
+      <input
+        type="text"
+        value={value || ""}
+        placeholder={placeholder}
+        onChange={e => onChange(e.target.value)}
+        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1.5 text-[10px] text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+      />
+    </div>
+  );
+}
+
+function TypoSlider({ label, min, max, step, value, onChange, format }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">{label}</label>
+        <span className="text-[9px] font-mono text-indigo-400">{format ? format(value) : value}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={e => onChange(parseFloat(e.target.value))}
+        className="w-full h-1 accent-indigo-500 cursor-pointer"
+      />
+    </div>
+  );
+}
+
+function TypoColorRow({ label, value, fallback, onChange }) {
+  const displayColor = value || fallback || "#ffffff";
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">{label}</label>
+      <div className="flex items-center gap-2">
+        {value && (
+          <button className="text-[8px] text-gray-600 hover:text-rose-400 transition-colors" onClick={() => onChange(null)} title="Reset color">✕</button>
+        )}
+        <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-gray-700 cursor-pointer shrink-0">
+          <div className="absolute inset-0 rounded-lg" style={{ background: displayColor }} />
+          <input
+            type="color"
+            value={displayColor}
+            onChange={e => onChange(e.target.value)}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+        </div>
+        <span className="text-[8px] font-mono text-gray-600">{value || "Auto"}</span>
+      </div>
+    </div>
+  );
+}
+
+function TypoChipGroup({ options, value, onChange, displayLabel }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {options.map(opt => {
+        const label = typeof displayLabel === "function" ? displayLabel(opt) : opt;
+        const isActive = value === opt;
+        return (
+          <button
+            key={opt}
+            onClick={() => onChange(isActive ? null : opt)}
+            className={`px-2 py-0.5 rounded text-[9px] font-medium border transition-colors ${
+              isActive
+                ? "bg-indigo-600 border-indigo-500 text-white"
+                : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TypographyEditorPanel({ metadata, typographyOverrides, onTypoChange, onTypoReset }) {
+  const typo = typographyOverrides || {};
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="shrink-0 px-3.5 py-2.5 border-b border-gray-800 flex items-center justify-between">
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Typography</span>
+        <button
+          onClick={onTypoReset}
+          className="text-[9px] font-semibold text-gray-500 hover:text-rose-400 transition-colors px-2 py-1 rounded border border-gray-700/60 hover:border-rose-500/50"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+
+        {/* Text Content */}
+        <CollapsibleCard title="Text Content">
+          <TypoTextInput label="Title"    value={typo.title    ?? metadata.title}    placeholder={metadata.title    || "Book Title"} onChange={v => onTypoChange("title",    v)} />
+          <TypoTextInput label="Subtitle" value={typo.subtitle ?? metadata.subtitle} placeholder={metadata.subtitle || "Subtitle"}   onChange={v => onTypoChange("subtitle", v)} />
+          <TypoTextInput label="Author"   value={typo.author   ?? metadata.author}   placeholder={metadata.author   || "Author"}    onChange={v => onTypoChange("author",   v)} />
+          <TypoTextInput label="Series"   value={typo.series   ?? metadata.series}   placeholder={metadata.series   || "Series"}    onChange={v => onTypoChange("series",   v)} />
+        </CollapsibleCard>
+
+        {/* Font */}
+        <CollapsibleCard title="Font">
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">Category</label>
+            <TypoChipGroup options={FONT_CATEGORIES} value={typo.fontCategory || null} onChange={v => onTypoChange("fontCategory", v)} />
+          </div>
+          {typo.fontCategory && (
+            <div className="text-[10px] italic text-gray-500 px-0.5 mt-1" style={{ fontFamily: FONT_CATEGORY_CSS[typo.fontCategory] }}>
+              The quick brown fox — {typo.fontCategory}
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">Weight</label>
+            <TypoChipGroup options={FONT_WEIGHTS} value={typo.fontWeight || null} onChange={v => onTypoChange("fontWeight", v)} />
+          </div>
+        </CollapsibleCard>
+
+        {/* Size */}
+        <CollapsibleCard title="Size">
+          <TypoSlider label="Title Size"    min={0.5} max={2} step={0.05} value={typo.titleSize    ?? 1} onChange={v => onTypoChange("titleSize",    v)} format={v => `${Math.round(v * 100)}%`} />
+          <TypoSlider label="Subtitle Size" min={0.5} max={2} step={0.05} value={typo.subtitleSize ?? 1} onChange={v => onTypoChange("subtitleSize", v)} format={v => `${Math.round(v * 100)}%`} />
+          <TypoSlider label="Author Size"   min={0.5} max={2} step={0.05} value={typo.authorSize   ?? 1} onChange={v => onTypoChange("authorSize",   v)} format={v => `${Math.round(v * 100)}%`} />
+        </CollapsibleCard>
+
+        {/* Colors */}
+        <CollapsibleCard title="Colors">
+          <TypoColorRow label="Title"    value={typo.titleColor    || null} fallback="#ffffff" onChange={v => onTypoChange("titleColor",    v)} />
+          <TypoColorRow label="Subtitle" value={typo.subtitleColor || null} fallback="#ffffff" onChange={v => onTypoChange("subtitleColor", v)} />
+          <TypoColorRow label="Author"   value={typo.authorColor   || null} fallback="#ffffff" onChange={v => onTypoChange("authorColor",   v)} />
+        </CollapsibleCard>
+
+        {/* Alignment */}
+        <CollapsibleCard title="Alignment">
+          <div className="flex gap-1.5">
+            {[
+              { val: "left",   icon: "⬅", lbl: "Left"   },
+              { val: "center", icon: "≡", lbl: "Center" },
+              { val: "right",  icon: "➡", lbl: "Right"  },
+            ].map(({ val, icon, lbl }) => (
+              <button
+                key={val}
+                onClick={() => onTypoChange("alignment", typo.alignment === val ? null : val)}
+                className={`flex-1 py-2 rounded-lg text-[9px] font-bold border transition-colors ${
+                  typo.alignment === val
+                    ? "bg-indigo-600 border-indigo-500 text-white"
+                    : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+                }`}
+              >
+                {icon} {lbl}
+              </button>
+            ))}
+          </div>
+        </CollapsibleCard>
+
+        {/* Spacing */}
+        <CollapsibleCard title="Spacing" defaultOpen={false}>
+          <TypoSlider label="Letter Spacing"    min={-0.1} max={0.3}  step={0.01} value={typo.letterSpacing    ?? 0}   onChange={v => onTypoChange("letterSpacing",    v)} format={v => `${v >= 0 ? "+" : ""}${v.toFixed(2)}em`} />
+          <TypoSlider label="Line Height"        min={0.8}  max={2.5}  step={0.05} value={typo.lineHeight        ?? 1}   onChange={v => onTypoChange("lineHeight",        v)} format={v => v.toFixed(2)} />
+          <TypoSlider label="Paragraph Spacing"  min={0}    max={0.5}  step={0.01} value={typo.paragraphSpacing ?? 0}   onChange={v => onTypoChange("paragraphSpacing",  v)} format={v => `${v.toFixed(2)}em`} />
+        </CollapsibleCard>
+
+        {/* Text Case */}
+        <CollapsibleCard title="Text Case" defaultOpen={false}>
+          <TypoChipGroup
+            options={TEXT_CASES}
+            value={typo.textCase || "original"}
+            onChange={v => onTypoChange("textCase", v || "original")}
+            displayLabel={opt => ({ original: "Original", uppercase: "UPPERCASE", lowercase: "lowercase", titleCase: "Title Case" }[opt])}
+          />
+        </CollapsibleCard>
+
+      </div>
+    </div>
+  );
+}
+
 // ─── Right Panel (tabbed) ─────────────────────────────────────────────────────
 
 const RIGHT_TABS = [
@@ -2007,7 +2281,7 @@ const RIGHT_TABS = [
   { id: "effects",    label: "Effects"    },
 ];
 
-function RightPanel({ metadata, onChange, errors }) {
+function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoChange, onTypoReset }) {
   const [activeTab, setActiveTab] = useState("design");
 
   return (
@@ -2034,6 +2308,13 @@ function RightPanel({ metadata, onChange, errors }) {
       <div className="flex-1 overflow-hidden">
         {activeTab === "design" ? (
           <MetadataPanel metadata={metadata} onChange={onChange} errors={errors} />
+        ) : activeTab === "typography" ? (
+          <TypographyEditorPanel
+            metadata={metadata}
+            typographyOverrides={typographyOverrides}
+            onTypoChange={onTypoChange}
+            onTypoReset={onTypoReset}
+          />
         ) : (
           <div className="flex items-start justify-center pt-10 px-4">
             <p className="text-[11px] text-gray-600 text-center italic">
@@ -3682,6 +3963,19 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [generatingAll, setGeneratingAll] = useState(false);
   const [regeneratingIdx, setRegeneratingIdx] = useState(null);
 
+  // Typography overrides state (user edits in Typography tab)
+  const [typographyOverrides, setTypographyOverrides] = useState(() =>
+    bookCover?.typographyOverrides || bookCover?.coverStudio?.typographyOverrides || null
+  );
+
+  function handleTypoChange(key, value) {
+    setTypographyOverrides(prev => ({ ...(prev || {}), [key]: value }));
+  }
+
+  function handleTypoReset() {
+    setTypographyOverrides(null);
+  }
+
   // Concept Review Engine state
   const [conceptReviews, setConceptReviews] = useState(() =>
     Array.isArray(bookCover?.conceptReviews) ? bookCover.conceptReviews :
@@ -4564,6 +4858,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                   zoom={canvas.zoomLevel}
                   canvasBg={canvas.background}
                   bookSize={bookSize}
+                  typographyOverrides={typographyOverrides}
                 />
               </div>
 
@@ -4581,6 +4876,9 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             metadata={metadata}
             onChange={setMetadata}
             errors={validationErrors}
+            typographyOverrides={typographyOverrides}
+            onTypoChange={handleTypoChange}
+            onTypoReset={handleTypoReset}
           />
         </div>
 
