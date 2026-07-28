@@ -1841,7 +1841,7 @@ function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typ
     subtitle:   to?.subtitle   ?? metadata.subtitle,
     authorLine: to?.author     ?? metadata.author,
     tagline:    "",
-  }, to?.title ?? metadata.title || "Your Book Title");
+  }, (to?.title ?? metadata.title) || "Your Book Title");
 
   return (
     <div
@@ -4710,12 +4710,14 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           colorPalettes:          colorPalettes.length > 0  ? colorPalettes  : [],
           selectedPaletteIdx:     selectedPaletteIdx         ?? null,
           designElements:         designElements             || null,
+          typographyOverrides:    typographyOverrides        || null,
           // Extended cover studio state
           coverStudio: {
             ...project,
             metadata:             { ...metadata },
             canvas:               { ...canvas },
             typography:           typographyProfile    || null,
+            typographyOverrides:  typographyOverrides  || null,
             layout:               layoutProfile        || null,
             marketAnalysis:       marketAnalysis       || null,
             coverStrategy:        coverStrategyProfile || null,
@@ -4733,7 +4735,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
