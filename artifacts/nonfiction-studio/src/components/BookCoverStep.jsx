@@ -300,14 +300,14 @@ function getTypoStyle(typo, element, baseSize) {
 
 // ─── React Renderers ──────────────────────────────────────────────────────────
 
-function AuthorityRenderer({ cd, typo, thumb }) {
+function AuthorityRenderer({ cd, typo, thumb, hasBgImage }) {
   const { bg, accent, text, title, subtitle, author, tagline } = cd;
   const TS = thumb ? 8.5 : 27, SS = thumb ? 4 : 11.5, AS = thumb ? 3 : 9, TGS = thumb ? 2.5 : 7.5;
   const t = !thumb ? typo : null;
   const displayTitle = applyTextCase(title, t?.textCase);
   const pSp = t?.paragraphSpacing ? { marginBottom: `${t.paragraphSpacing}em` } : {};
   return (
-    <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+    <div style={{ background: hasBgImage ? "transparent" : bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,0.025) 10px,rgba(255,255,255,0.025) 11px)", pointerEvents: "none" }} />
       <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: thumb ? "5% 7% 3%" : "6% 8% 3.5%" }}>
         {tagline && <div style={{ fontSize: TGS, fontFamily: "Impact,'Arial Black',sans-serif", fontWeight: 700, color: accent, letterSpacing: thumb ? 0.5 : 2.5, textTransform: "uppercase", marginBottom: thumb ? 1.5 : "2.5%" }}>{tagline}</div>}
@@ -322,7 +322,7 @@ function AuthorityRenderer({ cd, typo, thumb }) {
   );
 }
 
-function PremiumRenderer({ cd, typo, thumb }) {
+function PremiumRenderer({ cd, typo, thumb, hasBgImage }) {
   const { accent, text, secondary, title, subtitle, author, tagline } = cd;
   const bgCol = secondary || "#f5f0e8";
   const TS = thumb ? 8 : 25, SS = thumb ? 3.5 : 10, AS = thumb ? 2.8 : 8, TGS = thumb ? 2.2 : 6.5;
@@ -330,7 +330,7 @@ function PremiumRenderer({ cd, typo, thumb }) {
   const displayTitle = applyTextCase(title, t?.textCase);
   const pSp = t?.paragraphSpacing ? { marginBottom: `${t.paragraphSpacing}em` } : {};
   return (
-    <div style={{ background: bgCol, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+    <div style={{ background: hasBgImage ? "transparent" : bgCol, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
       <div style={{ width: "76%", textAlign: "center" }}>
         {tagline && <div style={{ fontSize: TGS, fontFamily: "Georgia,serif", fontStyle: "italic", color: accent, letterSpacing: thumb ? 0.5 : 3, textTransform: "uppercase", marginBottom: thumb ? 2 : "5%", opacity: 0.9 }}>{tagline}</div>}
         <div style={{ height: thumb ? 0.5 : 1, background: accent, opacity: 0.65, marginBottom: thumb ? 2.5 : "5%" }} />
@@ -343,13 +343,13 @@ function PremiumRenderer({ cd, typo, thumb }) {
   );
 }
 
-function MinimalRenderer({ cd, typo, thumb }) {
+function MinimalRenderer({ cd, typo, thumb, hasBgImage }) {
   const { bg, accent, text, title, author, tagline } = cd;
   const TS = thumb ? 9 : 27, AS = thumb ? 3 : 8, TGS = thumb ? 2 : 6.5;
   const t = !thumb ? typo : null;
   const displayTitle = applyTextCase(title, t?.textCase);
   return (
-    <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+    <div style={{ background: hasBgImage ? "transparent" : bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: thumb ? "-14%" : "-12%", right: thumb ? "-30%" : "-25%", width: "88%", paddingBottom: "88%", borderRadius: "50%", background: accent, opacity: 0.17, pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: "4%", right: thumb ? "-13%" : "-10%", width: "60%", paddingBottom: "60%", borderRadius: "50%", background: accent, opacity: 0.13, pointerEvents: "none" }} />
       <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: thumb ? "5% 7% 5%" : "7% 9% 5.5%" }}>
@@ -362,7 +362,7 @@ function MinimalRenderer({ cd, typo, thumb }) {
   );
 }
 
-function MetaphorRenderer({ cd, typo, thumb }) {
+function MetaphorRenderer({ cd, typo, thumb, hasBgImage }) {
   const { bg, accent, text, secondary, title, subtitle, author, tagline } = cd;
   const TS = thumb ? 7.5 : 22, SS = thumb ? 3.5 : 9.5, AS = thumb ? 2.8 : 7.5, TGS = thumb ? 2 : 6.5;
   const hex = "polygon(50% 0%,95% 25%,95% 75%,50% 100%,5% 75%,5% 25%)";
@@ -370,7 +370,7 @@ function MetaphorRenderer({ cd, typo, thumb }) {
   const displayTitle = applyTextCase(title, t?.textCase);
   const pSp = t?.paragraphSpacing ? { marginBottom: `${t.paragraphSpacing}em` } : {};
   return (
-    <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+    <div style={{ background: hasBgImage ? "transparent" : bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", background: secondary, opacity: 0.3 }} />
       {[["58%", 0.15], ["43%", 0.2], ["24%", 0.55]].map(([size, op], i) => (
         <div key={i} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: size, paddingBottom: size, clipPath: hex, background: accent, opacity: op }} />
@@ -387,14 +387,14 @@ function MetaphorRenderer({ cd, typo, thumb }) {
   );
 }
 
-function DynamicRenderer({ cd, typo, thumb }) {
+function DynamicRenderer({ cd, typo, thumb, hasBgImage }) {
   const { bg, accent, text, title, subtitle, author, tagline } = cd;
   const TS = thumb ? 8.5 : 24, SS = thumb ? 3.5 : 9, AS = thumb ? 2.8 : 7.5, TGS = thumb ? 2 : 6.5;
   const t = !thumb ? typo : null;
   const displayTitle = applyTextCase(title, t?.textCase);
   const pSp = t?.paragraphSpacing ? { marginBottom: `${t.paragraphSpacing}em` } : {};
   return (
-    <div style={{ background: bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+    <div style={{ background: hasBgImage ? "transparent" : bg, color: text, width: "100%", height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", top: 0, left: 0, right: "-20%", height: thumb ? "19%" : "18%", background: accent, transform: `skewY(${thumb ? -5 : -4}deg)`, transformOrigin: "top left" }} />
       <div style={{ position: "absolute", top: "22%", bottom: "15%", right: thumb ? "8%" : "9%", width: thumb ? 0.5 : 1.5, background: accent, opacity: 0.28 }} />
       <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: thumb ? "21% 7% 5%" : "22% 8% 5.5%" }}>
@@ -409,14 +409,51 @@ function DynamicRenderer({ cd, typo, thumb }) {
   );
 }
 
-function ConceptRenderer({ cd, typo }) {
+// ─── Cover Image Layer ───────────────────────────────────────────────────────
+
+function CoverImageLayer({ io }) {
+  if (!io?.src) return null;
+  const scale = io.scale    ?? 1;
+  const rot   = io.rotation ?? 0;
+  const tx    = io.x        ?? 0;
+  const ty    = io.y        ?? 0;
+  const sx    = io.flipH    ? -1 : 1;
+  const sy    = io.flipV    ? -1 : 1;
+  const crop  = io.crop;
+  const clipPath = crop
+    ? `inset(${crop.top ?? 0}% ${crop.right ?? 0}% ${crop.bottom ?? 0}% ${crop.left ?? 0}%)`
+    : undefined;
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
+      <img
+        src={io.src}
+        alt=""
+        draggable={false}
+        style={{
+          position:  "absolute",
+          top:       "50%",
+          left:      "50%",
+          width:     `${scale * 100}%`,
+          height:    `${scale * 100}%`,
+          objectFit: "cover",
+          transform: `translate(-50%, -50%) translate(${tx}%, ${ty}%) rotate(${rot}deg) scaleX(${sx}) scaleY(${sy})`,
+          clipPath,
+          userSelect: "none",
+        }}
+      />
+    </div>
+  );
+}
+
+function ConceptRenderer({ cd, typo, imageOverrides }) {
   if (!cd) return null;
+  const hasBgImage = !!(imageOverrides?.src);
   switch (cd.type) {
-    case "premium":  return <PremiumRenderer  cd={cd} typo={typo} />;
-    case "minimal":  return <MinimalRenderer  cd={cd} typo={typo} />;
-    case "metaphor": return <MetaphorRenderer cd={cd} typo={typo} />;
-    case "dynamic":  return <DynamicRenderer  cd={cd} typo={typo} />;
-    default:         return <AuthorityRenderer cd={cd} typo={typo} />;
+    case "premium":  return <PremiumRenderer  cd={cd} typo={typo} hasBgImage={hasBgImage} />;
+    case "minimal":  return <MinimalRenderer  cd={cd} typo={typo} hasBgImage={hasBgImage} />;
+    case "metaphor": return <MetaphorRenderer cd={cd} typo={typo} hasBgImage={hasBgImage} />;
+    case "dynamic":  return <DynamicRenderer  cd={cd} typo={typo} hasBgImage={hasBgImage} />;
+    default:         return <AuthorityRenderer cd={cd} typo={typo} hasBgImage={hasBgImage} />;
   }
 }
 
@@ -1798,7 +1835,7 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
   );
 }
 
-function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typographyOverrides }) {
+function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typographyOverrides, imageOverrides }) {
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ w: 600, h: 500 });
 
@@ -1860,7 +1897,8 @@ function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typ
             borderRadius: 2,
           }}
         >
-          <ConceptRenderer cd={cd} typo={to} />
+          <CoverImageLayer io={imageOverrides} />
+          <ConceptRenderer cd={cd} typo={to} imageOverrides={imageOverrides} />
         </div>
         <div className="text-center mt-3 text-[9px] text-slate-400 font-medium tracking-wide select-none">
           {bookSize.label} · {zoom === "fit" ? "Fit" : `${Math.round((typeof zoom === "number" ? zoom : 1) * 100)}%`}
@@ -2272,16 +2310,283 @@ function TypographyEditorPanel({ metadata, typographyOverrides, onTypoChange, on
   );
 }
 
+// ─── Image Editor Panel ───────────────────────────────────────────────────────
+
+function useImageInfo(src) {
+  const [info, setInfo] = useState(null);
+  useEffect(() => {
+    if (!src) { setInfo(null); return; }
+    const img = new window.Image();
+    img.onload = () => {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const gcdFn = (a, b) => (b === 0 ? a : gcdFn(b, a % b));
+      const d = gcdFn(w, h);
+      setInfo({ w, h, ratio: `${w / d}:${h / d}` });
+    };
+    img.src = src;
+  }, [src]);
+  return info;
+}
+
+function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concepts }) {
+  const io = imageOverrides || {};
+  const fileInputRef  = useRef(null);
+  const cropRef       = useRef(null);
+  const [isDragging, setIsDragging]       = useState(false);
+  const [dragAnchor,  setDragAnchor]      = useState(null);
+  const imgInfo = useImageInfo(io.src);
+
+  // ── Upload ────────────────────────────────────────────────────────────────
+  function handleUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      alert("Image must be under 15 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      onImageChange("src",        ev.target.result);
+      onImageChange("source",     "upload");
+      onImageChange("sourceName", file.name);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  // ── Crop drag ─────────────────────────────────────────────────────────────
+  function getPct(e) {
+    const rect = cropRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return {
+      x: Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width)  * 100)),
+      y: Math.max(0, Math.min(100, ((e.clientY - rect.top)  / rect.height) * 100)),
+    };
+  }
+
+  function handleCropMouseDown(e) {
+    e.preventDefault();
+    const { x, y } = getPct(e);
+    setDragAnchor({ x, y });
+    setIsDragging(true);
+    onImageChange("crop", { top: y, left: x, bottom: 100 - y, right: 100 - x });
+  }
+
+  useEffect(() => {
+    if (!isDragging) return;
+    function onMove(e) {
+      if (!dragAnchor) return;
+      const { x, y } = getPct(e);
+      const left   = Math.min(dragAnchor.x, x);
+      const top    = Math.min(dragAnchor.y, y);
+      const right  = 100 - Math.max(dragAnchor.x, x);
+      const bottom = 100 - Math.max(dragAnchor.y, y);
+      onImageChange("crop", { left, top, right, bottom });
+    }
+    function onUp() { setIsDragging(false); setDragAnchor(null); }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup",   onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup",   onUp);
+    };
+  }, [isDragging, dragAnchor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const crop     = io.crop || { top: 0, left: 0, right: 0, bottom: 0 };
+  const hasCrop  = crop.top > 0.5 || crop.left > 0.5 || crop.right > 0.5 || crop.bottom > 0.5;
+  const flipBtnCls = (active) =>
+    `flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${
+      active
+        ? "bg-indigo-600 border-indigo-500 text-white"
+        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+    }`;
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="shrink-0 px-3.5 py-2.5 border-b border-gray-800 flex items-center justify-between">
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Image</span>
+        <button
+          onClick={onImageReset}
+          className="text-[9px] font-semibold text-gray-500 hover:text-rose-400 transition-colors px-2 py-1 rounded border border-gray-700/60 hover:border-rose-500/50"
+        >
+          Reset Image
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+
+        {/* ── Image Source ──────────────────────────────────────────────── */}
+        <CollapsibleCard title="Image Source">
+          {io.src ? (
+            <div className="space-y-2">
+              {/* Preview */}
+              <div className="rounded-lg overflow-hidden border border-gray-700" style={{ height: 110 }}>
+                <img src={io.src} alt="Cover" className="w-full h-full object-cover" />
+              </div>
+              {/* Info */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                {[
+                  ["Resolution",   imgInfo ? `${imgInfo.w} × ${imgInfo.h}` : "—"],
+                  ["Aspect Ratio", imgInfo ? imgInfo.ratio : "—"],
+                  ["Source",       io.sourceName ? io.sourceName.slice(0, 18) : (io.source || "Upload")],
+                ].map(([k, v]) => (
+                  <div key={k} className="col-span-2 flex justify-between text-[9px]">
+                    <span className="text-gray-500">{k}</span>
+                    <span className="text-gray-300 font-mono truncate max-w-[120px]">{v}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-gray-700 text-gray-300 hover:border-indigo-500 hover:text-indigo-300 transition-colors"
+              >
+                Replace Image
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div
+                className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 hover:border-indigo-500 cursor-pointer transition-colors py-6 gap-1.5"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <span className="text-2xl select-none">🖼</span>
+                <span className="text-[9px] text-gray-500">Click to upload an image</span>
+                <span className="text-[8px] text-gray-600">PNG, JPG, WEBP · max 15 MB</span>
+              </div>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="hidden"
+            onChange={handleUpload}
+          />
+
+          {/* Previously used concept images */}
+          {Array.isArray(concepts) && concepts.some(c => c?.imageSrc) ? (
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">
+                Concept Images
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {concepts.filter(c => c?.imageSrc).map((c, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { onImageChange("src", c.imageSrc); onImageChange("source", "concept"); onImageChange("sourceName", c.label || `Concept ${i + 1}`); }}
+                    className={`w-10 h-14 rounded border-2 overflow-hidden transition-colors ${io.src === c.imageSrc ? "border-indigo-500" : "border-gray-700 hover:border-gray-500"}`}
+                  >
+                    <img src={c.imageSrc} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            io.src && (
+              <p className="text-[8px] text-gray-600 italic pt-1 leading-relaxed">
+                No AI-generated concept images available. Covers use CSS-based designs — upload a custom image to add photography.
+              </p>
+            )
+          )}
+        </CollapsibleCard>
+
+        {/* ── Transform ─────────────────────────────────────────────────── */}
+        <CollapsibleCard title="Transform">
+          {!io.src ? (
+            <p className="text-[9px] text-gray-600 italic">Upload an image to enable transforms.</p>
+          ) : (
+            <div className="space-y-2">
+              <TypoSlider label="Scale"      min={0.2} max={3}   step={0.05} value={io.scale    ?? 1}   onChange={v => onImageChange("scale",    v)} format={v => `${Math.round(v * 100)}%`} />
+              <TypoSlider label="Rotation"   min={-180} max={180} step={1}   value={io.rotation ?? 0}   onChange={v => onImageChange("rotation", v)} format={v => `${v}°`} />
+              <TypoSlider label="Horizontal" min={-50} max={50}   step={1}   value={io.x        ?? 0}   onChange={v => onImageChange("x",        v)} format={v => `${v >= 0 ? "+" : ""}${v}%`} />
+              <TypoSlider label="Vertical"   min={-50} max={50}   step={1}   value={io.y        ?? 0}   onChange={v => onImageChange("y",        v)} format={v => `${v >= 0 ? "+" : ""}${v}%`} />
+              <div className="space-y-1.5 pt-0.5">
+                <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">Flip</label>
+                <div className="flex gap-2">
+                  <button className={flipBtnCls(!!io.flipH)} onClick={() => onImageChange("flipH", !io.flipH)}>↔ Horizontal</button>
+                  <button className={flipBtnCls(!!io.flipV)} onClick={() => onImageChange("flipV", !io.flipV)}>↕ Vertical</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </CollapsibleCard>
+
+        {/* ── Crop ──────────────────────────────────────────────────────── */}
+        <CollapsibleCard title="Crop" defaultOpen={false}>
+          {!io.src ? (
+            <p className="text-[9px] text-gray-600 italic">Upload an image to enable cropping.</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[9px] text-gray-500 leading-relaxed">
+                Click and drag on the preview to define the visible crop area.
+              </p>
+              {/* Mini crop preview */}
+              <div
+                ref={cropRef}
+                className="relative select-none rounded-lg overflow-hidden border border-gray-700"
+                style={{ width: "100%", paddingBottom: "150%", cursor: "crosshair" }}
+                onMouseDown={handleCropMouseDown}
+              >
+                <img
+                  src={io.src}
+                  alt=""
+                  draggable={false}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
+                />
+                {/* Dark overlay outside crop */}
+                {hasCrop && (
+                  <>
+                    {/* top */}
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: `${crop.top}%`, background: "rgba(0,0,0,0.55)", pointerEvents: "none" }} />
+                    {/* bottom */}
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: `${crop.bottom}%`, background: "rgba(0,0,0,0.55)", pointerEvents: "none" }} />
+                    {/* left */}
+                    <div style={{ position: "absolute", top: `${crop.top}%`, bottom: `${crop.bottom}%`, left: 0, width: `${crop.left}%`, background: "rgba(0,0,0,0.55)", pointerEvents: "none" }} />
+                    {/* right */}
+                    <div style={{ position: "absolute", top: `${crop.top}%`, bottom: `${crop.bottom}%`, right: 0, width: `${crop.right}%`, background: "rgba(0,0,0,0.55)", pointerEvents: "none" }} />
+                    {/* Crop border */}
+                    <div style={{
+                      position: "absolute",
+                      top:    `${crop.top}%`,
+                      left:   `${crop.left}%`,
+                      right:  `${crop.right}%`,
+                      bottom: `${crop.bottom}%`,
+                      border: "1.5px solid #6366f1",
+                      pointerEvents: "none",
+                    }} />
+                  </>
+                )}
+              </div>
+              {hasCrop && (
+                <button
+                  onClick={() => onImageChange("crop", null)}
+                  className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-gray-700 text-gray-400 hover:border-rose-500/50 hover:text-rose-400 transition-colors"
+                >
+                  Clear Crop
+                </button>
+              )}
+            </div>
+          )}
+        </CollapsibleCard>
+
+      </div>
+    </div>
+  );
+}
+
 // ─── Right Panel (tabbed) ─────────────────────────────────────────────────────
 
 const RIGHT_TABS = [
   { id: "design",     label: "Design"     },
   { id: "typography", label: "Typography" },
+  { id: "image",      label: "Image"      },
   { id: "layout",     label: "Layout"     },
   { id: "effects",    label: "Effects"    },
 ];
 
-function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoChange, onTypoReset }) {
+function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoChange, onTypoReset, imageOverrides, onImageChange, onImageReset, concepts }) {
   const [activeTab, setActiveTab] = useState("design");
 
   return (
@@ -2314,6 +2619,13 @@ function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoCha
             typographyOverrides={typographyOverrides}
             onTypoChange={onTypoChange}
             onTypoReset={onTypoReset}
+          />
+        ) : activeTab === "image" ? (
+          <ImageEditorPanel
+            imageOverrides={imageOverrides}
+            onImageChange={onImageChange}
+            onImageReset={onImageReset}
+            concepts={concepts}
           />
         ) : (
           <div className="flex items-start justify-center pt-10 px-4">
@@ -3976,6 +4288,27 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     setTypographyOverrides(null);
   }
 
+  // Image overrides state (user edits in Image tab)
+  const [imageOverrides, setImageOverrides] = useState(() =>
+    bookCover?.imageOverrides || bookCover?.coverStudio?.imageOverrides || null
+  );
+
+  function handleImageChange(key, value) {
+    setImageOverrides(prev => {
+      const next = { ...(prev || {}) };
+      if (value === null || value === undefined) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      return Object.keys(next).length === 0 ? null : next;
+    });
+  }
+
+  function handleImageReset() {
+    setImageOverrides(null);
+  }
+
   // Concept Review Engine state
   const [conceptReviews, setConceptReviews] = useState(() =>
     Array.isArray(bookCover?.conceptReviews) ? bookCover.conceptReviews :
@@ -4711,6 +5044,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           selectedPaletteIdx:     selectedPaletteIdx         ?? null,
           designElements:         designElements             || null,
           typographyOverrides:    typographyOverrides        || null,
+          imageOverrides:         imageOverrides             || null,
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -4718,6 +5052,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             canvas:               { ...canvas },
             typography:           typographyProfile    || null,
             typographyOverrides:  typographyOverrides  || null,
+            imageOverrides:       imageOverrides       || null,
             layout:               layoutProfile        || null,
             marketAnalysis:       marketAnalysis       || null,
             coverStrategy:        coverStrategyProfile || null,
@@ -4735,7 +5070,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides, imageOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -4861,6 +5196,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                   canvasBg={canvas.background}
                   bookSize={bookSize}
                   typographyOverrides={typographyOverrides}
+                  imageOverrides={imageOverrides}
                 />
               </div>
 
@@ -4881,6 +5217,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             typographyOverrides={typographyOverrides}
             onTypoChange={handleTypoChange}
             onTypoReset={handleTypoReset}
+            imageOverrides={imageOverrides}
+            onImageChange={handleImageChange}
+            onImageReset={handleImageReset}
+            concepts={concepts}
           />
         </div>
 
