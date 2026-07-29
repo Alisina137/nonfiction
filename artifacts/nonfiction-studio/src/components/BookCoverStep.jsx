@@ -298,6 +298,73 @@ function getTypoStyle(typo, element, baseSize) {
   return s;
 }
 
+// ─── Background helpers ───────────────────────────────────────────────────────
+
+function svgUri(svg) {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+const BG_PATTERN_URI = {
+  dots:      (c) => svgUri(`<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='10' cy='10' r='2.2' fill='${c}'/></svg>`),
+  lines:     (c) => svgUri(`<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><line x1='0' y1='10' x2='20' y2='10' stroke='${c}' stroke-width='1.5'/></svg>`),
+  grid:      (c) => svgUri(`<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><path d='M20 0L0 0 0 20' fill='none' stroke='${c}' stroke-width='0.6'/></svg>`),
+  waves:     (c) => svgUri(`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='20'><path d='M0 10 Q10 0 20 10 Q30 20 40 10' fill='none' stroke='${c}' stroke-width='1.5'/></svg>`),
+  geometric: (c) => svgUri(`<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30'><polygon points='15,3 27,27 3,27' fill='none' stroke='${c}' stroke-width='0.8'/></svg>`),
+};
+
+function resolveBackgroundStyle(bo) {
+  if (!bo?.type) return null;
+  switch (bo.type) {
+    case "solid":
+      return { background: bo.color || "#0f1923" };
+    case "gradient": {
+      const c1 = bo.color1 || "#0f1923", c2 = bo.color2 || "#1a2c3d";
+      if (bo.gradientType === "radial")
+        return { background: `radial-gradient(ellipse at center, ${c1}, ${c2})` };
+      return { background: `linear-gradient(${bo.angle ?? 135}deg, ${c1}, ${c2})` };
+    }
+    case "pattern": {
+      const pat = bo.pattern || "dots";
+      const col = bo.patternColor || "#ffffff";
+      const op  = bo.patternOpacity ?? 0.3;
+      const uri = BG_PATTERN_URI[pat]?.(col);
+      const sz  = pat === "waves" ? "40px 20px" : pat === "geometric" ? "30px 30px" : "20px 20px";
+      return {
+        backgroundColor: bo.color || "#0f1923",
+        ...(uri ? { backgroundImage: `url("${uri}")` } : {}),
+        backgroundRepeat: "repeat",
+        backgroundSize: sz,
+        backgroundPosition: "center",
+        opacity: op,
+      };
+    }
+    case "texture": {
+      const base = bo.color || "#0f1923";
+      const i    = bo.textureIntensity ?? 0.5;
+      const textures = {
+        paper:     { backgroundColor: base, backgroundImage: `url("${svgUri(`<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='200' height='200' filter='url(#f)' opacity='${i * 0.2}'/></svg>`)}")`, backgroundSize: "200px 200px" },
+        fabric:    { backgroundColor: base, backgroundImage: `repeating-linear-gradient(45deg,rgba(255,255,255,${i*0.12}) 0,rgba(255,255,255,${i*0.12}) 1px,transparent 0,transparent 50%),repeating-linear-gradient(135deg,rgba(255,255,255,${i*0.08}) 0,rgba(255,255,255,${i*0.08}) 1px,transparent 0,transparent 50%)`, backgroundSize: "6px 6px" },
+        concrete:  { backgroundColor: base, backgroundImage: `repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,${i*0.07}) 2px,rgba(0,0,0,${i*0.07}) 4px),repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(0,0,0,${i*0.04}) 3px,rgba(0,0,0,${i*0.04}) 4px)` },
+        noise:     { backgroundColor: base, backgroundImage: `url("${svgUri(`<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='200' height='200' filter='url(#n)' opacity='${i*0.25}'/></svg>`)}")`, backgroundSize: "200px 200px" },
+        softgrain: { backgroundColor: base, backgroundImage: `url("${svgUri(`<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100' height='100' filter='url(#g)' opacity='${i*0.2}'/></svg>`)}")`, backgroundSize: "100px 100px" },
+      };
+      return textures[bo.texture || "noise"] || textures.noise;
+    }
+    case "image": {
+      if (!bo.imageSrc) return null;
+      const fitMap = { fill: "cover", fit: "contain", stretch: "100% 100%" };
+      return {
+        backgroundImage:    `url("${bo.imageSrc}")`,
+        backgroundSize:     fitMap[bo.imageFit || "fill"] || "cover",
+        backgroundPosition: "center",
+        backgroundRepeat:   "no-repeat",
+        backgroundColor:    bo.color || "#0f1923",
+      };
+    }
+    default: return null;
+  }
+}
+
 // ─── React Renderers ──────────────────────────────────────────────────────────
 
 function AuthorityRenderer({ cd, typo, thumb, hasBgImage }) {
@@ -409,6 +476,19 @@ function DynamicRenderer({ cd, typo, thumb, hasBgImage }) {
   );
 }
 
+// ─── Background Layer ────────────────────────────────────────────────────────
+
+function BackgroundLayer({ bo }) {
+  const style = resolveBackgroundStyle(bo);
+  if (!style) return null;
+  // Global opacity is separate from pattern opacity (which lives inside the style)
+  const globalOpacity = bo?.type === "pattern" ? 1 : (bo?.opacity ?? 1);
+  const { opacity: _drop, ...rest } = style; // strip any opacity from style; apply via wrapper
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", opacity: bo?.opacity ?? 1, ...rest }} />
+  );
+}
+
 // ─── Cover Image Layer ───────────────────────────────────────────────────────
 
 function CoverImageLayer({ io }) {
@@ -445,15 +525,15 @@ function CoverImageLayer({ io }) {
   );
 }
 
-function ConceptRenderer({ cd, typo, imageOverrides }) {
+function ConceptRenderer({ cd, typo, imageOverrides, backgroundOverrides }) {
   if (!cd) return null;
-  const hasBgImage = !!(imageOverrides?.src);
+  const hasCustomBg = !!(imageOverrides?.src) || !!(backgroundOverrides?.type);
   switch (cd.type) {
-    case "premium":  return <PremiumRenderer  cd={cd} typo={typo} hasBgImage={hasBgImage} />;
-    case "minimal":  return <MinimalRenderer  cd={cd} typo={typo} hasBgImage={hasBgImage} />;
-    case "metaphor": return <MetaphorRenderer cd={cd} typo={typo} hasBgImage={hasBgImage} />;
-    case "dynamic":  return <DynamicRenderer  cd={cd} typo={typo} hasBgImage={hasBgImage} />;
-    default:         return <AuthorityRenderer cd={cd} typo={typo} hasBgImage={hasBgImage} />;
+    case "premium":  return <PremiumRenderer  cd={cd} typo={typo} hasBgImage={hasCustomBg} />;
+    case "minimal":  return <MinimalRenderer  cd={cd} typo={typo} hasBgImage={hasCustomBg} />;
+    case "metaphor": return <MetaphorRenderer cd={cd} typo={typo} hasBgImage={hasCustomBg} />;
+    case "dynamic":  return <DynamicRenderer  cd={cd} typo={typo} hasBgImage={hasCustomBg} />;
+    default:         return <AuthorityRenderer cd={cd} typo={typo} hasBgImage={hasCustomBg} />;
   }
 }
 
@@ -1835,7 +1915,7 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
   );
 }
 
-function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typographyOverrides, imageOverrides }) {
+function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typographyOverrides, imageOverrides, backgroundOverrides }) {
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ w: 600, h: 500 });
 
@@ -1897,8 +1977,11 @@ function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typ
             borderRadius: 2,
           }}
         >
+          <BackgroundLayer bo={backgroundOverrides} />
           <CoverImageLayer io={imageOverrides} />
-          <ConceptRenderer cd={cd} typo={to} imageOverrides={imageOverrides} />
+          <div style={{ position: "relative", zIndex: 2, width: "100%", height: "100%" }}>
+            <ConceptRenderer cd={cd} typo={to} imageOverrides={imageOverrides} backgroundOverrides={backgroundOverrides} />
+          </div>
         </div>
         <div className="text-center mt-3 text-[9px] text-slate-400 font-medium tracking-wide select-none">
           {bookSize.label} · {zoom === "fit" ? "Fit" : `${Math.round((typeof zoom === "number" ? zoom : 1) * 100)}%`}
@@ -1924,7 +2007,212 @@ function FormField({ label, required, error, hint, children }) {
   );
 }
 
-function MetadataPanel({ metadata, onChange, errors }) {
+// ─── Background Color Row helper ─────────────────────────────────────────────
+
+function BgColorRow({ label, value, onChange }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">{label}</label>
+      <div className="flex items-center gap-2">
+        <div className="relative w-6 h-6 rounded-md overflow-hidden border border-gray-700 cursor-pointer shrink-0">
+          <div className="absolute inset-0 rounded-md" style={{ background: value }} />
+          <input type="color" value={value} onChange={e => onChange(e.target.value)}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+        </div>
+        <span className="text-[8px] font-mono text-gray-600">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Background Section ───────────────────────────────────────────────────────
+
+function BackgroundSection({ backgroundOverrides, onBgChange, onBgReset }) {
+  const bo   = backgroundOverrides || {};
+  const type = bo.type || null;
+  const bgFileRef = useRef(null);
+
+  const TYPE_BTNS = [
+    { id: "solid",    label: "Solid"    },
+    { id: "gradient", label: "Gradient" },
+    { id: "pattern",  label: "Pattern"  },
+    { id: "texture",  label: "Texture"  },
+    { id: "image",    label: "Image"    },
+  ];
+
+  const chipCls = (active) =>
+    `px-2 py-0.5 rounded text-[9px] font-medium border transition-colors ${
+      active
+        ? "bg-indigo-600 border-indigo-500 text-white"
+        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200"
+    }`;
+
+  const segBtnCls = (active) =>
+    `flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${
+      active
+        ? "bg-indigo-600 border-indigo-500 text-white"
+        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+    }`;
+
+  return (
+    <CollapsibleCard title="Background" defaultOpen={false}>
+
+      {/* Type selector */}
+      <div className="space-y-1.5">
+        <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Type</p>
+        <div className="flex flex-wrap gap-1">
+          {TYPE_BTNS.map(({ id, label }) => (
+            <button key={id} className={chipCls(type === id)}
+              onClick={() => onBgChange("type", type === id ? null : id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Solid ── */}
+      {type === "solid" && (
+        <BgColorRow label="Color" value={bo.color || "#0f1923"} onChange={v => onBgChange("color", v)} />
+      )}
+
+      {/* ── Gradient ── */}
+      {type === "gradient" && (
+        <div className="space-y-2">
+          <div className="flex gap-1.5">
+            {["linear", "radial"].map(gt => (
+              <button key={gt} className={segBtnCls((bo.gradientType || "linear") === gt)}
+                onClick={() => onBgChange("gradientType", gt)}>
+                {gt.charAt(0).toUpperCase() + gt.slice(1)}
+              </button>
+            ))}
+          </div>
+          <BgColorRow label="Color 1" value={bo.color1 || "#0f1923"} onChange={v => onBgChange("color1", v)} />
+          <BgColorRow label="Color 2" value={bo.color2 || "#1a2c3d"} onChange={v => onBgChange("color2", v)} />
+          {(bo.gradientType || "linear") === "linear" && (
+            <TypoSlider label="Angle" min={0} max={360} step={1}
+              value={bo.angle ?? 135} onChange={v => onBgChange("angle", v)}
+              format={v => `${v}°`} />
+          )}
+        </div>
+      )}
+
+      {/* ── Pattern ── */}
+      {type === "pattern" && (
+        <div className="space-y-2">
+          <BgColorRow label="Base Color"    value={bo.color       || "#0f1923"} onChange={v => onBgChange("color", v)} />
+          <BgColorRow label="Pattern Color" value={bo.patternColor || "#ffffff"} onChange={v => onBgChange("patternColor", v)} />
+          <div className="space-y-1">
+            <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Pattern</p>
+            <div className="flex flex-wrap gap-1">
+              {["dots","lines","grid","waves","geometric"].map(p => (
+                <button key={p} className={chipCls((bo.pattern || "dots") === p)}
+                  onClick={() => onBgChange("pattern", p)}>
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <TypoSlider label="Pattern Opacity" min={0} max={1} step={0.05}
+            value={bo.patternOpacity ?? 0.3} onChange={v => onBgChange("patternOpacity", v)}
+            format={v => `${Math.round(v * 100)}%`} />
+        </div>
+      )}
+
+      {/* ── Texture ── */}
+      {type === "texture" && (
+        <div className="space-y-2">
+          <BgColorRow label="Base Color" value={bo.color || "#0f1923"} onChange={v => onBgChange("color", v)} />
+          <div className="space-y-1">
+            <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Texture</p>
+            <div className="flex flex-wrap gap-1">
+              {[
+                { id: "paper",     label: "Paper"     },
+                { id: "fabric",    label: "Fabric"    },
+                { id: "concrete",  label: "Concrete"  },
+                { id: "noise",     label: "Noise"     },
+                { id: "softgrain", label: "Soft Grain"},
+              ].map(({ id, label }) => (
+                <button key={id} className={chipCls((bo.texture || "noise") === id)}
+                  onClick={() => onBgChange("texture", id)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <TypoSlider label="Intensity" min={0} max={1} step={0.05}
+            value={bo.textureIntensity ?? 0.5} onChange={v => onBgChange("textureIntensity", v)}
+            format={v => `${Math.round(v * 100)}%`} />
+        </div>
+      )}
+
+      {/* ── Background Image ── */}
+      {type === "image" && (
+        <div className="space-y-2">
+          {bo.imageSrc ? (
+            <div className="rounded-lg overflow-hidden border border-gray-700" style={{ height: 72 }}>
+              <img src={bo.imageSrc} className="w-full h-full object-cover" alt="background" />
+            </div>
+          ) : (
+            <div
+              className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 hover:border-indigo-500 cursor-pointer transition-colors py-5"
+              onClick={() => bgFileRef.current?.click()}
+            >
+              <span className="text-[18px] mb-1">🖼️</span>
+              <span className="text-[9px] text-gray-500">Click to upload image</span>
+              <span className="text-[8px] text-gray-700 mt-0.5">PNG · JPG · WEBP</span>
+            </div>
+          )}
+          <input ref={bgFileRef} type="file" accept="image/*" className="hidden"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = ev => onBgChange("imageSrc", ev.target.result);
+              reader.readAsDataURL(file);
+              e.target.value = "";
+            }}
+          />
+          {bo.imageSrc && (
+            <button onClick={() => bgFileRef.current?.click()}
+              className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-gray-700 text-gray-300 hover:border-indigo-500 transition-colors">
+              Replace Image
+            </button>
+          )}
+          <div className="space-y-1">
+            <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Fit</p>
+            <div className="flex gap-1.5">
+              {[{ id: "fill", label: "Fill" }, { id: "fit", label: "Fit" }, { id: "stretch", label: "Stretch" }].map(({ id, label }) => (
+                <button key={id} className={segBtnCls((bo.imageFit || "fill") === id)}
+                  onClick={() => onBgChange("imageFit", id)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Global opacity + Reset (only when a type is active) ── */}
+      {type && (
+        <>
+          <div className="h-px bg-gray-800/60 my-0.5" />
+          <TypoSlider label="Opacity" min={0} max={1} step={0.05}
+            value={bo.opacity ?? 1} onChange={v => onBgChange("opacity", v)}
+            format={v => `${Math.round(v * 100)}%`} />
+          <button onClick={onBgReset}
+            className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-gray-700/60 text-gray-500 hover:border-rose-500/50 hover:text-rose-400 transition-colors">
+            Reset Background
+          </button>
+        </>
+      )}
+
+    </CollapsibleCard>
+  );
+}
+
+// ─── Metadata Panel ───────────────────────────────────────────────────────────
+
+function MetadataPanel({ metadata, onChange, errors, backgroundOverrides, onBgChange, onBgReset }) {
   function field(key, e) {
     onChange(key, typeof e === "string" ? e : e.target.value);
   }
@@ -2084,6 +2372,13 @@ function MetadataPanel({ metadata, onChange, errors }) {
             </select>
           </FormField>
         </div>
+
+
+        <BackgroundSection
+          backgroundOverrides={backgroundOverrides}
+          onBgChange={onBgChange}
+          onBgReset={onBgReset}
+        />
 
       </div>
     </div>
@@ -2586,7 +2881,7 @@ const RIGHT_TABS = [
   { id: "effects",    label: "Effects"    },
 ];
 
-function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoChange, onTypoReset, imageOverrides, onImageChange, onImageReset, concepts }) {
+function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoChange, onTypoReset, imageOverrides, onImageChange, onImageReset, concepts, backgroundOverrides, onBgChange, onBgReset }) {
   const [activeTab, setActiveTab] = useState("design");
 
   return (
@@ -2612,7 +2907,14 @@ function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoCha
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === "design" ? (
-          <MetadataPanel metadata={metadata} onChange={onChange} errors={errors} />
+          <MetadataPanel
+            metadata={metadata}
+            onChange={onChange}
+            errors={errors}
+            backgroundOverrides={backgroundOverrides}
+            onBgChange={onBgChange}
+            onBgReset={onBgReset}
+          />
         ) : activeTab === "typography" ? (
           <TypographyEditorPanel
             metadata={metadata}
@@ -4309,6 +4611,24 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     setImageOverrides(null);
   }
 
+  // Background overrides state (user edits in Background section of Design tab)
+  const [backgroundOverrides, setBackgroundOverrides] = useState(() =>
+    bookCover?.backgroundOverrides || bookCover?.coverStudio?.backgroundOverrides || null
+  );
+
+  function handleBgChange(key, value) {
+    setBackgroundOverrides(prev => {
+      // Setting type to null clears everything
+      if (key === "type" && (value === null || value === undefined)) return null;
+      const next = { ...(prev || {}), [key]: value };
+      return next;
+    });
+  }
+
+  function handleBgReset() {
+    setBackgroundOverrides(null);
+  }
+
   // Concept Review Engine state
   const [conceptReviews, setConceptReviews] = useState(() =>
     Array.isArray(bookCover?.conceptReviews) ? bookCover.conceptReviews :
@@ -5045,6 +5365,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           designElements:         designElements             || null,
           typographyOverrides:    typographyOverrides        || null,
           imageOverrides:         imageOverrides             || null,
+          backgroundOverrides:    backgroundOverrides        || null,
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -5053,6 +5374,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             typography:           typographyProfile    || null,
             typographyOverrides:  typographyOverrides  || null,
             imageOverrides:       imageOverrides       || null,
+            backgroundOverrides:  backgroundOverrides  || null,
             layout:               layoutProfile        || null,
             marketAnalysis:       marketAnalysis       || null,
             coverStrategy:        coverStrategyProfile || null,
@@ -5070,7 +5392,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides, imageOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides, imageOverrides, backgroundOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -5197,6 +5519,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                   bookSize={bookSize}
                   typographyOverrides={typographyOverrides}
                   imageOverrides={imageOverrides}
+                  backgroundOverrides={backgroundOverrides}
                 />
               </div>
 
@@ -5221,6 +5544,9 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             onImageChange={handleImageChange}
             onImageReset={handleImageReset}
             concepts={concepts}
+            backgroundOverrides={backgroundOverrides}
+            onBgChange={handleBgChange}
+            onBgReset={handleBgReset}
           />
         </div>
 
