@@ -267,7 +267,11 @@ button:focus-visible, a:focus-visible {
 
 .workflow-countdown {
   transform-origin: left;
-  animation: workflow-countdown 10s linear both;
+  animation: workflow-countdown 5s linear both;
+}
+
+.workflow-countdown-paused {
+  animation-play-state: paused;
 }
 
 .safe-link {

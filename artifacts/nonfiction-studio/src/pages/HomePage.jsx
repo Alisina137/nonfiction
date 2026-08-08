@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlignLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Compass, Image, Library, ListTree, Menu, PenLine, Search, Settings2, Sparkles, Type, UserRound, UserPen, X } from "lucide-react";
+import { AlignLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Compass, Image, Library, ListTree, Menu, Pause, PenLine, Play, Search, Settings2, Sparkles, Type, UserRound, UserPen, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { BOOK_BUILDER_STEPS } from "../lib/constants";
 import { loadLibrary, createBook, deleteBook, migrateLegacy } from "../lib/bookLibrary";
@@ -121,6 +121,7 @@ function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
   const [workflowResetKey, setWorkflowResetKey] = useState(0);
+  const [workflowPaused, setWorkflowPaused] = useState(false);
 
   useEffect(() => {
     migrateLegacy();
@@ -128,11 +129,12 @@ function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (workflowPaused) return undefined;
     const timer = window.setTimeout(() => {
       setActiveWorkflowStep((current) => (current + 1) % BOOK_BUILDER_STEPS.length);
-    }, 10000);
+    }, 5000);
     return () => window.clearTimeout(timer);
-  }, [activeWorkflowStep, workflowResetKey]);
+  }, [activeWorkflowStep, workflowPaused, workflowResetKey]);
 
   function handleNewBook() {
     const id = createBook();
@@ -143,6 +145,13 @@ function HomePage() {
     const nextIndex = (index + BOOK_BUILDER_STEPS.length) % BOOK_BUILDER_STEPS.length;
     setActiveWorkflowStep(nextIndex);
     setWorkflowResetKey((current) => current + 1);
+  }
+
+  function toggleWorkflowPause() {
+    setWorkflowPaused((paused) => {
+      if (paused) setWorkflowResetKey((current) => current + 1);
+      return !paused;
+    });
   }
 
   function handleOpen(id) { setLocation(`/dashboard?bookId=${id}`); }
@@ -228,19 +237,12 @@ function HomePage() {
                     </div>
                     <span className="hidden rounded-full border border-[hsl(var(--paper)/.16)] px-3 py-1.5 font-mono text-[10px] text-[hsl(var(--paper)/.55)] sm:inline-flex">{workflowDetails[activeWorkflowStep].signal}</span>
                   </div>
-                  <p className="mt-6 max-w-lg text-base leading-7 text-[hsl(var(--paper)/.68)]">{workflowDetails[activeWorkflowStep].description}</p>
                   <div className="mt-8 rounded-2xl border border-[hsl(var(--paper)/.12)] bg-[hsl(var(--paper)/.05)] p-4">
-                    <div className="flex items-center justify-between text-[10px] uppercase tracking-[.16em] text-[hsl(var(--paper)/.44)]">
-                      <span>Studio output</span>
-                      <span className="font-mono text-[hsl(var(--accent))]">processing</span>
-                    </div>
-                    <div className="mt-4 flex items-center gap-3">
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-[hsl(var(--paper)/.12)]"><div className="workflow-progress h-full rounded-full bg-[hsl(var(--accent))]" /></div>
-                      <span className="font-mono text-xs text-[hsl(var(--paper)/.7)]">{workflowDetails[activeWorkflowStep].output}</span>
-                    </div>
+                    <p className="font-mono text-[10px] uppercase tracking-[.16em] text-[hsl(var(--accent))]">What this step does</p>
+                    <p className="mt-3 text-sm leading-6 text-[hsl(var(--paper)/.72)]">{workflowDetails[activeWorkflowStep].description}</p>
                   </div>
                   <div className="mt-5 flex items-center justify-between gap-4">
-                    <span className="text-xs text-[hsl(var(--paper)/.45)]">Auto-advances in 10 seconds</span>
+                    <span className="text-xs text-[hsl(var(--paper)/.45)]">{workflowPaused ? "Paused — take your time" : "Auto-advances in 5 seconds"}</span>
                     <div className="flex items-center gap-2">
                       <button
                         className="workflow-arrow"
@@ -252,6 +254,15 @@ function HomePage() {
                       </button>
                       <button
                         className="workflow-arrow"
+                        onClick={toggleWorkflowPause}
+                        aria-label={workflowPaused ? "Resume workflow animation" : "Pause workflow animation"}
+                        aria-pressed={workflowPaused}
+                        data-testid="button-workflow-pause"
+                      >
+                        {workflowPaused ? <Play size={15} /> : <Pause size={15} />}
+                      </button>
+                      <button
+                        className="workflow-arrow"
                         onClick={() => goToWorkflowStep(activeWorkflowStep + 1)}
                         aria-label="Go to next workflow step"
                         data-testid="button-workflow-next"
@@ -260,7 +271,7 @@ function HomePage() {
                       </button>
                     </div>
                   </div>
-                  <div key={`timer-${workflowResetKey}-${activeWorkflowStep}`} className="workflow-countdown mt-4 h-0.5 w-full rounded-full bg-[hsl(var(--paper)/.1)]" aria-hidden="true" />
+                  <div key={`timer-${workflowResetKey}-${activeWorkflowStep}`} className={`workflow-countdown mt-4 h-0.5 w-full rounded-full bg-[hsl(var(--paper)/.1)] ${workflowPaused ? "workflow-countdown-paused" : ""}`} aria-hidden="true" />
                 </div>
 
                 <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-1 border-t border-[hsl(var(--paper)/.14)] pt-5 sm:grid-cols-3 lg:grid-cols-4">
