@@ -246,6 +246,30 @@ button:focus-visible, a:focus-visible {
   box-shadow: inset 2px 0 0 hsl(var(--accent));
 }
 
+.workflow-arrow {
+  display: inline-flex;
+  height: 2.15rem;
+  width: 2.15rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--paper) / 0.18);
+  border-radius: 999px;
+  color: hsl(var(--paper) / 0.72);
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.workflow-arrow:hover {
+  border-color: hsl(var(--accent) / 0.8);
+  background: hsl(var(--accent) / 0.16);
+  color: hsl(var(--paper));
+  transform: translateY(-2px);
+}
+
+.workflow-countdown {
+  transform-origin: left;
+  animation: workflow-countdown 10s linear both;
+}
+
 .safe-link {
   color: hsl(var(--ink-muted));
   transition: color 180ms ease;
@@ -270,6 +294,11 @@ button:focus-visible, a:focus-visible {
   to { width: 100%; }
 }
 
+@keyframes workflow-countdown {
+  from { transform: scaleX(0); background: hsl(var(--accent)); }
+  to { transform: scaleX(1); background: hsl(var(--accent) / 0.25); }
+}
+
 @keyframes workflow-pulse {
   0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.4); opacity: .75; }
   50% { box-shadow: 0 0 0 6px hsl(var(--accent) / 0); opacity: 1; }
@@ -277,6 +306,6 @@ button:focus-visible, a:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .landing-reveal, .floating-sheet, .workflow-pulse, .workflow-stage, .workflow-stage-icon, .workflow-progress { animation: none; }
-  .btn-primary:hover, .btn-secondary:hover, .feature-card:hover { transform: none; }
+  .landing-reveal, .floating-sheet, .workflow-pulse, .workflow-stage, .workflow-stage-icon, .workflow-progress, .workflow-countdown { animation: none; }
+  .btn-primary:hover, .btn-secondary:hover, .feature-card:hover, .workflow-arrow:hover { transform: none; }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlignLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronDown, Compass, Image, Library, ListTree, Menu, PenLine, Search, Settings2, Sparkles, Type, UserRound, UserPen, X } from "lucide-react";
+import { AlignLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Compass, Image, Library, ListTree, Menu, PenLine, Search, Settings2, Sparkles, Type, UserRound, UserPen, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { BOOK_BUILDER_STEPS } from "../lib/constants";
 import { loadLibrary, createBook, deleteBook, migrateLegacy } from "../lib/bookLibrary";
@@ -120,6 +120,7 @@ function HomePage() {
   const [books, setBooks] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
+  const [workflowResetKey, setWorkflowResetKey] = useState(0);
 
   useEffect(() => {
     migrateLegacy();
@@ -127,15 +128,21 @@ function HomePage() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
+    const timer = window.setTimeout(() => {
       setActiveWorkflowStep((current) => (current + 1) % BOOK_BUILDER_STEPS.length);
-    }, 3400);
-    return () => window.clearInterval(timer);
-  }, []);
+    }, 10000);
+    return () => window.clearTimeout(timer);
+  }, [activeWorkflowStep, workflowResetKey]);
 
   function handleNewBook() {
     const id = createBook();
     setLocation(`/dashboard?bookId=${id}`);
+  }
+
+  function goToWorkflowStep(index) {
+    const nextIndex = (index + BOOK_BUILDER_STEPS.length) % BOOK_BUILDER_STEPS.length;
+    setActiveWorkflowStep(nextIndex);
+    setWorkflowResetKey((current) => current + 1);
   }
 
   function handleOpen(id) { setLocation(`/dashboard?bookId=${id}`); }
@@ -232,6 +239,28 @@ function HomePage() {
                       <span className="font-mono text-xs text-[hsl(var(--paper)/.7)]">{workflowDetails[activeWorkflowStep].output}</span>
                     </div>
                   </div>
+                  <div className="mt-5 flex items-center justify-between gap-4">
+                    <span className="text-xs text-[hsl(var(--paper)/.45)]">Auto-advances in 10 seconds</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="workflow-arrow"
+                        onClick={() => goToWorkflowStep(activeWorkflowStep - 1)}
+                        aria-label="Go to previous workflow step"
+                        data-testid="button-workflow-previous"
+                      >
+                        <ChevronLeft size={17} />
+                      </button>
+                      <button
+                        className="workflow-arrow"
+                        onClick={() => goToWorkflowStep(activeWorkflowStep + 1)}
+                        aria-label="Go to next workflow step"
+                        data-testid="button-workflow-next"
+                      >
+                        <ChevronRight size={17} />
+                      </button>
+                    </div>
+                  </div>
+                  <div key={`timer-${workflowResetKey}-${activeWorkflowStep}`} className="workflow-countdown mt-4 h-0.5 w-full rounded-full bg-[hsl(var(--paper)/.1)]" aria-hidden="true" />
                 </div>
 
                 <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-1 border-t border-[hsl(var(--paper)/.14)] pt-5 sm:grid-cols-3 lg:grid-cols-4">
@@ -239,7 +268,7 @@ function HomePage() {
                     <button
                       key={step.id}
                       className={`workflow-step flex items-center gap-2 rounded-lg px-2 py-2.5 text-left text-xs transition ${index === activeWorkflowStep ? "workflow-step-active" : "text-[hsl(var(--paper)/.45)] hover:bg-[hsl(var(--paper)/.06)] hover:text-[hsl(var(--paper)/.8)]"}`}
-                      onClick={() => setActiveWorkflowStep(index)}
+                      onClick={() => goToWorkflowStep(index)}
                       aria-label={`Show step ${index + 1}: ${step.label}`}
                       aria-current={index === activeWorkflowStep ? "step" : undefined}
                       data-testid={`button-workflow-step-${step.id}`}
