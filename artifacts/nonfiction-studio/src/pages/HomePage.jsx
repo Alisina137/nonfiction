@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpen, Check, ChevronDown, Compass, Menu, PenLine, Sparkles, X } from "lucide-react";
+import { AlignLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronDown, Compass, Image, Library, ListTree, Menu, PenLine, Search, Settings2, Sparkles, Type, UserRound, UserPen, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { BOOK_BUILDER_STEPS } from "../lib/constants";
 import { loadLibrary, createBook, deleteBook, migrateLegacy } from "../lib/bookLibrary";
@@ -16,6 +16,22 @@ const testimonials = [
   { quote: "The difference is not that it writes for me. It helps me think like the author my book requires.", name: "Maya Chen", role: "Leadership writer" },
   { quote: "I stopped staring at a blank document. There is always a thoughtful next decision to make.", name: "Jon Bell", role: "Independent consultant" },
   { quote: "My scattered notes became a real argument, with a beginning, middle, and reason to exist.", name: "Elena Brooks", role: "Founder and first-time author" },
+];
+
+const workflowDetails = [
+  { icon: Search, description: "Start with the evidence, tension, and context behind your idea.", output: "Research brief", signal: "Gathering context" },
+  { icon: Compass, description: "Find the strongest argument hiding inside your research.", output: "Strategic analysis", signal: "Finding the angle" },
+  { icon: Type, description: "Give the transformation a title readers can remember.", output: "Title directions", signal: "Naming the promise" },
+  { icon: Library, description: "Gather references and resources that strengthen the work.", output: "Resource library", signal: "Collecting support" },
+  { icon: UserRound, description: "Set a voice that sounds like you at your clearest.", output: "Author persona", signal: "Shaping the voice" },
+  { icon: ListTree, description: "See the whole reader journey before drafting chapters.", output: "Book proposal", signal: "Mapping the journey" },
+  { icon: Settings2, description: "Lock the book’s promise, audience, length, and architecture.", output: "Book blueprint", signal: "Setting the constraints" },
+  { icon: UserPen, description: "Build the byline and biography that give the work its context.", output: "Author profile", signal: "Making it yours" },
+  { icon: ListTree, description: "Turn the blueprint into a chapter-by-chapter path.", output: "Chapter outline", signal: "Building the structure" },
+  { icon: PenLine, description: "Draft the manuscript progressively, keeping every chapter connected.", output: "Manuscript pages", signal: "Writing the book" },
+  { icon: AlignLeft, description: "Distill the finished argument into a clear, compelling description.", output: "Book description", signal: "Clarifying the promise" },
+  { icon: Image, description: "Create a cover direction that signals what the book is about.", output: "Cover concept", signal: "Designing the first impression" },
+  { icon: CheckCircle2, description: "Review, refine, and export a book ready to carry forward.", output: "Finished book", signal: "Ready to share" },
 ];
 
 function timeAgo(ts) {
@@ -103,10 +119,18 @@ function HomePage() {
   const [, setLocation] = useLocation();
   const [books, setBooks] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
 
   useEffect(() => {
     migrateLegacy();
     setBooks(loadLibrary());
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveWorkflowStep((current) => (current + 1) % BOOK_BUILDER_STEPS.length);
+    }, 3400);
+    return () => window.clearInterval(timer);
   }, []);
 
   function handleNewBook() {
@@ -169,7 +193,65 @@ function HomePage() {
         </section>
 
         <section id="process" className="bg-[hsl(var(--ink))] px-5 py-24 text-[hsl(var(--paper))] sm:px-8 md:py-32" data-testid="section-process">
-          <div className="mx-auto grid w-full max-w-6xl gap-12 md:grid-cols-[.8fr_1.2fr]"><div><p className="eyebrow">How it works</p><h2 className="display-serif mt-4 max-w-md text-5xl leading-[.98] sm:text-6xl">A book is built one <em className="text-[hsl(var(--accent))]">good decision</em> at a time.</h2><p className="mt-7 max-w-sm text-sm leading-7 text-[hsl(var(--paper)/.64)]">The studio turns an overwhelming project into a sequence of clear, editorial choices. You stay in the driver’s seat.</p></div><div className="grid gap-0">{BOOK_BUILDER_STEPS.slice(0, 6).map((step, index) => <div key={step.id} className="flex gap-5 border-t border-[hsl(var(--paper)/.17)] py-5"><span className="font-mono text-xs text-[hsl(var(--accent))]">0{index + 1}</span><div><h3 className="font-semibold">{step.label}</h3><p className="mt-1 text-sm text-[hsl(var(--paper)/.58)]">{["Start with the evidence, tension, and context behind your idea.", "Find the argument hiding inside your research.", "Give the transformation a title readers can remember.", "Gather the references and resources that strengthen the work.", "Set a voice that sounds like you at your clearest.", "See the whole reader journey before drafting chapters."][index]}</p></div></div>)}</div></div>
+          <div className="mx-auto w-full max-w-6xl">
+            <div className="grid gap-12 md:grid-cols-[.72fr_1.28fr]">
+              <div>
+                <p className="eyebrow">How it works</p>
+                <h2 className="display-serif mt-4 max-w-md text-5xl leading-[.98] sm:text-6xl">A book is built one <em className="text-[hsl(var(--accent))]">good decision</em> at a time.</h2>
+                <p className="mt-7 max-w-sm text-sm leading-7 text-[hsl(var(--paper)/.64)]">The studio turns an overwhelming project into 13 clear, editorial choices. You stay in the driver’s seat while the manuscript takes shape.</p>
+                <div className="mt-8 flex items-center gap-3 text-xs text-[hsl(var(--paper)/.52)]">
+                  <span className="workflow-pulse h-2 w-2 rounded-full bg-[hsl(var(--accent))]" />
+                  <span>Live walkthrough</span>
+                  <span className="font-mono text-[hsl(var(--accent))]">{String(activeWorkflowStep + 1).padStart(2, "0")} / {String(BOOK_BUILDER_STEPS.length).padStart(2, "0")}</span>
+                </div>
+              </div>
+
+              <div className="workflow-panel">
+                <div className="workflow-stage" key={BOOK_BUILDER_STEPS[activeWorkflowStep].id}>
+                  <div className="flex items-start justify-between gap-4 border-b border-[hsl(var(--paper)/.14)] pb-5">
+                    <div className="flex items-center gap-4">
+                      {(() => {
+                        const Icon = workflowDetails[activeWorkflowStep].icon;
+                        return <span className="workflow-stage-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[hsl(var(--accent)/.16)] text-[hsl(var(--accent))]"><Icon size={22} strokeWidth={1.6} /></span>;
+                      })()}
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-[.18em] text-[hsl(var(--accent))]">Step {String(activeWorkflowStep + 1).padStart(2, "0")}</p>
+                        <h3 className="display-serif mt-1 text-3xl">{BOOK_BUILDER_STEPS[activeWorkflowStep].label}</h3>
+                      </div>
+                    </div>
+                    <span className="hidden rounded-full border border-[hsl(var(--paper)/.16)] px-3 py-1.5 font-mono text-[10px] text-[hsl(var(--paper)/.55)] sm:inline-flex">{workflowDetails[activeWorkflowStep].signal}</span>
+                  </div>
+                  <p className="mt-6 max-w-lg text-base leading-7 text-[hsl(var(--paper)/.68)]">{workflowDetails[activeWorkflowStep].description}</p>
+                  <div className="mt-8 rounded-2xl border border-[hsl(var(--paper)/.12)] bg-[hsl(var(--paper)/.05)] p-4">
+                    <div className="flex items-center justify-between text-[10px] uppercase tracking-[.16em] text-[hsl(var(--paper)/.44)]">
+                      <span>Studio output</span>
+                      <span className="font-mono text-[hsl(var(--accent))]">processing</span>
+                    </div>
+                    <div className="mt-4 flex items-center gap-3">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-[hsl(var(--paper)/.12)]"><div className="workflow-progress h-full rounded-full bg-[hsl(var(--accent))]" /></div>
+                      <span className="font-mono text-xs text-[hsl(var(--paper)/.7)]">{workflowDetails[activeWorkflowStep].output}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-1 border-t border-[hsl(var(--paper)/.14)] pt-5 sm:grid-cols-3 lg:grid-cols-4">
+                  {BOOK_BUILDER_STEPS.map((step, index) => (
+                    <button
+                      key={step.id}
+                      className={`workflow-step flex items-center gap-2 rounded-lg px-2 py-2.5 text-left text-xs transition ${index === activeWorkflowStep ? "workflow-step-active" : "text-[hsl(var(--paper)/.45)] hover:bg-[hsl(var(--paper)/.06)] hover:text-[hsl(var(--paper)/.8)]"}`}
+                      onClick={() => setActiveWorkflowStep(index)}
+                      aria-label={`Show step ${index + 1}: ${step.label}`}
+                      aria-current={index === activeWorkflowStep ? "step" : undefined}
+                      data-testid={`button-workflow-step-${step.id}`}
+                    >
+                      <span className="font-mono text-[10px]">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="truncate">{step.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section id="reviews" className="mx-auto w-full max-w-6xl px-5 py-24 sm:px-8 md:py-32" data-testid="section-reviews">

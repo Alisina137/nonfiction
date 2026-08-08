@@ -215,6 +215,37 @@ button:focus-visible, a:focus-visible {
   animation: drift 5s ease-in-out infinite alternate;
 }
 
+.workflow-pulse {
+  animation: workflow-pulse 1.8s ease-in-out infinite;
+}
+
+.workflow-panel {
+  min-width: 0;
+  border: 1px solid hsl(var(--paper) / 0.14);
+  border-radius: 1.5rem;
+  background: linear-gradient(145deg, hsl(var(--paper) / 0.08), hsl(var(--paper) / 0.03));
+  padding: 1.5rem;
+  box-shadow: inset 0 1px 0 hsl(var(--paper) / 0.08), 0 22px 60px hsl(0 0% 0% / 0.12);
+}
+
+.workflow-stage {
+  animation: workflow-stage-in 500ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.workflow-stage-icon {
+  animation: workflow-icon-in 650ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.workflow-progress {
+  animation: workflow-progress 3.2s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.workflow-step-active {
+  color: hsl(var(--paper));
+  background: hsl(var(--accent) / 0.15);
+  box-shadow: inset 2px 0 0 hsl(var(--accent));
+}
+
 .safe-link {
   color: hsl(var(--ink-muted));
   transition: color 180ms ease;
@@ -224,8 +255,28 @@ button:focus-visible, a:focus-visible {
   color: hsl(var(--accent));
 }
 
+@keyframes workflow-stage-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes workflow-icon-in {
+  from { opacity: 0; transform: scale(.8) rotate(-8deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes workflow-progress {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes workflow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.4); opacity: .75; }
+  50% { box-shadow: 0 0 0 6px hsl(var(--accent) / 0); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .landing-reveal, .floating-sheet { animation: none; }
+  .landing-reveal, .floating-sheet, .workflow-pulse, .workflow-stage, .workflow-stage-icon, .workflow-progress { animation: none; }
   .btn-primary:hover, .btn-secondary:hover, .feature-card:hover { transform: none; }
 }
