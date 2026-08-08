@@ -19,19 +19,19 @@ const testimonials = [
 ];
 
 const workflowDetails = [
-  { icon: Search, description: "Start with the evidence, tension, and context behind your idea.", output: "Research brief", signal: "Gathering context" },
-  { icon: Compass, description: "Find the strongest argument hiding inside your research.", output: "Strategic analysis", signal: "Finding the angle" },
-  { icon: Type, description: "Give the transformation a title readers can remember.", output: "Title directions", signal: "Naming the promise" },
-  { icon: Library, description: "Gather references and resources that strengthen the work.", output: "Resource library", signal: "Collecting support" },
-  { icon: UserRound, description: "Set a voice that sounds like you at your clearest.", output: "Author persona", signal: "Shaping the voice" },
-  { icon: ListTree, description: "See the whole reader journey before drafting chapters.", output: "Book proposal", signal: "Mapping the journey" },
-  { icon: Settings2, description: "Lock the book’s promise, audience, length, and architecture.", output: "Book blueprint", signal: "Setting the constraints" },
-  { icon: UserPen, description: "Build the byline and biography that give the work its context.", output: "Author profile", signal: "Making it yours" },
-  { icon: ListTree, description: "Turn the blueprint into a chapter-by-chapter path.", output: "Chapter outline", signal: "Building the structure" },
-  { icon: PenLine, description: "Draft the manuscript progressively, keeping every chapter connected.", output: "Manuscript pages", signal: "Writing the book" },
-  { icon: AlignLeft, description: "Distill the finished argument into a clear, compelling description.", output: "Book description", signal: "Clarifying the promise" },
-  { icon: Image, description: "Create a cover direction that signals what the book is about.", output: "Cover concept", signal: "Designing the first impression" },
-  { icon: CheckCircle2, description: "Review, refine, and export a book ready to carry forward.", output: "Finished book", signal: "Ready to share" },
+  { icon: Search, description: "Research workspace that turns your topic into organized evidence, context, and reader insight.", signal: "Gathering context" },
+  { icon: Compass, description: "Strategic analysis that reveals your book’s strongest argument, audience need, and point of view.", signal: "Finding the angle" },
+  { icon: Type, description: "Title generation that creates memorable, audience-ready title and subtitle directions.", signal: "Naming the promise" },
+  { icon: Library, description: "Resource library for collecting references, links, notes, and supporting material in one place.", signal: "Collecting support" },
+  { icon: UserRound, description: "Author voice controls that help the manuscript sound consistent, clear, and recognizably yours.", signal: "Shaping the voice" },
+  { icon: ListTree, description: "Book proposal view that turns your idea into a clear promise, reader outcome, and publishing direction.", signal: "Mapping the journey" },
+  { icon: Settings2, description: "Book blueprint settings for defining the audience, length, structure, focus, and editorial rules.", signal: "Setting the constraints" },
+  { icon: UserPen, description: "Author profile builder for creating the byline and biography that frame your expertise.", signal: "Making it yours" },
+  { icon: ListTree, description: "Outline generator that maps a coherent chapter sequence before any long-form writing begins.", signal: "Building the structure" },
+  { icon: PenLine, description: "Progressive writing workspace that drafts connected chapters, sections, exercises, and practical takeaways.", signal: "Writing the book" },
+  { icon: AlignLeft, description: "Book description generator that turns the finished manuscript into clear, compelling sales copy.", signal: "Clarifying the promise" },
+  { icon: Image, description: "Book cover creator that develops a visual direction aligned with your title, audience, and genre.", signal: "Designing the first impression" },
+  { icon: CheckCircle2, description: "Finalization and export tools for reviewing the manuscript and preparing a polished book to share.", signal: "Ready to share" },
 ];
 
 function timeAgo(ts) {
@@ -238,7 +238,7 @@ function HomePage() {
                     <span className="hidden rounded-full border border-[hsl(var(--paper)/.16)] px-3 py-1.5 font-mono text-[10px] text-[hsl(var(--paper)/.55)] sm:inline-flex">{workflowDetails[activeWorkflowStep].signal}</span>
                   </div>
                   <div className="mt-8 rounded-2xl border border-[hsl(var(--paper)/.12)] bg-[hsl(var(--paper)/.05)] p-4">
-                    <p className="font-mono text-[10px] uppercase tracking-[.16em] text-[hsl(var(--accent))]">What this step does</p>
+                    <p className="font-mono text-[10px] uppercase tracking-[.16em] text-[hsl(var(--accent))]">Feature provided</p>
                     <p className="mt-3 text-sm leading-6 text-[hsl(var(--paper)/.72)]">{workflowDetails[activeWorkflowStep].description}</p>
                   </div>
                   <div className="mt-5 flex items-center justify-between gap-4">
