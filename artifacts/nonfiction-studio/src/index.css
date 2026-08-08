@@ -1,79 +1,117 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @theme inline {
   --font-sans: var(--app-font-sans);
   --font-serif: var(--app-font-serif);
-
-  --color-studio-900: #070b14;
-  --color-studio-800: #0f1729;
-  --color-studio-700: #172139;
-  --color-studio-600: #243354;
-  --color-studio-400: #63b3ff;
-  --color-studio-300: #8ec5ff;
-
-  --shadow-glow: 0 0 0 1px rgba(99,179,255,0.2), 0 12px 40px rgba(6,10,24,0.5);
-  --shadow-soft-card: 0 2px 28px -8px rgba(15,23,42,0.085), 0 2px 10px -4px rgba(15,23,42,0.045);
-  --shadow-elevated-sm: 0 1px 3px rgba(15,23,42,0.06), 0 8px 28px -10px rgba(14,165,233,0.22);
+  --font-mono: var(--app-font-mono);
+  --color-studio-900: #172329;
+  --color-studio-800: #253840;
+  --color-studio-700: #40545a;
+  --color-studio-600: #6c7d7c;
+  --color-studio-400: #d16d55;
+  --color-studio-300: #e8a28e;
+  --shadow-glow: 0 20px 60px rgba(39, 56, 58, 0.18);
+  --shadow-soft-card: 0 2px 28px -8px rgba(39, 56, 58, 0.15), 0 2px 10px -4px rgba(39, 56, 58, 0.07);
+  --shadow-elevated-sm: 0 1px 3px rgba(39, 56, 58, 0.08), 0 12px 28px -12px rgba(39, 56, 58, 0.2);
 }
 
 :root {
-  --app-font-sans: 'Inter', system-ui, 'Segoe UI', sans-serif;
-  --app-font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  --app-font-mono: Menlo, monospace;
+  --app-font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --app-font-serif: 'Source Serif 4', Georgia, serif;
+  --app-font-mono: 'DM Mono', ui-monospace, monospace;
+  --paper: 40 32% 96%;
+  --paper-deep: 39 28% 91%;
+  --ink: 199 24% 14%;
+  --ink-muted: 197 11% 39%;
+  --line: 38 17% 82%;
+  --accent: 11 57% 58%;
+  --accent-soft: 13 63% 92%;
+  --sage: 157 19% 43%;
+}
+
+.dark {
+  --paper: 199 24% 14%;
+  --paper-deep: 198 22% 18%;
+  --ink: 40 32% 96%;
+  --ink-muted: 38 17% 74%;
+  --line: 198 18% 29%;
+  --accent: 11 57% 65%;
+  --accent-soft: 11 28% 26%;
+  --sage: 157 20% 62%;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html, body, #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
-  @apply bg-studio-900 text-slate-100;
-  background-image:
-    radial-gradient(circle at 25% -10%, rgba(99, 179, 255, 0.22), transparent 42%),
-    radial-gradient(circle at 92% 8%, rgba(147, 197, 253, 0.06), transparent 38%);
+  margin: 0;
+  background: hsl(var(--paper));
+  color: hsl(var(--ink));
+  font-family: var(--app-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible, a:focus-visible {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 4px;
 }
 
 @layer components {
   .panel {
-    @apply rounded-[1.35rem] border backdrop-blur-xl transition-colors duration-300;
-    border-color: rgba(255, 255, 255, 0.12);
-    background-color: rgba(255, 255, 255, 0.055);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    @apply rounded-[1.35rem] border transition-colors duration-300;
+    border-color: hsl(var(--line));
+    background: hsl(var(--paper) / 0.8);
+    box-shadow: var(--shadow-soft-card);
   }
 
   .btn-primary {
-    @apply inline-flex cursor-pointer items-center justify-center rounded-xl bg-studio-400 px-4 py-2.5 text-sm font-semibold text-slate-950 outline-none transition hover:bg-studio-300 focus-visible:ring-2 focus-visible:ring-studio-300 focus-visible:ring-offset-2 active:translate-y-px;
-    box-shadow:
-      0 10px 15px -3px rgba(99, 179, 255, 0.25),
-      0 4px 6px -4px rgba(99, 179, 255, 0.2);
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold outline-none transition active:translate-y-px;
+    background: hsl(var(--ink));
+    color: hsl(var(--paper));
+    box-shadow: 0 8px 18px rgba(23, 35, 41, 0.14);
   }
 
   .btn-primary:hover {
-    box-shadow:
-      0 20px 25px -5px rgba(99, 179, 255, 0.35),
-      0 8px 10px -6px rgba(99, 179, 255, 0.25);
+    background: hsl(var(--accent));
+    color: hsl(40 32% 96%);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(209, 109, 85, 0.2);
   }
 
   .btn-secondary {
-    @apply inline-flex cursor-pointer items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-medium text-slate-100 backdrop-blur-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-studio-400 focus-visible:ring-offset-2 focus-visible:ring-offset-studio-900;
-    border-color: rgba(255, 255, 255, 0.15);
-    background-color: rgba(255, 255, 255, 0.06);
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold outline-none transition;
+    border-color: hsl(var(--line));
+    background: hsl(var(--paper) / 0.42);
+    color: hsl(var(--ink));
   }
 
   .btn-secondary:hover {
-    border-color: rgba(255, 255, 255, 0.25);
-    background-color: rgba(255, 255, 255, 0.1);
+    border-color: hsl(var(--ink));
+    background: hsl(var(--paper));
+    transform: translateY(-2px);
   }
 
   .input {
-    @apply w-full rounded-xl border px-3 py-2 text-sm text-white outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-studio-400;
-    border-color: rgba(255, 255, 255, 0.15);
-    background-color: rgba(15, 23, 41, 0.7);
+    @apply w-full rounded-xl border px-3 py-2 text-sm outline-none transition;
+    border-color: hsl(var(--line));
+    background: hsl(var(--paper));
+    color: hsl(var(--ink));
   }
 
   .input:focus {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: hsl(var(--accent));
+    box-shadow: 0 0 0 3px hsl(var(--accent) / 0.16);
   }
 
   .book-builder {
@@ -99,4 +137,95 @@ body {
   .book-builder .input-light:focus {
     border-color: rgb(56 189 248 / 0.85);
   }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes drift {
+  from { transform: translate3d(0, 0, 0) rotate(-1deg); }
+  to { transform: translate3d(0, -12px, 0) rotate(1deg); }
+}
+
+.landing-page {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 85% 4%, hsl(var(--accent-soft) / 0.72), transparent 25rem),
+    linear-gradient(180deg, hsl(var(--paper)), hsl(var(--paper-deep) / 0.4) 45%, hsl(var(--paper)));
+}
+
+.landing-page::before {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  content: "";
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.14'/%3E%3C/svg%3E");
+}
+
+.landing-content {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-reveal {
+  animation: rise-in 700ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.landing-delay-1 { animation-delay: 100ms; }
+.landing-delay-2 { animation-delay: 180ms; }
+.landing-delay-3 { animation-delay: 260ms; }
+.landing-delay-4 { animation-delay: 340ms; }
+
+.display-serif {
+  font-family: var(--app-font-serif);
+  letter-spacing: -0.04em;
+}
+
+.eyebrow {
+  color: hsl(var(--accent));
+  font-family: var(--app-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.editorial-rule {
+  border-top: 1px solid hsl(var(--line));
+}
+
+.feature-card {
+  border: 1px solid hsl(var(--line));
+  background: hsl(var(--paper) / 0.6);
+  box-shadow: 0 2px 18px hsl(var(--ink) / 0.04);
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.feature-card:hover {
+  border-color: hsl(var(--accent) / 0.7);
+  box-shadow: 0 18px 34px hsl(var(--ink) / 0.08);
+  transform: translateY(-4px);
+}
+
+.floating-sheet {
+  animation: drift 5s ease-in-out infinite alternate;
+}
+
+.safe-link {
+  color: hsl(var(--ink-muted));
+  transition: color 180ms ease;
+}
+
+.safe-link:hover {
+  color: hsl(var(--accent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .landing-reveal, .floating-sheet { animation: none; }
+  .btn-primary:hover, .btn-secondary:hover, .feature-card:hover { transform: none; }
 }
