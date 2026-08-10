@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlignLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Compass, Image, Library, ListTree, Menu, Pause, PenLine, Play, Search, Settings2, Sparkles, Type, UserRound, UserPen, X } from "lucide-react";
+import { AlignLeft, ArrowRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Compass, Download, FileCheck2, FileText, Image, Library, ListTree, Menu, Pause, PenLine, Play, Search, Settings2, Sparkles, Target, Type, UserRound, UserPen, WandSparkles, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { BOOK_BUILDER_STEPS } from "../lib/constants";
 import { loadLibrary, createBook, deleteBook, migrateLegacy } from "../lib/bookLibrary";
@@ -16,6 +16,38 @@ const testimonials = [
   { quote: "The difference is not that it writes for me. It helps me think like the author my book requires.", name: "Maya Chen", role: "Leadership writer" },
   { quote: "I stopped staring at a blank document. There is always a thoughtful next decision to make.", name: "Jon Bell", role: "Independent consultant" },
   { quote: "My scattered notes became a real argument, with a beginning, middle, and reason to exist.", name: "Elena Brooks", role: "Founder and first-time author" },
+];
+
+const positioningPoints = [
+  { icon: Target, title: "Start with the reader", text: "Define who the book is for, what they need, and what should change for them by the final page." },
+  { icon: BarChart3, title: "Find the useful angle", text: "Use research and analysis to move past broad advice toward a sharper point of view your book can own." },
+  { icon: WandSparkles, title: "Build the transformation", text: "Connect chapters, frameworks, examples, and exercises so the manuscript feels like a guided experience." },
+];
+
+const studioTools = [
+  { icon: Search, label: "Research & context", text: "Explore the topic, audience, and competitive landscape before the first draft." },
+  { icon: Settings2, label: "Book blueprint", text: "Set the promise, structure, length, focus, and editorial rules that guide generation." },
+  { icon: ListTree, label: "Outline builder", text: "Shape a coherent chapter path that protects momentum and prevents repetition." },
+  { icon: PenLine, label: "Writing workspace", text: "Draft connected chapters with practical sections, examples, and reader-facing takeaways." },
+  { icon: FileText, label: "Book packaging", text: "Create the title, description, author bio, front matter, and cover direction around the manuscript." },
+  { icon: FileCheck2, label: "Readiness review", text: "Evaluate the finished work across structure, consistency, reader experience, and publishing quality." },
+];
+
+const finishedBookItems = [
+  "A structured manuscript with chapters, sections, and practical components",
+  "A clear title, subtitle, book description, and author biography",
+  "Optional front matter including dedication, preface, and reader guidance",
+  "A visual cover direction aligned with the book’s audience and promise",
+  "A configurable layout with trim size, margins, typography, headers, and page numbers",
+  "Downloadable PDF and Word document exports for review, editing, and sharing",
+];
+
+const faqItems = [
+  { question: "Do I need a finished outline before I start?", answer: "No. The studio begins with research and analysis, then helps you develop the title, book direction, details, and outline before drafting the manuscript." },
+  { question: "Can I control the voice and direction of the book?", answer: "Yes. Author Persona, Details, and the book blueprint give you control over tone, audience, structure, focus, length, and the editorial rules used throughout generation." },
+  { question: "Does the studio only write the manuscript?", answer: "No. The workflow also supports research, title generation, resources, author materials, descriptions, cover direction, front matter, readiness review, and export." },
+  { question: "What can I export when the book is finished?", answer: "The Finish step lets you configure the manuscript layout and download both a print-ready PDF and a Word document. You can also review what is included before exporting." },
+  { question: "Can I pause and return to a book later?", answer: "Yes. Books are kept in your workspace so you can continue from the step you last reached instead of starting over." },
 ];
 
 const workflowDetails = [
@@ -166,7 +198,9 @@ function HomePage() {
             <Logo />
             <nav className="hidden items-center gap-7 text-sm text-[hsl(var(--ink-muted))] md:flex" aria-label="Main navigation">
               <a href="#features" className="safe-link" data-testid="link-features-nav">Features</a>
+              <a href="#positioning" className="safe-link" data-testid="link-positioning-nav">Why it works</a>
               <a href="#process" className="safe-link" data-testid="link-process-nav">How it works</a>
+              <a href="#tools" className="safe-link" data-testid="link-tools-nav">Tools</a>
               <a href="#pricing" className="safe-link" data-testid="link-pricing-nav">Pricing</a>
               <a href="#library" className="safe-link" data-testid="link-library-nav">Your books</a>
               <button className="btn-primary ml-2 px-4 py-2.5" onClick={handleNewBook} data-testid="button-new-book-nav">New book <ArrowRight size={14} /></button>
@@ -175,7 +209,7 @@ function HomePage() {
           </div>
           {menuOpen && <nav className="border-t border-[hsl(var(--line))] px-5 py-4 md:hidden" aria-label="Mobile navigation">
             <div className="flex flex-col gap-1 text-sm">
-              {[["#features", "Features"], ["#process", "How it works"], ["#pricing", "Pricing"], ["#library", "Your books"]].map(([href, label]) => <a key={href} href={href} onClick={closeMenu} className="rounded-xl px-3 py-3 text-[hsl(var(--ink-muted))] hover:bg-[hsl(var(--paper-deep))]" data-testid={`link-mobile-${label.toLowerCase().replaceAll(" ", "-")}`}>{label}</a>)}
+              {[["#features", "Features"], ["#positioning", "Why it works"], ["#process", "How it works"], ["#tools", "Tools"], ["#pricing", "Pricing"], ["#faq", "FAQ"], ["#library", "Your books"]].map(([href, label]) => <a key={href} href={href} onClick={closeMenu} className="rounded-xl px-3 py-3 text-[hsl(var(--ink-muted))] hover:bg-[hsl(var(--paper-deep))]" data-testid={`link-mobile-${label.toLowerCase().replaceAll(" ", "-")}`}>{label}</a>)}
               <button className="btn-primary mt-2" onClick={() => { closeMenu(); handleNewBook(); }} data-testid="button-mobile-new-book">Start a new book <ArrowRight size={15} /></button>
             </div>
           </nav>}
@@ -206,6 +240,25 @@ function HomePage() {
 
         <section id="features" className="mx-auto w-full max-w-6xl px-5 pb-28 sm:px-8" data-testid="section-features">
           <div className="grid gap-8 border-t border-[hsl(var(--line))] pt-8 md:grid-cols-[.8fr_1.2fr]"><div><p className="eyebrow">The studio approach</p><h2 className="display-serif mt-3 max-w-sm text-4xl leading-tight sm:text-5xl">Less prompting.<br /><em className="text-[hsl(var(--accent))]">More authorship.</em></h2></div><div className="grid gap-4 sm:grid-cols-3">{features.map(({ icon: Icon, number, title, text }) => <article key={number} className="feature-card rounded-[1.25rem] p-5" data-testid={`card-feature-${number}`}><div className="flex items-center justify-between"><Icon size={20} strokeWidth={1.5} className="text-[hsl(var(--accent))]" /><span className="font-mono text-xs text-[hsl(var(--ink-muted))]">{number}</span></div><h3 className="mt-10 font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--ink-muted))]">{text}</p></article>)}</div></div>
+        </section>
+
+        <section id="positioning" className="mx-auto w-full max-w-6xl px-5 pb-28 sm:px-8" data-testid="section-positioning">
+          <div className="grid gap-10 border-t border-[hsl(var(--line))] pt-8 md:grid-cols-[.8fr_1.2fr] md:gap-16">
+            <div>
+              <p className="eyebrow">Before the first draft</p>
+              <h2 className="display-serif mt-3 max-w-md text-4xl leading-tight sm:text-5xl">Make the book <em className="text-[hsl(var(--accent))]">matter</em> before you make it long.</h2>
+              <p className="mt-5 max-w-sm text-sm leading-7 text-[hsl(var(--ink-muted))]">Strong nonfiction starts with a reason to exist. The studio helps you define the reader, sharpen the angle, and build a transformation worth following.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {positioningPoints.map(({ icon: Icon, title, text }, index) => (
+                <article key={title} className="story-card" data-testid={`card-positioning-${index}`}>
+                  <Icon size={21} strokeWidth={1.5} className="text-[hsl(var(--accent))]" />
+                  <h3 className="mt-8 font-semibold">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[hsl(var(--ink-muted))]">{text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section id="process" className="bg-[hsl(var(--ink))] px-5 py-24 text-[hsl(var(--paper))] sm:px-8 md:py-32" data-testid="section-process">
@@ -296,18 +349,82 @@ function HomePage() {
           </div>
         </section>
 
+        <section id="tools" className="mx-auto w-full max-w-6xl px-5 py-24 sm:px-8 md:py-32" data-testid="section-tools">
+          <div className="flex flex-col justify-between gap-5 border-t border-[hsl(var(--line))] pt-8 sm:flex-row sm:items-end">
+            <div>
+              <p className="eyebrow">More than a blank page</p>
+              <h2 className="display-serif mt-3 max-w-2xl text-4xl leading-tight sm:text-5xl">Everything around the writing is part of the work.</h2>
+            </div>
+            <p className="max-w-xs text-sm leading-6 text-[hsl(var(--ink-muted))]">A focused set of tools keeps the idea, the argument, and the finished book moving together.</p>
+          </div>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {studioTools.map(({ icon: Icon, label, text }, index) => (
+              <article key={label} className="feature-card rounded-[1.25rem] p-5" data-testid={`card-tool-${index}`}>
+                <div className="flex items-center justify-between">
+                  <Icon size={20} strokeWidth={1.5} className="text-[hsl(var(--accent))]" />
+                  <span className="font-mono text-xs text-[hsl(var(--ink-muted))]">{String(index + 1).padStart(2, "0")}</span>
+                </div>
+                <h3 className="mt-8 font-semibold">{label}</h3>
+                <p className="mt-2 text-sm leading-6 text-[hsl(var(--ink-muted))]">{text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section id="reviews" className="mx-auto w-full max-w-6xl px-5 py-24 sm:px-8 md:py-32" data-testid="section-reviews">
           <div className="flex flex-col justify-between gap-5 border-t border-[hsl(var(--line))] pt-8 sm:flex-row sm:items-end"><div><p className="eyebrow">From the writing desk</p><h2 className="display-serif mt-3 text-4xl sm:text-5xl">Authors on finding<br /><em className="text-[hsl(var(--accent))]">their way through.</em></h2></div><p className="max-w-xs text-sm leading-6 text-[hsl(var(--ink-muted))]">A better writing experience is not louder. It is more considered.</p></div>
           <div className="mt-12 grid gap-5 md:grid-cols-3">{testimonials.map((item, index) => <figure key={item.name} className={`rounded-[1.25rem] border border-[hsl(var(--line))] p-6 ${index === 1 ? "bg-[hsl(var(--accent-soft))]" : "bg-[hsl(var(--paper)/.5)]"}`} data-testid={`card-testimonial-${index}`}><div className="font-serif text-4xl leading-none text-[hsl(var(--accent))]">“</div><blockquote className="mt-3 font-serif text-xl leading-8">{item.quote}</blockquote><figcaption className="mt-8 border-t border-[hsl(var(--line))] pt-4 text-xs"><span className="font-semibold">{item.name}</span><span className="ml-2 text-[hsl(var(--ink-muted))]">{item.role}</span></figcaption></figure>)}</div>
+        </section>
+
+        <section id="deliverables" className="bg-[hsl(var(--paper-deep)/.42)] px-5 py-24 sm:px-8 md:py-32" data-testid="section-deliverables">
+          <div className="mx-auto grid w-full max-w-6xl gap-12 md:grid-cols-[.86fr_1.14fr] md:items-start">
+            <div>
+              <p className="eyebrow">When the work is done</p>
+              <h2 className="display-serif mt-3 max-w-md text-4xl leading-tight sm:text-5xl">Leave with more than a draft.</h2>
+              <p className="mt-5 max-w-md text-sm leading-7 text-[hsl(var(--ink-muted))]">The final step brings the manuscript and its supporting pieces into one place, so you can review the work, tune the layout, and take it with you.</p>
+              <button className="btn-secondary mt-7" onClick={handleNewBook} data-testid="button-deliverables-start">Build your book <ArrowRight size={15} /></button>
+            </div>
+            <div className="deliverables-card">
+              <div className="flex items-center justify-between border-b border-[hsl(var(--line))] pb-5">
+                <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--accent-soft))] text-[hsl(var(--accent))]"><Download size={18} /></span><div><p className="font-semibold">Your finished book bundle</p><p className="mt-0.5 text-xs text-[hsl(var(--ink-muted))]">Ready for review and export</p></div></div>
+                <span className="font-mono text-[10px] text-[hsl(var(--sage))]">COMPLETE</span>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {finishedBookItems.map((item) => <div key={item} className="flex gap-2 text-sm leading-6 text-[hsl(var(--ink-muted))]"><Check size={15} className="mt-1 shrink-0 text-[hsl(var(--sage))]" />{item}</div>)}
+              </div>
+              <div className="mt-6 flex flex-wrap gap-2 border-t border-[hsl(var(--line))] pt-5"><span className="file-pill"><FileText size={13} /> PDF</span><span className="file-pill"><FileText size={13} /> Word (.docx)</span><span className="file-pill"><CheckCircle2 size={13} /> Readiness review</span></div>
+            </div>
+          </div>
         </section>
 
         <section id="pricing" className="mx-auto w-full max-w-6xl px-5 pb-28 sm:px-8 md:pb-36" data-testid="section-pricing">
           <div className="rounded-[1.7rem] border border-[hsl(var(--line))] bg-[hsl(var(--paper-deep)/.45)] p-7 sm:p-10 md:flex md:items-center md:justify-between md:p-14"><div><p className="eyebrow">Simple by design</p><h2 className="display-serif mt-3 text-4xl sm:text-5xl">Make room for<br /><em className="text-[hsl(var(--accent))]">the book.</em></h2><p className="mt-5 max-w-md text-sm leading-7 text-[hsl(var(--ink-muted))]">Start shaping your idea in the studio today. No complicated plan to choose before you know what your book wants to become.</p></div><div className="mt-10 md:mt-0 md:w-64"><div className="border-y border-[hsl(var(--line))] py-5"><p className="text-xs text-[hsl(var(--ink-muted))]">Studio access</p><p className="mt-1 font-serif text-3xl">Free to begin</p><p className="mt-2 text-xs text-[hsl(var(--ink-muted))]">Build your first book, one step at a time.</p></div><button className="btn-primary mt-5 w-full" onClick={handleNewBook} data-testid="button-pricing-start">Start writing <ArrowRight size={15} /></button></div></div>
         </section>
 
+        <section id="faq" className="mx-auto w-full max-w-6xl px-5 pb-28 sm:px-8 md:pb-36" data-testid="section-faq">
+          <div className="grid gap-10 border-t border-[hsl(var(--line))] pt-8 md:grid-cols-[.72fr_1.28fr]">
+            <div>
+              <p className="eyebrow">Before you begin</p>
+              <h2 className="display-serif mt-3 max-w-sm text-4xl leading-tight sm:text-5xl">A few useful answers.</h2>
+              <p className="mt-5 max-w-xs text-sm leading-6 text-[hsl(var(--ink-muted))]">The studio is designed to help you make decisions, not hide them behind a prompt box.</p>
+            </div>
+            <div className="divide-y divide-[hsl(var(--line))] border-y border-[hsl(var(--line))]">
+              {faqItems.map(({ question, answer }) => (
+                <details key={question} className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-6 font-semibold">
+                    <span>{question}</span>
+                    <ChevronDown size={17} className="shrink-0 text-[hsl(var(--accent))] transition-transform group-open:rotate-180" />
+                  </summary>
+                  <p className="max-w-2xl pt-3 text-sm leading-7 text-[hsl(var(--ink-muted))]">{answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="bg-[hsl(var(--accent))] px-5 py-24 text-center text-white sm:px-8 md:py-32" data-testid="section-cta"><p className="font-mono text-xs uppercase tracking-[.18em] text-white/70">The first page is a decision</p><h2 className="display-serif mx-auto mt-5 max-w-3xl text-5xl leading-[.95] sm:text-7xl">Give the idea a place to become real.</h2><button className="mt-9 inline-flex items-center gap-2 rounded-full bg-[hsl(var(--ink))] px-6 py-3.5 text-sm font-semibold text-[hsl(var(--paper))] transition hover:-translate-y-0.5" onClick={handleNewBook} data-testid="button-cta-start">Start a new book <ArrowRight size={16} /></button></section>
 
-        <footer className="bg-[hsl(var(--ink))] px-5 pb-8 pt-14 text-[hsl(var(--paper))] sm:px-8" data-testid="footer-main"><div className="mx-auto grid w-full max-w-6xl gap-12 sm:grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr]"><div><Logo /><p className="mt-5 max-w-xs text-sm leading-6 text-[hsl(var(--paper)/.55)]">A professional nonfiction writing system for ideas worth carrying forward.</p></div><div><p className="eyebrow text-[hsl(var(--accent))]">Explore</p><div className="mt-4 flex flex-col gap-3 text-sm text-[hsl(var(--paper)/.65)]"><a href="#features" className="hover:text-white" data-testid="link-footer-features">Features</a><a href="#process" className="hover:text-white" data-testid="link-footer-process">How it works</a><a href="#pricing" className="hover:text-white" data-testid="link-footer-pricing">Pricing</a></div></div><div><p className="eyebrow text-[hsl(var(--accent))]">Your studio</p><div className="mt-4 flex flex-col gap-3 text-sm text-[hsl(var(--paper)/.65)]"><a href="#library" className="hover:text-white" data-testid="link-footer-library">Your books</a><button className="w-fit hover:text-white" onClick={handleNewBook} data-testid="button-footer-new-book">New book</button></div></div><div><p className="eyebrow text-[hsl(var(--accent))]">A note</p><p className="mt-4 text-sm leading-6 text-[hsl(var(--paper)/.65)]">Good nonfiction changes what a reader believes they can do next.</p></div></div><div className="mx-auto mt-14 flex max-w-6xl flex-col gap-3 border-t border-[hsl(var(--paper)/.16)] pt-5 text-xs text-[hsl(var(--paper)/.42)] sm:flex-row sm:justify-between"><span>© {new Date().getFullYear()} Nonfiction AI Studio</span><a href="#top" className="hover:text-white" data-testid="link-back-top">Back to top ↑</a></div></footer>
+         <footer className="bg-[hsl(var(--ink))] px-5 pb-8 pt-14 text-[hsl(var(--paper))] sm:px-8" data-testid="footer-main"><div className="mx-auto grid w-full max-w-6xl gap-12 sm:grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr]"><div><Logo /><p className="mt-5 max-w-xs text-sm leading-6 text-[hsl(var(--paper)/.55)]">A professional nonfiction writing system for ideas worth carrying forward.</p></div><div><p className="eyebrow text-[hsl(var(--accent))]">Explore</p><div className="mt-4 flex flex-col gap-3 text-sm text-[hsl(var(--paper)/.65)]"><a href="#features" className="hover:text-white" data-testid="link-footer-features">Features</a><a href="#positioning" className="hover:text-white" data-testid="link-footer-positioning">Why it works</a><a href="#process" className="hover:text-white" data-testid="link-footer-process">How it works</a><a href="#tools" className="hover:text-white" data-testid="link-footer-tools">Tools</a><a href="#pricing" className="hover:text-white" data-testid="link-footer-pricing">Pricing</a></div></div><div><p className="eyebrow text-[hsl(var(--accent))]">Your studio</p><div className="mt-4 flex flex-col gap-3 text-sm text-[hsl(var(--paper)/.65)]"><a href="#deliverables" className="hover:text-white" data-testid="link-footer-deliverables">What you get</a><a href="#faq" className="hover:text-white" data-testid="link-footer-faq">FAQ</a><a href="#library" className="hover:text-white" data-testid="link-footer-library">Your books</a><button className="w-fit hover:text-white" onClick={handleNewBook} data-testid="button-footer-new-book">New book</button></div></div><div><p className="eyebrow text-[hsl(var(--accent))]">A note</p><p className="mt-4 text-sm leading-6 text-[hsl(var(--paper)/.65)]">Good nonfiction changes what a reader believes they can do next.</p></div></div><div className="mx-auto mt-14 flex max-w-6xl flex-col gap-3 border-t border-[hsl(var(--paper)/.16)] pt-5 text-xs text-[hsl(var(--paper)/.42)] sm:flex-row sm:justify-between"><span>© {new Date().getFullYear()} Nonfiction AI Studio</span><a href="#top" className="hover:text-white" data-testid="link-back-top">Back to top ↑</a></div></footer>
       </div>
     </main>
   );
