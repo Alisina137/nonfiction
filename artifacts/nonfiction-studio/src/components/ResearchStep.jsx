@@ -254,22 +254,25 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
   }
 
   return (
-    <section className="mx-auto max-w-3xl">
+    <section className="research-step mx-auto max-w-3xl">
 
       {/* ── Header ── */}
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-wider text-sky-700/90">Step 1 — Idea input</p>
-        <h2 className="mt-1 font-serif text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+      <header className="research-step-header">
+        <div className="flex items-center gap-3">
+          <span className="research-step-number">01</span>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700/90">Idea input</p>
+        </div>
+        <h2 className="mt-3 font-serif text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
           Start with your idea
         </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
           Choose a niche, name your book, and describe its core topic.
           Title, subtitle, and topic flow into every AI step — outline, writing, cover, and description.
         </p>
       </header>
 
       {/* ── Niche action buttons ── */}
-      <section className="mt-5 flex flex-wrap gap-2">
+      <section className="research-actions mt-6 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setManagerOpen(true)}
@@ -291,10 +294,10 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
       </section>
 
       {/* ── Main form ── */}
-      <section className="book-panel mt-6 space-y-6">
+      <section className="research-form-panel book-panel mt-7 space-y-6">
 
         {/* Niche selectors */}
-        <section className="grid gap-5 md:grid-cols-2">
+        <section className="research-form-section grid gap-5 md:grid-cols-2">
           <section>
             <FieldLabel hint="Top-level market category — drives chapter architecture and pacing.">Main niche</FieldLabel>
             <select className="input-light mt-1.5" value={mainNicheId} onChange={(e) => onMainNicheChange(e.target.value)}>
@@ -319,7 +322,7 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
         </section>
 
         {/* Deep niche + title suggestions */}
-        <section>
+        <section className="research-form-section">
           <FieldLabel hint="Third-level focus — sharpens title suggestions and AI generation.">
             Deep niche <span className="font-normal text-slate-400">(optional)</span>
           </FieldLabel>
@@ -419,7 +422,7 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
         </section>
 
         {/* ── Book Title ── */}
-        <section>
+        <section className="research-form-section">
           <FieldLabel hint="Your working title — can be refined later in the Title step.">Book title</FieldLabel>
           <input
             className="input-light mt-1.5"
@@ -430,7 +433,7 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
         </section>
 
         {/* ── Book Subtitle ── */}
-        <section>
+        <section className="research-form-section">
           <div className="flex items-end justify-between gap-2">
             <FieldLabel hint="Clarifies who the book is for and what transformation they get. Used in the outline, writing, cover, and description steps.">
               Book subtitle <span className="font-normal text-slate-400">(recommended)</span>
@@ -496,7 +499,7 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
         </section>
 
         {/* ── Book Topic ── */}
-        <section>
+        <section className="research-form-section">
           <div className="flex items-end justify-between gap-2">
             <FieldLabel hint="The exact core topic — who it's for and what it helps them achieve. Auto-filled when you pick a title suggestion; used by every AI step.">
               Book topic
@@ -574,7 +577,7 @@ export default function ResearchStep({ research, setResearch, errors, fullProjec
         </section>
 
         {/* ── Optional fields ── */}
-        <div className="rounded-2xl border border-slate-100 bg-slate-50/50 px-5 py-4 space-y-5">
+        <div className="research-optional-panel rounded-2xl px-5 py-4 space-y-5">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Optional — shapes AI research, outline, and writing
           </p>

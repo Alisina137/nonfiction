@@ -1027,14 +1027,14 @@ export default function Dashboard() {
     (currentStep !== COVER_STEP || isBookCoverReady(project.bookCover));
 
   return (
-    <div className="book-builder flex h-screen min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-900 [background-image:radial-gradient(ellipse_125%_80%_at_50%_-28%,rgba(14,165,233,0.11),transparent_55%),radial-gradient(ellipse_80%_50%_at_100%_0%,rgba(99,102,241,0.05),transparent_45%)]">
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-md md:gap-8 md:px-8 md:py-3.5 supports-[backdrop-filter]:bg-white/70">
+    <div className="book-builder book-builder-shell flex h-screen min-h-0 flex-col overflow-hidden text-slate-900">
+      <header className="book-builder-header relative z-10 flex shrink-0 items-center justify-between gap-4 px-4 py-3 md:gap-8 md:px-8 md:py-3.5">
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={handleBack}
             disabled={currentStep === 0}
-            className="shrink-0 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50/80 disabled:text-slate-400 disabled:opacity-55 disabled:shadow-none"
+            className="builder-header-button shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
           >
             Back
           </button>
@@ -1043,19 +1043,20 @@ export default function Dashboard() {
             type="button"
             onClick={handleResetBook}
             title="Clears book progress but keeps your author name, persona, and biography"
-            className="rounded-xl border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs font-semibold text-amber-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-100/90"
+            className="builder-header-button builder-header-button-warm rounded-xl px-3 py-2 text-xs font-semibold transition"
           >
             ↺ Reset
           </button>
           <button
             type="button"
             onClick={() => { saveBook(bookId, project); setLocation("/"); }}
-            className="rounded-xl border border-slate-200/90 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50/50 hover:text-sky-900"
+            className="builder-header-button rounded-xl px-3 py-2 text-xs font-semibold transition"
           >
             ⌂ Complete later
           </button>
         </div>
-        <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-2 text-center">
+        <div className="builder-title-block flex min-w-0 flex-1 flex-col items-center justify-center px-2 text-center">
+          <p className="builder-title-kicker">Manuscript workspace <span aria-hidden>·</span> {String(currentStep + 1).padStart(2, "0")} / {String(STEP_COUNT).padStart(2, "0")}</p>
           <h1 className="font-serif text-[1.05rem] font-bold leading-snug tracking-tight text-slate-900 md:text-xl">
             {stepMeta.label}
           </h1>
@@ -1117,17 +1118,20 @@ export default function Dashboard() {
           type="button"
           onClick={handleNext}
           disabled={currentStep < STEP_COUNT - 1 && !stepAllowsNext}
-          className="shrink-0 rounded-full bg-gradient-to-r from-sky-600 to-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-sky-600/28 transition hover:from-sky-700 hover:to-sky-600 hover:shadow-lg hover:shadow-sky-600/35 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-400 disabled:shadow-none disabled:opacity-50"
+          className="builder-next-button shrink-0 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {currentStep >= STEP_COUNT - 1 ? "Finish" : "Next"}
         </button>
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="flex min-h-0 w-[252px] shrink-0 flex-col border-r border-slate-200/80 bg-white/90 px-3 py-4 shadow-[inset_-1px_0_0_rgba(15,23,42,0.04)] backdrop-blur-md md:w-[268px] md:px-5 md:py-5">
-          <p className="shrink-0 leading-snug text-xs font-semibold tracking-tight text-slate-700 md:text-[13px]">
+        <aside className="builder-sidebar flex min-h-0 w-[252px] shrink-0 flex-col px-3 py-4 md:w-[268px] md:px-5 md:py-5">
+          <div className="builder-sidebar-heading shrink-0">
+            <p className="builder-sidebar-kicker">Nonfiction AI Studio</p>
+            <p className="mt-2 shrink-0 leading-snug text-xs font-semibold tracking-tight text-slate-700 md:text-[13px]">
             Step {currentStep + 1} of {STEP_COUNT}: {BOOK_BUILDER_STEPS[currentStep].label}
-          </p>
+            </p>
+          </div>
           <nav className="relative mt-4 min-h-0 flex-1 overflow-y-auto pt-0.5 pb-2">
             <div className="absolute bottom-2 left-[17px] top-10 w-px bg-gradient-to-b from-slate-200 via-sky-100/70 to-emerald-100/70" aria-hidden />
             <ul className="relative space-y-1 md:space-y-1.5">
@@ -1142,9 +1146,9 @@ export default function Dashboard() {
                       type="button"
                       disabled={!reachable}
                       onClick={() => goToStep(idx)}
-                      className={`flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-200 ${
+                       className={`workflow-step flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-200 ${
                         isActive
-                          ? "bg-sky-50/95 ring-1 ring-inset ring-sky-200/55 shadow-sm shadow-sky-500/10"
+                           ? "workflow-step-active bg-sky-50/95 ring-1 ring-inset ring-sky-200/55 shadow-sm shadow-sky-500/10"
                           : "hover:bg-slate-50/90"
                       } disabled:cursor-not-allowed disabled:opacity-35`}
                     >
@@ -1172,8 +1176,8 @@ export default function Dashboard() {
           </nav>
 
           {/* Word count tracker */}
-          <div className="mt-4 shrink-0 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Words written</p>
+          <div className="builder-word-card mt-4 shrink-0 rounded-xl px-3 py-3">
+            <p className="builder-sidebar-kicker">Words written</p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-slate-800">
               {totalWords > 0 ? totalWords.toLocaleString() : "—"}
             </p>
@@ -1192,7 +1196,7 @@ export default function Dashboard() {
 
         </aside>
 
-        <main className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-16 pt-7 sm:px-7 md:px-12 md:pb-20 md:pt-11">
+        <main className="builder-main relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-16 pt-7 sm:px-7 md:px-12 md:pb-20 md:pt-11">
           {currentStep === 0 && (
             <ResearchStep
               research={project.research}
