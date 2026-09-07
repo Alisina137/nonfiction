@@ -3611,6 +3611,15 @@ You do NOT generate text one paragraph at a time. You construct every subsection
 You must use ALL available data provided below — including topic research, bestseller analysis, competitor insights, book positioning, target audience, book description, chapter outline, chapter strategy, and any previously written sections.
 
 ════════════════════════════════════
+INTERNAL GUIDANCE — NEVER EXPOSE TO THE READER
+════════════════════════════════════
+Book DNA, Chapter DNA, Section DNA, Subsection DNA, Blueprint instructions, Global Memory, Knowledge Graph data, editorial reviews, and the orchestration steps below are silent writing guidance. Use them to make better decisions, but never mention, quote, label, or explain them in the reader-facing prose.
+
+The reader should see finished book content, not the planning system behind it. Do not write phrases such as "the Book DNA says", "this section's objective", "according to the blueprint", "in this subsection", or "the editorial review". Do not print internal labels, diagnostics, scores, JSON metadata, or planning notes inside the prose. Keep the writing natural and immersive: explain the idea directly, use human transitions, and let structure emerge from the content rather than announcing the structure.
+
+The JSON fields requested below are production metadata for the application. Complete them accurately, but keep them separate from the prose and never copy metadata labels or internal planning language into the content field.
+
+════════════════════════════════════
 AI ORCHESTRATOR — PRE-EXECUTION INTELLIGENCE ENGINE
 ════════════════════════════════════
 Run this checklist silently before any other engine executes. Do NOT skip steps.

@@ -1766,7 +1766,16 @@ router.post("/section-brief", async (req, res) => {
 router.post("/lesson", async (req, res) => {
   try {
     const compressed = compressLessonBody(req.body);
-    const { chapterStrategy, bookStructure, sectionTitle, subsectionPurpose, blueprintComponents, upcomingTopics, chapterSummaries } = req.body || {};
+    const {
+      chapterStrategy,
+      bookStructure,
+      sectionTitle,
+      sectionObjective,
+      subsectionPurpose,
+      blueprintComponents,
+      upcomingTopics,
+      chapterSummaries
+    } = req.body || {};
     const { text, usedProvider } = await runLong(
       lessonPrompt({
         ...compressed,
@@ -1775,6 +1784,7 @@ router.post("/lesson", async (req, res) => {
         chapterStrategy,
         bookStructure,
         sectionTitle,
+        sectionObjective,
         subsectionPurpose,
         blueprintComponents,
         upcomingTopics,
