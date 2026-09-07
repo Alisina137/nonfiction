@@ -2449,6 +2449,21 @@ const ALL_BLUEPRINT_COMPONENTS = [
   "Practical Technique", "Self-Assessment", "Common Traps", "Expert Quote", "Story",
 ];
 
+const MANUSCRIPT_FORMATTING_GUIDANCE = `
+════════════════════════════════════
+PUBLICATION PROSE — USE MARKUP SPARINGLY
+════════════════════════════════════
+Write the reader-facing content as polished, human-written book prose. Most of it should be ordinary paragraphs with natural paragraph breaks.
+
+- Do not use Markdown heading markers such as #, ##, or ### in subsection prose.
+- Do not use horizontal rules, decorative separators, or symbols as visual filler.
+- Do not wrap every paragraph, sentence, or list label in **bold** or __bold__ markers.
+- Use emphasis only when it genuinely helps the reader. At most one or two short phrases may be bold in a subsection, and only when the emphasis is meaningful.
+- If a short subheading is genuinely necessary, write it as a plain standalone line without # markers; do not turn every paragraph into a heading.
+- Keep numbered steps, bullets, and other reader-useful list formatting only when the content truly calls for a list.
+- Never let formatting announce the planning process or make the prose feel like a template.
+`;
+
 export function lessonPrompt({
   subsection,
   chapterContext,
@@ -3619,6 +3634,8 @@ The reader should see finished book content, not the planning system behind it. 
 
 The JSON fields requested below are production metadata for the application. Complete them accurately, but keep them separate from the prose and never copy metadata labels or internal planning language into the content field.
 
+${MANUSCRIPT_FORMATTING_GUIDANCE}
+
 ════════════════════════════════════
 AI ORCHESTRATOR — PRE-EXECUTION INTELLIGENCE ENGINE
 ════════════════════════════════════
@@ -4442,6 +4459,7 @@ EDITING RULES (non-negotiable)
 - Do NOT change the structural purpose of the section
 - Do NOT add a generic summary paragraph or motivational closer at the end
 - Do NOT introduce markdown headers inside the prose
+- Keep the revised text mostly as plain paragraphs. Use at most one or two short bold phrases only when emphasis genuinely improves readability; do not use # headings, decorative separators, or repeated bold markers.
 - Preserve any specific examples, data points, named frameworks, or statistics already present
 - The refined text must feel like it belongs in a book with the context above
 ${hasBlueprint ? "- Do NOT introduce any component listed as FORBIDDEN above, even as a single sentence" : ""}
@@ -4521,6 +4539,7 @@ EDITING RULES (non-negotiable)
 - Match the existing voice, tone, and reading level exactly.
 - Do not add a generic summary paragraph or motivational closer.
 - Do not introduce markdown headers inside the prose.
+- Keep the revised text mostly as plain paragraphs. Use at most one or two short bold phrases only when emphasis genuinely improves readability; do not use # headings, decorative separators, or repeated bold markers.
 ${hasBlueprint ? "- Do not introduce any component listed as FORBIDDEN above, even as a single sentence." : ""}
 
 ════════════════════════════════════

@@ -6,6 +6,7 @@ import {
   collectPreviousConcepts,
   collectUpcomingTopics,
   countDraftedBlocks,
+  cleanManuscriptProse,
   enumerateWriteBlocks,
   lessonToProse
 } from "@/lib/writeBlocks";
@@ -421,7 +422,7 @@ export default function WriteStep({
           ? block.blueprintComponents
           : undefined
       });
-      if (data.text) setProse(blockId, data.text);
+      if (data.text) setProse(blockId, cleanManuscriptProse(data.text));
       else setStatus("Refinement returned empty text — your draft was kept.");
       if (data.text) setStatus("Applied AI refinement.");
     } catch (e) {
@@ -452,7 +453,7 @@ export default function WriteStep({
           : undefined
       }, { noCache: true });
       if (data.text) {
-        setProse(blockId, data.text);
+        setProse(blockId, cleanManuscriptProse(data.text));
         setStatus("Applied your edit instructions.");
       } else {
         setStatus("Edit returned empty text — your draft was kept.");

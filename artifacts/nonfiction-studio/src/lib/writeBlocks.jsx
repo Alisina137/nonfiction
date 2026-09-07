@@ -201,13 +201,43 @@ function str(v) {
   return String(v).trim();
 }
 
+/**
+ * Keep generated manuscript text publication-friendly in the plain-text editor.
+ * AI models sometimes add Markdown headings or bold markers to every paragraph
+ * even though the Write step is not a Markdown renderer.
+ */
+export function cleanManuscriptProse(value) {
+  let emphasisKept = 0;
+  return str(value)
+    .split("\n")
+    .map((line) => {
+      let cleaned = line
+        .replace(/^\s*#{1,6}\s+/, "")
+        .replace(/^\s*(?:---+|___+|\*\*\*+)\s*$/, "");
+
+      cleaned = cleaned.replace(/(\*\*|__)(.+?)\1/g, (match, marker, inner) => {
+        const phrase = String(inner || "").trim();
+        if (emphasisKept < 2 && phrase && phrase.length <= 120) {
+          emphasisKept++;
+          return match;
+        }
+        return phrase;
+      });
+
+      return cleaned;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /** Render API lesson JSON into editable manuscript prose. */
 export function lessonToProse(lesson) {
   if (!lesson || typeof lesson !== "object") return "";
 
   // New structure-aware format: use full content prose directly
   const content = str(lesson.content);
-  if (content && content.length > 80) return content;
+  if (content && content.length > 80) return cleanManuscriptProse(content);
 
   // Legacy fallback: reconstruct prose from old field shape
   const parts = [];
@@ -222,7 +252,7 @@ export function lessonToProse(lesson) {
     parts.push("", "Execution steps:");
     steps.forEach((step, i) => parts.push(`${i + 1}. ${str(step)}`));
   }
-  return parts.join("\n").trim();
+  return cleanManuscriptProse(parts.join("\n"));
 }
 
 /** Rich context objects from blocks before `beforeIndex` — used by the AI to avoid repetition. */
