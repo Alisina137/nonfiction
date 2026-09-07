@@ -1,13 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Multi-Provider AI Router — 5 independent providers, independent free quotas
+// Multi-Provider AI Router — 4 independent providers, independent quotas
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // PROVIDER CHAIN (both normal and low-cost mode — same order, same providers):
 //   1. Gemini     — Google AI Studio  (GEMINI_API_KEY)
 //   2. Groq       — Groq Cloud        (GROQ_API_KEY)
-//   3. Cerebras   — Cerebras Cloud    (CEREBRAS_API_KEY)
-//   4. OpenRouter — OpenRouter        (OPENROUTER_API_KEY)
-//   5. SambaNova  — SambaNova Cloud   (SAMBANOVA_API_KEY)
+//   3. OpenRouter — OpenRouter        (OPENROUTER_API_KEY)
+//   4. SambaNova  — SambaNova Cloud   (SAMBANOVA_API_KEY)
 //
 // QUOTA TRACKING:
 //   On 429 / quota / rate-limit / daily-limit errors:
@@ -24,7 +23,7 @@
 
 // ─── Provider configuration ───────────────────────────────────────────────
 
-export type ProviderId = "gemini" | "groq" | "cerebras" | "openrouter" | "sambanova";
+export type ProviderId = "gemini" | "groq" | "openrouter" | "sambanova";
 
 export interface ProviderConfig {
   id:             ProviderId;
@@ -47,21 +46,12 @@ export const PROVIDERS: ProviderConfig[] = [
   },
   {
     id:             "groq",
-    label:          "Groq (Llama 3.3)",
-    model:          "llama-3.3-70b-versatile",
-    fallbackModels: ["llama-3.1-8b-instant", "gemma2-9b-it"],
+    label:          "Groq (GPT-OSS 120B)",
+    model:          "openai/gpt-oss-120b",
+    fallbackModels: ["openai/gpt-oss-20b"],
     apiUrl:         "https://api.groq.com/openai/v1/chat/completions",
     apiKey:         () => process.env.GROQ_API_KEY,
     order:          2
-  },
-  {
-    id:             "cerebras",
-    label:          "Cerebras (GPT-OSS 120B)",
-    model:          "gpt-oss-120b",
-    fallbackModels: ["zai-glm-4.7"],
-    apiUrl:         "https://api.cerebras.ai/v1/chat/completions",
-    apiKey:         () => process.env.CEREBRAS_API_KEY,
-    order:          3
   },
   {
     id:             "openrouter",
@@ -74,7 +64,7 @@ export const PROVIDERS: ProviderConfig[] = [
     ],
     apiUrl: "https://openrouter.ai/api/v1/chat/completions",
     apiKey: () => process.env.OPENROUTER_API_KEY,
-    order:  4
+    order:  3
   },
   {
     id:             "sambanova",
@@ -83,7 +73,7 @@ export const PROVIDERS: ProviderConfig[] = [
     fallbackModels: ["Meta-Llama-3.1-8B-Instruct"],
     apiUrl:         "https://api.sambanova.ai/v1/chat/completions",
     apiKey:         () => process.env.SAMBANOVA_API_KEY,
-    order:          5
+    order:          4
   }
 ];
 
@@ -101,7 +91,7 @@ export const PROVIDERS: ProviderConfig[] = [
 //   idea     → Phase 1: Title / idea generation  (Gemini Flash primary)
 //   research → Phase 2: Market / competitor analysis  (DeepSeek R1 primary)
 //   outline  → Phase 3: Structure / outline  (Gemini Pro primary)
-//   write    → Phase 4: Long-form prose  (Gemini Pro + 5-model pool)
+  //   write    → Phase 4: Long-form prose  (Gemini Pro + 4-model pool)
 //   edit     → Phase 5: Editing / improvement  (Llama 4 Maverick primary)
 //   metadata → Phase 6: Description / SEO / metadata  (Gemini Flash-Lite primary)
 
@@ -120,9 +110,8 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   // Gemini Flash leads — fast creative ideation and marketable angles.
   idea: [
     { providerId: "gemini",     model: "gemini-2.5-flash",                              label: "Gemini Flash" },
-    { providerId: "groq",       model: "llama-3.3-70b-versatile",                       label: "Groq",              fallbackModels: ["llama-3.1-8b-instant"] },
+    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
     { providerId: "openrouter", model: "google/gemma-4-31b-it:free",                    label: "Gemma 4",           fallbackModels: ["openai/gpt-oss-120b:free", "nvidia/nemotron-3-super-120b-a12b:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "cerebras",   model: "gpt-oss-120b",                                  label: "Cerebras",          fallbackModels: ["zai-glm-4.7"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 
@@ -131,8 +120,7 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   research: [
     { providerId: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free",        label: "Nemotron Super",    fallbackModels: ["openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.3-70b-instruct:free"] },
     { providerId: "gemini",     model: "gemini-2.5-pro",                                label: "Gemini Pro",        fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "groq",       model: "llama-3.3-70b-versatile",                       label: "Groq",              fallbackModels: ["llama-3.1-8b-instant"] },
-    { providerId: "cerebras",   model: "gpt-oss-120b",                                  label: "Cerebras",          fallbackModels: ["zai-glm-4.7"] },
+    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 
@@ -141,8 +129,7 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   outline: [
     { providerId: "gemini",     model: "gemini-2.5-pro",                                label: "Gemini Pro",        fallbackModels: ["gemini-2.5-flash"] },
     { providerId: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free",        label: "Nemotron Super",    fallbackModels: ["openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "groq",       model: "llama-3.3-70b-versatile",                       label: "Groq",              fallbackModels: ["llama-3.1-8b-instant"] },
-    { providerId: "cerebras",   model: "gpt-oss-120b",                                  label: "Cerebras",          fallbackModels: ["zai-glm-4.7"] },
+    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 
@@ -152,8 +139,7 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
     { providerId: "gemini",     model: "gemini-2.5-pro",                                label: "Gemini Pro",        fallbackModels: ["gemini-2.5-flash"] },
     { providerId: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free",        label: "Nemotron Super",    fallbackModels: ["openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.3-70b-instruct:free"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
-    { providerId: "cerebras",   model: "gpt-oss-120b",                                  label: "Cerebras",          fallbackModels: ["zai-glm-4.7"] },
-    { providerId: "groq",       model: "llama-3.3-70b-versatile",                       label: "Groq",              fallbackModels: ["llama-3.1-8b-instant", "gemma2-9b-it"] },
+    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
   ],
 
   // ── Phase 5: Editing & quality improvement ─────────────────────────────
@@ -161,8 +147,7 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   edit: [
     { providerId: "gemini",     model: "gemini-2.5-pro",                                label: "Gemini Pro",        fallbackModels: ["gemini-2.5-flash"] },
     { providerId: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free",        label: "Nemotron Super",    fallbackModels: ["openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "groq",       model: "llama-3.3-70b-versatile",                       label: "Groq",              fallbackModels: ["llama-3.1-8b-instant"] },
-    { providerId: "cerebras",   model: "gpt-oss-120b",                                  label: "Cerebras",          fallbackModels: ["zai-glm-4.7"] },
+    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 
@@ -170,9 +155,8 @@ export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
   // Gemini Flash-Lite leads — fast, efficient for short SEO / description tasks.
   metadata: [
     { providerId: "gemini",     model: "gemini-2.5-flash-lite-preview-06-17",           label: "Gemini Flash-Lite", fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "groq",       model: "llama-3.3-70b-versatile",                       label: "Groq",              fallbackModels: ["llama-3.1-8b-instant"] },
+    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
     { providerId: "openrouter", model: "google/gemma-4-31b-it:free",                    label: "Gemma 4",           fallbackModels: ["openai/gpt-oss-120b:free", "nvidia/nemotron-3-super-120b-a12b:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "cerebras",   model: "gpt-oss-120b",                                  label: "Cerebras",          fallbackModels: ["zai-glm-4.7"] },
     { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
   ],
 };
@@ -410,7 +394,7 @@ async function callGemini(
   return { text, status: res.status };
 }
 
-/** OpenAI-compatible caller (Groq, Cerebras, Together, Fireworks, OpenRouter) */
+/** OpenAI-compatible caller (Groq, OpenRouter, and other compatible providers) */
 async function callOpenAICompat(
   provider: ProviderConfig,
   prompt: string,
@@ -471,8 +455,8 @@ async function callOpenAICompat(
   let data: any = {};
   try { data = JSON.parse(rawText); } catch {}
   const msg  = data?.choices?.[0]?.message;
-  // Reasoning models (Cerebras gpt-oss-120b, zai-glm-4.7) put output in `reasoning`
-  // when max_tokens is tight; prefer `content`, fall back to `reasoning`.
+  // Some reasoning models put output in `reasoning` when max_tokens is tight;
+  // prefer `content`, fall back to `reasoning`.
   const text = msg?.content || msg?.reasoning || "";
   if (!text) throw new Error(`${provider.id} returned empty response`);
   return { text, status: res.status };

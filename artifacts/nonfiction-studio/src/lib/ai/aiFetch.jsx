@@ -20,7 +20,6 @@ const NO_CACHE_PATHS = ["/api/ai/improve", "/api/ai/niche-outline", "/api/ai/out
 export const PROVIDER_LABELS = {
   gemini:     "Gemini",
   groq:       "Groq",
-  cerebras:   "Cerebras",
   openrouter: "OpenRouter",
   sambanova:  "SambaNova"
 };
