@@ -71,11 +71,13 @@ function GenerateBtn({ busy, hasContent, disabled, onClick, small }) {
 }
 
 /** Renders the content area for one write block. */
-function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove, onSetProse, locked, lockMessage }) {
+function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove, onEdit, onSetProse, locked, lockMessage }) {
   const prose      = String(lessons?.[blockId]?.prose || "").trim();
   const hasContent = blockHasContent(lessons, blockId);
   const isThisBusy = busyId === blockId;
   const lesson     = lessons?.[blockId]?.lesson;
+  const [editOpen, setEditOpen] = useState(false);
+  const [editInstructions, setEditInstructions] = useState("");
 
   if (isThisBusy && !hasContent) {
     return (
@@ -125,6 +127,18 @@ function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove,
       )}
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <GenerateBtn busy={isThisBusy} hasContent disabled={isBusy || locked} onClick={onGenerate} small />
+        <button
+          type="button"
+          disabled={isBusy}
+          onClick={() => setEditOpen((open) => !open)}
+          className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition disabled:opacity-50 ${
+            editOpen
+              ? "border-sky-300 bg-sky-50 text-sky-700"
+              : "border-sky-200 bg-white text-sky-700 hover:bg-sky-50/60"
+          }`}
+        >
+          Edit content
+        </button>
         <span className="text-slate-200">|</span>
         {IMPROVE_ACTIONS.map((action) => (
           <button
@@ -138,6 +152,48 @@ function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove,
           </button>
         ))}
       </div>
+      {editOpen && (
+        <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
+          <label className="block text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+            Tell the AI how to update this content
+          </label>
+          <textarea
+            className="mt-1.5 w-full resize-y rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:opacity-60"
+            rows={4}
+            value={editInstructions}
+            onChange={(e) => setEditInstructions(e.target.value)}
+            placeholder="What should change? Mention what works well, what feels weak or incorrect, and any positive or negative points you want the AI to consider."
+            disabled={isThisBusy}
+            autoFocus
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isBusy || !editInstructions.trim()}
+              onClick={async () => {
+                await onEdit(blockId, editInstructions.trim());
+                setEditInstructions("");
+                setEditOpen(false);
+              }}
+              className="rounded-lg bg-sky-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Apply edit
+            </button>
+            <button
+              type="button"
+              disabled={isThisBusy}
+              onClick={() => {
+                setEditInstructions("");
+                setEditOpen(false);
+              }}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <span className="text-[10px] text-slate-400">Your existing draft will be used as the starting point.</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -375,6 +431,39 @@ export default function WriteStep({
     }
   }
 
+  async function editBlock(blockId, instructions) {
+    const block = blockById.get(blockId);
+    const prose = String(lessons?.[blockId]?.prose || "").trim();
+    if (!block || !prose || !instructions?.trim()) return;
+    setBusyId(blockId);
+    setStatus("");
+    try {
+      const data = await aiFetch("/api/ai/edit-content", {
+        instructions: instructions.trim(),
+        currentText: prose,
+        tone: writingTone(fullProject),
+        audience: writingAudience(fullProject),
+        bookStructure: bookStructureVal(fullProject),
+        subsectionTitle: block.label || "",
+        bookContext: buildBookContext(fullProject),
+        blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
+          ? block.blueprintComponents
+          : undefined
+      }, { noCache: true });
+      if (data.text) {
+        setProse(blockId, data.text);
+        setStatus("Applied your edit instructions.");
+      } else {
+        setStatus("Edit returned empty text — your draft was kept.");
+      }
+    } catch (e) {
+      if (e instanceof GenerationCanceledError) setStatus("Edit canceled.");
+      else setStatus(e.message || "Could not edit this content.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function generateChapter(chKey) {
     const chBlocks = blocks.filter((b) => b.chapterKey === chKey);
     if (!chBlocks.length) return;
@@ -501,6 +590,7 @@ export default function WriteStep({
               isBusy={isBusy}
               onGenerate={() => generateBlock(block)}
               onImprove={improveBlock}
+                                     onEdit={editBlock}
               onSetProse={setProse}
               locked={locked}
               lockMessage={lockMessage}
@@ -788,6 +878,7 @@ export default function WriteStep({
                                       isBusy={isBusy}
                                       onGenerate={() => generateBlock(block)}
                                       onImprove={improveBlock}
+               onEdit={editBlock}
                                       onSetProse={setProse}
                                     />
                                   ) : (
@@ -814,6 +905,7 @@ export default function WriteStep({
                                     isBusy={isBusy}
                                     onGenerate={() => generateBlock(block)}
                                     onImprove={improveBlock}
+                                    onEdit={editBlock}
                                     onSetProse={setProse}
                                   />
                                   <div className="mt-6" />

@@ -4444,6 +4444,83 @@ ${currentText}
 Return ONLY the refined prose — no commentary, no JSON, no metadata.`;
 }
 
+export function editContentPrompt({
+  instructions,
+  currentText,
+  tone,
+  audience,
+  bookStructure,
+  subsectionTitle,
+  bookContext,
+  blueprintComponents
+}: any) {
+  const toneInstr = resolveToneInstruction(tone || "");
+
+  const contextLines: string[] = [];
+  if (bookContext?.title)        contextLines.push(`Book: "${bookContext.title}"`);
+  if (audience || bookContext?.audience)
+    contextLines.push(`Target Reader: ${audience || bookContext.audience}`);
+  if (bookStructure || bookContext?.structure)
+    contextLines.push(`Book Structure: ${bookStructure || bookContext.structure}`);
+  if (subsectionTitle)           contextLines.push(`Subsection: ${subsectionTitle}`);
+  if (bookContext?.bookTopic)    contextLines.push(`Core Topic: ${bookContext.bookTopic}`);
+  if (bookContext?.usp)          contextLines.push(`USP: ${bookContext.usp}`);
+  if (bookContext?.authorSummary) contextLines.push(`Author Voice: ${String(bookContext.authorSummary).slice(0, 200)}`);
+  const ctxBlock = contextLines.length ? contextLines.join("\n") + "\n" : "";
+
+  const hasBlueprint = Array.isArray(blueprintComponents) && blueprintComponents.length > 0;
+  const forbiddenComponents = hasBlueprint
+    ? ALL_BLUEPRINT_COMPONENTS.filter((c: string) => !(blueprintComponents as string[]).includes(c))
+    : [];
+  const blueprintBlock = hasBlueprint
+    ? `
+════════════════════════════════════
+BLUEPRINT COMPONENTS (non-negotiable)
+════════════════════════════════════
+This subsection may use ONLY these selected components:
+ALLOWED:
+${(blueprintComponents as string[]).map((c: string) => `✓ ${c}`).join("\n")}
+FORBIDDEN — never add, even implicitly:
+${forbiddenComponents.map((c: string) => `✗ ${c}`).join("\n")}
+${!(blueprintComponents as string[]).includes("Case Study") ? "✗ Case Study / real-world story framed as a case study\n" : ""}${!(blueprintComponents as string[]).includes("Action Plan") ? "✗ Action Steps / Next Steps / To-Do / Practice Steps\n" : ""}${!(blueprintComponents as string[]).includes("Exercise") ? "✗ Try This / Activity / Practice Exercise / Exercise\n" : ""}${!(blueprintComponents as string[]).includes("Reflection Questions") ? "✗ Reflect / Think About / Self-Assessment questions\n" : ""}If the author's instructions conflict with this list, follow this list.
+`
+    : "";
+
+  return `You are a professional nonfiction editor revising one existing book subsection.
+
+════════════════════════════════════
+BOOK CONTEXT
+════════════════════════════════════
+${ctxBlock}Voice & Tone: ${tone || "Direct & practical"}
+Tone Instruction: ${toneInstr}
+${blueprintBlock}
+════════════════════════════════════
+AUTHOR'S EDIT BRIEF
+════════════════════════════════════
+The author may describe requested changes, strengths to preserve, positive points, negative points, omissions, or concerns. Treat this as editorial guidance:
+${instructions}
+
+════════════════════════════════════
+EDITING RULES (non-negotiable)
+════════════════════════════════════
+- Revise the existing prose instead of discussing the brief.
+- Preserve the subsection's core subject, purpose, factual claims, useful examples, named frameworks, and established voice unless the author explicitly asks to change them.
+- Apply clear, feasible requests from the author's brief.
+- Keep positive points and strengths the author identifies; correct or improve negative points they identify.
+- Do not blindly follow a request that would introduce unsupported facts. When a requested change needs new facts, write it generally and safely rather than inventing precise claims.
+- Match the existing voice, tone, and reading level exactly.
+- Do not add a generic summary paragraph or motivational closer.
+- Do not introduce markdown headers inside the prose.
+${hasBlueprint ? "- Do not introduce any component listed as FORBIDDEN above, even as a single sentence." : ""}
+
+════════════════════════════════════
+EXISTING CONTENT TO EDIT
+════════════════════════════════════
+${currentText}
+
+Return ONLY the revised prose — no commentary, no JSON, no metadata.`;
+}
+
 export function architecturePreviewPrompt({
   niche,
   subNiche,

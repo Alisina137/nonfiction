@@ -46,6 +46,7 @@ import {
   backMatterAcknowledgmentsGroupPrompt,
   backMatterTheEndPrompt,
   developmentalEditPrompt,
+  editContentPrompt,
   readerPersonaPrompt,
   multiFormatPublishingPrompt
 } from "./prompts.js";
@@ -1814,6 +1815,48 @@ router.post("/improve", async (req, res) => {
     const { action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext, blueprintComponents } = req.body || {};
     const { text, usedProvider } = await runLong(
       improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext, blueprintComponents }),
+      systemPrompt(),
+      req,
+      res,
+      "improve"
+    );
+    return res.json({ text, _provider: usedProvider });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
+router.post("/edit-content", async (req, res) => {
+  try {
+    const {
+      instructions,
+      currentText,
+      tone,
+      audience,
+      bookStructure,
+      subsectionTitle,
+      bookContext,
+      blueprintComponents
+    } = req.body || {};
+
+    if (!instructions || typeof instructions !== "string" || !instructions.trim()) {
+      return res.status(400).json({ error: "Edit instructions are required." });
+    }
+    if (!currentText || typeof currentText !== "string" || !currentText.trim()) {
+      return res.status(400).json({ error: "Current content is required." });
+    }
+
+    const { text, usedProvider } = await runLong(
+      editContentPrompt({
+        instructions: instructions.trim(),
+        currentText,
+        tone,
+        audience,
+        bookStructure,
+        subsectionTitle,
+        bookContext,
+        blueprintComponents
+      }),
       systemPrompt(),
       req,
       res,
