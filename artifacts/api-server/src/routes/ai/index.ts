@@ -1774,7 +1774,8 @@ router.post("/lesson", async (req, res) => {
       subsectionPurpose,
       blueprintComponents,
       upcomingTopics,
-      chapterSummaries
+      chapterSummaries,
+      isRegeneration
     } = req.body || {};
     const { text, usedProvider } = await runLong(
       lessonPrompt({
@@ -1788,7 +1789,8 @@ router.post("/lesson", async (req, res) => {
         subsectionPurpose,
         blueprintComponents,
         upcomingTopics,
-        chapterSummaries
+        chapterSummaries,
+        isRegeneration: isRegeneration === true
       }),
       systemPrompt(),
       req,

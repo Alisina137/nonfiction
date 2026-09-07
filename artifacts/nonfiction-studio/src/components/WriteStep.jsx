@@ -361,6 +361,24 @@ export default function WriteStep({
       return { snapshot: lessonsSnapshot, strategyCache };
     }
     const index = blocks.findIndex((b) => b.id === block.id);
+    const isRegeneration = blockHasContent(lessonsSnapshot, block.id);
+    // Keep the rest of the manuscript as context, but do not tell a replacement
+    // draft that its own previous lesson is already covered.
+    const lessonsForGeneration = isRegeneration
+      ? Object.fromEntries(
+          Object.entries(lessonsSnapshot && typeof lessonsSnapshot === "object" ? lessonsSnapshot : {})
+            .filter(([lessonId]) => lessonId !== block.id)
+        )
+      : lessonsSnapshot;
+    const projectForGeneration = isRegeneration && fullProject && typeof fullProject === "object"
+      ? {
+          ...fullProject,
+          lessons: Object.fromEntries(
+            Object.entries(fullProject.lessons && typeof fullProject.lessons === "object" ? fullProject.lessons : {})
+              .filter(([lessonId]) => lessonId !== block.id)
+          )
+        }
+      : fullProject;
     setBusyId(block.id);
     setStatus("");
     try {
@@ -371,18 +389,19 @@ export default function WriteStep({
       const data = await aiFetch("/api/ai/lesson", {
         subsection:          block.subsection,
         chapterContext:      block.chapterContext,
-        previousConcepts:    collectPreviousConcepts(blocks, lessonsSnapshot, index),
+        previousConcepts:    collectPreviousConcepts(blocks, lessonsForGeneration, index),
         upcomingTopics:      collectUpcomingTopics(blocks, index),
-        chapterSummaries:    buildChapterSummaries(blocks, lessonsSnapshot),
+        chapterSummaries:    buildChapterSummaries(blocks, lessonsForGeneration),
         subsectionPurpose:   block.subsection?.objective || block.subsection?.description || null,
         audience:            writingAudience(fullProject),
         tone:                writingTone(fullProject),
         resources:           fullProject?.resources ?? null,
-        bookContext:         buildBookContext(fullProject),
+        bookContext:         buildBookContext(projectForGeneration),
         bookStructure:       bookStructureVal(fullProject),
         sectionTitle:        block.sectionTitle || null,
         sectionObjective:    block.sectionObjective || null,
         chapterStrategy:     chapterStrategy || null,
+        isRegeneration,
         blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
           ? block.blueprintComponents
           : undefined

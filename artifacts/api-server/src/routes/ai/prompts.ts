@@ -2479,7 +2479,8 @@ export function lessonPrompt({
   subsectionPurpose,
   blueprintComponents,
   upcomingTopics,
-  chapterSummaries
+  chapterSummaries,
+  isRegeneration
 }: any) {
   const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
   const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
@@ -3635,6 +3636,11 @@ The reader should see finished book content, not the planning system behind it. 
 The JSON fields requested below are production metadata for the application. Complete them accurately, but keep them separate from the prose and never copy metadata labels or internal planning language into the content field.
 
 ${MANUSCRIPT_FORMATTING_GUIDANCE}
+
+This is a direct content-generation request. Do not respond with a plan, critique, requirements list, request for missing DNA or features, or an explanation of how the content should be written. If some context is incomplete, infer conservatively from the authoritative context that is available and still return the complete requested subsection JSON.
+
+${isRegeneration ? `REGENERATION MODE — write a fresh replacement
+The previous draft for this subsection is being replaced and is intentionally excluded from the context. Do not discuss the previous draft, explain what should be improved, or ask for more information. Write the complete subsection itself, using the same standards as a first-time generation.` : ""}
 
 ════════════════════════════════════
 AI ORCHESTRATOR — PRE-EXECUTION INTELLIGENCE ENGINE
