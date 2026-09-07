@@ -191,7 +191,14 @@ function compressLessonBody(body: any): any {
 
   const compressedChapter = chapterContext ? {
     title:       chapterContext.title,
-    description: String(chapterContext.description || "").slice(0, 200),
+    number:       chapterContext.number,
+    description: String(chapterContext.description || chapterContext.summary || chapterContext.chapterObjective || "").slice(0, 240),
+    chapterObjective: String(chapterContext.chapterObjective || "").slice(0, 240),
+    summary:     String(chapterContext.summary || "").slice(0, 240),
+    arcRole:     String(chapterContext.arcRole || "").slice(0, 120),
+    sectionTitles: Array.isArray(chapterContext.sectionTitles)
+      ? chapterContext.sectionTitles.slice(0, 12).map((title: any) => String(title || "").slice(0, 100))
+      : undefined,
     ...(chapterContext.role ? { role: chapterContext.role } : {})
   } : chapterContext;
 

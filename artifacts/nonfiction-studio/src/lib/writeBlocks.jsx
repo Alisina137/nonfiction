@@ -113,6 +113,9 @@ export function enumerateWriteBlocks(bookOutline) {
       number:       ci + 1,
       title:        ch.title   || `Chapter ${ci + 1}`,
       summary:      ch.summary || "",
+      description:  ch.chapterObjective || ch.objective || ch.description || ch.summary || "",
+      chapterObjective: ch.chapterObjective || ch.objective || "",
+      arcRole:      ch.arcRole || "",
       words:        Number(ch.words) || 0,
       sectionTitles: Array.isArray(ch.sections) ? ch.sections.map((s) => s.title || "Section") : []
     };
@@ -129,6 +132,7 @@ export function enumerateWriteBlocks(bookOutline) {
           chapterKey,
           chapterContext,
           sectionTitle: sec.title || null,
+          sectionObjective: sec.objective || sec.sectionObjective || sec.explanation || sec.description || sec.summary || sec.intent || "",
           blueprintComponents: sectionBlueprint,
           subsection: realSubsection(sec, `Section-level lesson within ${chapterContext.title}.`)
         });
@@ -144,6 +148,7 @@ export function enumerateWriteBlocks(bookOutline) {
           chapterKey,
           chapterContext,
           sectionTitle: sec.title || null,
+          sectionObjective: sec.objective || sec.sectionObjective || sec.explanation || sec.description || sec.summary || sec.intent || "",
           blueprintComponents: subBlueprint,
           subsection: realSubsection(sub, `Subsection in ${sec.title || "section"} — deliver one new framework or tactic.`)
         });

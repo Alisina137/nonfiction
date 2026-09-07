@@ -380,6 +380,7 @@ export default function WriteStep({
         bookContext:         buildBookContext(fullProject),
         bookStructure:       bookStructureVal(fullProject),
         sectionTitle:        block.sectionTitle || null,
+        sectionObjective:    block.sectionObjective || null,
         chapterStrategy:     chapterStrategy || null,
         blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
           ? block.blueprintComponents

@@ -290,7 +290,7 @@ export function buildChapterDNABlock(chapterContext: any, chapterStrategy: any, 
   const str = chapterStrategy || {};
 
   const title       = ch.title || (typeof chapterContext === "string" ? chapterContext : "") || "";
-  const goal        = ch.description || ch.chapterObjective || "";
+  const goal        = ch.description || ch.chapterObjective || ch.summary || "";
   const theme       = str.chapterTheme || "";
   const arc         = str.chapterArc   || "";
   const outcome     = str.readerOutcome || "";
@@ -2460,6 +2460,7 @@ export function lessonPrompt({
   chapterStrategy,
   bookStructure,
   sectionTitle,
+  sectionObjective,
   subsectionPurpose,
   blueprintComponents,
   upcomingTopics,
@@ -2471,7 +2472,7 @@ export function lessonPrompt({
   // ── Book DNA Architecture — build all DNA layers from available context ──
   const dnaBookBlock       = buildBookDNAFromContext(bookContext);
   const dnaChapterBlock    = buildChapterDNABlock(chapterContext, chapterStrategy);
-  const dnaSectionBlock    = buildSectionDNABlock(sectionTitle || "", "");
+  const dnaSectionBlock    = buildSectionDNABlock(sectionTitle || "", sectionObjective || "");
   const dnaSubsectionBlock = buildSubsectionDNABlock(subsection, subsectionPurpose || "");
   const dnaGlobalMemory    = buildGlobalMemoryBlock(previousConcepts || [], chapterSummaries || []);
   const knowledgeGraphBlock = buildKnowledgeGraphBlock(bookContext?.knowledgeGraph);
