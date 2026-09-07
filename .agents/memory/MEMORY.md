@@ -10,3 +10,4 @@
 - [Blueprint Intelligence Engine](blueprint-intelligence-engine.md) — generateDetailsPrompt returns 5 layers + transformationMap + chapterMissions + validation + scores; stored silently in bookDetails; bookContext.js passes it to every AI call via buildBookDNAFromContext Blueprint Synchronization block.
 - [Knowledge Graph Engine](knowledge-graph-engine.md) — delta stored in lesson.knowledgeGraphDelta per section write; knowledgeGraph.js compiles registry from all deltas; bookContext carries it; lessonPrompt injects KG Intelligence block with 6 rules.
 - [Groq/Llama JSON parsing bug](groq-json-parsing.md) — sanitize+repair extractJSON still fails intermittently; JSON-returning long-form routes should retry via runLongJSON, not raw runLong+extractJSON.
+- [Provider-neutral manuscript normalization](provider-normalization.md) — lesson prompts and server quality gates must normalize provider-specific flow, formatting, and planning leakage.

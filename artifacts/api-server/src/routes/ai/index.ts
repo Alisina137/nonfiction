@@ -66,6 +66,10 @@ import {
   logTitlePipeline,
   type TitleContext
 } from "./titleNormalizer.js";
+import {
+  isLessonContentUsable,
+  normalizeLessonPayload
+} from "./lessonNormalizer.js";
 
 const router = Router();
 
@@ -1777,34 +1781,64 @@ router.post("/lesson", async (req, res) => {
       chapterSummaries,
       isRegeneration
     } = req.body || {};
-    const { text, usedProvider } = await runLong(
-      lessonPrompt({
-        ...compressed,
-        resources: req.body?.resources,
-        bookContext: req.body?.bookContext,
-        chapterStrategy,
-        bookStructure,
-        sectionTitle,
-        sectionObjective,
-        subsectionPurpose,
-        blueprintComponents,
-        upcomingTopics,
-        chapterSummaries,
-        isRegeneration: isRegeneration === true
-      }),
+    const lessonRequest = {
+      ...compressed,
+      resources: req.body?.resources,
+      bookContext: req.body?.bookContext,
+      chapterStrategy,
+      bookStructure,
+      sectionTitle,
+      sectionObjective,
+      subsectionPurpose,
+      blueprintComponents,
+      upcomingTopics,
+      chapterSummaries,
+      isRegeneration: isRegeneration === true
+    };
+    const lessonGenerationPrompt = lessonPrompt(lessonRequest);
+    let { text, usedProvider } = await runLong(
+      lessonGenerationPrompt,
       systemPrompt(),
       req,
       res,
       "lesson"
     );
-    let data: any;
-    try {
-      data = extractJSON(text);
-    } catch {
-      // AI returned plain prose instead of JSON — wrap it so lessonToProse can use it
-      console.warn("[lesson] extractJSON failed — using raw text as content fallback");
-      data = { content: text.trim() };
+    const parseLessonResponse = (raw: string): any => {
+      try {
+        return extractJSON(raw);
+      } catch {
+        // AI returned plain prose instead of JSON — wrap it so the client can
+        // still receive a usable draft and the quality gate can inspect it.
+        console.warn("[lesson] extractJSON failed — using raw text as content fallback");
+        return { content: raw.trim() };
+      }
+    };
+
+    let data: any = normalizeLessonPayload(parseLessonResponse(text));
+
+    // A model may satisfy the JSON shape while returning a planning response.
+    // Give the same canonical contract one repair attempt before exposing it.
+    if (!isLessonContentUsable(data)) {
+      console.warn("[lesson] content quality gate failed — requesting a clean replacement");
+      const repairPrompt = `${lessonGenerationPrompt}
+
+════════════════════════════════════
+FINAL CONTENT QUALITY REPAIR
+════════════════════════════════════
+The previous response was not publication-ready. Return the same JSON structure again, but write the subsection itself as finished reader-facing prose.
+Do not mention DNA, blueprints, prompts, providers, missing inputs, output formats, or how the content should be written.
+Use the provider-neutral flow: natural opening, one developed idea, concrete example or evidence, practical application, and a useful closing bridge.
+Do not use Markdown headings, decorative separators, repeated bold labels, or planning commentary.
+`;
+      try {
+        const repaired = await runLong(repairPrompt, systemPrompt(), req, res, "lesson");
+        usedProvider = repaired.usedProvider;
+        data = normalizeLessonPayload(parseLessonResponse(repaired.text));
+      } catch (repairError: any) {
+        console.warn("[lesson] quality repair failed:", repairError?.message?.slice(0, 160));
+      }
     }
+
     return res.json({ lesson: data, _provider: usedProvider });
   } catch (error: any) {
     console.error("[lesson] route error:", (error as any)?.message);

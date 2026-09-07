@@ -2464,6 +2464,17 @@ Write the reader-facing content as polished, human-written book prose. Most of i
 - Never let formatting announce the planning process or make the prose feel like a template.
 `;
 
+const PROVIDER_NEUTRAL_CONTENT_CONTRACT = `
+PROVIDER-NEUTRAL CONTENT CONTRACT — apply this exact editorial flow regardless of which model is answering:
+1. Open with a natural bridge into the specific idea, problem, or question this subsection addresses.
+2. Explain one central idea deeply and plainly; do not stack unrelated mini-topics.
+3. Show how the idea works through one concrete, topic-specific example, scenario, or piece of evidence.
+4. Translate the idea into practical meaning: what the reader should notice, decide, or do.
+5. Close with a useful takeaway and a natural bridge toward the next idea, without announcing the structure.
+
+This is an underlying flow, not a set of visible headings. Use paragraphs by default. Use a numbered list or bullets only when the reader genuinely needs steps, options, or a checklist. Never substitute headings, symbols, bold labels, or decorative separators for clear reasoning. The final content must read like one human author across the entire book, independent of provider, model, fallback, or token style.
+`;
+
 export function lessonPrompt({
   subsection,
   chapterContext,
@@ -3636,6 +3647,7 @@ The reader should see finished book content, not the planning system behind it. 
 The JSON fields requested below are production metadata for the application. Complete them accurately, but keep them separate from the prose and never copy metadata labels or internal planning language into the content field.
 
 ${MANUSCRIPT_FORMATTING_GUIDANCE}
+${PROVIDER_NEUTRAL_CONTENT_CONTRACT}
 
 This is a direct content-generation request. Do not respond with a plan, critique, requirements list, request for missing DNA or features, or an explanation of how the content should be written. If some context is incomplete, infer conservatively from the authoritative context that is available and still return the complete requested subsection JSON.
 
