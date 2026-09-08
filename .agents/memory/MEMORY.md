@@ -12,4 +12,3 @@
 - [Groq/Llama JSON parsing bug](groq-json-parsing.md) — sanitize+repair extractJSON still fails intermittently; JSON-returning long-form routes should retry via runLongJSON, not raw runLong+extractJSON.
 - [Provider-neutral manuscript normalization](provider-normalization.md) — lesson prompts and server quality gates must normalize provider-specific flow, formatting, and planning leakage.
 - [Publishing build and runtime requirements](publishing-build-runtime.md) — publish installs build dependencies explicitly; Express 5 SPA fallbacks need named wildcards.
-- [Artifact type immutability](artifact-type-immutability.md) — registered artifact kinds cannot be changed in place through the protected TOML verifier; use a separate artifact when type matters.
