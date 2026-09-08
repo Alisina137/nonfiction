@@ -1,5 +1,5 @@
 kind = "video"
-videoAspectRatio = "9:16"
+videoAspectRatio = "16:9"
 previewPath = "/"
 title = "Nonfiction AI Studio"
 version = "1.0.0"
