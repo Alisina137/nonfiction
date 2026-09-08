@@ -68,6 +68,7 @@ import {
   type TitleContext
 } from "./titleNormalizer.js";
 import {
+  isLessonTargetAligned,
   isLessonContentUsable,
   normalizeLessonPayload,
   normalizeLessonProse
@@ -1844,7 +1845,13 @@ router.post("/lesson", async (req, res) => {
 
     // A model may satisfy the JSON shape while returning a planning response.
     // Give the same canonical contract one repair attempt before exposing it.
-    if (!isLessonContentUsable(data)) {
+    const targetIsAligned = (lesson: any) => isLessonTargetAligned(
+      lesson,
+      requestedLessonTitle || req.body?.subsection?.title || "",
+      subsectionPurpose || req.body?.subsection?.description || ""
+    );
+
+    if (!isLessonContentUsable(data) || !targetIsAligned(data)) {
       console.warn("[lesson] content quality gate failed — requesting a clean replacement");
       const repairPrompt = `${lessonGenerationPrompt}
 
@@ -1855,6 +1862,7 @@ The previous response was not publication-ready. Return the same JSON structure 
 Do not mention DNA, blueprints, prompts, providers, missing inputs, output formats, or how the content should be written.
 Use the provider-neutral flow: natural opening, one developed idea, concrete example or evidence, practical application, and a useful closing bridge.
 Do not use Markdown headings, decorative separators, repeated bold labels, or planning commentary.
+The previous response may have drifted away from the exact subsection target. Before returning, verify that the prose directly teaches the requested subsection title and purpose, not a neighboring topic or broad chapter theme.
 `;
       try {
         const repaired = await runLong(repairPrompt, systemPrompt(), req, res, "lesson");
@@ -1865,6 +1873,13 @@ Do not use Markdown headings, decorative separators, repeated bold labels, or pl
       } catch (repairError: any) {
         console.warn("[lesson] quality repair failed:", repairError?.message?.slice(0, 160));
       }
+    }
+
+    if (!isLessonContentUsable(data) || !targetIsAligned(data)) {
+      return res.status(422).json({
+        error: "The generated draft did not stay aligned with this subsection. Please retry generation.",
+        _provider: usedProvider
+      });
     }
 
     return res.json({ lesson: data, _provider: usedProvider });

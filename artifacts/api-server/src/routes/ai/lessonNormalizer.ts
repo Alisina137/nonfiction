@@ -87,3 +87,42 @@ export function isLessonContentUsable(data: any): boolean {
   if (content.length < 80) return false;
   return !PLANNING_LEAK_PATTERNS.some((pattern) => pattern.test(content));
 }
+
+const TARGET_STOP_WORDS = new Set([
+  "about", "after", "again", "acts", "being", "book", "chapter", "does",
+  "exact", "from", "guide", "how", "into", "learn", "lesson", "master",
+  "reader", "section", "subsection", "that", "the", "this", "through",
+  "what", "when", "where", "which", "with", "your"
+]);
+
+function targetTerms(value: unknown): string[] {
+  return Array.from(new Set(
+    String(value || "")
+      .toLocaleLowerCase()
+      .match(/[a-z][a-z-]{4,}/g) || []
+  )).filter((term) => !TARGET_STOP_WORDS.has(term));
+}
+
+/**
+ * Prevent a successful-but-unrelated model response from being saved under a
+ * subsection. This is intentionally a conservative lexical check: it only
+ * runs when the target supplies meaningful words and lets the model use
+ * synonyms for short or abstract titles.
+ */
+export function isLessonTargetAligned(
+  data: any,
+  targetTitle: unknown,
+  targetPurpose: unknown
+): boolean {
+  const content = lessonContentText(data).toLocaleLowerCase();
+  if (!content) return false;
+
+  const titleTerms = targetTerms(targetTitle);
+  const purposeTerms = targetTerms(targetPurpose);
+  const terms = titleTerms.length >= 2 ? titleTerms : purposeTerms;
+  if (!terms.length) return true;
+
+  const hits = terms.filter((term) => content.includes(term));
+  const requiredHits = terms.length >= 4 ? 2 : 1;
+  return hits.length >= requiredHits;
+}
