@@ -11,7 +11,7 @@ import AuthorBioStep from "@/components/AuthorBioStep";
 import OutlineStep from "@/components/OutlineStep";
 import WriteStep from "@/components/WriteStep";
 import DescriptionStep from "@/components/DescriptionStep";
-import BookCoverStep from "@/components/BookCoverStep";
+import BookCoverPlaceholder from "@/components/BookCoverPlaceholder";
 import FinishStep from "@/components/FinishStep";
 import { blockHasContent, enumerateWriteBlocks } from "@/lib/writeBlocks";
 import { BOOK_BUILDER_STEPS } from "@/lib/constants";
@@ -736,10 +736,8 @@ function isDescriptionReady(description) {
 }
 
 function validateBookCover(cover) {
-  const c = cover && typeof cover === "object" ? cover : {};
-  if (!String(c.subtitle || "").trim()) return { form: "Add a cover subtitle." };
-  if (!String(c.authorLine || "").trim()) return { form: "Add the author line as it should appear on the cover." };
-  if (!String(c.primaryColor || "").trim()) return { form: "Pick a primary cover color." };
+  // Cover Studio is intentionally deferred. Keep this step pass-through until
+  // the replacement workspace is built.
   return {};
 }
 
@@ -1105,7 +1103,7 @@ export default function Dashboard() {
           )}
           {stepMeta.id === "bookCover" && (
             <p className="mt-1 max-w-xl text-[11px] leading-snug text-slate-600 md:text-xs">
-              Define subtitle, palette, and designer notes; preview the hierarchy before you export assets.
+              This workspace is being rebuilt. You can continue and return to the cover later.
             </p>
           )}
           {stepMeta.id === "finish" && (
@@ -1434,21 +1432,7 @@ export default function Dashboard() {
           )}
 
           {currentStep === COVER_STEP && (
-            <BookCoverStep
-              bookCover={project.bookCover}
-              setBookCover={(partial) =>
-                setProject((p) => ({
-                  ...p,
-                  bookCover:
-                    typeof partial === "function"
-                      ? partial(p.bookCover || emptyBookCover)
-                      : { ...(p.bookCover || emptyBookCover), ...partial }
-                }))
-              }
-              fullProject={project}
-              description={project.description}
-              errors={coverErrors}
-            />
+            <BookCoverPlaceholder />
           )}
 
           {currentStep === FINISH_STEP && (
