@@ -47,6 +47,7 @@ import {
   backMatterTheEndPrompt,
   developmentalEditPrompt,
   editContentPrompt,
+  editContentRepairPrompt,
   readerPersonaPrompt,
   multiFormatPublishingPrompt
 } from "./prompts.js";
@@ -68,8 +69,10 @@ import {
 } from "./titleNormalizer.js";
 import {
   isLessonContentUsable,
-  normalizeLessonPayload
+  normalizeLessonPayload,
+  normalizeLessonProse
 } from "./lessonNormalizer.js";
+import { assessEditQuality } from "./editContentGuard.js";
 
 const router = Router();
 
@@ -1899,22 +1902,60 @@ router.post("/edit-content", async (req, res) => {
       return res.status(400).json({ error: "Current content is required." });
     }
 
-    const { text, usedProvider } = await runLong(
+    const request = {
+      instructions: instructions.trim(),
+      currentText,
+      tone,
+      audience,
+      bookStructure,
+      subsectionTitle,
+      bookContext,
+      blueprintComponents
+    };
+    const first = await runLong(
       editContentPrompt({
-        instructions: instructions.trim(),
-        currentText,
-        tone,
-        audience,
-        bookStructure,
-        subsectionTitle,
-        bookContext,
-        blueprintComponents
+        ...request
       }),
       systemPrompt(),
       req,
       res,
       "improve"
     );
+    let text = normalizeLessonProse(first.text);
+    let quality = assessEditQuality(currentText, text);
+    let usedProvider = first.usedProvider;
+
+    if (!quality.accepted) {
+      console.warn("[edit-content] broad rewrite rejected:", quality.reasons.join("; "));
+      try {
+        const repaired = await runLong(
+          editContentRepairPrompt({
+            ...request,
+            reasons: quality.reasons
+          }),
+          systemPrompt(),
+          req,
+          res,
+          "improve"
+        );
+        usedProvider = repaired.usedProvider;
+        text = normalizeLessonProse(repaired.text);
+        quality = assessEditQuality(currentText, text);
+      } catch (repairError: any) {
+        console.warn("[edit-content] conservative repair failed:", repairError?.message?.slice(0, 160));
+      }
+    }
+
+    if (!quality.accepted) {
+      console.warn("[edit-content] keeping original draft after failed preservation checks");
+      return res.json({
+        text: "",
+        editRejected: true,
+        message: "The requested edit would replace too much of your draft, so your current content was kept.",
+        _provider: usedProvider
+      });
+    }
+
     return res.json({ text, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);

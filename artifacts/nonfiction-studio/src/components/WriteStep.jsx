@@ -471,7 +471,9 @@ export default function WriteStep({
           ? block.blueprintComponents
           : undefined
       }, { noCache: true });
-      if (data.text) {
+      if (data.editRejected) {
+        setStatus(data.message || "The edit was too broad, so your current draft was kept.");
+      } else if (data.text) {
         setProse(blockId, cleanManuscriptProse(data.text));
         setStatus("Applied your edit instructions.");
       } else {

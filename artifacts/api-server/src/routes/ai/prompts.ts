@@ -4549,12 +4549,15 @@ ${instructions}
 ════════════════════════════════════
 EDITING RULES (non-negotiable)
 ════════════════════════════════════
-- Revise the existing prose instead of discussing the brief.
+- Make the smallest edit that satisfies the author's brief. This is a targeted revision, not a rewrite or a fresh generation.
+- Preserve every sentence, example, fact, transition, paragraph, and list item that the brief does not ask you to change.
+- Keep the same paragraph count and list structure as the existing content. Do not merge, reorder, or replace paragraphs just to improve style.
 - Preserve the subsection's core subject, purpose, factual claims, useful examples, named frameworks, and established voice unless the author explicitly asks to change them.
 - Apply clear, feasible requests from the author's brief.
 - Keep positive points and strengths the author identifies; correct or improve negative points they identify.
 - Do not blindly follow a request that would introduce unsupported facts. When a requested change needs new facts, write it generally and safely rather than inventing precise claims.
 - Match the existing voice, tone, and reading level exactly.
+- If the brief is ambiguous, interpret it narrowly and change only the smallest relevant passage.
 - Do not add a generic summary paragraph or motivational closer.
 - Do not introduce markdown headers inside the prose.
 - Keep the revised text mostly as plain paragraphs. Use at most one or two short bold phrases only when emphasis genuinely improves readability; do not use # headings, decorative separators, or repeated bold markers.
@@ -4566,6 +4569,38 @@ EXISTING CONTENT TO EDIT
 ${currentText}
 
 Return ONLY the revised prose — no commentary, no JSON, no metadata.`;
+}
+
+export function editContentRepairPrompt({
+  instructions,
+  currentText,
+  tone,
+  audience,
+  bookStructure,
+  subsectionTitle,
+  bookContext,
+  blueprintComponents,
+  reasons
+}: any) {
+  return `${editContentPrompt({
+    instructions,
+    currentText,
+    tone,
+    audience,
+    bookStructure,
+    subsectionTitle,
+    bookContext,
+    blueprintComponents
+  })}
+
+════════════════════════════════════
+CONSERVATIVE EDIT REPAIR
+════════════════════════════════════
+The previous attempt was rejected because ${reasons.join("; ")}.
+Do not rewrite the subsection. Preserve unchanged sentences verbatim wherever possible.
+Return the original structure with only the specific passage or passages required by the author's brief updated.
+If the brief does not clearly identify a passage, make the narrowest feasible change.
+`;
 }
 
 export function architecturePreviewPrompt({
