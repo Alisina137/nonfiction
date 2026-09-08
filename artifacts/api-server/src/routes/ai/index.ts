@@ -187,7 +187,16 @@ function aiOptsFromReq(req: any, maxTokens?: number) {
 // Context compression for lesson generation — prevents oversized prompts.
 // Only sends fields the model actually needs; drops redundant content.
 function compressLessonBody(body: any): any {
-  const { subsection, chapterContext, previousConcepts, upcomingTopics, chapterSummaries, ...rest } = body || {};
+  const {
+    subsection,
+    targetSubsectionTitle,
+    targetSubsectionId,
+    chapterContext,
+    previousConcepts,
+    upcomingTopics,
+    chapterSummaries,
+    ...rest
+  } = body || {};
 
   const compressedSubsection = subsection ? {
     title:       subsection.title,
@@ -238,6 +247,8 @@ function compressLessonBody(body: any): any {
   return {
     ...rest,
     subsection:       compressedSubsection,
+    ...(typeof targetSubsectionTitle === "string" ? { targetSubsectionTitle } : {}),
+    ...(typeof targetSubsectionId === "string" ? { targetSubsectionId } : {}),
     chapterContext:   compressedChapter,
     previousConcepts: compressedPrev,
     ...(compressedUpcoming?.length    ? { upcomingTopics:   compressedUpcoming    } : {}),
@@ -1776,6 +1787,7 @@ router.post("/lesson", async (req, res) => {
     const {
       chapterStrategy,
       bookStructure,
+      targetSubsectionTitle,
       sectionTitle,
       sectionObjective,
       subsectionPurpose,
@@ -1788,6 +1800,7 @@ router.post("/lesson", async (req, res) => {
       ...compressed,
       resources: req.body?.resources,
       bookContext: req.body?.bookContext,
+      targetSubsectionTitle: targetSubsectionTitle || req.body?.subsection?.title || "",
       chapterStrategy,
       bookStructure,
       sectionTitle,
@@ -1817,7 +1830,17 @@ router.post("/lesson", async (req, res) => {
       }
     };
 
-    let data: any = normalizeLessonPayload(parseLessonResponse(text));
+    const requestedLessonTitle = String(
+      targetSubsectionTitle || req.body?.subsection?.title || ""
+    ).trim();
+    const applyRequestedLessonTitle = (lesson: any): any => {
+      if (!lesson || typeof lesson !== "object" || !requestedLessonTitle) return lesson;
+      return { ...lesson, title: requestedLessonTitle };
+    };
+
+    let data: any = applyRequestedLessonTitle(
+      normalizeLessonPayload(parseLessonResponse(text))
+    );
 
     // A model may satisfy the JSON shape while returning a planning response.
     // Give the same canonical contract one repair attempt before exposing it.
@@ -1836,7 +1859,9 @@ Do not use Markdown headings, decorative separators, repeated bold labels, or pl
       try {
         const repaired = await runLong(repairPrompt, systemPrompt(), req, res, "lesson");
         usedProvider = repaired.usedProvider;
-        data = normalizeLessonPayload(parseLessonResponse(repaired.text));
+        data = applyRequestedLessonTitle(
+          normalizeLessonPayload(parseLessonResponse(repaired.text))
+        );
       } catch (repairError: any) {
         console.warn("[lesson] quality repair failed:", repairError?.message?.slice(0, 160));
       }
@@ -1868,9 +1893,19 @@ router.post("/extract-resource", async (req, res) => {
 
 router.post("/improve", async (req, res) => {
   try {
-    const { action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext, blueprintComponents } = req.body || {};
+    const {
+      action,
+      currentText,
+      tone,
+      audience,
+      bookStructure,
+      subsectionTitle,
+      subsectionPurpose,
+      bookContext,
+      blueprintComponents
+    } = req.body || {};
     const { text, usedProvider } = await runLong(
-      improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext, blueprintComponents }),
+      improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, subsectionPurpose, bookContext, blueprintComponents }),
       systemPrompt(),
       req,
       res,
@@ -1891,6 +1926,7 @@ router.post("/edit-content", async (req, res) => {
       audience,
       bookStructure,
       subsectionTitle,
+      subsectionPurpose,
       bookContext,
       blueprintComponents
     } = req.body || {};

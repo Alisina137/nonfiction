@@ -15,10 +15,11 @@ function syntheticSubsection(title, role) {
 function realSubsection(sub, fallbackRole) {
   return {
     title:       sub.title || "Subsection",
-    description: sub.explanation || sub.description || sub.objective || sub.intent || `Develop "${sub.title}" with concrete, specific insight.`,
+    description: sub.explanation || sub.description || sub.objective || sub.purpose || sub.intent || `Develop "${sub.title}" with concrete, specific insight.`,
     strategy:    sub.strategy    || fallbackRole,
     ...(Array.isArray(sub.keyPoints) && sub.keyPoints.length ? { keyPoints: sub.keyPoints } : {}),
     ...(sub.application ? { application: sub.application } : {}),
+    ...(sub.purpose    ? { purpose: sub.purpose } : {}),
     ...(sub.intent      ? { intent: sub.intent }            : {}),
   };
 }
@@ -138,11 +139,14 @@ export function enumerateWriteBlocks(bookOutline) {
         });
         return;
       }
-      subs.forEach((sub) => {
+      subs.forEach((sub, qi) => {
         const subBlueprint = Array.isArray(sub.blueprintComponents) ? sub.blueprintComponents : sectionBlueprint;
         blocks.push({
           kind: "subsection",
-          id: sub.id,
+          // Older saved outlines can contain missing or duplicated subsection IDs.
+          // A stable path fallback prevents multiple Write cards from sharing one
+          // lesson slot while preserving valid IDs for existing projects.
+          id: sub.id || `sub-${ci}-${si}-${qi}`,
           label: sub.title || "Subsection",
           breadcrumb: `${chapterContext.title} › ${sec.title || "Section"} › ${sub.title || "Subsection"}`,
           chapterKey,

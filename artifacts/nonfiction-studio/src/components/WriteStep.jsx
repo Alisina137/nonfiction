@@ -388,6 +388,8 @@ export default function WriteStep({
         : strategyCache;
       const data = await aiFetch("/api/ai/lesson", {
         subsection:          block.subsection,
+        targetSubsectionTitle: block.label || block.subsection?.title || "",
+        targetSubsectionId:   block.id,
         chapterContext:      block.chapterContext,
         previousConcepts:    collectPreviousConcepts(blocks, lessonsForGeneration, index),
         upcomingTopics:      collectUpcomingTopics(blocks, index),
@@ -436,6 +438,7 @@ export default function WriteStep({
         audience:        writingAudience(fullProject),
         bookStructure:   bookStructureVal(fullProject),
         subsectionTitle: block.label || "",
+        subsectionPurpose: block.subsection?.description || block.subsection?.purpose || "",
         bookContext:     buildBookContext(fullProject),
         blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
           ? block.blueprintComponents
@@ -466,6 +469,7 @@ export default function WriteStep({
         audience: writingAudience(fullProject),
         bookStructure: bookStructureVal(fullProject),
         subsectionTitle: block.label || "",
+        subsectionPurpose: block.subsection?.description || block.subsection?.purpose || "",
         bookContext: buildBookContext(fullProject),
         blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
           ? block.blueprintComponents

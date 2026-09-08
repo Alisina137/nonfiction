@@ -2477,6 +2477,7 @@ This is an underlying flow, not a set of visible headings. Use paragraphs by def
 
 export function lessonPrompt({
   subsection,
+  targetSubsectionTitle,
   chapterContext,
   previousConcepts,
   audience,
@@ -3001,6 +3002,8 @@ ${Array.isArray(chapterStrategy.conceptsToAvoid) && chapterStrategy.conceptsToAv
   const subsectionTitle = typeof subsection === "string"
     ? subsection
     : (subsection?.title || JSON.stringify(subsection));
+  const requestedTitle = String(targetSubsectionTitle || (typeof subsection === "string" ? subsection : subsection?.title) || subsectionTitle || "").trim();
+  const requestedTitleJson = JSON.stringify(requestedTitle);
   const purposeNote = subsectionPurpose
     ? `\nSubsection Purpose: ${subsectionPurpose}`
     : "";
@@ -4009,7 +4012,17 @@ LOCATION IN BOOK
 ════════════════════════════════════
 ${chapterInfo}
 ${sectionInfo}
-Subsection: ${subsectionTitle}${purposeNote}
+Subsection: ${requestedTitle || subsectionTitle}${purposeNote}
+
+════════════════════════════════════
+EXACT SUBSECTION IDENTITY — NON-NEGOTIABLE
+════════════════════════════════════
+The requested subsection is exactly: "${requestedTitle || subsectionTitle}"
+${subsectionPurpose ? `Its specific purpose is: "${subsectionPurpose}"` : ""}
+Write about this subsection only. Chapter and section context provide boundaries and background; they are not substitutes for the subsection's own topic.
+If the title is a number, outline label, or otherwise terse, use the subsection purpose and section objective to infer the concrete subject. Do not fall back to a generic chapter lesson.
+Every paragraph, example, framework, and action must answer the reader's question for this exact subsection. Do not drift into sibling subsections, upcoming topics, or a broader chapter overview.
+Do not rename, improve, expand, normalize, or replace the requested title.
 
 Target Reader: ${audience || "(see book context)"}
 Voice & Tone: ${tone || "(see book context)"}
@@ -4335,7 +4348,7 @@ OUTPUT FORMAT
 Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 
 {
-  "title": "The subsection title (publication-ready, specific, compelling)",
+  "title": ${requestedTitleJson},
   "structureUsed": "${structureKey}",
   "content": "${isBookIntroduction ? `The full book Introduction following the BOOK INTRODUCTION INSTRUCTIONS above — hook, background/context, purpose, brief overview, intended audience, invitation to continue reading. Multi-paragraph, flowing prose with no internal headers. Approximately 500-1000 words. Natural paragraph breaks.` : isHowToUseThisBook ? `The full How to Use This Book section following the instructions above — best way to read, exercises/action steps guidance, maximum value tips, encouragement to take notes and revisit concepts. Flowing prose with no internal headers. Approximately 250-450 words.` : isWhatYouWillLearn ? `A short framing intro followed by 6-10 concise bullet points (each line starting with "- ") summarizing knowledge, skills, and outcomes the reader will gain. Approximately 200-400 words total.` : isWhoThisBookIsFor ? `The full Who This Book Is For section following the instructions above — intended audience, who benefits most, experience level, reassurance. Flowing prose with no internal headers. Approximately 200-350 words.` : isDedication ? `The full dedication text following the instructions above — personal, sincere, 2-3 flowing paragraphs. Exactly 80–150 words. No headers or labels.` : isAcknowledgments ? `The full acknowledgments text following the instructions above — warm thanks to plausible categories of contributors. 1-3 short paragraphs, approximately 100-200 words.` : isPreface ? `The full Preface text following the instructions above — the author's personal journey and motivation for writing this book, first-person voice. Flowing prose with no internal headers. Approximately 250-450 words.` : isConclusion ? `The full book Conclusion following the BOOK CONCLUSION INSTRUCTIONS above — reconnect with purpose, reflect on reader progress, synthesize main ideas, connect to real-world application, reinforce core message, inspire confidence, memorable closing. Multi-paragraph flowing prose with no internal headers or chapter-by-chapter summary. Approximately 1,500-2,500 words. Match the manuscript's established voice exactly.` : isEpilogue ? `The full Epilogue text following the instructions above — reflective, forward-looking, emotionally resonant. Flowing prose with no internal headers. Approximately 200-400 words.` : isKeyLessons ? `A short framing intro followed by 8-15 numbered lessons, each with a bold headline and 1-2 sentences of elaboration. Approximately 400-700 words total.` : isAppendix ? `Practical supplementary reference material organized with clear sub-headers, lists, or tables — designed to be scanned. Approximately 300-600 words or as needed.` : isGlossary ? `A 1-sentence intro line followed by an alphabetical list of 10-20 key terms in **Term**: Definition format (one blank line between entries). Approximately 300-600 words total.` : isReferences ? `A 1-sentence intro line followed by a numbered list of 10-20 plausible, consistently formatted citations relevant to this book's topic. Approximately 250-500 words total.` : isFurtherReading ? `A 1-2 sentence framing intro followed by 6-12 curated recommendations grouped under category sub-headers, each with a 1-3 sentence description. Approximately 300-600 words total.` : isBackAcknowledgments ? `The full Acknowledgments text — warm thanks to 2-4 categories of plausible contributors, closing with a direct thank-you to the reader. 2-4 short paragraphs, approximately 150-300 words.` : isTheEnd ? `The full The End closing — an extremely brief, warm message (30-80 words maximum) thanking the reader and leaving them inspired. May include a stylistic "The End" header.` : hasBlueprint ? `The full subsection prose built around ONLY the selected blueprint components — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. Weave every selected blueprint component seamlessly into the prose.` : `The full subsection prose following the 6-part structure above — multi-paragraph, flowing prose with no internal headers. Minimum 400 words. Natural paragraph breaks. The 6 parts (intro, concept, example, action steps, takeaway, transition) must be woven in seamlessly.`}",
   "flowSections": [
@@ -4413,7 +4426,7 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 }`;
 }
 
-export function improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, bookContext, blueprintComponents }: any) {
+export function improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, subsectionPurpose, bookContext, blueprintComponents }: any) {
   const toneInstr = resolveToneInstruction(tone || "");
 
   const contextLines: string[] = [];
@@ -4423,6 +4436,7 @@ export function improvementPrompt({ action, currentText, tone, audience, bookStr
   if (bookStructure || bookContext?.structure)
     contextLines.push(`Book Structure: ${bookStructure || bookContext.structure}`);
   if (subsectionTitle)           contextLines.push(`Subsection: ${subsectionTitle}`);
+  if (subsectionPurpose)         contextLines.push(`Subsection purpose: ${subsectionPurpose}`);
   if (bookContext?.bookTopic)    contextLines.push(`Core Topic: ${bookContext.bookTopic}`);
   if (bookContext?.usp)          contextLines.push(`USP: ${bookContext.usp}`);
   if (bookContext?.authorSummary) contextLines.push(`Author Voice: ${String(bookContext.authorSummary).slice(0, 200)}`);
@@ -4475,6 +4489,7 @@ EDITING RULES (non-negotiable)
 ════════════════════════════════════
 - Match the existing voice, tone, and reading level exactly — do NOT shift register
 - Do NOT change the structural purpose of the section
+- Keep every refinement anchored to the exact subsection title and purpose above. Do not broaden it into the chapter or a neighboring subsection.
 - Do NOT add a generic summary paragraph or motivational closer at the end
 - Do NOT introduce markdown headers inside the prose
 - Keep the revised text mostly as plain paragraphs. Use at most one or two short bold phrases only when emphasis genuinely improves readability; do not use # headings, decorative separators, or repeated bold markers.
@@ -4497,6 +4512,7 @@ export function editContentPrompt({
   audience,
   bookStructure,
   subsectionTitle,
+  subsectionPurpose,
   bookContext,
   blueprintComponents
 }: any) {
@@ -4509,6 +4525,7 @@ export function editContentPrompt({
   if (bookStructure || bookContext?.structure)
     contextLines.push(`Book Structure: ${bookStructure || bookContext.structure}`);
   if (subsectionTitle)           contextLines.push(`Subsection: ${subsectionTitle}`);
+  if (subsectionPurpose)         contextLines.push(`Subsection purpose: ${subsectionPurpose}`);
   if (bookContext?.bookTopic)    contextLines.push(`Core Topic: ${bookContext.bookTopic}`);
   if (bookContext?.usp)          contextLines.push(`USP: ${bookContext.usp}`);
   if (bookContext?.authorSummary) contextLines.push(`Author Voice: ${String(bookContext.authorSummary).slice(0, 200)}`);
@@ -4553,6 +4570,7 @@ EDITING RULES (non-negotiable)
 - Preserve every sentence, example, fact, transition, paragraph, and list item that the brief does not ask you to change.
 - Keep the same paragraph count and list structure as the existing content. Do not merge, reorder, or replace paragraphs just to improve style.
 - Preserve the subsection's core subject, purpose, factual claims, useful examples, named frameworks, and established voice unless the author explicitly asks to change them.
+- Keep the edit anchored to the exact subsection title and purpose above. Do not broaden it into the chapter or a neighboring subsection.
 - Apply clear, feasible requests from the author's brief.
 - Keep positive points and strengths the author identifies; correct or improve negative points they identify.
 - Do not blindly follow a request that would introduce unsupported facts. When a requested change needs new facts, write it generally and safely rather than inventing precise claims.
@@ -4578,6 +4596,7 @@ export function editContentRepairPrompt({
   audience,
   bookStructure,
   subsectionTitle,
+  subsectionPurpose,
   bookContext,
   blueprintComponents,
   reasons
@@ -4589,6 +4608,7 @@ export function editContentRepairPrompt({
     audience,
     bookStructure,
     subsectionTitle,
+    subsectionPurpose,
     bookContext,
     blueprintComponents
   })}
