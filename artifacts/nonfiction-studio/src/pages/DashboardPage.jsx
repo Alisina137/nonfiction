@@ -709,7 +709,7 @@ function validateWrite(lessons, bookOutline) {
   if (!blocks.length) {
     return { form: "Add chapters in Outline before drafting your manuscript." };
   }
-  const written = blocks.filter((b) => blockHasContent(lessons, b.id));
+  const written = blocks.filter((b) => blockHasContent(lessons, b));
   if (!written.length) {
     return { form: "Write at least one section to continue — you can finish the rest later." };
   }

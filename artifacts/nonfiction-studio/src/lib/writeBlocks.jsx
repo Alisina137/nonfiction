@@ -266,6 +266,7 @@ export function collectPreviousConcepts(blocks, lessons, beforeIndex) {
     const block = blocks[i];
     const id = block?.id;
     const entry = id ? lessons?.[id] : null;
+    if (!blockHasContent(lessons, block)) continue;
     const takeaway = str(entry?.lesson?.keyTakeaway || entry?.lesson?.framework);
     const title = str(entry?.lesson?.title) || str(block?.label);
     concepts.push({
@@ -301,7 +302,7 @@ export function buildChapterSummaries(blocks, lessons) {
   }
   const summaries = [];
   for (const ch of chMap.values()) {
-    const allDone = ch.blocks.every((b) => blockHasContent(lessons, b.id));
+    const allDone = ch.blocks.every((b) => blockHasContent(lessons, b));
     if (!allDone) continue;
     const keyIdeas = ch.blocks
       .map((b) => str(lessons?.[b.id]?.lesson?.keyTakeaway || lessons?.[b.id]?.lesson?.framework))
@@ -331,7 +332,7 @@ export function buildManuscriptContext(blocks, lessons) {
   const chapters = [];
   for (const ch of chMap.values()) {
     const proseChunks = ch.blocks
-      .filter((b) => blockHasContent(lessons, b.id))
+      .filter((b) => blockHasContent(lessons, b))
       .map((b) => {
         const prose = String(lessons?.[b.id]?.prose || "").trim();
         const label = b.sectionTitle ? `[${b.sectionTitle}] ` : "";
@@ -346,13 +347,43 @@ export function buildManuscriptContext(blocks, lessons) {
   return chapters;
 }
 
-export function blockHasContent(lessons, blockId) {
-  const prose = String(lessons?.[blockId]?.prose || "").trim();
-  return prose.length >= 40;
+function normalizeIdentity(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase();
+}
+
+/**
+ * A lesson is only considered drafted when it is still attached to the
+ * outline target that produced it. Legacy lessons without this binding are
+ * intentionally treated as stale so old prose cannot appear under a newly
+ * renamed subsection.
+ */
+export function blockHasContent(lessons, blockOrId) {
+  const block = blockOrId && typeof blockOrId === "object" ? blockOrId : null;
+  const blockId = block ? block.id : blockOrId;
+  const entry = lessons?.[blockId];
+  const prose = String(entry?.prose || "").trim();
+  if (prose.length < 40) return false;
+  if (!block) return true;
+
+  const targetTitle = String(block.label || block.subsection?.title || "").trim();
+  const targetPurpose = String(
+    block.subsection?.description || block.subsection?.purpose || ""
+  ).trim();
+  const storedTitle = String(entry?.targetSubsectionTitle || "").trim();
+  const storedPurpose = String(entry?.targetSubsectionPurpose || "").trim();
+
+  // Entries written before target metadata was added are not safe to reuse.
+  if (!storedTitle) return false;
+  if (targetTitle && normalizeIdentity(storedTitle) !== normalizeIdentity(targetTitle)) return false;
+  if (targetPurpose && storedPurpose && normalizeIdentity(storedPurpose) !== normalizeIdentity(targetPurpose)) return false;
+  return true;
 }
 
 export function countDraftedBlocks(blocks, lessons) {
   if (!blocks.length) return { done: 0, total: 0 };
-  const done = blocks.filter((b) => blockHasContent(lessons, b.id)).length;
+  const done = blocks.filter((b) => blockHasContent(lessons, b)).length;
   return { done, total: blocks.length };
 }

@@ -72,9 +72,10 @@ function GenerateBtn({ busy, hasContent, disabled, onClick, small }) {
 }
 
 /** Renders the content area for one write block. */
-function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove, onEdit, onSetProse, locked, lockMessage }) {
+function BlockContent({ block, blockId, lessons, busyId, isBusy, onGenerate, onImprove, onEdit, onSetProse, locked, lockMessage }) {
   const prose      = String(lessons?.[blockId]?.prose || "").trim();
-  const hasContent = blockHasContent(lessons, blockId);
+  const hasContent = blockHasContent(lessons, block || blockId);
+  const hasStoredProse = prose.length >= 40;
   const isThisBusy = busyId === blockId;
   const lesson     = lessons?.[blockId]?.lesson;
   const [editOpen, setEditOpen] = useState(false);
@@ -94,13 +95,20 @@ function BlockContent({ blockId, lessons, busyId, isBusy, onGenerate, onImprove,
       return (
         <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-center">
           <p className="text-xs font-medium text-slate-400">
-            🔒 {lockMessage || "Complete all chapter generation before creating this section."}
+            🔒 {hasStoredProse
+              ? "This saved draft belongs to an earlier outline target and must be regenerated."
+              : (lockMessage || "Complete all chapter generation before creating this section.")}
           </p>
         </div>
       );
     }
     return (
       <div className="mt-3">
+        {hasStoredProse && (
+          <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+            This saved draft was written for an earlier outline target. Regenerate it to align the content with “{block?.label || "this subsection"}”.
+          </p>
+        )}
         <GenerateBtn
           busy={isThisBusy}
           hasContent={false}
@@ -250,7 +258,7 @@ export default function WriteStep({
     [blocks]
   );
   const chapterBodyDone = useMemo(
-    () => chapterBodyBlocks.filter((b) => blockHasContent(lessons, b.id)).length,
+    () => chapterBodyBlocks.filter((b) => blockHasContent(lessons, b)).length,
     [chapterBodyBlocks, lessons]
   );
   const manuscriptComplete = chapterBodyBlocks.length > 0 && chapterBodyDone === chapterBodyBlocks.length;
@@ -264,7 +272,7 @@ export default function WriteStep({
     if (currentStep !== writeStepIndex) return;
     if (!blocks.length) return;
     const searchable = manuscriptComplete ? blocks : blocks.filter((b) => !FRONT_MATTER_KINDS.includes(b.kind));
-    const firstEmpty = searchable.find((b) => !blockHasContent(lessons, b.id));
+    const firstEmpty = searchable.find((b) => !blockHasContent(lessons, b));
     if (!firstEmpty?.chapterKey) return;
     setExpandedChapters((prev) => {
       if (prev[firstEmpty.chapterKey] !== undefined) return prev;
@@ -352,7 +360,7 @@ export default function WriteStep({
   function isFrontMatterLockedFor(block, lessonsSnapshot) {
     if (!FRONT_MATTER_KINDS.includes(block.kind)) return false;
     if (!chapterBodyBlocks.length) return true;
-    return !chapterBodyBlocks.every((b) => blockHasContent(lessonsSnapshot, b.id));
+    return !chapterBodyBlocks.every((b) => blockHasContent(lessonsSnapshot, b));
   }
 
   async function generateBlock(block, lessonsSnapshot = lessons, strategyCache = chapterStrategies) {
@@ -361,22 +369,32 @@ export default function WriteStep({
       return { snapshot: lessonsSnapshot, strategyCache };
     }
     const index = blocks.findIndex((b) => b.id === block.id);
-    const isRegeneration = blockHasContent(lessonsSnapshot, block.id);
+    const isRegeneration = blockHasContent(lessonsSnapshot, block);
+    const hasExistingDraft = String(lessonsSnapshot?.[block.id]?.prose || "").trim().length > 0;
     // Keep the rest of the manuscript as context, but do not tell a replacement
     // draft that its own previous lesson is already covered.
-    const lessonsForGeneration = isRegeneration
+    const lessonsWithoutCurrentTarget = hasExistingDraft || isRegeneration
       ? Object.fromEntries(
           Object.entries(lessonsSnapshot && typeof lessonsSnapshot === "object" ? lessonsSnapshot : {})
             .filter(([lessonId]) => lessonId !== block.id)
         )
       : lessonsSnapshot;
-    const projectForGeneration = isRegeneration && fullProject && typeof fullProject === "object"
+    // Legacy/unbound drafts remain in local storage for recovery, but must not
+    // contaminate the manuscript context for a newly targeted generation.
+    const lessonsForGeneration = Object.fromEntries(
+      Object.entries(
+        lessonsWithoutCurrentTarget && typeof lessonsWithoutCurrentTarget === "object"
+          ? lessonsWithoutCurrentTarget
+          : {}
+      ).filter(([lessonId]) => {
+        const sourceBlock = blockById.get(lessonId);
+        return !sourceBlock || blockHasContent(lessonsWithoutCurrentTarget, sourceBlock);
+      })
+    );
+    const projectForGeneration = fullProject && typeof fullProject === "object"
       ? {
           ...fullProject,
-          lessons: Object.fromEntries(
-            Object.entries(fullProject.lessons && typeof fullProject.lessons === "object" ? fullProject.lessons : {})
-              .filter(([lessonId]) => lessonId !== block.id)
-          )
+          lessons: lessonsForGeneration
         }
       : fullProject;
     setBusyId(block.id);
@@ -410,7 +428,13 @@ export default function WriteStep({
       }, { noCache: true });
       const lesson = data.lesson || data;
       const prose  = lessonToProse(lesson);
-      const entry  = { lesson, prose, generatedAt: new Date().toISOString() };
+      const entry  = {
+        lesson,
+        prose,
+        targetSubsectionTitle: block.label || block.subsection?.title || "",
+        targetSubsectionPurpose: block.subsection?.description || block.subsection?.purpose || "",
+        generatedAt: new Date().toISOString()
+      };
       patchLesson(block.id, entry);
       setStatus(`Drafted "${block.label}".`);
       const newSnapshot = { ...lessonsSnapshot, [block.id]: { ...entry, updatedAt: new Date().toISOString() } };
@@ -500,7 +524,7 @@ export default function WriteStep({
     let strategyCache = { ...chapterStrategies };
     try {
       for (const block of chBlocks) {
-        if (blockHasContent(snapshot, block.id)) continue;
+        if (blockHasContent(snapshot, block)) continue;
         const result  = await generateBlock(block, snapshot, strategyCache);
         snapshot      = result.snapshot      || snapshot;
         strategyCache = result.strategyCache || strategyCache;
@@ -529,14 +553,14 @@ export default function WriteStep({
     try {
       for (let i = 0; i < orderedBlocks.length; i++) {
         const block = orderedBlocks[i];
-        if (blockHasContent(snapshot, block.id)) continue;
+        if (blockHasContent(snapshot, block)) continue;
         if (isFrontMatterLockedFor(block, snapshot)) continue;
         setExpandedChapters((p) => ({ ...p, [block.chapterKey]: true }));
         const before = snapshot;
         const result = await generateBlock(block, snapshot, strategyCache);
         snapshot      = result.snapshot      || snapshot;
         strategyCache = result.strategyCache || strategyCache;
-        if (snapshot === before || !blockHasContent(snapshot, block.id)) failed.push(block.label);
+        if (snapshot === before || !blockHasContent(snapshot, block)) failed.push(block.label);
       }
       setStatus(
         failed.length
@@ -577,7 +601,7 @@ export default function WriteStep({
     const block      = blockById.get(node.id);
     if (!block) return null;
     const isExpanded = expandedChapters[chKey] !== false;
-    const hasContent = blockHasContent(lessons, node.id);
+     const hasContent = blockHasContent(lessons, block);
 
     return (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -611,6 +635,7 @@ export default function WriteStep({
         {isExpanded && (
           <div className="px-8 pb-8 pt-5">
             <BlockContent
+              block={block}
               blockId={node.id}
               lessons={lessons}
               busyId={busyId}
@@ -711,7 +736,7 @@ export default function WriteStep({
         {chapters.map((ch, ci) => {
           const chKey      = ch.id || `ch-${ci}`;
           const chBlocks   = blocks.filter((b) => b.chapterKey === chKey);
-          const chDone     = chBlocks.filter((b) => blockHasContent(lessons, b.id)).length;
+           const chDone     = chBlocks.filter((b) => blockHasContent(lessons, b)).length;
           const isExpanded = expandedChapters[chKey] !== false;
           const sections   = Array.isArray(ch.sections) ? ch.sections : [];
 
@@ -878,7 +903,7 @@ export default function WriteStep({
                             subs.map((sub, qi) => {
                               const subNum  = `${secNum}.${qi + 1}`;
                               const block   = blockById.get(sub.id);
-                              const hasContent = block ? blockHasContent(lessons, sub.id) : false;
+                               const hasContent = block ? blockHasContent(lessons, block) : false;
 
                               return (
                                 /* ── Subsection ── 16px top margin */
@@ -899,6 +924,7 @@ export default function WriteStep({
                                   {/* Content */}
                                   {block ? (
                                     <BlockContent
+                                      block={block}
                                       blockId={sub.id}
                                       lessons={lessons}
                                       busyId={busyId}
@@ -926,6 +952,7 @@ export default function WriteStep({
                               return block ? (
                                 <div className="mt-3 pl-4 border-l-2 border-slate-100">
                                   <BlockContent
+                                    block={block}
                                     blockId={sec.id}
                                     lessons={lessons}
                                     busyId={busyId}
