@@ -42,7 +42,7 @@ if (process.env.NODE_ENV === "production") {
     "artifacts/nonfiction-studio/dist/public",
   );
   app.use(express.static(staticDir));
-  app.get("*", (_req, res) => {
+   app.get("/{*splat}", (_req, res) => {
     res.sendFile(path.join(staticDir, "index.html"));
   });
 }
