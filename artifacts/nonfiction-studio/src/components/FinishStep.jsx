@@ -61,6 +61,16 @@ function saveMultiFormat(data) {
   try { window.localStorage.setItem(MULTI_FORMAT_KEY, JSON.stringify(data)); } catch { /* ignore */ }
 }
 
+function getDownloadFilename(response, fallback) {
+  const disposition = response.headers.get("content-disposition") || "";
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encoded?.[1]) {
+    try { return decodeURIComponent(encoded[1].replace(/^["']|["']$/g, "")); } catch { /* use fallback */ }
+  }
+  const plain = disposition.match(/filename="?([^";]+)"?/i);
+  return plain?.[1]?.trim() || fallback;
+}
+
 const SCORECARD_LABELS = {
   overallPublishingScore:       "Overall Publishing Score",
   commercialPotential:          "Commercial Potential",
@@ -1337,12 +1347,30 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         throw new Error(err.error || `${label} export failed`);
       }
       const blob = await res.blob();
+      const responseType = (res.headers.get("content-type") || "").toLowerCase();
+      if (!blob.size) {
+        throw new Error(`${label} export returned an empty file.`);
+      }
+      if (mimeType && !responseType.includes(mimeType)) {
+        const responseText = await blob.text().catch(() => "");
+        throw new Error(
+          responseText
+            ? `${label} export returned an unexpected response.`
+            : `${label} export returned an unexpected file type.`
+        );
+      }
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = filename;
+      a.download = getDownloadFilename(res, filename);
+      a.style.display = "none";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      // Keep the object URL alive long enough for browsers that start the
+      // download asynchronously after click().
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setStatus(`${label} downloaded.`);
     } catch (e) {
       setStatus(e.message || `Could not export ${label}.`);
