@@ -1,4 +1,5 @@
-kind = "web"
+kind = "video"
+videoAspectRatio = "9:16"
 previewPath = "/"
 title = "Nonfiction AI Studio"
 version = "1.0.0"
