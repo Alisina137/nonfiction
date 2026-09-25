@@ -3,7 +3,8 @@ import {
   ALLOWED_RESOURCE_EXTENSIONS,
   bytesToLabel,
   parseResourceUploadFile,
-  RESOURCE_FILE_MAX_BYTES
+  RESOURCE_FILE_MAX_BYTES,
+  RESOURCE_NON_PDF_MAX_BYTES
 } from "@/lib/resources/fileUpload";
 import { aiFetch } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
@@ -627,7 +628,7 @@ function FileDropZone({ onFilesChosen, fileLoading, fileForm, setFileForm }) {
       >
         <p className="text-sm font-medium text-slate-700">{fileLoading ? "Reading and indexing files…" : "Drop files here or click to choose"}</p>
         <p className="mt-1 text-xs text-slate-500">
-          {ALLOWED_RESOURCE_EXTENSIONS.map((e) => `.${e}`).join(" ")} · max {bytesToLabel(RESOURCE_FILE_MAX_BYTES)} each
+          {ALLOWED_RESOURCE_EXTENSIONS.map((e) => `.${e}`).join(" ")} · PDFs max {bytesToLabel(RESOURCE_FILE_MAX_BYTES)} · other files max {bytesToLabel(RESOURCE_NON_PDF_MAX_BYTES)}
         </p>
       </div>
 
