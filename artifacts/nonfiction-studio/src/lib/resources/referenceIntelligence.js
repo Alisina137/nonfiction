@@ -232,6 +232,7 @@ export function buildVerifiedSourceList(projectOrResources) {
       year: clean(a.publicationYear),
       publication: clean(a.publisher),
       url: "",
+      description: clean(a.overview || a.thesis),
       source: "uploaded_reference"
     });
   }
@@ -246,6 +247,7 @@ export function buildVerifiedSourceList(projectOrResources) {
       year: "",
       publication: "",
       url: clean(link.url),
+      description: clean(link.summary || link.note || link.body),
       source: "user_reference"
     });
   }
@@ -262,6 +264,7 @@ export function buildVerifiedSourceList(projectOrResources) {
       year: clean(book.publicationDate).slice(0, 4),
       publication: clean(book.publisher),
       url: clean(book.url),
+      description: clean(book.description),
       source: provider || "market_research"
     });
   }
