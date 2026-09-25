@@ -206,6 +206,8 @@ export const TOKEN_LIMITS: Record<string, number> = {
   subsectionGen:      3500,
   chapterStrategy:    1200,
   competitiveIntel:   6500,
+  referenceAnalysis:   8000,
+  referenceSynthesis:  5000,
   default:             800
 };
 
@@ -765,6 +767,84 @@ export async function generateContentFast(
   opts: GenOptions = {}
 ): Promise<GenResult> {
   return runChain(prompt, system, opts);
+}
+
+
+/**
+ * Analyze a PDF with Gemini's native document understanding.
+ *
+ * This deliberately stays Gemini-only because the other configured providers
+ * accept text prompts but not PDF document parts. The caller should use this
+ * for source-book ingestion, then store the compact structured analysis rather
+ * than the original PDF bytes in project state.
+ */
+export async function generatePdfContent(
+  dataBase64: string,
+  prompt: string,
+  system?: string,
+  opts: { maxTokens?: number; model?: string } = {}
+): Promise<GenResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is required for PDF reference analysis");
+
+  const base64 = String(dataBase64 || "").replace(/^data:application\/pdf;base64,/, "").trim();
+  if (!base64) throw new Error("PDF data is required");
+
+  const model = opts.model || "gemini-2.5-flash";
+  const maxTokens = Math.max(1000, Math.min(Number(opts.maxTokens) || TOKEN_LIMITS.referenceAnalysis, 12000));
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const contents: any[] = [];
+  if (system) {
+    contents.push({ role: "user", parts: [{ text: `[System]: ${system}` }] });
+    contents.push({ role: "model", parts: [{ text: "Understood." }] });
+  }
+  contents.push({
+    role: "user",
+    parts: [
+      { inline_data: { mime_type: "application/pdf", data: base64 } },
+      { text: prompt }
+    ]
+  });
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents,
+      generationConfig: {
+        maxOutputTokens: maxTokens,
+        temperature: 0.2,
+        responseMimeType: "application/json"
+      }
+    })
+  });
+
+  const rawText = await res.text();
+  if (!res.ok) {
+    let message = rawText.slice(0, 500);
+    try {
+      const parsed = JSON.parse(rawText);
+      message = parsed?.error?.message || message;
+    } catch {}
+    throw Object.assign(new Error(message), { httpStatus: res.status });
+  }
+
+  let data: any = {};
+  try { data = JSON.parse(rawText); } catch {}
+  const text = (data?.candidates?.[0]?.content?.parts || [])
+    .map((part: any) => typeof part?.text === "string" ? part.text : "")
+    .join("\n")
+    .trim();
+
+  if (!text) throw new Error("Gemini returned an empty PDF analysis");
+
+  return {
+    text,
+    usedProvider: "gemini",
+    usedModel: model,
+    exhaustedProviders: []
+  };
 }
 
 // ─── JSON extraction + repair ──────────────────────────────────────────────
