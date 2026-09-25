@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "wouter";
 import { countManuscriptWords, buildPublishingBundle } from "@/lib/manuscript";
 import { resolveAuthorName, resolveBookTitle } from "@/lib/projectMeta";
@@ -9,6 +9,7 @@ import { buildBookContext } from "@/lib/bookContext";
 import { lessonToProse } from "@/lib/writeBlocks";
 import { buildManuscriptDigest } from "@/lib/manuscriptDigest";
 import { buildKnowledgeGraphSummary } from "@/lib/knowledgeGraph";
+import { assessReferenceOverlap } from "@/lib/resources/referenceIntelligence";
 import { intelligenceService } from "@/intelligence";
 
 const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
@@ -1270,6 +1271,14 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const author = resolveAuthorName(project);
   const words = countManuscriptWords(project);
   const bundle = buildPublishingBundle(project);
+  const referenceFiles = (fullProject?.resources?.files || []).filter((file) => file?.referenceAnalysis);
+  const referenceSafety = useMemo(() => {
+    const manuscriptText = Object.values(lessons || {})
+      .map((entry) => String(entry?.prose || ""))
+      .filter(Boolean)
+      .join("\n\n");
+    return assessReferenceOverlap(manuscriptText, fullProject?.resources);
+  }, [lessons, fullProject?.resources]);
   const slug = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "book";
 
   const exportPayload = {
@@ -1415,6 +1424,47 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
           <p className="mt-1 text-xs font-medium text-slate-600">Listing description</p>
         </article>
       </section>
+
+      {referenceFiles.length > 0 && (
+        <section className={`book-panel border ${referenceSafety.risk === "review" ? "border-amber-200 bg-amber-50/40" : "border-emerald-200 bg-emerald-50/30"}`}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Reference Safety</p>
+              <h3 className="mt-1 text-sm font-bold text-slate-900">
+                {referenceSafety.risk === "review" ? "Review source-like wording before export" : "No indexed verbatim overlap detected"}
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                Checked the manuscript against {referenceSafety.scannedPhrases} short phrase fingerprints and verified quotes
+                from {referenceFiles.length} indexed PDF reference book{referenceFiles.length === 1 ? "" : "s"}.
+              </p>
+            </div>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${referenceSafety.risk === "review" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>
+              {referenceSafety.risk === "review" ? `${referenceSafety.matches.length} match${referenceSafety.matches.length === 1 ? "" : "es"}` : "PASS"}
+            </span>
+          </div>
+
+          {referenceSafety.matches.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {referenceSafety.matches.slice(0, 8).map((match, i) => (
+                <article key={i} className="rounded-lg border border-amber-200 bg-white p-3">
+                  <p className="text-xs font-semibold text-slate-900">
+                    {match.sourceTitle}{match.pageLabel ? <span className="font-normal text-slate-500"> · {match.pageLabel}</span> : null}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-600">“{match.text}”</p>
+                </article>
+              ))}
+              <p className="text-[11px] font-medium text-amber-800">
+                Rewrite or verify these passages before publishing. The app does not auto-delete your draft.
+              </p>
+            </div>
+          )}
+
+          <p className="mt-3 text-[10px] leading-relaxed text-slate-400">
+            This is a focused source-overlap safety check against phrase fingerprints extracted from your uploaded references.
+            It is not a full plagiarism database or a substitute for final editorial review.
+          </p>
+        </section>
+      )}
 
       {/* Publishing Readiness — Developmental Edit */}
       <PublishingReadinessPanel
