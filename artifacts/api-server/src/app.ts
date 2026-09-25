@@ -27,7 +27,10 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json({ limit: "10mb" }));
+// PDF reference analysis is sent as temporary base64 JSON. Gemini supports PDFs
+// up to 50 MB, so allow enough headroom for base64 expansion without storing
+// those bytes in project state.
+app.use(express.json({ limit: "80mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.get("/health", (_req, res) => {
