@@ -612,6 +612,7 @@ export default function OutlineStep({
         title:         resolveBookTitle(fullProject),
         description:   bd.description || bd.positioningStatement || "",
         research:      fullProject?.research,
+        resources:     fullProject?.resources ?? null,
         bookContext:   buildBookContext(fullProject),
         chapterCount:  Number(bd.chapterCount) || 10,
         proposedBook:  fullProject?.proposedBook ?? null,

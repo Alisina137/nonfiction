@@ -108,62 +108,8 @@ function deduplicateBooks(entries: Array<{ book: any; matchedKeywords: string[] 
   return result;
 }
 
-// ─── AI fallback: generate list of real bestselling books in a niche ──────────
-
-async function aiBookSearch(query: string, maxResults = 15): Promise<any[]> {
-  const prompt = `You are a publishing market researcher. List ${maxResults} real bestselling nonfiction books relevant to: "${query}"
-
-Respond with ONLY a valid JSON array (no markdown, no explanation, no code fences). Each item:
-{"title":"...","authors":"...","subtitle":"...or null","rating":4.5,"ratingsTotal":12000,"publicationDate":"2020","publisher":"...or null","description":"1-2 sentences or null","asin":"10-char or null"}
-
-Requirements:
-- Real books that exist on Amazon
-- Most popular/bestselling first
-- Return a raw JSON array starting with [ and ending with ]
-- No wrapping object, no markdown fences`;
-
-  const result = await generateContent(prompt, undefined, { maxTokens: 4000 });
-  let parsed: any;
-  try { parsed = extractJSON(result.text); } catch (e: any) {
-    throw new Error(`AI JSON parse failed: ${e.message}`);
-  }
-
-  let arr: any[] = [];
-  if (Array.isArray(parsed)) arr = parsed;
-  else if (parsed && Array.isArray(parsed.books)) arr = parsed.books;
-  else if (parsed && Array.isArray(parsed.results)) arr = parsed.results;
-  else throw new Error("AI response was not an array");
-
-  const valid = arr.filter((b: any) => b && typeof b.title === "string" && b.title.trim()).slice(0, maxResults);
-  if (valid.length === 0) throw new Error("AI returned no valid books");
-
-  return valid.map((b: any) => {
-    const rawAsin = typeof b.asin === "string" ? b.asin.trim().toUpperCase() : null;
-    const asin = rawAsin && /^[A-Z0-9]{10}$/.test(rawAsin) ? rawAsin : null;
-    const thumbnail = asin
-      ? `https://m.media-amazon.com/images/P/${asin}.01._SX300_.jpg`
-      : null;
-    return {
-      asin,
-      title:        b.title.trim(),
-      subtitle:     b.subtitle && b.subtitle !== "null" ? b.subtitle : null,
-      authors:      b.authors || null,
-      url:          asin
-        ? `https://www.amazon.com/dp/${asin}`
-        : `https://www.amazon.com/s?k=${encodeURIComponent(b.title.trim())}`,
-      thumbnail,
-      rating:       typeof b.rating === "number" && b.rating > 0 ? b.rating : null,
-      ratingsTotal: typeof b.ratingsTotal === "number" && b.ratingsTotal > 0 ? b.ratingsTotal : null,
-      recentSales:  null, sponsored: false, bestsellerBadge: null,
-      bestsellersRankFlat: null, bestsellersRanks: null, expandedDetailsLoaded: false,
-      pageCount:    typeof b.pageCount === "number" ? b.pageCount : null,
-      publisher:    b.publisher && b.publisher !== "null" ? b.publisher : null,
-      publicationDate: b.publicationDate && b.publicationDate !== "null" ? b.publicationDate : null,
-      description:  b.description && b.description !== "null" ? b.description : null,
-      source_provider: "ai_research"
-    };
-  });
-}
+// AI is intentionally NOT used to invent competitor metadata. If paid Amazon
+// providers are unavailable, Open Library provides the last-resort real-source fallback.
 
 // ─── Open Library last-resort fallback ───────────────────────────────────────
 
@@ -222,12 +168,12 @@ async function searchOneKeyword(keyword: string, amazonDomain: string): Promise<
     }
   }
 
-  // 3. AI fallback
+  // 3. Verified public-data fallback — never fabricate competitor metadata with AI.
   try {
-    const books = await aiBookSearch(keyword, 15);
-    return { books, source: "ai_research" };
+    const books = await openLibrarySearch(keyword, 20);
+    return { books, source: "open_library" };
   } catch (e: any) {
-    console.log(`[multi-search] AI failed for "${keyword}":`, e.message);
+    console.log(`[multi-search] Open Library failed for "${keyword}":`, e.message);
   }
 
   return { books: [], source: "none" };

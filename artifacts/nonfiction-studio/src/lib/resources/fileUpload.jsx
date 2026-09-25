@@ -1,5 +1,6 @@
-/** Max size per uploaded resource file (local browser storage stays reasonable). */
-export const RESOURCE_FILE_MAX_BYTES = 4 * 1024 * 1024;
+/** PDFs are analyzed transiently and their raw bytes are discarded after indexing. */
+export const RESOURCE_FILE_MAX_BYTES = 50 * 1024 * 1024;
+export const RESOURCE_NON_PDF_MAX_BYTES = 4 * 1024 * 1024;
 
 /** Lowercase extensions (no dot) allowed in Resources uploads. */
 export const ALLOWED_RESOURCE_EXTENSIONS = ["pdf", "doc", "docx", "md", "txt"];
@@ -53,8 +54,9 @@ export function parseResourceUploadFile(file) {
       reject(new Error(`Not allowed: .${ext}. Use ${ALLOWED_RESOURCE_EXTENSIONS.join(", ")}.`));
       return;
     }
-    if (file.size > RESOURCE_FILE_MAX_BYTES) {
-      reject(new Error(`"${file.name}" is too large (max ${bytesToLabel(RESOURCE_FILE_MAX_BYTES)}).`));
+    const maxBytes = ext === "pdf" ? RESOURCE_FILE_MAX_BYTES : RESOURCE_NON_PDF_MAX_BYTES;
+    if (file.size > maxBytes) {
+      reject(new Error(`"${file.name}" is too large (max ${bytesToLabel(maxBytes)} for .${ext}).`));
       return;
     }
 

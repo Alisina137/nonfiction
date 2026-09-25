@@ -12,6 +12,7 @@ import {
 } from "@/lib/writeBlocks";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
+import { assessReferenceOverlap, buildReferenceEvidence } from "@/lib/resources/referenceIntelligence";
 import BackMatterSection from "@/components/BackMatterSection";
 
 const IMPROVE_ACTIONS = [
@@ -404,6 +405,19 @@ export default function WriteStep({
       const updatedCache    = chapterStrategy && block.chapterKey
         ? { ...strategyCache, [block.chapterKey]: chapterStrategy }
         : strategyCache;
+      const sourceEvidence = buildReferenceEvidence(
+        fullProject?.resources,
+        [
+          block.chapterContext?.title,
+          block.chapterContext?.summary,
+          block.sectionTitle,
+          block.sectionObjective,
+          block.label,
+          block.subsection?.objective,
+          block.subsection?.description
+        ].filter(Boolean).join(" "),
+        { maxItems: 10, maxPerSource: 3, maxChars: 9000 }
+      );
       const data = await aiFetch("/api/ai/lesson", {
         subsection:          block.subsection,
         targetSubsectionTitle: block.label || block.subsection?.title || "",
@@ -416,6 +430,7 @@ export default function WriteStep({
         audience:            writingAudience(fullProject),
         tone:                writingTone(fullProject),
         resources:           fullProject?.resources ?? null,
+        sourceEvidence,
         bookContext:         buildBookContext(projectForGeneration),
         bookStructure:       bookStructureVal(fullProject),
         sectionTitle:        block.sectionTitle || null,
@@ -428,15 +443,22 @@ export default function WriteStep({
       }, { noCache: true });
       const lesson = data.lesson || data;
       const prose  = lessonToProse(lesson);
+      const referenceSafety = assessReferenceOverlap(prose, fullProject?.resources);
       const entry  = {
         lesson,
         prose,
+        sourceEvidence: sourceEvidence.items,
+        referenceSafety,
         targetSubsectionTitle: block.label || block.subsection?.title || "",
         targetSubsectionPurpose: block.subsection?.description || block.subsection?.purpose || "",
         generatedAt: new Date().toISOString()
       };
       patchLesson(block.id, entry);
-      setStatus(`Drafted "${block.label}".`);
+      setStatus(
+        referenceSafety.risk === "review"
+          ? `Drafted "${block.label}", but reference overlap needs review.`
+          : `Drafted "${block.label}".`
+      );
       const newSnapshot = { ...lessonsSnapshot, [block.id]: { ...entry, updatedAt: new Date().toISOString() } };
       return { snapshot: newSnapshot, strategyCache: updatedCache };
     } catch (e) {
