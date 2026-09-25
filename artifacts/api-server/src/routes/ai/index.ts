@@ -3754,75 +3754,174 @@ function repairReferencesFromText(raw: string): { references: any[] } | null {
   return references.length ? { references } : null;
 }
 
-/** POST /api/ai/back-matter/references — scan manuscript and generate 15+ structured References */
+function normalizeVerifiedSources(value: any): any[] {
+  const list = Array.isArray(value) ? value : [];
+  const seen = new Set<string>();
+  const out: any[] = [];
+
+  for (const source of list) {
+    if (!source || typeof source !== "object") continue;
+    const id = String(source.id || "").trim();
+    const title = String(source.title || "").trim();
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push({
+      id,
+      type: String(source.type || "Website").trim() || "Website",
+      title,
+      author: String(source.author || "").trim(),
+      publication: String(source.publication || "").trim(),
+      year: String(source.year || "").trim(),
+      url: String(source.url || "").trim(),
+      description: String(source.description || "").replace(/\s+/g, " ").trim().slice(0, 1200),
+      source: String(source.source || "").trim()
+    });
+  }
+  return out.slice(0, 100);
+}
+
+/** POST /api/ai/back-matter/references — build References from verified project sources only. */
 router.post("/back-matter/references", async (req, res) => {
   try {
-    const { bookContext, manuscriptContent, tone, audience } = req.body || {};
-    const prompt = backMatterReferencesPrompt({
-      bookContext:       String(bookContext || ""),
-      manuscriptContent: Array.isArray(manuscriptContent) ? manuscriptContent : [],
-      tone:              String(tone || ""),
-      audience:          String(audience || ""),
-    });
-    const { data, usedProvider } = await runLongJSON(
-      prompt, systemPrompt(), req, res, "research",
-      (d) => !!(d?.references && Array.isArray(d.references) && d.references.length >= 15),
-      "back-matter/references",
-      4,
-      repairReferencesFromText
-    );
+    const sources = normalizeVerifiedSources(req.body?.verifiedSources);
     const groups: Record<string, any[]> = {};
     for (const g of REF_VALID_GROUPS) groups[g] = [];
-    data.references
-      .filter((r: any) => r && typeof r === "object" && String(r.title || "").trim())
-      .forEach((r: any, i: number) => {
-        const group = normalizeRefGroup(r.group);
-        groups[group].push({
-          id:          `ref-${Date.now()}-${i}`,
-          title:       String(r.title || "").trim(),
-          author:      String(r.author || "").trim(),
-          publication: String(r.publication || "").trim(),
-          year:        String(r.year || "").trim(),
-          url:         String(r.url || "").trim(),
-          notes:       String(r.notes || "").trim(),
-        });
+
+    sources.forEach((source: any, i: number) => {
+      const group = normalizeRefGroup(source.type || source.source);
+      groups[group].push({
+        id:          `ref-${Date.now()}-${i}`,
+        title:       source.title,
+        author:      source.author,
+        publication: source.publication,
+        year:        source.year,
+        url:         source.url,
+        notes:       source.source === "uploaded_reference" ? "Uploaded reference used in this project" : ""
       });
-    return res.json({ groups, _provider: usedProvider });
+    });
+
+    return res.json({
+      groups,
+      _provider: "verified_project_sources",
+      warning: sources.length
+        ? ""
+        : "No verified project sources are available. Add or index sources before generating References."
+    });
   } catch (error: any) {
     return aiErrorResponse(res, error);
   }
 });
 
-/** POST /api/ai/back-matter/further-reading — generate structured Further Reading recommendations */
+/** POST /api/ai/back-matter/further-reading — select only from verified project sources. */
 router.post("/back-matter/further-reading", async (req, res) => {
   try {
-    const { bookContext, chapterSummaries, tone, audience } = req.body || {};
-    const prompt = backMatterFurtherReadingPrompt({
-      bookContext:      String(bookContext || ""),
-      chapterSummaries: Array.isArray(chapterSummaries) ? chapterSummaries : [],
-      tone:             String(tone || ""),
-      audience:         String(audience || ""),
-    });
-    const { text, usedProvider } = await runLong(prompt, systemPrompt(), req, res, "lesson");
-    const data = extractJSON(text);
-    if (!data?.recommendations || !Array.isArray(data.recommendations)) {
-      return res.status(500).json({ error: "AI returned unexpected format for further reading." });
+    const sources = normalizeVerifiedSources(req.body?.verifiedSources);
+    if (!sources.length) {
+      return res.json({
+        recommendations: [],
+        _provider: "verified_project_sources",
+        warning: "No verified project sources are available for Further Reading."
+      });
     }
-    const VALID_TYPES       = new Set(["Book", "Article", "Course", "Website", "Podcast", "Research Paper"]);
+
+    const sourceById = new Map(sources.map((source: any) => [source.id, source]));
+    const chapterSummaries = Array.isArray(req.body?.chapterSummaries) ? req.body.chapterSummaries : [];
+    const bookContext = req.body?.bookContext && typeof req.body.bookContext === "object"
+      ? JSON.stringify(req.body.bookContext)
+      : String(req.body?.bookContext || "");
+
+    const whitelist = sources.slice(0, 40).map((source: any) => ({
+      sourceId: source.id,
+      title: source.title,
+      author: source.author,
+      type: source.type,
+      description: source.description
+    }));
+
+    const prompt = `You are curating a Further Reading list for a completed nonfiction manuscript.
+
+BOOK CONTEXT:
+${bookContext.slice(0, 4500)}
+
+CHAPTER SUMMARIES:
+${JSON.stringify(chapterSummaries).slice(0, 6500)}
+
+VERIFIED SOURCE WHITELIST:
+${JSON.stringify(whitelist)}
+
+Choose up to 12 useful items ONLY from the VERIFIED SOURCE WHITELIST.
+
+Return ONLY valid JSON:
+{
+  "recommendations": [
+    {
+      "sourceId": "exact sourceId from whitelist",
+      "why": "1-2 sentences explaining why this verified source extends the book",
+      "difficulty": "Beginner | Intermediate | Advanced"
+    }
+  ]
+}
+
+Rules:
+- Never invent a sourceId, title, author, resource, or URL.
+- Do not alter source metadata.
+- Select fewer than 8 if fewer genuinely useful verified sources exist.
+- "why" may explain relevance, but must not invent facts about the source beyond its supplied description.
+- difficulty is an editorial reading-level estimate, not a factual claim about the source.`;
+
+    let selected: any[] = [];
+    let usedProvider = "verified_project_sources";
+    try {
+      const generated = await generateContentFast(prompt, systemPrompt(), {
+        maxTokens: 1800,
+        taskType: "research",
+        ...aiOptsFromReq(req, 1800)
+      });
+      setProviderHeader(res, generated.usedProvider, generated.exhaustedProviders);
+      usedProvider = generated.usedProvider;
+      const data = extractJSON(generated.text);
+      selected = Array.isArray(data?.recommendations) ? data.recommendations : [];
+    } catch (selectionError: any) {
+      console.warn("[back-matter/further-reading] AI selection failed; using verified-source fallback:", selectionError?.message?.slice(0, 180));
+    }
+
     const VALID_DIFFICULTIES = new Set(["Beginner", "Intermediate", "Advanced"]);
-    const recommendations = data.recommendations
-      .filter((r: any) => r && typeof r === "object" && String(r.title || "").trim())
-      .map((r: any, i: number) => ({
+    const seenIds = new Set<string>();
+    const recommendations = selected
+      .filter((item: any) => item && sourceById.has(String(item.sourceId || "")) && !seenIds.has(String(item.sourceId || "")))
+      .map((item: any, i: number) => {
+        const sourceId = String(item.sourceId);
+        seenIds.add(sourceId);
+        const source = sourceById.get(sourceId);
+        return {
+          id:          `fr-${Date.now()}-${i}`,
+          sourceId,
+          title:       source.title,
+          author:      source.author,
+          type:        source.type || "Book",
+          description: source.description || "",
+          why:         String(item.why || "").replace(/\s+/g, " ").trim().slice(0, 700),
+          difficulty:  VALID_DIFFICULTIES.has(String(item.difficulty || "")) ? String(item.difficulty) : "Intermediate",
+          url:         source.url
+        };
+      })
+      .slice(0, 12);
+
+    if (!recommendations.length) {
+      const fallback = sources.slice(0, 12).map((source: any, i: number) => ({
         id:          `fr-${Date.now()}-${i}`,
-        title:       String(r.title       || "").trim(),
-        author:      String(r.author      || "").trim(),
-        type:        VALID_TYPES.has(String(r.type || ""))       ? String(r.type)       : "Book",
-        description: String(r.description || "").trim(),
-        why:         String(r.why         || "").trim(),
-        difficulty:  VALID_DIFFICULTIES.has(String(r.difficulty || "")) ? String(r.difficulty) : "Intermediate",
-        url:         String(r.url         || "").trim(),
-      }))
-      .slice(0, 15);
+        sourceId:    source.id,
+        title:       source.title,
+        author:      source.author,
+        type:        source.type || "Book",
+        description: source.description || "",
+        why:         "Verified source from this project's research library.",
+        difficulty:  "Intermediate",
+        url:         source.url
+      }));
+      return res.json({ recommendations: fallback, _provider: "verified_project_sources" });
+    }
+
     return res.json({ recommendations, _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
