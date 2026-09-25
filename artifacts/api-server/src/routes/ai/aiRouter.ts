@@ -847,6 +847,28 @@ export async function generatePdfContent(
   };
 }
 
+
+/**
+ * Gemini-only text generation without the generic 20k-character prompt clamp.
+ * Used for cross-book synthesis where the source index can legitimately be
+ * larger than ordinary UI prompts.
+ */
+export async function generateGeminiTextContent(
+  prompt: string,
+  system?: string,
+  opts: { maxTokens?: number; model?: string } = {}
+): Promise<GenResult> {
+  const model = opts.model || "gemini-2.5-flash";
+  const maxTokens = Math.max(800, Math.min(Number(opts.maxTokens) || TOKEN_LIMITS.referenceSynthesis, 12000));
+  const result = await callGemini(prompt, system, maxTokens, model);
+  return {
+    text: result.text,
+    usedProvider: "gemini",
+    usedModel: model,
+    exhaustedProviders: []
+  };
+}
+
 // ─── JSON extraction + repair ──────────────────────────────────────────────
 
 function repairTruncatedJSON(raw: string): any {
