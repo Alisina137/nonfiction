@@ -45,6 +45,8 @@ Objective: make uploaded reference books genuinely useful for original nonfictio
 - Reference-overlap safety scan checks the manuscript against indexed short quotations and distinctive phrase fingerprints before export.
 - Automated unit tests added for evidence retrieval, source-list verification, and phrase-overlap detection.
 - GitHub verification workflow added for tests, typecheck, and production build.
+- Replit/Linux-only package-manager guard made cross-platform for Windows local development.
+- Windows x64 native dependency exclusions removed from workspace overrides.
 
 ## Architecture decisions
 
@@ -57,7 +59,10 @@ Objective: make uploaded reference books genuinely useful for original nonfictio
 
 ## Verification status
 
-Pending automated branch verification. The phase is not considered fully verified until the GitHub workflow completes successfully.
+- Reference-intelligence helper tests: PASS (evidence retrieval, verified-source filtering, phrase-overlap detection).
+- Pull request: #1, draft, cleanly mergeable with `main`.
+- Full install/typecheck/build still requires execution in a real Node/pnpm workspace. GitHub Actions did not start from connector-created commits, so no CI pass is claimed.
+- For Windows local setup, run `pnpm install --no-frozen-lockfile` once so pnpm refreshes platform-specific optional binaries after the Replit/Linux-only override cleanup.
 
 ## Known limitations
 
