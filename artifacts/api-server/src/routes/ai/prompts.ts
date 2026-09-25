@@ -5007,7 +5007,7 @@ Return STRICT JSON only:
  */
 export function resourcesBlock(resources: any, context: "outline" | "lesson" | "all" = "all"): string {
   if (!resources) return "";
-  const { links = [], findings = [], files = [] } = resources;
+  const { links = [], findings = [], files = [], referenceSynthesis = null } = resources;
   const all = [
     ...links.map((r: any) => ({ ...r, _rtype: "link" })),
     ...findings.map((r: any) => ({ ...r, _rtype: "finding" })),
@@ -5048,7 +5048,33 @@ export function resourcesBlock(resources: any, context: "outline" | "lesson" | "
   const citeNote = cite?.style && cite.style !== "none"
     ? `\n[Citation format: ${cite.style.toUpperCase()}${cite.inline ? ", inline" : ""}${cite.bibliography ? ", bibliography" : ""}]`
     : "";
-  return `\n\nAuthor's Research Resources (priority-ordered):\n${lines.join("\n")}${citeNote}`;
+
+  const synthesisLines: string[] = [];
+  if (referenceSynthesis && typeof referenceSynthesis === "object") {
+    const lessons = Array.isArray(referenceSynthesis.lessonCandidates) ? referenceSynthesis.lessonCandidates.slice(0, 12) : [];
+    const themes = Array.isArray(referenceSynthesis.themes) ? referenceSynthesis.themes.slice(0, 8) : [];
+    if (themes.length) {
+      synthesisLines.push("Cross-book themes:");
+      for (const theme of themes) {
+        synthesisLines.push(`  • ${String(theme?.title || "").slice(0, 160)} — ${String(theme?.summary || "").slice(0, 360)}`);
+      }
+    }
+    if (lessons.length) {
+      synthesisLines.push("Cross-book lesson candidates:");
+      for (const lesson of lessons) {
+        const support = Number(lesson?.supportCount) || (Array.isArray(lesson?.sourceRefs) ? lesson.sourceRefs.length : 0);
+        synthesisLines.push(
+          `  • ${String(lesson?.title || "").slice(0, 170)} — ${String(lesson?.coreLesson || lesson?.description || "").slice(0, 420)}${support ? ` [supported by ${support} source${support === 1 ? "" : "s"}]` : ""}`
+        );
+      }
+    }
+  }
+
+  const synthesisNote = synthesisLines.length
+    ? `\n\nVERIFIED CROSS-BOOK SYNTHESIS (planning guidance, not prose to copy):\n${synthesisLines.join("\n")}\nUse these themes to build an original structure. Do not copy source titles or phrasing.`
+    : "";
+
+  return `\n\nAuthor's Research Resources (priority-ordered):\n${lines.join("\n")}${synthesisNote}${citeNote}`;
 }
 
 /**
