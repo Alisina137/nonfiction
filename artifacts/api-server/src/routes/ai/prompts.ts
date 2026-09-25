@@ -7176,7 +7176,7 @@ Audience: ${audience || "general reader"}${manuscriptBlock}
 ════════════════════════════════════
 YOUR TASK
 ════════════════════════════════════
-Carefully scan the entire manuscript above for every book, study, article, framework, statistic, standard, tool, or authority it cites, quotes, paraphrases, or clearly relies on. Compile a References list of AT LEAST 15 distinct, real, verifiable sources that a reader could plausibly look up — do not invent fictitious sources, but you may supply the well-known, real-world source that a mentioned concept, study, or framework is known to come from (e.g. if the manuscript discusses "the Eisenhower Matrix", cite its real-world origin).
+Carefully scan the manuscript above for sources whose identifying metadata is explicitly present in the supplied content. Compile only those references. Do NOT infer a source from a concept, framework, statistic, or memory. Do NOT supply a "well-known origin" unless that source is explicitly identified in the supplied content.
 
 Assign EVERY reference to exactly ONE of these six groups, based on what kind of source it is:
 - "Books" — full-length published books
@@ -7193,11 +7193,11 @@ RULES:
 - author: the real author, organization, or publisher of the source
 - title: the real title of the book/article/paper/standard/site
 - publication: journal name, publisher, or hosting organization, if applicable (empty string if not applicable)
-- year: best-known real publication year, or empty string if unknown
-- url: a real, plausible URL only if you are confident it is accurate; otherwise empty string
+- year: use the year only when it is explicitly present in the supplied content; otherwise empty string
+- url: use a URL only when it is explicitly present in the supplied content; otherwise empty string
 - notes: one short clause on why this book cites/relies on this source (optional, empty string if none)
 
-CRITICAL: You MUST return at least 15 references total across all groups combined.
+CRITICAL: Accuracy beats quantity. Return fewer references when fewer verified source identities are present. Never pad the list.
 
 Return ONLY valid JSON (no markdown fences, no explanation text):
 
@@ -7471,16 +7471,16 @@ ${bookContext}
 Tone: ${tone || "Direct & practical"}
 Audience: ${audience || "general reader"}${summaries}
 
-TASK: Recommend 8–12 books or resources that complement this book and guide readers toward continued learning.
+TASK: This legacy prompt may only recommend resources whose exact identity is explicitly present in the supplied context. If no identifiable resources are supplied, return an empty recommendations array.
 
 Rules:
-- Recommend real-sounding books/resources — use realistic titles, authors, publishers (do NOT invent ISBNs, DOIs, or fake URLs)
-- Each recommendation must logically extend the reader's knowledge BEYOND this specific book
-- type: exactly one of "Book", "Article", "Course", "Website", "Podcast", "Research Paper"
-- difficulty: exactly one of "Beginner", "Intermediate", "Advanced"
-- url: use empty string "" unless it's a widely known public URL (e.g., a major platform or publication)
-- Vary difficulty levels across recommendations to serve different reader needs
-- why: explain specifically how this resource extends THIS book's ideas, not a generic "great for learning" statement
+- Never invent or reconstruct a title, author, publisher, course, website, podcast, article, paper, URL, ISBN, DOI, or other resource.
+- Recommend only resources explicitly named in the supplied context.
+- Each recommendation must logically extend the reader's knowledge BEYOND this specific book.
+- type: exactly one of "Book", "Article", "Course", "Website", "Podcast", "Research Paper".
+- difficulty: exactly one of "Beginner", "Intermediate", "Advanced".
+- Preserve unknown metadata as empty strings; never fill it from memory.
+- why: explain relevance only from the supplied context; do not invent facts about the resource.
 
 Return ONLY valid JSON (no markdown fences, no explanation text):
 
