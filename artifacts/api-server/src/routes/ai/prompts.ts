@@ -2483,6 +2483,7 @@ export function lessonPrompt({
   audience,
   tone,
   resources,
+  sourceEvidence,
   bookContext,
   chapterStrategy,
   bookStructure,
@@ -2496,6 +2497,41 @@ export function lessonPrompt({
 }: any) {
   const resBlock = resources ? resourcesBlock(resources, "lesson") : "";
   const ctxBlock = bookContext ? bookContextBlock(bookContext) : "";
+
+  const sourceEvidenceItems = Array.isArray(sourceEvidence?.items) ? sourceEvidence.items : [];
+  const sourceEvidenceBlock = sourceEvidenceItems.length
+    ? `
+════════════════════════════════════
+VERIFIED SOURCE EVIDENCE FOR THIS SUBSECTION
+════════════════════════════════════
+The following evidence was retrieved from the user's indexed reference books for THIS subsection. It is the only source-backed evidence you may treat as verified here.
+
+${sourceEvidenceItems.slice(0, 12).map((item: any, i: number) => {
+  const source = [item?.sourceTitle, item?.sourceAuthor, item?.pageLabel].filter(Boolean).join(" — ");
+  return `${i + 1}. [${source || "Indexed reference"}] ${String(item?.kind || "evidence").toUpperCase()}: ${item?.text || ""}`;
+}).join("\n")}
+
+SOURCE-GROUNDING RULES — MANDATORY
+- Never invent a study, statistic, expert, quotation, named case, book, article, URL, citation, organization, or factual attribution.
+- A factual claim that needs external support must be supported by the verified evidence above or stated cautiously without fabricated attribution.
+- Use a quotation ONLY when an evidence item is explicitly marked VERIFIED_QUOTE. Do not manufacture or reconstruct quotations.
+- Page labels refer to PDF page indexes from the uploaded source. Never guess page numbers.
+- Synthesize ideas in original wording. Do not imitate a reference author's style or reuse distinctive source phrasing.
+- Do not copy source chapter titles as your own headings or frameworks.
+- When multiple sources support an idea, combine their insights rather than paraphrasing one source closely.
+- If the requested blueprint asks for evidence that the retrieved material does not support, use a clearly labeled hypothetical/composite scenario where appropriate, or omit the unsupported factual detail. Never fill the gap with invented facts.
+`
+    : `
+════════════════════════════════════
+SOURCE-GROUNDING STATUS
+════════════════════════════════════
+No verified reference-book evidence was retrieved for this subsection.
+
+MANDATORY SAFETY RULES
+- Do not invent studies, statistics, experts, quotations, named real-world cases, citations, URLs, books, organizations, or factual attributions.
+- If a concrete example would help, make it explicitly hypothetical or composite rather than presenting it as a real event.
+- Explain general principles in original wording and use appropriate uncertainty when external evidence is unavailable.
+`;
 
   // ── Book DNA Architecture — build all DNA layers from available context ──
   const dnaBookBlock       = buildBookDNAFromContext(bookContext);
@@ -2558,25 +2594,25 @@ ${(upcomingTopics as string[]).map((t: string) => `→ ${t}`).join("\n")}`
     "Exercise":               "include at least one hands-on exercise or practice activity with clear instructions",
     "Reflection Questions":   "include 2–3 thought-provoking reflection questions for the reader",
     "Templates":              "include a reusable template, fill-in-the-blank framework, or structured format",
-    "Case Study":             "include a real, named case study with specific details and measurable outcomes",
-    "Real-Life Example":      "include multiple concrete, named real-world examples (not hypotheticals)",
-    "Research Insight":       "cite specific research findings, statistics, or named studies with context",
-    "Resources":              "include 2–3 recommended resources (books, tools, websites) with brief descriptions",
+    "Case Study":             "use a verified named case study only when supported by VERIFIED SOURCE EVIDENCE; otherwise use an explicitly labeled hypothetical or composite case and do not invent real-world details",
+    "Real-Life Example":      "use verified real-world examples when supported by VERIFIED SOURCE EVIDENCE; otherwise use clearly labeled hypothetical scenarios rather than invented named examples",
+    "Research Insight":       "use only research findings, statistics, or named studies present in VERIFIED SOURCE EVIDENCE; if none are available, explain the principle without fabricated research",
+    "Resources":              "include only resources that are present in the user's verified research context; never invent book titles, tools, websites, or URLs",
     "One Small Step":         "include a One Small Step — one specific action the reader can take in under 5 minutes right now to build immediate momentum",
     "Common Mistakes":        "include a Common Mistakes section listing 3–4 specific, named pitfalls that derail implementation of this concept",
     "Pro Tips":               "include 2–3 Pro Tips with advanced, expert-level optimization advice for readers who have already mastered the basics",
     "7-Day Challenge":        "end with a 7-Day Challenge — a specific, clearly defined commitment or mini-project the reader must complete before proceeding",
     "FAQ":                    "include 3–4 Frequently Asked Questions that address the most common doubts, objections, or confusions readers have at this exact point",
     "Myth vs Reality":        "include 2–3 Myth vs Reality comparisons that name common false beliefs and replace them with accurate, evidence-based reframes",
-    "Success Story":          "include a brief Success Story (150–200 words) about a real or realistic person who applied these concepts and achieved a meaningful transformation",
-    "Brain Science":          "explain the underlying neuroscience or psychology driving this behavior or concept, in plain language",
-    "Statistics":             "cite 1–2 specific, credible statistics or data points that quantify the scale or impact of this concept",
+    "Success Story":          "use a verified success story when evidence supports it; otherwise write an explicitly labeled composite scenario and never imply an invented person or outcome is real",
+    "Brain Science":          "explain neuroscience or psychology only to the level supported by VERIFIED SOURCE EVIDENCE; avoid named studies, brain claims, or mechanisms that are not supported",
+    "Statistics":             "use only specific statistics or data points contained in VERIFIED SOURCE EVIDENCE; if none exist, do not invent numbers",
     "Why This Happens":       "explain the root cause or mechanism behind why this problem or pattern occurs",
     "Practical Technique":    "include a specific, named technique or method the reader can apply directly",
     "Self-Assessment":        "include a short Self-Assessment with 2–3 honest questions the reader can use to evaluate where they currently stand",
     "Common Traps":           "include a Common Traps section naming 2–3 subtle pitfalls readers fall into when attempting this",
-    "Expert Quote":           "include a plausible, attributed expert quote that reinforces the point being made",
-    "Story":                  "open or illustrate the point with a short, specific narrative story that brings the concept to life",
+    "Expert Quote":           "include an expert quotation only when VERIFIED SOURCE EVIDENCE contains a VERIFIED_QUOTE item; otherwise omit the quotation rather than fabricating one",
+    "Story":                  "open or illustrate the point with a short narrative; if it is not sourced from verified evidence, make it clearly hypothetical or composite and never present invented events as factual",
   };
 
   // Which flow-step names map to a blueprint component (so we can suppress them when not selected)
@@ -2776,12 +2812,18 @@ STORY QUALITY REVIEW — before finalizing any story ask:
 ════════════════════════════════════
 EVIDENCE INTEGRATION (when Research Insight, Statistics, Brain Science, or Expert Quote are selected)
 ════════════════════════════════════
-Blend evidence intelligently:
+Blend evidence intelligently ONLY from VERIFIED SOURCE EVIDENCE:
   Research findings | Statistics | Expert opinion | Industry practice | Scientific findings
+
+VERIFICATION GATE:
+  — Named study, statistic, expert quote, factual case, or numerical claim present in verified evidence → may be used with accurate attribution.
+  — Not present in verified evidence → do NOT invent or imply it is verified.
+  — A hypothetical/composite example is allowed only when clearly framed as hypothetical/composite.
+  — Never convert a general source idea into a made-up precise number, date, organization, experiment, or quotation.
 
 Avoid excessive percentages back-to-back.
 Evidence should SUPPORT the lesson — not overwhelm it.
-Connect each data point directly to the reader's situation.
+Connect each verified data point directly to the reader's situation.
 
 ════════════════════════════════════
 FRAMEWORK INTELLIGENCE ENGINE (when Practical Technique, Templates, Checklist, or Action Plan are selected)
@@ -3369,11 +3411,12 @@ REFERENCES — INSTRUCTIONS
 ════════════════════════════════════
 This is the book's References section — a list of sources, studies, and works cited or referenced in the book. Follow these rules exactly:
 
-1. LIST ONLY PLAUSIBLE REFERENCES — Based on the book's topic, generate a realistic list of the types of books, studies, reports, or articles an author writing this book would actually cite. Make these realistic and specific (real-sounding titles, authors, publications). Do NOT fabricate specific page numbers or DOIs.
-2. FORMAT — Use a numbered list. Each entry should follow a standard citation style (e.g., Author Last, First. "Title of Work." Publication/Publisher, Year.). Keep the format consistent throughout.
-3. GROUP BY TYPE — Optionally group references under sub-headers: "Books," "Academic Studies," "Reports & Data," "Articles."
-4. AIM FOR 10–20 REFERENCES — Include enough to be credible for a nonfiction book of this type. Do not pad with irrelevant sources.
-5. NO MADE-UP SPECIFICS — Do not invent specific ISBN numbers, DOIs, or URLs. Use realistic but generic publication info.
+1. USE VERIFIED SOURCES ONLY — Include a reference only when it exists in the verified research context supplied with the project or is explicitly cited in the manuscript with enough information to identify it.
+2. NEVER INVENT — Do not create plausible, real-sounding, inferred, reconstructed, or approximate books, studies, reports, authors, publishers, years, page numbers, DOIs, ISBNs, or URLs.
+3. FORMAT — Use a numbered list with consistent bibliographic formatting.
+4. GROUP BY TYPE — Optionally group verified entries under Books, Academic Studies, Reports & Data, Articles, or Websites.
+5. IF SOURCE METADATA IS INCOMPLETE — Preserve only known fields. Do not fill missing fields from memory or guesswork.
+6. IF FEWER THAN 10 VERIFIED SOURCES EXIST — Return fewer than 10. Accuracy is more important than list length.
 
 Writing style requirements:
 - Bibliographic and precise in format — no conversational prose.
@@ -3388,11 +3431,11 @@ FURTHER READING — INSTRUCTIONS
 ════════════════════════════════════
 This is the book's Further Reading section — a curated list of recommended books and resources that complement and extend the book's content. Follow these rules exactly:
 
-1. CURATE GENUINELY RELEVANT RESOURCES — Recommend real-sounding books, courses, websites, or other resources that a reader who loved this book would genuinely benefit from. Tailor recommendations specifically to this book's topic and audience.
-2. INCLUDE A BRIEF DESCRIPTION — For each recommendation, write 1–3 sentences explaining: (a) what the resource covers, and (b) why it complements this book and what the reader will gain from it.
-3. ORGANIZE BY CATEGORY — Group recommendations under logical sub-headers based on the reader's next likely need (e.g., "To Go Deeper on [Topic]", "For Practical Application", "For Inspiration and Case Studies").
-4. AIM FOR 6–12 RECOMMENDATIONS — Enough to be a genuinely useful reading list without being overwhelming.
-5. NO FAKE SPECIFICS — Do not invent URLs or ISBN numbers. Focus on titles, authors, and brief descriptions.
+1. CURATE ONLY VERIFIED RESOURCES — Recommend only books, articles, websites, courses, or other resources that are present in the verified research context. Never generate a merely plausible or real-sounding resource.
+2. INCLUDE A BRIEF DESCRIPTION — Explain what each verified resource covers and why it complements this book.
+3. ORGANIZE BY CATEGORY — Group recommendations under logical sub-headers based on the reader's next likely need.
+4. USE AS MANY VERIFIED RESOURCES AS ARE USEFUL — Do not pad the list to reach a target count.
+5. NO FAKE SPECIFICS — Never invent titles, authors, URLs, ISBNs, publishers, years, or other bibliographic details.
 
 Writing style requirements:
 - Helpful and enthusiastic but objective — like advice from a knowledgeable mentor.
@@ -4128,7 +4171,7 @@ EDITORIAL INTELLIGENCE ENGINE (internal — run before returning)
     REVISION STRATEGY: Preserve author voice. Improve only failing areas. No unnecessary changes.
     The reader should feel they have learned something meaningful — not merely consumed words.
 
-${qualityCheck}${ctxBlock}${resBlock}
+${qualityCheck}${ctxBlock}${resBlock}${sourceEvidenceBlock}
 
 ════════════════════════════════════
 AI ORCHESTRATOR — POST-EXECUTION REVIEW
