@@ -55,6 +55,8 @@ import { buildCompetitorSummariesForPrompt } from "./analysisSummary.js";
 import {
   generateContent,
   generateContentFast,
+  generatePdfContent,
+  generateGeminiTextContent,
   extractJSON,
   getModelStatus,
   resetProviders,
@@ -285,6 +287,7 @@ const CONTENT_TYPE_TO_TASK: Record<string, TaskType> = {
   authorPersona:       "write",
   strategicPlan:       "research",
   competitiveIntel:    "research",
+  referenceSynthesis:   "research",
   analysis:            "research",
   architecturePreview: "research",
   improve:             "edit",
@@ -1885,6 +1888,342 @@ The previous response may have drifted away from the exact subsection target. Be
     return res.json({ lesson: data, _provider: usedProvider });
   } catch (error: any) {
     console.error("[lesson] route error:", (error as any)?.message);
+    return aiErrorResponse(res, error);
+  }
+});
+
+
+// ─── Reference Book Intelligence ─────────────────────────────────────────────
+
+function compactText(value: any, max = 1200): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function validPages(value: any): number[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((n: any) => Number(n))
+    .filter((n: number) => Number.isInteger(n) && n > 0)
+    .slice(0, 8);
+}
+
+function normalizeReferenceAnalysis(raw: any, fallbackName = ""): any {
+  const a = raw && typeof raw === "object" ? raw : {};
+  const mapItems = (value: any, limit: number, mapper: (item: any) => any) =>
+    (Array.isArray(value) ? value : []).filter(Boolean).slice(0, limit).map(mapper);
+
+  return {
+    title:           compactText(a.title || fallbackName, 220),
+    subtitle:        compactText(a.subtitle, 260),
+    author:          compactText(a.author, 220),
+    publisher:       compactText(a.publisher, 220),
+    publicationYear: compactText(a.publicationYear, 20),
+    pageCount:       Number.isFinite(Number(a.pageCount)) ? Number(a.pageCount) : null,
+    overview:        compactText(a.overview, 2200),
+    thesis:          compactText(a.thesis, 1400),
+    intendedAudience: compactText(a.intendedAudience, 700),
+    chapters: mapItems(a.chapters, 30, (x: any) => ({
+      title:     compactText(x?.title, 220),
+      startPage: Number.isFinite(Number(x?.startPage)) ? Number(x.startPage) : null,
+      endPage:   Number.isFinite(Number(x?.endPage)) ? Number(x.endPage) : null,
+      summary:   compactText(x?.summary, 900),
+      keyIdeas:  (Array.isArray(x?.keyIdeas) ? x.keyIdeas : []).slice(0, 6).map((v: any) => compactText(v, 260))
+    })),
+    concepts: mapItems(a.concepts, 28, (x: any) => ({
+      name:        compactText(x?.name, 180),
+      explanation: compactText(x?.explanation || x?.definition, 700),
+      pages:       validPages(x?.pages),
+      importance:  ["high","medium","low"].includes(String(x?.importance)) ? String(x.importance) : "medium"
+    })),
+    lessons: mapItems(a.lessons, 28, (x: any) => ({
+      title:        compactText(x?.title, 200),
+      lesson:       compactText(x?.lesson || x?.description, 750),
+      whyItMatters: compactText(x?.whyItMatters, 500),
+      pages:        validPages(x?.pages)
+    })),
+    claims: mapItems(a.claims, 22, (x: any) => ({
+      claim:      compactText(x?.claim, 650),
+      evidence:   compactText(x?.evidence, 650),
+      pages:      validPages(x?.pages),
+      confidence: ["high","medium","low"].includes(String(x?.confidence)) ? String(x.confidence) : "medium"
+    })),
+    frameworks: mapItems(a.frameworks, 12, (x: any) => ({
+      name:        compactText(x?.name, 180),
+      description: compactText(x?.description, 700),
+      steps:       (Array.isArray(x?.steps) ? x.steps : []).slice(0, 8).map((v: any) => compactText(v, 260)),
+      pages:       validPages(x?.pages)
+    })),
+    examples: mapItems(a.examples, 12, (x: any) => ({
+      name:    compactText(x?.name || x?.title, 180),
+      summary: compactText(x?.summary, 700),
+      lesson:  compactText(x?.lesson, 500),
+      pages:   validPages(x?.pages)
+    })),
+    notableQuotes: mapItems(a.notableQuotes, 12, (x: any) => ({
+      quote:       compactText(x?.quote, 240),
+      attribution: compactText(x?.attribution, 180),
+      page:        Number.isFinite(Number(x?.page)) ? Number(x.page) : null
+    })).filter((x: any) => x.quote.split(/\s+/).length <= 25),
+    distinctivePhrases: mapItems(a.distinctivePhrases, 20, (x: any) => ({
+      text: compactText(x?.text || x?.phrase, 180),
+      page: Number.isFinite(Number(x?.page)) ? Number(x.page) : null
+    })).filter((x: any) => {
+      const words = x.text.split(/\s+/).filter(Boolean).length;
+      return words >= 5 && words <= 12;
+    }),
+    warnings: (Array.isArray(a.warnings) ? a.warnings : []).slice(0, 10).map((v: any) => compactText(v, 320))
+  };
+}
+
+function referenceAnalysisPrompt(fileName: string, category: string): string {
+  return `You are indexing ONE uploaded PDF as research material for an original nonfiction book.
+
+SOURCE FILE: ${fileName || "reference.pdf"}
+SOURCE CATEGORY: ${category || "book"}
+
+Analyze ONLY the attached PDF. Do not use outside knowledge to fill gaps. If the document does not support a fact, omit it.
+Use 1-based PDF page indexes for page references. Do not guess page numbers.
+Do not reproduce long copyrighted passages. Quotes must be verbatim, useful, and at most 20 words each.
+
+Return ONLY valid JSON with this exact top-level shape:
+{
+  "title": "",
+  "subtitle": "",
+  "author": "",
+  "publisher": "",
+  "publicationYear": "",
+  "pageCount": null,
+  "overview": "2-4 sentence source overview",
+  "thesis": "central argument or purpose",
+  "intendedAudience": "",
+  "chapters": [
+    {"title":"","startPage":1,"endPage":10,"summary":"","keyIdeas":[""]}
+  ],
+  "concepts": [
+    {"name":"","explanation":"","pages":[1],"importance":"high"}
+  ],
+  "lessons": [
+    {"title":"","lesson":"","whyItMatters":"","pages":[1]}
+  ],
+  "claims": [
+    {"claim":"","evidence":"","pages":[1],"confidence":"high"}
+  ],
+  "frameworks": [
+    {"name":"","description":"","steps":[""],"pages":[1]}
+  ],
+  "examples": [
+    {"name":"","summary":"","lesson":"","pages":[1]}
+  ],
+  "notableQuotes": [
+    {"quote":"20 words maximum","attribution":"","page":1}
+  ],
+  "distinctivePhrases": [
+    {"text":"5 to 12 word verbatim phrase","page":1}
+  ],
+  "warnings": []
+}
+
+LIMITS:
+- chapters: max 30
+- concepts: max 28
+- lessons: max 28
+- claims: max 22
+- frameworks: max 12
+- examples: max 12
+- notableQuotes: max 12
+- distinctivePhrases: max 20
+- warnings: max 10
+
+QUALITY RULES:
+- Prefer specific, transferable ideas over generic summaries.
+- Separate the author's claims from examples and frameworks.
+- Preserve disagreements or uncertainty in the evidence field instead of smoothing them over.
+- Never invent studies, statistics, quotations, names, citations, or page numbers.
+- Never imitate the author's voice. This is a research index, not a rewrite.`;
+}
+
+router.post("/analyze-reference", async (req, res) => {
+  try {
+    const { dataBase64, fileName = "", mimeType = "application/pdf", category = "book" } = req.body || {};
+    if (mimeType !== "application/pdf") {
+      return res.status(400).json({ error: "Deep reference analysis currently supports PDF files only." });
+    }
+    const base64 = String(dataBase64 || "").replace(/^data:application\/pdf;base64,/, "").trim();
+    if (!base64) return res.status(400).json({ error: "PDF data is required." });
+
+    const approxBytes = Math.floor((base64.length * 3) / 4);
+    if (approxBytes > 50 * 1024 * 1024) {
+      return res.status(413).json({ error: "PDF is too large. Maximum supported size is 50 MB." });
+    }
+
+    const generated = await generatePdfContent(
+      base64,
+      referenceAnalysisPrompt(String(fileName), String(category)),
+      "You are a precise source-analysis engine. Use only the attached document and return strict JSON.",
+      { maxTokens: TOKEN_LIMITS.referenceAnalysis, model: "gemini-2.5-flash" }
+    );
+    const parsed = extractJSON(generated.text);
+    const analysis = normalizeReferenceAnalysis(parsed, String(fileName).replace(/\.pdf$/i, ""));
+    return res.json({
+      analysis,
+      _provider: generated.usedProvider,
+      _model: generated.usedModel
+    });
+  } catch (error: any) {
+    console.error("[analyze-reference] error:", error?.message);
+    return aiErrorResponse(res, error);
+  }
+});
+
+function normalizeSynthesisReference(ref: any): any {
+  return {
+    sourceId: compactText(ref?.sourceId, 120),
+    title: compactText(ref?.title, 220),
+    author: compactText(ref?.author, 180),
+    overview: compactText(ref?.overview, 1000),
+    thesis: compactText(ref?.thesis, 700),
+    concepts: (Array.isArray(ref?.concepts) ? ref.concepts : []).slice(0, 14).map((x: any) => ({
+      name: compactText(x?.name, 160),
+      explanation: compactText(x?.explanation, 420),
+      pages: validPages(x?.pages)
+    })),
+    lessons: (Array.isArray(ref?.lessons) ? ref.lessons : []).slice(0, 14).map((x: any) => ({
+      title: compactText(x?.title, 180),
+      lesson: compactText(x?.lesson, 460),
+      pages: validPages(x?.pages)
+    })),
+    claims: (Array.isArray(ref?.claims) ? ref.claims : []).slice(0, 8).map((x: any) => ({
+      claim: compactText(x?.claim, 420),
+      evidence: compactText(x?.evidence, 360),
+      pages: validPages(x?.pages)
+    })),
+    frameworks: (Array.isArray(ref?.frameworks) ? ref.frameworks : []).slice(0, 8).map((x: any) => ({
+      name: compactText(x?.name, 160),
+      description: compactText(x?.description, 420),
+      pages: validPages(x?.pages)
+    }))
+  };
+}
+
+router.post("/synthesize-references", async (req, res) => {
+  try {
+    const rawRefs = Array.isArray(req.body?.references) ? req.body.references : [];
+    if (rawRefs.length < 2) {
+      return res.status(400).json({ error: "Add and analyze at least two PDF reference books first." });
+    }
+    const references = rawRefs.slice(0, 20).map(normalizeSynthesisReference);
+    const desiredLessons = Math.max(10, Math.min(60, Number(req.body?.desiredLessons) || 30));
+    const bookContext = compactText(req.body?.bookContext, 3500);
+
+    const prompt = `You are synthesizing a private research library into ORIGINAL nonfiction-book planning material.
+
+BOOK CONTEXT:
+${bookContext || "No book context supplied yet."}
+
+REFERENCE INDEX:
+${JSON.stringify(references)}
+
+TASK:
+Find recurring principles, complementary ideas, useful disagreements, and high-value lessons across the reference books. The output is a planning map for a NEW book, not a summary collection.
+
+Return ONLY valid JSON:
+{
+  "themes": [
+    {
+      "title":"",
+      "summary":"",
+      "supportCount":2,
+      "sourceRefs":[{"sourceId":"","title":"","pages":[1]}]
+    }
+  ],
+  "lessonCandidates": [
+    {
+      "title":"",
+      "coreLesson":"",
+      "description":"",
+      "distinctiveAngle":"",
+      "supportCount":2,
+      "sourceRefs":[{"sourceId":"","title":"","pages":[1]}],
+      "confidence":"high"
+    }
+  ],
+  "agreements": [
+    {"idea":"","summary":"","sourceRefs":[{"sourceId":"","title":"","pages":[1]}]}
+  ],
+  "disagreements": [
+    {"topic":"","perspectives":[{"position":"","sourceRefs":[{"sourceId":"","title":"","pages":[1]}]}],"synthesisOpportunity":""}
+  ],
+  "gaps": [
+    {"gap":"","whyItMatters":"","opportunity":""}
+  ]
+}
+
+RULES:
+- Produce up to ${desiredLessons} lessonCandidates.
+- Every theme, lesson, agreement, or disagreement must cite sourceIds that exist in the provided REFERENCE INDEX.
+- Use page references only when they were supplied in the source index; never invent page numbers.
+- A lesson may combine multiple sources, but the wording, framing, examples, and structure must be original.
+- Do not copy chapter titles or distinctive phrasing from the source books.
+- Do not invent research, statistics, quotations, authors, or books.
+- Prefer cross-book synthesis over one-source lessons when evidence supports it.
+- "gaps" are areas the new book can add through the author's own analysis or future verified research; do not fabricate content to fill them.`;
+
+    const generated = await generateGeminiTextContent(
+      prompt,
+      "You are a rigorous cross-book synthesis engine. Never invent source evidence.",
+      { maxTokens: TOKEN_LIMITS.referenceSynthesis, model: "gemini-2.5-flash" }
+    );
+    const parsed = extractJSON(generated.text);
+    const allowedIds = new Set(references.map((r: any) => r.sourceId).filter(Boolean));
+    const cleanSourceRefs = (value: any) => (Array.isArray(value) ? value : [])
+      .filter((r: any) => r && allowedIds.has(String(r.sourceId || "")))
+      .slice(0, 8)
+      .map((r: any) => ({
+        sourceId: String(r.sourceId),
+        title: compactText(r.title, 220),
+        pages: validPages(r.pages)
+      }));
+
+    const synthesis = {
+      themes: (Array.isArray(parsed?.themes) ? parsed.themes : []).slice(0, 18).map((x: any) => ({
+        title: compactText(x?.title, 220),
+        summary: compactText(x?.summary, 850),
+        supportCount: Math.max(1, Number(x?.supportCount) || 1),
+        sourceRefs: cleanSourceRefs(x?.sourceRefs)
+      })),
+      lessonCandidates: (Array.isArray(parsed?.lessonCandidates) ? parsed.lessonCandidates : []).slice(0, desiredLessons).map((x: any) => ({
+        title: compactText(x?.title, 220),
+        coreLesson: compactText(x?.coreLesson, 700),
+        description: compactText(x?.description, 900),
+        distinctiveAngle: compactText(x?.distinctiveAngle, 600),
+        supportCount: Math.max(1, Number(x?.supportCount) || 1),
+        sourceRefs: cleanSourceRefs(x?.sourceRefs),
+        confidence: ["high","medium","low"].includes(String(x?.confidence)) ? String(x.confidence) : "medium"
+      })),
+      agreements: (Array.isArray(parsed?.agreements) ? parsed.agreements : []).slice(0, 15).map((x: any) => ({
+        idea: compactText(x?.idea, 260),
+        summary: compactText(x?.summary, 800),
+        sourceRefs: cleanSourceRefs(x?.sourceRefs)
+      })),
+      disagreements: (Array.isArray(parsed?.disagreements) ? parsed.disagreements : []).slice(0, 12).map((x: any) => ({
+        topic: compactText(x?.topic, 240),
+        perspectives: (Array.isArray(x?.perspectives) ? x.perspectives : []).slice(0, 5).map((p: any) => ({
+          position: compactText(p?.position, 600),
+          sourceRefs: cleanSourceRefs(p?.sourceRefs)
+        })),
+        synthesisOpportunity: compactText(x?.synthesisOpportunity, 700)
+      })),
+      gaps: (Array.isArray(parsed?.gaps) ? parsed.gaps : []).slice(0, 12).map((x: any) => ({
+        gap: compactText(x?.gap, 260),
+        whyItMatters: compactText(x?.whyItMatters, 650),
+        opportunity: compactText(x?.opportunity, 650)
+      })),
+      generatedAt: new Date().toISOString()
+    };
+
+    return res.json({ synthesis, _provider: generated.usedProvider, _model: generated.usedModel });
+  } catch (error: any) {
+    console.error("[synthesize-references] error:", error?.message);
     return aiErrorResponse(res, error);
   }
 });
