@@ -802,7 +802,7 @@ export async function generatePdfContent(
   contents.push({
     role: "user",
     parts: [
-      { inline_data: { mime_type: "application/pdf", data: base64 } },
+      { inlineData: { mimeType: "application/pdf", data: base64 } },
       { text: prompt }
     ]
   });
