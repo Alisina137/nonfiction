@@ -1803,6 +1803,7 @@ router.post("/lesson", async (req, res) => {
     const lessonRequest = {
       ...compressed,
       resources: req.body?.resources,
+      sourceEvidence: req.body?.sourceEvidence,
       bookContext: req.body?.bookContext,
       targetSubsectionTitle: targetSubsectionTitle || req.body?.subsection?.title || "",
       chapterStrategy,
