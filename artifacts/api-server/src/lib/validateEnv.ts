@@ -5,9 +5,10 @@
 // with a non-zero code if any REQUIRED variable is absent.
 //
 // Rules:
-//   REQUIRED   — app cannot start without these
-//   AI_CHAIN   — at least one must be present, or AI generation is fully broken
-//   AMAZON     — at least one must be present, or research is fully broken
+//   No external service is required just to start the private/local app.
+//   AI_CHAIN   — at least one key is needed only when using AI generation.
+//   AMAZON     — optional; Open Library is the public metadata fallback.
+//   DATABASE   — optional for the current localStorage-based personal workflow.
 
 interface EnvVar {
   key:         string;
@@ -17,7 +18,7 @@ interface EnvVar {
 }
 
 const ENV_VARS: EnvVar[] = [
-  { key: "DATABASE_URL",       description: "PostgreSQL connection string",           required: true,  group: "Database"  },
+  { key: "DATABASE_URL",       description: "Optional PostgreSQL connection string",   required: false, group: "Database"  },
   { key: "GEMINI_API_KEY",     description: "Gemini 2.5 Flash/Pro/Lite — primary AI",        required: false, group: "AI chain"  },
   { key: "GROQ_API_KEY",       description: "Groq GPT-OSS 120B — fast inference fallback",  required: false, group: "AI chain"  },
   { key: "OPENROUTER_API_KEY", description: "OpenRouter — DeepSeek R1, Qwen, Maverick pool", required: false, group: "AI chain"  },
@@ -38,7 +39,6 @@ export function validateEnv(): void {
     }
   }
 
-  const requiredMissing  = missing.filter((v) => v.required);
   const aiKeys           = ENV_VARS.filter((v) => v.group === "AI chain");
   const amazonKeys       = ENV_VARS.filter((v) => v.group === "Amazon");
   const aiPresent        = aiKeys.some((v)     => Boolean(process.env[v.key]));
@@ -66,23 +66,13 @@ export function validateEnv(): void {
   }
   if (!amazonPresent) {
     warnings.push(
-      "NO AMAZON PROVIDER KEYS are set. Book research (competitor lookup) will fail.\n" +
-      "  Set at least one of: RAINFOREST_API_KEY, SCALE_SERP_API_KEY"
+      "NO AMAZON PROVIDER KEYS are set. Live Amazon lookup is disabled; Open Library fallback remains available.\n" +
+      "  Optional: set RAINFOREST_API_KEY or SCALE_SERP_API_KEY for live Amazon data."
     );
   }
 
   for (const w of warnings) {
     console.warn(`  ⚠ WARNING: ${w}`);
-  }
-
-  if (requiredMissing.length > 0) {
-    console.error("\n  ✗ FATAL: The following REQUIRED variables are missing:");
-    for (const v of requiredMissing) {
-      console.error(`      ${v.key} — ${v.description}`);
-    }
-    console.error("\n  Set these in your Replit Secrets (or .env for local dev) and restart.\n");
-    console.log("════════════════════════════════════════");
-    process.exit(1);
   }
 
   console.log("  Status: ready");
