@@ -431,7 +431,8 @@ router.post("/suggest-subtitles", async (req, res) => {
     }
     res.json({ subtitles, _provider: first.usedProvider });
   } catch (e: any) {
-    if (!res.headersSent) res.status(500).json({ error: e.message });
+    if (!res.headersSent) return res.status(500).json({ error: e.message });
+    return;
   }
 });
 
@@ -463,7 +464,8 @@ router.post("/suggest-topic", async (req, res) => {
     if (!topics.length) return res.status(500).json({ error: "No topics returned. Try again." });
     res.json({ topics, usedProvider });
   } catch (e: any) {
-    if (!res.headersSent) res.status(500).json({ error: e.message });
+    if (!res.headersSent) return res.status(500).json({ error: e.message });
+    return;
   }
 });
 
@@ -1356,7 +1358,7 @@ Return ONLY valid JSON, no markdown:
       };
     });
 
-    const best = reviews.reduce((prev, cur) => cur.overallScore > prev.overallScore ? cur : prev, reviews[0]);
+    const best = reviews.reduce((prev: any, cur: any) => cur.overallScore > prev.overallScore ? cur : prev, reviews[0]);
     return res.json({ reviews, recommendedConceptLabel: best?.conceptLabel ?? "A", _provider: usedProvider });
   } catch (error: any) {
     return aiErrorResponse(res, error);
@@ -2505,7 +2507,9 @@ router.post("/reader-personas", async (req, res) => {
       systemPrompt(),
       req,
       res,
-      "readerPersonas"
+      "readerPersonas",
+      (value: any) => Boolean(value && typeof value === "object" && !Array.isArray(value)),
+      "reader-personas"
     );
 
     const str  = (v: any, d = "") => (typeof v === "string" ? v.trim() : d);
@@ -2629,7 +2633,11 @@ router.post("/multi-format-publishing", async (req, res) => {
     const { data, usedProvider } = await runLongJSON(
       multiFormatPublishingPrompt({ bookContext, manuscriptDigest, knowledgeGraph }),
       systemPrompt(),
-      req, res, "multiFormat"
+      req,
+      res,
+      "multiFormat",
+      (value: any) => Boolean(value && typeof value === "object" && !Array.isArray(value)),
+      "multi-format-publishing"
     );
 
     const str  = (v: any, d = "")  => (typeof v === "string" ? v.trim() : d);
@@ -3873,9 +3881,8 @@ Rules:
     let usedProvider = "verified_project_sources";
     try {
       const generated = await generateContentFast(prompt, systemPrompt(), {
-        maxTokens: 1800,
-        taskType: "research",
-        ...aiOptsFromReq(req, 1800)
+        ...aiOptsFromReq(req, 1800),
+        taskType: "research"
       });
       setProviderHeader(res, generated.usedProvider, generated.exhaustedProviders);
       usedProvider = generated.usedProvider;
