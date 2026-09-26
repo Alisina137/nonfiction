@@ -61,7 +61,10 @@ export function normalizeExportSettings(input: any): ExportSettings {
   const s = input && typeof input === "object" ? input : {};
   const trimSize = TRIM_SIZES.some((t) => t.id === s.trimSize) ? s.trimSize : DEFAULT_TRIM_SIZE;
   const font: FontChoice = FONT_CHOICES.includes(s.font) ? s.font : "Garamond";
-  const fontSize: FontSizeChoice = FONT_SIZE_CHOICES.includes(Number(s.fontSize)) ? Number(s.fontSize) : 12;
+  const parsedFontSize = Number(s.fontSize);
+  const fontSize: FontSizeChoice = FONT_SIZE_CHOICES.includes(parsedFontSize as FontSizeChoice)
+    ? parsedFontSize as FontSizeChoice
+    : 12;
   // Fixed per KDP typography rules — not user-configurable, always 1.15
   // regardless of what (if anything) the caller sends.
   const lineSpacing: LineSpacingChoice = FIXED_LINE_SPACING;
