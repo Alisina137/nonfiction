@@ -7,14 +7,7 @@ import { validateEnv } from "./lib/validateEnv";
 validateEnv();
 
 const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const desiredPort = Number(rawPort);
+const desiredPort = rawPort ? Number(rawPort) : 8080;
 
 if (Number.isNaN(desiredPort) || desiredPort <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
