@@ -17,8 +17,7 @@ import {
   SectionType,
   NumberFormat,
   convertInchesToTwip,
-  XmlComponent,
-  XmlAttributeComponent
+  TableOfContents
 } from "docx";
 import { generateContent, extractJSON } from "../ai/aiRouter.js";
 import { chapterArchitecturePrompt } from "../ai/prompts.js";
@@ -403,8 +402,9 @@ interface TocEntry {
 async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array> {
   const settings = normalizeExportSettings(options.settings);
   const lessonsForCount = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
-  const estWordCount = Object.values(lessonsForCount).reduce(
-    (acc: number, l: any) => acc + String(l?.prose || "").split(/\s+/).filter(Boolean).length, 0
+  const estWordCount: number = (Object.values(lessonsForCount) as any[]).reduce<number>(
+    (acc, l) => acc + String(l?.prose || "").split(/\s+/).filter(Boolean).length,
+    0
   );
   const P = buildLayout(settings, estWordCount || 30000);
 
@@ -1060,8 +1060,9 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
 async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   const settings = normalizeExportSettings(options.settings);
   const lessonsForCount = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
-  const estWordCount = Object.values(lessonsForCount).reduce(
-    (acc: number, l: any) => acc + String(l?.prose || "").split(/\s+/).filter(Boolean).length, 0
+  const estWordCount: number = (Object.values(lessonsForCount) as any[]).reduce<number>(
+    (acc, l) => acc + String(l?.prose || "").split(/\s+/).filter(Boolean).length,
+    0
   );
   const P = buildLayout(settings, estWordCount || 30000);
 
@@ -1250,7 +1251,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
 
   // ── Front matter ──────────────────────────────────────────────────────────
 
-  const frontChildren: Paragraph[] = [];
+  const frontChildren: any[] = [];
 
   // Cover page
   frontChildren.push(centeredPara(bookTitle, P.titleSz, true, false, "000000", 3600, 200));
@@ -1293,107 +1294,12 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
 
   console.log("[Export] Heading styles detected — H1/H2/H3 applied to", tocDocxEntries.length, "outline entries");
 
-  {
-    // Helper: make a <w:fldChar> run with given fldCharType (and optional dirty flag)
-    const fldCharRun = (type: string, dirty = false): XmlComponent => {
-      const run = new XmlComponent("w:r");
-      const fc  = new XmlComponent("w:fldChar");
-      const attrs: Record<string, string> = { "w:fldCharType": type };
-      if (dirty) attrs["w:dirty"] = "true";
-      fc.root.push(new XmlAttributeComponent(attrs));
-      run.root.push(fc);
-      return run;
-    };
-
-    // Helper: make an <w:instrText> run with preserve-space
-    const instrRun = (text: string): XmlComponent => {
-      const run  = new XmlComponent("w:r");
-      const it   = new XmlComponent("w:instrText");
-      it.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
-      it.root.push(text);
-      run.root.push(it);
-      return run;
-    };
-
-    // TOC title — centred bold, NOT a heading (prevents it appearing in the TOC itself)
-    frontChildren.push(centeredPara("Table of Contents", P.chapterSz + 2, true, false, "000000", 0, 280));
-
-    // Paragraph 1: fldChar begin + instrText switches + fldChar separate
-    const fieldBeginPara = new XmlComponent("w:p");
-    fieldBeginPara.root.push(fldCharRun("begin", true));
-    fieldBeginPara.root.push(instrRun(` TOC \\o "1-3" \\h `));
-    fieldBeginPara.root.push(fldCharRun("separate"));
-    frontChildren.push(fieldBeginPara as any);
-
-    // Pre-rendered entries (static fallback; Word replaces with live page numbers on updateFields).
-    // Each entry gets a right-aligned dot-leader tab stop so the format is correct in all viewers.
-    const textWidthTwips = Math.round(P.pageW * 20) - P.docxMLeft - P.docxMRight;
-    for (const entry of tocDocxEntries) {
-      const level  = Math.min(entry.level, 2);
-      const style  = ["TOC1", "TOC2", "TOC3"][level];
-      const indent = [0, 360, 720][level];
-
-      const ep   = new XmlComponent("w:p");
-      const pPr  = new XmlComponent("w:pPr");
-
-      const pSty = new XmlComponent("w:pStyle");
-      pSty.root.push(new XmlAttributeComponent({ "w:val": style }));
-      pPr.root.push(pSty);
-
-      if (indent > 0) {
-        const ind = new XmlComponent("w:ind");
-        ind.root.push(new XmlAttributeComponent({ "w:left": String(indent) }));
-        pPr.root.push(ind);
-      }
-
-      // Right-aligned dot-leader tab stop.
-      // Tab stop pos is measured from the LEFT MARGIN (not from the text indent),
-      // so we always use textWidthTwips for every level — the dot leaders reach the same right edge.
-      const tabs = new XmlComponent("w:tabs");
-      const tab  = new XmlComponent("w:tab");
-      tab.root.push(new XmlAttributeComponent({
-        "w:val":    "right",
-        "w:leader": "dot",
-        "w:pos":    String(textWidthTwips),
-      }));
-      tabs.root.push(tab);
-      pPr.root.push(tabs);
-
-      ep.root.push(pPr);
-
-      // Label text
-      const labelRun = new XmlComponent("w:r");
-      const labelT   = new XmlComponent("w:t");
-      labelT.root.push(new XmlAttributeComponent({ "xml:space": "preserve" }));
-      labelT.root.push(entry.label);
-      labelRun.root.push(labelT);
-      ep.root.push(labelRun);
-
-      // Tab character (fires the dot leader toward the right margin)
-      const tabRun = new XmlComponent("w:r");
-      tabRun.root.push(new XmlComponent("w:tab"));
-      ep.root.push(tabRun);
-
-      // Page number placeholder — Word replaces with real numbers when updateFields triggers.
-      // Show "1" so every entry has a visible number even before the field is updated.
-      const pgRun = new XmlComponent("w:r");
-      const pgT   = new XmlComponent("w:t");
-      pgT.root.push("1");
-      pgRun.root.push(pgT);
-      ep.root.push(pgRun);
-
-      frontChildren.push(ep as any);
-    }
-
-    // Final paragraph: fldChar end
-    const fieldEndPara = new XmlComponent("w:p");
-    fieldEndPara.root.push(fldCharRun("end"));
-    frontChildren.push(fieldEndPara as any);
-
-    console.log("[Export] TOC field generated — complex fldChar field with", tocDocxEntries.length, "pre-rendered entries");
-    console.log("[Export] Page references attached — Word will resolve on first open (w:dirty=true)");
-    console.log("[Export] DOCX TOC validated — entries:", tocDocxEntries.filter(e => e.level === 0).length, "top-level,", tocDocxEntries.filter(e => e.level === 1).length, "sections");
-  }
+  frontChildren.push(
+    new TableOfContents("Table of Contents", {
+      hyperlink: true,
+      headingStyleRange: "1-3"
+    })
+  );
 
   frontChildren.push(pageBreak());
 
@@ -1552,7 +1458,7 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
     creator: author,
     title: bookTitle,
     description: String(description).slice(0, 500),
-    settings: { updateFields: true },
+    features: { updateFields: true },
     styles: {
       default: {
         document: {
@@ -1950,7 +1856,7 @@ async function buildBlueprintDocx(project: any, architecture: ChapterArchitectur
           basedOn: "Normal",
           next: "Normal",
           run: { size: 36, bold: true, color: "0F172A" },
-          paragraph: { spacing: { before: 480, after: 160 }, pageBreakBefore: true }
+          paragraph: { spacing: { before: 480, after: 160 } }
         },
         {
           id: "Heading2",
