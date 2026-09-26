@@ -14,7 +14,7 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface RainforestBookRow {
-  asin:                 string;
+  asin:                 string | null;
   title:                string;
   subtitle:             string | null;
   authors:              string | null;
@@ -161,10 +161,11 @@ function normalizeProductDetail(data: any): RainforestProductDetail {
   let bestsellersRankFlat: string | null = typeof p.bestsellers_rank_flat === "string" ? p.bestsellers_rank_flat : null;
   let bestsellersRanks: RainforestProductDetail["bestsellersRanks"] = null;
   if (Array.isArray(p.bestsellers_rank) && p.bestsellers_rank.length) {
-    bestsellersRanks = p.bestsellers_rank
+    const normalizedRanks: NonNullable<RainforestProductDetail["bestsellersRanks"]> = p.bestsellers_rank
       .filter((r: any) => r.rank != null && r.category)
-      .map((r: any) => ({ category: r.category, rank: r.rank, link: r.link || null }));
-    bestsellersRankFlat ||= bestsellersRanks
+      .map((r: any) => ({ category: String(r.category), rank: Number(r.rank), link: r.link || null }));
+    bestsellersRanks = normalizedRanks;
+    bestsellersRankFlat ||= normalizedRanks
       .map((r) => `#${r.rank} in ${r.category}`)
       .join(" · ") || null;
   }
