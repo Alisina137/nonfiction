@@ -22,6 +22,7 @@ import { architectureDefaultsForDetails } from "@/lib/niche/outlineApply";
 import ProviderStatusBadge from "@/components/ProviderStatusBadge";
 
 const STEP_COUNT = BOOK_BUILDER_STEPS.length;
+const SIDEBAR_VISIBILITY_KEY = "nonfiction-builder-sidebar-visible";
 const PROPOSED_BOOK_STEP = BOOK_BUILDER_STEPS.findIndex((s) => s.id === "proposedBook");
 const DETAILS_STEP = BOOK_BUILDER_STEPS.findIndex((s) => s.id === "details");
 const AUTHOR_BIO_STEP = BOOK_BUILDER_STEPS.findIndex((s) => s.id === "authorBio");
@@ -767,6 +768,14 @@ export default function Dashboard() {
   const [writeErrors, setWriteErrors] = useState({});
   const [descriptionErrors, setDescriptionErrors] = useState({});
   const [coverErrors, setCoverErrors] = useState({});
+  const [sidebarVisible, setSidebarVisible] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem(SIDEBAR_VISIBILITY_KEY);
+      return saved == null ? true : saved === "true";
+    } catch {
+      return true;
+    }
+  });
 
   const currentStep = project.wizard.currentStep;
   const completedSteps = project.wizard.completedSteps;
@@ -805,6 +814,14 @@ export default function Dashboard() {
     }, 800);
     return () => clearTimeout(t);
   }, [project, bookId]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_VISIBILITY_KEY, String(sidebarVisible));
+    } catch {
+      // Sidebar visibility persistence is optional.
+    }
+  }, [sidebarVisible]);
 
   function goToStep(index) {
     if (!canAccessStep(completedSteps, index)) return;
@@ -1022,6 +1039,16 @@ export default function Dashboard() {
           <ProviderStatusBadge />
           <button
             type="button"
+            onClick={() => setSidebarVisible((visible) => !visible)}
+            aria-pressed={!sidebarVisible}
+            title={sidebarVisible ? "Hide workflow sidebar" : "Show workflow sidebar"}
+            className="builder-header-button rounded-xl px-3 py-2 text-xs font-semibold transition"
+          >
+            <span aria-hidden className="mr-1">{sidebarVisible ? "◀" : "▶"}</span>
+            {sidebarVisible ? "Hide sidebar" : "Show sidebar"}
+          </button>
+          <button
+            type="button"
             onClick={handleResetBook}
             title="Clears book progress but keeps your author name, persona, and biography"
             className="builder-header-button builder-header-button-warm rounded-xl px-3 py-2 text-xs font-semibold transition"
@@ -1106,7 +1133,8 @@ export default function Dashboard() {
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="builder-sidebar flex min-h-0 w-[252px] shrink-0 flex-col px-3 py-4 md:w-[268px] md:px-5 md:py-5">
+        {sidebarVisible && (
+          <aside className="builder-sidebar flex min-h-0 w-[252px] shrink-0 flex-col px-3 py-4 md:w-[268px] md:px-5 md:py-5">
           <div className="builder-sidebar-heading shrink-0">
             <p className="builder-sidebar-kicker">Nonfiction AI Studio</p>
             <p className="mt-2 shrink-0 leading-snug text-xs font-semibold tracking-tight text-slate-700 md:text-[13px]">
@@ -1156,7 +1184,8 @@ export default function Dashboard() {
             </ul>
           </nav>
 
-        </aside>
+          </aside>
+        )}
 
         <main className="builder-main relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-16 pt-7 sm:px-7 md:px-12 md:pb-20 md:pt-11">
           {currentStep === 0 && (
