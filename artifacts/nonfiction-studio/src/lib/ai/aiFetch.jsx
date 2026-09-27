@@ -64,7 +64,8 @@ export function getLocallyExhaustedProviders() {
 }
 
 export function markProvidersExhausted(providers) {
-  if (!providers?.length) return;
+  providers = Array.isArray(providers) ? providers.filter(isCurrentProvider) : [];
+  if (!providers.length) return;
   try {
     const raw = window.localStorage.getItem(EXHAUSTED_KEY);
     const map = raw ? JSON.parse(raw) : {};
@@ -91,11 +92,17 @@ export function clearManuallyDisabledProviders() {
 export function getManuallyDisabledProviders() {
   try {
     const raw = window.localStorage.getItem(MANUAL_OFF_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const values = raw ? JSON.parse(raw) : [];
+    const current = Array.isArray(values) ? values.filter(isCurrentProvider) : [];
+    if (raw && current.length !== values.length) {
+      window.localStorage.setItem(MANUAL_OFF_KEY, JSON.stringify(current));
+    }
+    return current;
   } catch { return []; }
 }
 
 export function setManuallyDisabled(providerId, disabled) {
+  if (!isCurrentProvider(providerId)) return;
   try {
     const list = new Set(getManuallyDisabledProviders());
     if (disabled) list.add(providerId);
@@ -107,11 +114,19 @@ export function setManuallyDisabled(providerId, disabled) {
 // ─── Preferred provider ────────────────────────────────────────────────────────
 
 export function getPreferredProvider() {
-  try { return window.localStorage.getItem(PREFERRED_KEY) || ""; } catch { return ""; }
+  try {
+    const value = window.localStorage.getItem(PREFERRED_KEY) || "";
+    if (!isCurrentProvider(value)) {
+      if (value) window.localStorage.removeItem(PREFERRED_KEY);
+      return "";
+    }
+    return value;
+  } catch { return ""; }
 }
 
 export function setPreferredProvider(providerId) {
   try {
+    if (providerId && !isCurrentProvider(providerId)) return;
     if (providerId) window.localStorage.setItem(PREFERRED_KEY, providerId);
     else window.localStorage.removeItem(PREFERRED_KEY);
   } catch {}
