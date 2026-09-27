@@ -1703,7 +1703,119 @@ const COVER_INTELLIGENCE_TOOLS = [
   { id: "mood",     icon: "◫", label: "Mood" },
 ];
 
-function CoverToolRail({ currentStep, onStepChange }) {
+const COVER_TOOL_MISSIONS = {
+  concepts: {
+    name: "Generate",
+    goal: "Turn all approved cover decisions into distinct, usable cover directions.",
+    purpose: "Create multiple visual solutions instead of locking onto the first idea.",
+    target: "Generate 4 differentiated concepts, then select the strongest direction.",
+    output: "Selected cover concept",
+  },
+  visual: {
+    name: "Canvas",
+    goal: "Inspect the selected concept as a real cover, not as an abstract idea.",
+    purpose: "Check visual impact, safe zones, balance, and full-wrap production behavior.",
+    target: "A cover that reads clearly at full size and remains legible at thumbnail size.",
+    output: "Refined front/back/full-wrap preview",
+  },
+  typography: {
+    name: "Text",
+    goal: "Make the title instantly readable and establish a clear text hierarchy.",
+    purpose: "Use typography to communicate genre, authority, tone, and reading order.",
+    target: "Title first, subtitle second, author third, with low overlap risk at thumbnail size.",
+    output: "Applied typography system",
+  },
+  elements: {
+    name: "Elements",
+    goal: "Choose one dominant visual idea and only supporting elements that strengthen it.",
+    purpose: "Prevent clutter and make the cover communicate a single memorable concept.",
+    target: "One focal point, controlled complexity, and an explicit avoid-list.",
+    output: "Approved visual element plan",
+  },
+  color: {
+    name: "Colors",
+    goal: "Choose a palette that signals the genre while keeping title contrast strong.",
+    purpose: "Use color as a recognition and differentiation tool, not decoration.",
+    target: "One selected palette with clear background, text, primary, and accent roles.",
+    output: "Selected cover palette",
+  },
+  layout: {
+    name: "Layout",
+    goal: "Place text and imagery so the eye knows exactly where to look first.",
+    purpose: "Control balance, focal area, white space, and text/image collision risk.",
+    target: "Low overlap risk, deliberate focal area, and safe composition inside trim margins.",
+    output: "Applied composition guidance",
+  },
+  review: {
+    name: "Review",
+    goal: "Evaluate concepts against professional cover criteria before committing.",
+    purpose: "Catch weak readability, genre mismatch, and poor thumbnail performance early.",
+    target: "Every generated concept reviewed, with one intentional final selection.",
+    output: "Reviewed winning direction",
+  },
+  market: {
+    name: "Market",
+    goal: "Understand what readers in this category expect to recognize immediately.",
+    purpose: "Match genre conventions while finding a clear point of differentiation.",
+    target: "Document visual codes, common mistakes, differentiation opportunities, and cover goal.",
+    output: "Market cover brief",
+  },
+  strategy: {
+    name: "Strategy",
+    goal: "Define the one message the cover must communicate before any styling decisions.",
+    purpose: "Translate the book promise and audience into a deliberate visual strategy.",
+    target: "Clear cover purpose, visual style, image approach, complexity, and color direction.",
+    output: "Cover strategy",
+  },
+  mood: {
+    name: "Mood",
+    goal: "Choose the emotional atmosphere readers should feel before reading a word.",
+    purpose: "Keep imagery, color, typography, and composition emotionally consistent.",
+    target: "One selected mood board that matches audience expectations and book promise.",
+    output: "Selected emotional direction",
+  },
+  bookInfo: {
+    name: "Setup",
+    goal: "Lock the factual and production inputs the cover must obey.",
+    purpose: "Prevent beautiful artwork from failing because of wrong metadata, trim, or spine geometry.",
+    target: "Title, author, category, trim, page count, barcode policy, and KDP preflight reviewed.",
+    output: "Production-ready cover setup",
+  },
+};
+
+function CoverMissionBar({ toolId, status = "todo" }) {
+  const mission = COVER_TOOL_MISSIONS[toolId] || COVER_TOOL_MISSIONS.visual;
+  const tone = status === "complete"
+    ? "border-emerald-200 bg-emerald-50/80 text-emerald-800"
+    : status === "working"
+      ? "border-amber-200 bg-amber-50/80 text-amber-800"
+      : "border-[#ded7cb] bg-white/75 text-[#314a46]";
+
+  return (
+    <div className={`shrink-0 border-b px-4 py-3 ${tone}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em]">{mission.name} mission</p>
+            <span className="rounded-full border border-current/20 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide opacity-80">
+              {status === "complete" ? "Complete" : status === "working" ? "In progress" : "Target"}
+            </span>
+          </div>
+          <p className="mt-1 text-[12px] font-bold leading-snug">{mission.goal}</p>
+          <p className="mt-1 max-w-4xl text-[10px] leading-relaxed opacity-80">{mission.purpose}</p>
+        </div>
+        <div className="min-w-[240px] max-w-[360px] rounded-xl border border-current/10 bg-white/45 px-3 py-2">
+          <p className="text-[8px] font-black uppercase tracking-[0.14em] opacity-60">Target</p>
+          <p className="mt-1 text-[10px] font-semibold leading-relaxed">{mission.target}</p>
+          <p className="mt-1 text-[9px] opacity-70">Output: {mission.output}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function CoverToolRail({ currentStep, onStepChange, toolStatuses = {} }) {
   const button = (tool) => {
     const active = currentStep === tool.id;
     return (
@@ -1711,7 +1823,7 @@ function CoverToolRail({ currentStep, onStepChange }) {
         key={tool.id}
         type="button"
         onClick={() => onStepChange(tool.id)}
-        title={tool.label}
+        title={`${tool.label}: ${COVER_TOOL_MISSIONS[tool.id]?.goal || ""}`}
         className={`group flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition ${
           active
             ? "bg-[#e7efe9] text-[#23433d] shadow-inner ring-1 ring-[#bdd0c5]"
@@ -1724,6 +1836,16 @@ function CoverToolRail({ currentStep, onStepChange }) {
           {tool.icon}
         </span>
         <span className="text-[9px] font-semibold leading-none">{tool.label}</span>
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${
+            toolStatuses[tool.id] === "complete"
+              ? "bg-emerald-500"
+              : toolStatuses[tool.id] === "working"
+                ? "bg-amber-400 animate-pulse"
+                : "bg-[#c9c0b4]"
+          }`}
+          aria-label={toolStatuses[tool.id] || "todo"}
+        />
       </button>
     );
   };
