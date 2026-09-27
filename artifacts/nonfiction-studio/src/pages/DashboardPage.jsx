@@ -1026,7 +1026,7 @@ export default function Dashboard() {
 
   return (
     <div className="book-builder book-builder-shell flex h-screen min-h-0 flex-col overflow-hidden text-slate-900">
-      <header className="book-builder-header relative z-10 flex shrink-0 items-center justify-between gap-4 px-4 py-3 md:gap-8 md:px-8 md:py-3.5">
+      <header className="book-builder-header cover-horizontal-scroll relative z-10 flex shrink-0 items-center justify-between gap-4 overflow-x-auto px-4 py-3 md:gap-8 md:px-8 md:py-3.5">
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
@@ -1063,7 +1063,7 @@ export default function Dashboard() {
             ⌂ Complete later
           </button>
         </div>
-        <div className="builder-title-block flex min-w-0 flex-1 flex-col items-center justify-center px-2 text-center">
+        <div className="builder-title-block flex min-w-[220px] flex-1 flex-col items-center justify-center px-2 text-center">
           <p className="builder-title-kicker">Manuscript workspace <span aria-hidden>·</span> {String(currentStep + 1).padStart(2, "0")} / {String(STEP_COUNT).padStart(2, "0")}</p>
           <h1 className="font-serif text-[1.05rem] font-bold leading-snug tracking-tight text-slate-900 md:text-xl">
             {stepMeta.label}
