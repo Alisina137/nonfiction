@@ -182,7 +182,8 @@ button:focus-visible, a:focus-visible {
   text-wrap: balance;
 }
 
-.builder-title-kicker {
+.builder-title-kicker,
+.builder-sidebar-kicker {
   color: rgb(143 111 90);
   font-family: var(--app-font-mono);
   font-size: 0.61rem;
