@@ -29,6 +29,7 @@ import {
   getTrimSize,
   resolveMargins,
   estimatePageCount,
+  kdpMinimumInsideMargin,
   DOCX_FONT_NAME,
   PDF_FONT_FILES,
 } from "./exportSettings.js";
@@ -59,9 +60,11 @@ function loadFontBytes(fileName: string): Buffer {
 // Builds a fully-resolved layout object (page geometry, margins, typography,
 // and page-numbering rules) from user-facing ExportSettings + an estimated
 // word count (used only to size the KDP gutter before pagination is known).
-function buildLayout(settings: ExportSettings, wordCount: number) {
+function buildLayout(settings: ExportSettings, wordCount: number, pageCountHint?: number) {
   const trim = getTrimSize(settings.trimSize);
-  const estPages = estimatePageCount(wordCount, settings.fontSize);
+  const estPages = pageCountHint && pageCountHint > 0
+    ? Math.round(pageCountHint)
+    : estimatePageCount(wordCount, settings.fontSize);
   const margins = resolveMargins(settings, estPages); // inches
   const W = trim.widthIn * 72;
   const H = trim.heightIn * 72;
@@ -406,7 +409,7 @@ async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{
     (acc, l) => acc + String(l?.prose || "").split(/\s+/).filter(Boolean).length,
     0
   );
-  const P = buildLayout(settings, estWordCount || 30000);
+  const P = buildLayout(settings, estWordCount || 30000, Number(options?.finalPageCountHint) || undefined);
 
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit as any);
@@ -1068,6 +1071,26 @@ async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{
 
   console.log("[Export] TOC generated —", tocEntries.length, "entries on", tocPage2 ? "2" : "1", "TOC page(s)");
   const pageCount = pdf.getPageCount();
+  const insideMargin = P.mLeft / 72;
+  const requiredInside = kdpMinimumInsideMargin(pageCount);
+  const paginationPass = Number(options?.paginationPass) || 0;
+
+  if (
+    settings.marginsMode === "kdp"
+    && insideMargin + 1e-6 < requiredInside
+    && paginationPass < 3
+  ) {
+    console.log(
+      "[Export] Re-rendering with final-page gutter —",
+      insideMargin.toFixed(3), "→", requiredInside.toFixed(3), "in for", pageCount, "pages"
+    );
+    return buildBookPdfArtifact(project, {
+      ...options,
+      finalPageCountHint: pageCount,
+      paginationPass: paginationPass + 1,
+    });
+  }
+
   console.log("[Export] PDF render completed —", pageCount, "total pages");
   const bytes = await pdf.save();
   return {
