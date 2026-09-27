@@ -1,5 +1,5 @@
+import type { ExportSettings } from "./exportSettings.ts";
 import {
-  ExportSettings,
   getTrimSize,
   kdpMinimumInsideMargin,
   normalizeExportSettings,
