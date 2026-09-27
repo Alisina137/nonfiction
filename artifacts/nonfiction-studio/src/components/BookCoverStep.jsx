@@ -2028,46 +2028,74 @@ function ProjectStatusCard({ metadata, lastSaved, validationErrors }) {
   );
 }
 
-function WorkspaceHeader({ metadata, lastSaved, saveStatus }) {
+function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface, preflight }) {
   const statusMap = {
-    saved:   { dot: "bg-emerald-500", text: "text-emerald-500", label: lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Saved" },
-    saving:  { dot: "bg-amber-400 animate-pulse", text: "text-amber-400", label: "Saving…" },
-    unsaved: { dot: "bg-amber-400", text: "text-amber-400", label: "Unsaved changes" },
+    saved:   { dot: "bg-emerald-400", text: "text-slate-400", label: lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Saved" },
+    saving:  { dot: "bg-amber-400 animate-pulse", text: "text-amber-300", label: "Saving…" },
+    unsaved: { dot: "bg-amber-400", text: "text-amber-300", label: "Unsaved" },
   };
   const st = statusMap[saveStatus] || statusMap.saved;
+  const surfaces = [
+    { id: "front", label: "Front" },
+    { id: "back", label: "Back" },
+    { id: "full", label: "Full Cover" },
+  ];
 
   return (
-    <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 bg-gray-900 shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-          <h2 className="text-sm font-bold text-gray-100 truncate">Book Cover Studio</h2>
+    <div className="grid h-[58px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-white/[0.07] bg-[#0d0f13] px-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-xs font-black text-white shadow-lg shadow-violet-950/30">C</div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="truncate text-[12px] font-bold text-white">Cover Studio</h2>
+            <span className="hidden rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-500 sm:inline">KDP</span>
+          </div>
+          <p className="mt-0.5 max-w-[260px] truncate text-[9px] text-slate-600">{metadata.title || "Untitled book"}</p>
         </div>
-        {metadata.title && (
-          <>
-            <span className="text-gray-700 text-xs">·</span>
-            <span className="text-xs text-gray-400 truncate max-w-[220px]">{metadata.title}</span>
-          </>
-        )}
       </div>
-      <div className="flex items-center gap-3 shrink-0">
-        {/* Auto-save status indicator */}
-        <div className="hidden sm:flex items-center gap-1.5">
-          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.dot}`} />
-          <span className={`text-[10px] font-medium ${st.text}`}>{st.label}</span>
+
+      <div className="flex items-center rounded-xl border border-white/[0.08] bg-[#17191f] p-1 shadow-inner">
+        {surfaces.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setSurface(item.id)}
+            className={`rounded-lg px-4 py-1.5 text-[10px] font-bold transition ${
+              surface === item.id
+                ? "bg-white text-[#111318] shadow-sm"
+                : "text-slate-500 hover:text-slate-200"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <div className="hidden items-center gap-1.5 md:flex">
+          <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+          <span className={`text-[9px] font-medium ${st.text}`}>{st.label}</span>
         </div>
+        <span className={`hidden rounded-lg border px-2.5 py-1 text-[8px] font-black uppercase tracking-wider lg:inline-flex ${
+          preflight.status === "pass"
+            ? "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300"
+            : preflight.status === "block"
+              ? "border-red-500/20 bg-red-500/[0.07] text-red-300"
+              : "border-amber-500/20 bg-amber-500/[0.07] text-amber-300"
+        }`}>
+          {preflight.status === "pass" ? "Print ready" : preflight.status === "block" ? "Blocked" : "Review"}
+        </span>
         <button
           type="button"
-          className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-[11px] font-semibold text-gray-300 hover:bg-gray-700 hover:text-white transition"
+          title="Fullscreen cover editor"
+          onClick={() => {
+            const el = document.documentElement;
+            if (!document.fullscreenElement) el.requestFullscreen?.();
+            else document.exitFullscreen?.();
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-[13px] text-slate-400 transition hover:bg-white/[0.08] hover:text-white"
         >
-          Preview
-        </button>
-        <button
-          type="button"
-          disabled
-          className="rounded-lg border border-gray-800 bg-gray-900 px-3 py-1.5 text-[11px] font-semibold text-gray-700 cursor-not-allowed select-none"
-        >
-          Export
+          ⛶
         </button>
       </div>
     </div>
@@ -2646,16 +2674,67 @@ function MetadataPanel({ metadata, onChange, errors, backgroundOverrides, onBgCh
 
 // ─── Filmstrip Bar ────────────────────────────────────────────────────────────
 
-function FilmstripBar() {
+function FilmstripBar({ concepts, selectedConceptIdx, onSelect, metadata, onGenerate, generating }) {
+  const hasConcepts = Array.isArray(concepts) && concepts.length > 0;
+
   return (
-    <div
-      className="shrink-0 border-t border-gray-800 bg-gray-950/80 px-4 py-3 flex items-center gap-3 overflow-x-auto"
-      style={{ height: 84 }}
-    >
-      <div className="flex items-center justify-center rounded-xl border border-dashed border-gray-700 bg-gray-800/40 px-6 h-full min-w-[140px]">
-        <p className="text-[9px] text-gray-600 text-center leading-snug select-none">
-          Cover Concepts<br />will appear here.
-        </p>
+    <div className="shrink-0 border-t border-white/[0.07] bg-[#0f1115] px-4 py-2.5">
+      <div className="flex h-[86px] items-center gap-2.5 overflow-x-auto">
+        <div className="mr-1 flex min-w-[88px] flex-col justify-center">
+          <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-600">Variants</p>
+          <p className="mt-1 text-[9px] leading-snug text-slate-700">{hasConcepts ? `${concepts.length} generated` : "Generate covers"}</p>
+        </div>
+
+        {hasConcepts ? concepts.map((concept, idx) => {
+          const rendererType = STYLE_TO_RENDERER_TYPE[concept.primaryStyle] || concept.type || "authority";
+          const cd = buildCoverData(
+            { ...concept, type: rendererType },
+            { subtitle: metadata?.subtitle || "", authorLine: metadata?.author || "", tagline: "" },
+            metadata?.title || "Book Title"
+          );
+          const selected = selectedConceptIdx === idx;
+          return (
+            <button
+              key={concept.conceptLabel || idx}
+              type="button"
+              onClick={() => onSelect(idx)}
+              className={`relative h-[68px] w-[52px] shrink-0 overflow-hidden rounded-md border-2 transition ${
+                selected
+                  ? "border-violet-400 shadow-lg shadow-violet-950/40 ring-2 ring-violet-400/20"
+                  : "border-white/[0.08] opacity-70 hover:border-white/20 hover:opacity-100"
+              }`}
+              title={concept.conceptName || `Concept ${idx + 1}`}
+            >
+              <div className="absolute inset-0"><ConceptRenderer cd={cd} /></div>
+              <span className={`absolute bottom-0 left-0 right-0 bg-black/65 py-0.5 text-center text-[7px] font-black ${
+                selected ? "text-violet-200" : "text-slate-400"
+              }`}>
+                {concept.conceptLabel || String.fromCharCode(65 + idx)}
+              </span>
+            </button>
+          );
+        }) : (
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating}
+            className="flex h-[68px] min-w-[132px] items-center justify-center rounded-lg border border-dashed border-white/[0.10] bg-white/[0.025] px-4 text-[9px] font-semibold text-slate-500 transition hover:border-violet-500/40 hover:text-violet-300 disabled:opacity-50"
+          >
+            {generating ? "Generating…" : "✦ Generate variants"}
+          </button>
+        )}
+
+        {hasConcepts && (
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating}
+            className="flex h-[68px] w-[52px] shrink-0 items-center justify-center rounded-md border border-dashed border-white/[0.10] bg-white/[0.025] text-lg text-slate-600 transition hover:border-violet-500/40 hover:text-violet-300 disabled:opacity-50"
+            title="Generate a fresh set"
+          >
+            {generating ? "…" : "+"}
+          </button>
+        )}
       </div>
     </div>
   );
