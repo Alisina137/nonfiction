@@ -395,7 +395,11 @@ interface TocEntry {
   pdfPageRef?: PDFPage;  // reference to actual PDF page (set when page is created)
 }
 
-async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{ bytes: Uint8Array; pageCount: number }> {
+async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{
+  bytes: Uint8Array;
+  pageCount: number;
+  layoutDiagnostics: { paragraphStartMoves: number; headingOrphanProtection: boolean };
+}> {
   const settings = normalizeExportSettings(options.settings);
   const lessonsForCount = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
   const estWordCount: number = (Object.values(lessonsForCount) as any[]).reduce<number>(
@@ -446,6 +450,7 @@ async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{ 
   // so headings never get orphaned alone at the bottom of a page.
   const SEC_MIN_ROOM = 130;
   const SUB_MIN_ROOM = 110;
+  let paragraphStartMoves = 0;
 
   const black     = rgb(0,    0,    0);
   const darkGray  = rgb(0.15, 0.15, 0.15);
@@ -725,6 +730,18 @@ async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{ 
       }
     }
 
+    function ensureBlockStart(lineCount: number) {
+      if (lineCount < 2) return;
+      const available = Math.floor((y - (MB + 20)) / LH);
+      if (available >= 2) return;
+      arabicPageNum++;
+      currentPage = newPage();
+      const label = chNum > 0 ? `${P.chapterPrefix} ${chNum}` : "";
+      drawHeader(currentPage, label, arabicPageNum, false);
+      y = H - MT - 10;
+      paragraphStartMoves++;
+    }
+
     const justify = P.alignment === "justified";
 
     for (const block of blocks) {
@@ -732,6 +749,7 @@ async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{ 
         firstPara = false;
         const bulletText = `\u2022  ${sanitize(block.text)}`;
         const lines = wrapTextPdf(bulletText, regular, BODY, textW - 18);
+        ensureBlockStart(lines.length);
         for (let i = 0; i < lines.length; i++) {
           ensureLineRoom();
           drawAlignedLine(currentPage, lines[i], ML + 14, y, BODY, regular, black, textW - 18, justify, i === lines.length - 1);
@@ -742,6 +760,7 @@ async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{ 
         firstPara = false;
         const numText = `${block.num}.  ${sanitize(block.text)}`;
         const lines = wrapTextPdf(numText, regular, BODY, textW - 18);
+        ensureBlockStart(lines.length);
         for (let i = 0; i < lines.length; i++) {
           ensureLineRoom();
           drawAlignedLine(currentPage, lines[i], ML + 14, y, BODY, regular, black, textW - 18, justify, i === lines.length - 1);
@@ -752,6 +771,7 @@ async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{ 
         const indent = firstPara ? P.indent : 0;
         firstPara = false;
         const lines = wrapTextPdf(sanitize(block.text), regular, BODY, textW - indent);
+        ensureBlockStart(lines.length);
         for (let i = 0; i < lines.length; i++) {
           ensureLineRoom();
           const lineIndent = i === 0 ? indent : 0;
@@ -1050,7 +1070,14 @@ async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{ 
   const pageCount = pdf.getPageCount();
   console.log("[Export] PDF render completed —", pageCount, "total pages");
   const bytes = await pdf.save();
-  return { bytes, pageCount };
+  return {
+    bytes,
+    pageCount,
+    layoutDiagnostics: {
+      paragraphStartMoves,
+      headingOrphanProtection: true,
+    },
+  };
 }
 
 async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array> {
