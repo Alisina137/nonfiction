@@ -2259,10 +2259,11 @@ router.post("/improve", async (req, res) => {
       subsectionTitle,
       subsectionPurpose,
       bookContext,
-      blueprintComponents
+      blueprintComponents,
+      sourceEvidence
     } = req.body || {};
     const { text, usedProvider } = await runLong(
-      improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, subsectionPurpose, bookContext, blueprintComponents }),
+      improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, subsectionPurpose, bookContext, blueprintComponents, sourceEvidence }),
       systemPrompt(),
       req,
       res,
@@ -2285,7 +2286,8 @@ router.post("/edit-content", async (req, res) => {
       subsectionTitle,
       subsectionPurpose,
       bookContext,
-      blueprintComponents
+      blueprintComponents,
+      sourceEvidence
     } = req.body || {};
 
     if (!instructions || typeof instructions !== "string" || !instructions.trim()) {
@@ -2302,8 +2304,10 @@ router.post("/edit-content", async (req, res) => {
       audience,
       bookStructure,
       subsectionTitle,
+      subsectionPurpose,
       bookContext,
-      blueprintComponents
+      blueprintComponents,
+      sourceEvidence
     };
     const first = await runLong(
       editContentPrompt({
