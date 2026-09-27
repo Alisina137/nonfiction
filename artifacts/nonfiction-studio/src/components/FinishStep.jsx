@@ -10,7 +10,13 @@ import { lessonToProse } from "@/lib/writeBlocks";
 import { buildManuscriptDigest } from "@/lib/manuscriptDigest";
 import { buildKnowledgeGraphSummary } from "@/lib/knowledgeGraph";
 import { assessReferenceOverlap } from "@/lib/resources/referenceIntelligence";
-import { buildManuscriptEvidenceAudit, buildPublishingPreflight } from "@/lib/resources/manuscriptEvidence";
+import { buildPublishingPreflight } from "@/lib/resources/manuscriptEvidence";
+import {
+  buildCitationReadyProject,
+  buildCitationRegistry,
+  buildPrecisionEvidenceAudit,
+  buildPublicationConsistencyReport
+} from "@/lib/resources/publicationEvidence";
 import { intelligenceService } from "@/intelligence";
 
 const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
@@ -18,6 +24,7 @@ const DEV_EDIT_KEY       = "nonfiction-ai-dev-edit";
 const BENCH_HIST_KEY     = "nonfiction-ai-bench-history";
 const MAX_BENCH_HIST     = 5;
 const READER_PERSONA_KEY = "nonfiction-ai-reader-personas";
+const CITATION_STYLE_KEY = "nonfiction-ai-citation-style";
 
 function loadFrontMatter() {
   try {
@@ -1142,11 +1149,12 @@ function EvidenceAuditPanel({ audit }) {
         </span>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+      <div className="mt-4 grid gap-2 sm:grid-cols-5">
         {[
           ["Sources used", audit.sourceUsage.length],
           ["Evidence-backed", audit.sectionsWithEvidence],
           ["Supported claims", audit.supportedClaimCount],
+          ["Stale pruned", audit.staleEvidenceCount || 0],
           ["Needs review", audit.unsupportedClaimCount],
         ].map(([label, value]) => (
           <div key={label} className="rounded-xl border border-white/80 bg-white/80 p-3 text-center">
@@ -1228,6 +1236,83 @@ function EvidenceAuditPanel({ audit }) {
   );
 }
 
+function PublicationConsistencyPanel({ report, citationRegistry }) {
+  const [expanded, setExpanded] = useState(false);
+  const reviews = report.checks.filter((check) => check.status === "review");
+
+  return (
+    <section className={`book-panel border ${reviews.length ? "border-amber-200 bg-amber-50/20" : "border-emerald-200 bg-emerald-50/20"}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Publication Consistency</p>
+          <h3 className="mt-1 text-sm font-bold text-slate-900">
+            {reviews.length ? `${reviews.length} publishing detail${reviews.length === 1 ? "" : "s"} need review` : "Publishing surfaces are consistent"}
+          </h3>
+          <p className="mt-1 text-xs text-slate-600">
+            Compares manuscript metadata with cover/publishing metadata and citation/export settings.
+          </p>
+        </div>
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${reviews.length ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>
+          {reviews.length ? `${reviews.length} REVIEW` : "PASS"}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-xl border border-white/80 bg-white/80 p-3 text-center">
+          <p className="text-lg font-bold text-slate-900">{report.passCount}</p>
+          <p className="text-[10px] text-slate-500">Checks passed</p>
+        </div>
+        <div className="rounded-xl border border-white/80 bg-white/80 p-3 text-center">
+          <p className="text-lg font-bold text-slate-900">{report.reviewCount}</p>
+          <p className="text-[10px] text-slate-500">Need review</p>
+        </div>
+        <div className="rounded-xl border border-white/80 bg-white/80 p-3 text-center">
+          <p className="text-lg font-bold text-slate-900">{citationRegistry.sources.length}</p>
+          <p className="text-[10px] text-slate-500">Citable sources</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+      >
+        {expanded ? "Hide consistency details" : "Show consistency details"}
+      </button>
+
+      {expanded && (
+        <div className="mt-3 space-y-2">
+          {report.checks.map((check) => (
+            <div key={check.id} className="rounded-xl border border-slate-100 bg-white p-3">
+              <div className="flex items-start gap-2">
+                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                  check.status === "pass"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : check.status === "review"
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-slate-100 text-slate-500"
+                }`}>
+                  {check.status}
+                </span>
+                <div>
+                  <p className="text-xs font-semibold text-slate-800">{check.label}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">{check.detail}</p>
+                  {check.values && (
+                    <div className="mt-1.5 grid gap-1 text-[10px] text-slate-500">
+                      {check.values.manuscript && <span>Manuscript: {check.values.manuscript}</span>}
+                      {check.values.cover && <span>Cover: {check.values.cover}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PublishingPreflightPanel({ preflight }) {
   const tone = preflight.status === "block"
     ? "border-red-200 bg-red-50/30"
@@ -1301,6 +1386,10 @@ function syntheticFrontMatterSubsection(title, role) {
 export default function FinishStep({ project, onMarkComplete, bookOutline, lessons, setLessons, fullProject }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [docxBusy, setDocxBusy] = useState(false);
+  const [bundleBusy, setBundleBusy] = useState(false);
+  const [citationStyle, setCitationStyle] = useState(() => {
+    try { return window.localStorage.getItem(CITATION_STYLE_KEY) || "none"; } catch { return "none"; }
+  });
   const [status, setStatus] = useState("");
   const [settings, setSettings] = useState(DEFAULT_EXPORT_SETTINGS);
   const [dedication, setDedication] = useState(() => loadFrontMatter().dedication || "");
@@ -1332,6 +1421,10 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [mfBusy, setMfBusy] = useState(false);
   const [mfError, setMfError] = useState("");
   const mfTriggered = useRef(false);
+
+  useEffect(() => {
+    try { window.localStorage.setItem(CITATION_STYLE_KEY, citationStyle); } catch { /* ignore */ }
+  }, [citationStyle]);
 
   // Persist front matter to localStorage whenever any field changes
   useEffect(() => {
@@ -1451,7 +1544,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     return assessReferenceOverlap(manuscriptText, fullProject?.resources);
   }, [lessons, fullProject?.resources]);
   const evidenceAudit = useMemo(
-    () => buildManuscriptEvidenceAudit(lessons || {}),
+    () => buildPrecisionEvidenceAudit(lessons || {}),
     [lessons]
   );
   const publishingPreflight = useMemo(
@@ -1465,10 +1558,34 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     }),
     [fullProject, project, lessons, settings, evidenceAudit, referenceSafety, words, bundle.sectionCount]
   );
+  const baseExportProject = useMemo(
+    () => ({ ...(fullProject || project || {}), lessons }),
+    [fullProject, project, lessons]
+  );
+  const citationRegistry = useMemo(
+    () => buildCitationRegistry(baseExportProject),
+    [baseExportProject]
+  );
+  const publicationConsistency = useMemo(
+    () => buildPublicationConsistencyReport(baseExportProject, settings, citationStyle),
+    [baseExportProject, settings, citationStyle]
+  );
+  const exportProject = useMemo(
+    () => buildCitationReadyProject(baseExportProject, citationStyle),
+    [baseExportProject, citationStyle]
+  );
   const slug = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "book";
 
   const exportPayload = {
-    project, settings,
+    project: exportProject,
+    settings,
+    citationStyle,
+    publicationReport: {
+      evidenceAudit,
+      publishingPreflight,
+      publicationConsistency,
+      citationRegistry
+    },
     dedication, preface,
     howToUseThisBook, whatYouWillLearn, whoThisBookIsFor
   };
@@ -1582,6 +1699,10 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     downloadFromApi("/api/export/docx", `${slug}.docx`, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", setDocxBusy, "Word document");
   }
 
+  function exportPublicationBundle() {
+    downloadFromApi("/api/export/publication-bundle", `${slug}-publication-bundle.zip`, "application/zip", setBundleBusy, "Publication bundle");
+  }
+
   return (
     <section className="mx-auto max-w-3xl space-y-6">
 
@@ -1614,6 +1735,8 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       <EvidenceAuditPanel audit={evidenceAudit} />
 
       <PublishingPreflightPanel preflight={publishingPreflight} />
+
+      <PublicationConsistencyPanel report={publicationConsistency} citationRegistry={citationRegistry} />
 
       {referenceFiles.length > 0 && (
         <section className={`book-panel border ${referenceSafety.risk === "review" ? "border-amber-200 bg-amber-50/40" : "border-emerald-200 bg-emerald-50/30"}`}>
@@ -1680,6 +1803,41 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         mfError={mfError}
         onRetry={() => { mfTriggered.current = false; runMultiFormat(); }}
       />
+
+      <section className="book-panel space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Verified citations</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Citation markers are added only to supported claim-like sentences in the downloaded files. Your saved manuscript is not modified.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {[
+            ["none", "No markers", "Keep prose clean; retain References only."],
+            ["numbered", "Numbered", "Use [1], [2] markers tied to verified used sources."],
+            ["author-year", "Author–year", "Use (Author, Year) markers tied to verified used sources."]
+          ].map(([value, label, help]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setCitationStyle(value)}
+              className={`rounded-xl border p-3 text-left transition ${
+                citationStyle === value
+                  ? "border-indigo-300 bg-indigo-50 ring-1 ring-indigo-200"
+                  : "border-slate-200 bg-white hover:border-indigo-200"
+              }`}
+            >
+              <p className="text-xs font-bold text-slate-800">{label}</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{help}</p>
+            </button>
+          ))}
+        </div>
+        {citationStyle !== "none" && (
+          <p className="rounded-lg border border-indigo-100 bg-indigo-50/50 px-3 py-2 text-[11px] text-indigo-700">
+            {citationRegistry.sources.length} verified used source{citationRegistry.sources.length === 1 ? "" : "s"} available for citation-aware export.
+          </p>
+        )}
+      </section>
 
       {/* Export settings */}
       <section className="book-panel space-y-4">
@@ -1839,6 +1997,14 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
             className="rounded-xl border border-sky-200 bg-sky-50 px-5 py-2.5 text-sm font-semibold text-sky-800 shadow-sm hover:bg-sky-100 disabled:opacity-50"
           >
             {docxBusy ? "Building Word file…" : "Download Word (.docx)"}
+          </button>
+          <button
+            type="button"
+            disabled={bundleBusy}
+            onClick={exportPublicationBundle}
+            className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-800 shadow-sm hover:bg-indigo-100 disabled:opacity-50"
+          >
+            {bundleBusy ? "Building bundle…" : "Download Publication Bundle (.zip)"}
           </button>
         </div>
 
