@@ -793,6 +793,83 @@ Return ONLY this JSON, no markdown:
 });
 
 // ─── Cover Strategy Engine ───────────────────────────────────────────────────
+router.post("/back-cover-copy", async (req, res) => {
+  try {
+    const {
+      title,
+      subtitle,
+      author,
+      description,
+      audience,
+      usp,
+      authorBio,
+      category,
+    } = req.body || {};
+
+    if (!String(title || "").trim()) {
+      return res.status(400).json({ error: "title is required" });
+    }
+
+    const prompt = `You are a senior nonfiction book-cover copywriter preparing concise back-cover copy for a print edition.
+
+BOOK
+Title: ${String(title || "").trim()}
+Subtitle: ${String(subtitle || "").trim() || "(none)"}
+Author: ${String(author || "").trim() || "(not provided)"}
+Category: ${String(category || "").trim() || "Nonfiction"}
+Audience: ${String(audience || "").trim() || "General readers"}
+Unique promise: ${String(usp || "").trim() || "(not provided)"}
+
+CURRENT LISTING DESCRIPTION
+${String(description || "").trim() || "(none)"}
+
+VERIFIED AUTHOR BIO
+${String(authorBio || "").trim() || "(none)"}
+
+Create back-cover copy that is persuasive but faithful to the supplied book information.
+
+Rules:
+- Do NOT invent credentials, awards, endorsements, statistics, reviews, bestseller claims, institutions, publications, or reader outcomes.
+- Do NOT add a quote unless it is explicitly present in the supplied text.
+- headline: 3-10 words.
+- blurb: 90-150 words, plain text, 2-4 short paragraphs.
+- bullets: exactly 3 concise reader-benefit bullets, each under 18 words.
+- authorLine: one short line using only verified author details above; return an empty string when no useful verified detail exists.
+- Avoid hype such as "guaranteed", "revolutionary", "#1 bestseller", or "life-changing" unless explicitly supported.
+- Do not repeat the title as the headline.
+
+Return ONLY valid JSON:
+{
+  "headline": "...",
+  "blurb": "...",
+  "bullets": ["...", "...", "..."],
+  "authorLine": "..."
+}`;
+
+    const { text: raw, usedProvider } = await runShort(
+      prompt,
+      "You are a precise nonfiction publishing copywriter. Respond with valid JSON only.",
+      req,
+      res,
+      "cover"
+    );
+    const data = extractJSON(raw) || {};
+    const bullets = Array.isArray(data.bullets)
+      ? data.bullets.map((item: any) => String(item || "").trim()).filter(Boolean).slice(0, 3)
+      : [];
+
+    return res.json({
+      headline: String(data.headline || "").trim().slice(0, 120),
+      blurb: String(data.blurb || "").trim().slice(0, 1800),
+      bullets: bullets.length ? bullets : [],
+      authorLine: String(data.authorLine || "").trim().slice(0, 240),
+      _provider: usedProvider,
+    });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 router.post("/cover-strategy", async (req, res) => {
   try {
     const {
