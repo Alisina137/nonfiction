@@ -10,6 +10,7 @@ import { lessonToProse } from "@/lib/writeBlocks";
 import { buildManuscriptDigest } from "@/lib/manuscriptDigest";
 import { buildKnowledgeGraphSummary } from "@/lib/knowledgeGraph";
 import { assessReferenceOverlap } from "@/lib/resources/referenceIntelligence";
+import { buildManuscriptEvidenceAudit, buildPublishingPreflight } from "@/lib/resources/manuscriptEvidence";
 import { intelligenceService } from "@/intelligence";
 
 const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
@@ -1118,6 +1119,176 @@ const SIMPLE_FRONT_MATTER = [
   { kind: "whoThisBookIsFor", label: "Who This Book Is For", hint: "Describe the intended audience and who benefits most from this book…" }
 ];
 
+function EvidenceAuditPanel({ audit }) {
+  const [showSources, setShowSources] = useState(false);
+  const [showClaims, setShowClaims] = useState(false);
+  const hasClaims = audit.unsupportedClaimCount > 0;
+
+  return (
+    <section className={`book-panel border ${hasClaims ? "border-amber-200 bg-amber-50/30" : "border-sky-200 bg-sky-50/20"}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Manuscript Evidence Audit</p>
+          <h3 className="mt-1 text-sm font-bold text-slate-900">
+            {hasClaims ? "Some factual claims need source review" : "Tracked evidence is internally consistent"}
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+            {audit.sectionsWithEvidence} of {audit.draftedSections} drafted sections retain retrieved source evidence.
+            Claim checks compare claim-like sentences only against evidence saved with that section.
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${hasClaims ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800"}`}>
+          {audit.coveragePercent}% coverage
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        {[
+          ["Sources used", audit.sourceUsage.length],
+          ["Evidence-backed", audit.sectionsWithEvidence],
+          ["Supported claims", audit.supportedClaimCount],
+          ["Needs review", audit.unsupportedClaimCount],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-xl border border-white/80 bg-white/80 p-3 text-center">
+            <p className="text-lg font-bold text-slate-900">{value}</p>
+            <p className="mt-0.5 text-[10px] font-medium text-slate-500">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setShowSources((value) => !value)}
+          className="rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-sky-800 hover:bg-sky-50"
+        >
+          {showSources ? "Hide source inspector" : "Show source inspector"}
+        </button>
+        {audit.unsupportedClaimCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowClaims((value) => !value)}
+            className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-amber-800 hover:bg-amber-50"
+          >
+            {showClaims ? "Hide claim review" : `Review ${audit.unsupportedClaimCount} claims`}
+          </button>
+        )}
+      </div>
+
+      {showSources && (
+        <div className="mt-4 space-y-2">
+          {audit.sections.map((section) => (
+            <article key={section.sectionId} className="rounded-xl border border-slate-200 bg-white p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-slate-900">{section.sectionTitle}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    {section.evidenceCount} evidence item{section.evidenceCount === 1 ? "" : "s"} · {section.sourceCount} source{section.sourceCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${section.evidenceCount ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                  {section.evidenceCount ? "SOURCE TRACKED" : "NO SOURCE"}
+                </span>
+              </div>
+              {section.evidence.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  {section.evidence.slice(0, 6).map((item, i) => (
+                    <div key={`${item.sourceId}-${i}`} className="rounded-lg bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600">
+                      <span className="font-semibold text-slate-800">{item.sourceTitle}</span>
+                      {item.pageLabel ? <span className="text-slate-400"> · {item.pageLabel}</span> : null}
+                      <span className="ml-1 rounded bg-slate-200/70 px-1 py-0.5 text-[9px] uppercase text-slate-500">{item.kind || "evidence"}</span>
+                      <p className="mt-1 line-clamp-2">{item.text}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+
+      {showClaims && audit.unsupportedClaims.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {audit.unsupportedClaims.slice(0, 20).map((claim, i) => (
+            <article key={`${claim.sectionId}-${i}`} className="rounded-xl border border-amber-200 bg-white p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">{claim.sectionTitle}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-700">{claim.text}</p>
+              <p className="mt-1.5 text-[10px] text-amber-700">
+                No matching retrieved evidence is saved with this section. Verify, rewrite, or remove the factual attribution/statistic before publishing.
+              </p>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <p className="mt-3 text-[10px] leading-relaxed text-slate-400">
+        This audit is evidence-tracking QA, not external fact-checking. A “supported” claim means it matches retrieved evidence stored in this project.
+      </p>
+    </section>
+  );
+}
+
+function PublishingPreflightPanel({ preflight }) {
+  const tone = preflight.status === "block"
+    ? "border-red-200 bg-red-50/30"
+    : preflight.status === "review"
+      ? "border-amber-200 bg-amber-50/30"
+      : "border-emerald-200 bg-emerald-50/30";
+
+  return (
+    <section className={`book-panel border ${tone}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">KDP Publishing Preflight</p>
+          <h3 className="mt-1 text-sm font-bold text-slate-900">
+            {preflight.status === "block"
+              ? "Required publishing fields are missing"
+              : preflight.status === "review"
+                ? "Ready for export after review"
+                : "Preflight checks passed"}
+          </h3>
+          <p className="mt-1 text-xs text-slate-600">
+            Checks metadata consistency, manuscript presence, layout selection, source safety, and evidence readiness before export.
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+          preflight.status === "block"
+            ? "bg-red-100 text-red-700"
+            : preflight.status === "review"
+              ? "bg-amber-100 text-amber-800"
+              : "bg-emerald-100 text-emerald-700"
+        }`}>
+          {preflight.blockingCount ? `${preflight.blockingCount} BLOCK` : preflight.warningCount ? `${preflight.warningCount} REVIEW` : "PASS"}
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {preflight.checks.map((check) => (
+          <div key={check.id} className="flex items-start gap-3 rounded-xl border border-white/80 bg-white/80 px-3 py-2.5">
+            <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+              check.status === "pass"
+                ? "bg-emerald-100 text-emerald-700"
+                : check.status === "block"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-amber-100 text-amber-700"
+            }`}>
+              {check.status === "pass" ? "✓" : check.status === "block" ? "!" : "○"}
+            </span>
+            <div>
+              <p className="text-xs font-semibold text-slate-800">{check.label}</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{check.detail}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-3 text-[10px] text-slate-400">
+        This is an internal publishing preflight, not an Amazon approval or guarantee. Review the final KDP preview before publishing.
+      </p>
+    </section>
+  );
+}
+
 function syntheticFrontMatterSubsection(title, role) {
   return {
     title,
@@ -1279,6 +1450,21 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       .join("\n\n");
     return assessReferenceOverlap(manuscriptText, fullProject?.resources);
   }, [lessons, fullProject?.resources]);
+  const evidenceAudit = useMemo(
+    () => buildManuscriptEvidenceAudit(lessons || {}),
+    [lessons]
+  );
+  const publishingPreflight = useMemo(
+    () => buildPublishingPreflight({
+      project: { ...(fullProject || project || {}), lessons },
+      settings,
+      evidenceAudit,
+      referenceSafety,
+      wordCount: words,
+      sectionCount: bundle.sectionCount,
+    }),
+    [fullProject, project, lessons, settings, evidenceAudit, referenceSafety, words, bundle.sectionCount]
+  );
   const slug = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "book";
 
   const exportPayload = {
@@ -1424,6 +1610,10 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
           <p className="mt-1 text-xs font-medium text-slate-600">Listing description</p>
         </article>
       </section>
+
+      <EvidenceAuditPanel audit={evidenceAudit} />
+
+      <PublishingPreflightPanel preflight={publishingPreflight} />
 
       {referenceFiles.length > 0 && (
         <section className={`book-panel border ${referenceSafety.risk === "review" ? "border-amber-200 bg-amber-50/40" : "border-emerald-200 bg-emerald-50/30"}`}>
