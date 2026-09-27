@@ -736,8 +736,9 @@ function isDescriptionReady(description) {
 }
 
 function validateBookCover(cover) {
-  // Cover Studio is intentionally deferred. Keep this step pass-through until
-  // the replacement workspace is built.
+  // Keep cover creation non-blocking so authors can revisit design after the
+  // final formatted page count is known. The Cover Studio runs its own KDP
+  // geometry and production preflight before final export.
   return {};
 }
 
@@ -1085,7 +1086,7 @@ export default function Dashboard() {
           )}
           {stepMeta.id === "bookCover" && (
             <p className="mt-1 max-w-xl text-[11px] leading-snug text-slate-600 md:text-xs">
-              This workspace is being rebuilt. You can continue and return to the cover later.
+              Build the front, back, and full KDP cover wrap with market-aware concepts, typography, safe zones, spine geometry, and production checks.
             </p>
           )}
           {stepMeta.id === "finish" && (
