@@ -1685,6 +1685,216 @@ function LayoutCard({ profile, generating, onRegenerate }) {
   );
 }
 
+function TypographyWorkflowPanel({ profile, generating, onRegenerate, onApply, hasAppliedOverrides }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f4f1eb]">
+      <div className="flex shrink-0 items-center justify-between border-b border-[#e3ddd2] bg-[#faf8f4] px-6 py-4">
+        <div>
+          <h2 className="text-[13px] font-bold text-[#203432]">Typography Intelligence</h2>
+          <p className="mt-0.5 text-[10px] text-[#7f8985]">
+            Build a title hierarchy that remains readable at Amazon thumbnail size.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={generating}
+            className="rounded-xl border border-[#cfc7ba] bg-white px-4 py-2 text-[10px] font-bold text-[#465b57] hover:border-emerald-400 disabled:opacity-50"
+          >
+            {generating ? "Generating…" : "↻ Re-analyze"}
+          </button>
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={!profile || generating}
+            className="rounded-xl bg-emerald-700 px-4 py-2 text-[10px] font-bold text-white hover:bg-emerald-800 disabled:opacity-40"
+          >
+            {hasAppliedOverrides ? "✓ Re-apply AI Typography" : "Apply AI Typography"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto px-6 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
+        <div className="rounded-2xl border border-[#ddd6ca] bg-white p-5">
+          <div className="mb-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">AI recommendation</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-[#64736f]">
+              The profile below is generated from the selected concept, book title, subtitle, category strategy, and visual direction.
+            </p>
+          </div>
+          <TypographyCard profile={profile} generating={generating} onRegenerate={onRegenerate} />
+        </div>
+
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-[#ddd6ca] bg-white p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">What Apply changes</p>
+            <ul className="mt-3 space-y-2 text-[10px] leading-relaxed text-[#52635f]">
+              <li>• Chooses the recommended title font category when supported.</li>
+              <li>• Applies title alignment to the editable cover text.</li>
+              <li>• Converts AI title/subtitle/author hierarchy into relative text sizes.</li>
+              <li>• Keeps manual editing available in the Text inspector after application.</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">Success target</p>
+            <p className="mt-2 text-[11px] font-semibold leading-relaxed text-emerald-900">
+              A reader should identify the title first, understand the subtitle second, and see the author third—even at thumbnail size.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LayoutWorkflowPanel({ profile, generating, onRegenerate, onApply }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f4f1eb]">
+      <div className="flex shrink-0 items-center justify-between border-b border-[#e3ddd2] bg-[#faf8f4] px-6 py-4">
+        <div>
+          <h2 className="text-[13px] font-bold text-[#203432]">Layout & Composition</h2>
+          <p className="mt-0.5 text-[10px] text-[#7f8985]">
+            Turn the selected concept into a deliberate visual hierarchy with low collision risk.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={generating}
+            className="rounded-xl border border-[#cfc7ba] bg-white px-4 py-2 text-[10px] font-bold text-[#465b57] hover:border-emerald-400 disabled:opacity-50"
+          >
+            {generating ? "Generating…" : "↻ Re-analyze"}
+          </button>
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={!profile || generating}
+            className="rounded-xl bg-emerald-700 px-4 py-2 text-[10px] font-bold text-white hover:bg-emerald-800 disabled:opacity-40"
+          >
+            Apply Layout Guidance
+          </button>
+        </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto px-6 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
+        <div className="rounded-2xl border border-[#ddd6ca] bg-white p-5">
+          <LayoutCard profile={profile} generating={generating} onRegenerate={onRegenerate} />
+        </div>
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-[#ddd6ca] bg-white p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">What Apply changes</p>
+            <ul className="mt-3 space-y-2 text-[10px] leading-relaxed text-[#52635f]">
+              <li>• Applies the recommended left/center/right text alignment when explicit.</li>
+              <li>• Moves uploaded imagery toward the recommended upper, center, or lower focal zone.</li>
+              <li>• Turns safe-area guides on so composition can be checked against KDP trim.</li>
+              <li>• Returns you to Canvas to visually confirm the result.</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">Success target</p>
+            <p className="mt-2 text-[11px] font-semibold leading-relaxed text-emerald-900">
+              The cover should have one obvious focal point, comfortable white space, and no important text fighting the image or trim.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SetupWorkflowPanel({ metadata, geometry, preflight, printSetup }) {
+  const setupItems = [
+    ["Title", metadata?.title, "Required"],
+    ["Author", metadata?.author, "Required"],
+    ["Primary category", metadata?.primaryCategory, "Improves genre targeting"],
+    ["Audience", metadata?.audience, "Improves market decisions"],
+    ["Trim", metadata?.bookSize, "Controls aspect ratio"],
+    ["Page count", geometry?.pageCount, "Controls spine width"],
+  ];
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f4f1eb]">
+      <div className="shrink-0 border-b border-[#e3ddd2] bg-[#faf8f4] px-6 py-4">
+        <h2 className="text-[13px] font-bold text-[#203432]">Cover Setup</h2>
+        <p className="mt-0.5 text-[10px] text-[#7f8985]">
+          Lock the book facts and print geometry that every design decision must respect.
+        </p>
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto px-6 py-5 xl:grid-cols-2">
+        <div className="rounded-2xl border border-[#ddd6ca] bg-white p-5">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">Design inputs</p>
+          <div className="mt-4 space-y-2">
+            {setupItems.map(([label, value, why]) => (
+              <div key={label} className="flex items-start justify-between gap-3 rounded-xl border border-[#eee8de] bg-[#fbfaf7] px-3 py-2.5">
+                <div>
+                  <p className="text-[10px] font-bold text-[#314a46]">{label}</p>
+                  <p className="mt-0.5 text-[9px] text-[#8b948f]">{why}</p>
+                </div>
+                <span className={`max-w-[55%] text-right text-[10px] font-semibold ${value ? "text-[#315b53]" : "text-amber-700"}`}>
+                  {value || "Missing"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-[#ddd6ca] bg-white p-5">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">KDP geometry</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-[#f5f1e9] p-3">
+                <p className="text-[8px] uppercase tracking-wide text-[#8b948f]">Full wrap</p>
+                <p className="mt-1 text-[12px] font-bold text-[#315b53]">{formatInches(geometry.fullWidth)} × {formatInches(geometry.fullHeight)}</p>
+              </div>
+              <div className="rounded-xl bg-[#f5f1e9] p-3">
+                <p className="text-[8px] uppercase tracking-wide text-[#8b948f]">Spine</p>
+                <p className="mt-1 text-[12px] font-bold text-[#315b53]">{formatInches(geometry.spineWidth)}</p>
+              </div>
+              <div className="rounded-xl bg-[#f5f1e9] p-3">
+                <p className="text-[8px] uppercase tracking-wide text-[#8b948f]">Interior</p>
+                <p className="mt-1 text-[10px] font-bold text-[#315b53]">{printSetup?.interiorId || "bw-white"}</p>
+              </div>
+              <div className="rounded-xl bg-[#f5f1e9] p-3">
+                <p className="text-[8px] uppercase tracking-wide text-[#8b948f]">Spine text</p>
+                <p className="mt-1 text-[10px] font-bold text-[#315b53]">{geometry.spineTextEligible ? "Eligible" : "Not eligible"}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${
+            preflight.status === "pass"
+              ? "border-emerald-200 bg-emerald-50"
+              : preflight.status === "block"
+                ? "border-red-200 bg-red-50"
+                : "border-amber-200 bg-amber-50"
+          }`}>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#314a46]">Production target</p>
+              <span className="text-[9px] font-bold uppercase">{preflight.status}</span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {preflight.checks.map((check) => (
+                <div key={check.id} className="flex gap-2 text-[10px]">
+                  <span className={check.status === "pass" ? "text-emerald-700" : check.status === "block" ? "text-red-700" : "text-amber-700"}>
+                    {check.status === "pass" ? "✓" : "•"}
+                  </span>
+                  <div>
+                    <p className="font-semibold text-[#314a46]">{check.label}</p>
+                    <p className="text-[9px] text-[#6f7a76]">{check.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Creative editor rail ────────────────────────────────────────────────────
 
 const COVER_EDITOR_TOOLS = [
