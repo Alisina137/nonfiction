@@ -79,7 +79,9 @@ function BlockContent({ block, blockId, lessons, busyId, isBusy, onGenerate, onI
   const hasStoredProse = prose.length >= 40;
   const isThisBusy = busyId === blockId;
   const lesson     = lessons?.[blockId]?.lesson;
+  const sourceEvidence = Array.isArray(lessons?.[blockId]?.sourceEvidence) ? lessons[blockId].sourceEvidence : [];
   const [editOpen, setEditOpen] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState(false);
   const [editInstructions, setEditInstructions] = useState("");
 
   if (isThisBusy && !hasContent) {
@@ -161,7 +163,36 @@ function BlockContent({ block, blockId, lessons, busyId, isBusy, onGenerate, onI
             {action.label}
           </button>
         ))}
+        {sourceEvidence.length > 0 && (
+          <>
+            <span className="text-slate-200">|</span>
+            <button
+              type="button"
+              onClick={() => setSourceOpen((open) => !open)}
+              className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition ${sourceOpen ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"}`}
+            >
+              {sourceOpen ? "Hide sources" : `Sources (${new Set(sourceEvidence.map((item) => item.sourceId)).size})`}
+            </button>
+          </>
+        )}
       </div>
+
+      {sourceOpen && sourceEvidence.length > 0 && (
+        <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Source Inspector</p>
+          <div className="mt-2 space-y-2">
+            {sourceEvidence.map((item, i) => (
+              <div key={`${item.sourceId || "source"}-${i}`} className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
+                <p className="text-[11px] font-semibold text-slate-800">
+                  {item.sourceTitle || "Reference"}
+                  {item.pageLabel ? <span className="font-normal text-slate-400"> · {item.pageLabel}</span> : null}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {editOpen && (
         <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50/50 p-3">
           <label className="block text-[11px] font-semibold uppercase tracking-wide text-sky-700">
@@ -473,6 +504,7 @@ export default function WriteStep({
   async function improveBlock(blockId, action) {
     const block = blockById.get(blockId);
     const prose = String(lessons?.[blockId]?.prose || "").trim();
+    const sourceEvidence = Array.isArray(lessons?.[blockId]?.sourceEvidence) ? lessons[blockId].sourceEvidence : [];
     if (!block || !prose) return;
     setBusyId(blockId);
     setStatus("");
@@ -486,13 +518,19 @@ export default function WriteStep({
         subsectionTitle: block.label || "",
         subsectionPurpose: block.subsection?.description || block.subsection?.purpose || "",
         bookContext:     buildBookContext(fullProject),
+        sourceEvidence,
         blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
           ? block.blueprintComponents
           : undefined
       });
-      if (data.text) setProse(blockId, cleanManuscriptProse(data.text));
-      else setStatus("Refinement returned empty text — your draft was kept.");
-      if (data.text) setStatus("Applied AI refinement.");
+      if (data.text) {
+        const revised = cleanManuscriptProse(data.text);
+        const referenceSafety = assessReferenceOverlap(revised, fullProject?.resources);
+        patchLesson(blockId, { prose: revised, referenceSafety });
+        setStatus(referenceSafety.risk === "review" ? "Applied refinement; source-like wording needs review." : "Applied AI refinement.");
+      } else {
+        setStatus("Refinement returned empty text — your draft was kept.");
+      }
     } catch (e) {
       if (e instanceof GenerationCanceledError) setStatus("Refinement canceled.");
       else setStatus(e.message || "Could not refine text.");
@@ -504,6 +542,7 @@ export default function WriteStep({
   async function editBlock(blockId, instructions) {
     const block = blockById.get(blockId);
     const prose = String(lessons?.[blockId]?.prose || "").trim();
+    const sourceEvidence = Array.isArray(lessons?.[blockId]?.sourceEvidence) ? lessons[blockId].sourceEvidence : [];
     if (!block || !prose || !instructions?.trim()) return;
     setBusyId(blockId);
     setStatus("");
@@ -517,6 +556,7 @@ export default function WriteStep({
         subsectionTitle: block.label || "",
         subsectionPurpose: block.subsection?.description || block.subsection?.purpose || "",
         bookContext: buildBookContext(fullProject),
+        sourceEvidence,
         blueprintComponents: Array.isArray(block.blueprintComponents) && block.blueprintComponents.length
           ? block.blueprintComponents
           : undefined
@@ -524,8 +564,10 @@ export default function WriteStep({
       if (data.editRejected) {
         setStatus(data.message || "The edit was too broad, so your current draft was kept.");
       } else if (data.text) {
-        setProse(blockId, cleanManuscriptProse(data.text));
-        setStatus("Applied your edit instructions.");
+        const revised = cleanManuscriptProse(data.text);
+        const referenceSafety = assessReferenceOverlap(revised, fullProject?.resources);
+        patchLesson(blockId, { prose: revised, referenceSafety });
+        setStatus(referenceSafety.risk === "review" ? "Applied edit; source-like wording needs review." : "Applied your edit instructions.");
       } else {
         setStatus("Edit returned empty text — your draft was kept.");
       }
