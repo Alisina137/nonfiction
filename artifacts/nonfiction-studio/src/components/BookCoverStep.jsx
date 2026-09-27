@@ -5372,6 +5372,64 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const layoutDebounceRef = useRef(null);
   const layoutKeyRef = useRef("");
 
+  function applyTypographyProfile() {
+    if (!typographyProfile) return;
+
+    const rawCategory = String(typographyProfile.titleFontCategory || "").trim().toLowerCase();
+    const matchedCategory = FONT_CATEGORIES.find((item) => item.toLowerCase() === rawCategory)
+      || FONT_CATEGORIES.find((item) => rawCategory.includes(item.toLowerCase()))
+      || null;
+
+    const rawAlignment = String(typographyProfile.titleAlignment || "").trim().toLowerCase();
+    const alignment = ["left", "center", "right"].includes(rawAlignment) ? rawAlignment : null;
+
+    const ratio = (value, fallback) => {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) return fallback;
+      return Math.max(0.5, Math.min(2, n / 100));
+    };
+
+    setTypographyOverrides((prev) => ({
+      ...(prev || {}),
+      ...(matchedCategory ? { fontCategory: matchedCategory } : {}),
+      ...(alignment ? { alignment } : {}),
+      titleSize: 1,
+      subtitleSize: ratio(typographyProfile.textSizes?.subtitle, prev?.subtitleSize ?? 0.72),
+      authorSize: ratio(typographyProfile.textSizes?.author, prev?.authorSize ?? 0.62),
+      aiTypographyAppliedAt: new Date().toISOString(),
+    }));
+
+    setCurrentStep("visual");
+    setSurface("front");
+    setCanvasState((prev) => ({ ...prev, zoomLevel: "fit" }));
+  }
+
+  function applyLayoutProfile() {
+    if (!layoutProfile) return;
+
+    const alignmentText = String(layoutProfile.alignment || "").toLowerCase();
+    const alignment = alignmentText.includes("left")
+      ? "left"
+      : alignmentText.includes("right")
+        ? "right"
+        : alignmentText.includes("center")
+          ? "center"
+          : null;
+
+    if (alignment) {
+      setTypographyOverrides((prev) => ({ ...(prev || {}), alignment }));
+    }
+
+    const focal = String(layoutProfile.focalArea || "").toLowerCase();
+    const imageY = focal.includes("upper") ? -18 : focal.includes("lower") ? 18 : 0;
+    setImageOverrides((prev) => ({ ...(prev || {}), y: imageY }));
+
+    setPrintSetup((prev) => ({ ...prev, showGuides: true }));
+    setCurrentStep("visual");
+    setSurface("front");
+    setCanvasState((prev) => ({ ...prev, zoomLevel: "fit" }));
+  }
+
   // Market Analysis Engine state
   const [marketAnalysis, setMarketAnalysis] = useState(() =>
     bookCover?.marketAnalysis || bookCover?.coverStudio?.marketAnalysis || null
@@ -5482,6 +5540,61 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     }, (typographyOverrides?.title ?? metadata.title) || "Your Book Title"),
     [selectedConcept, typographyOverrides, metadata]
   );
+
+  const toolStatuses = useMemo(() => {
+    const status = (done, working = false) => working ? "working" : done ? "complete" : "todo";
+    const setupReady = !!metadata.title?.trim()
+      && !!metadata.author?.trim()
+      && !!metadata.bookSize
+      && coverPreflight.status !== "block";
+    const conceptsReady = Array.isArray(concepts) && concepts.length > 0 && selectedConceptIdx !== null;
+    const reviewsReady = conceptsReady
+      && Array.isArray(conceptReviews)
+      && conceptReviews.length >= concepts.length
+      && !!recommendedConceptLabel;
+
+    return {
+      market: status(!!marketAnalysis, marketGenerating),
+      strategy: status(!!coverStrategyProfile, strategyGenerating),
+      mood: status(selectedMoodBoardIdx !== null && !!moodBoards?.[selectedMoodBoardIdx], moodBoardsGenerating),
+      color: status(selectedPaletteIdx !== null && !!colorPalettes?.[selectedPaletteIdx], paletteGenerating),
+      elements: status(!!designElements, designElementsGenerating),
+      typography: status(!!typographyProfile, typographyGenerating),
+      layout: status(!!layoutProfile, layoutGenerating),
+      concepts: status(conceptsReady, generatingAll || regeneratingIdx !== null),
+      review: status(reviewsReady, reviewGenerating),
+      visual: status(conceptsReady),
+      bookInfo: status(setupReady),
+    };
+  }, [
+    metadata.title,
+    metadata.author,
+    metadata.bookSize,
+    coverPreflight.status,
+    marketAnalysis,
+    marketGenerating,
+    coverStrategyProfile,
+    strategyGenerating,
+    selectedMoodBoardIdx,
+    moodBoards,
+    moodBoardsGenerating,
+    selectedPaletteIdx,
+    colorPalettes,
+    paletteGenerating,
+    designElements,
+    designElementsGenerating,
+    typographyProfile,
+    typographyGenerating,
+    layoutProfile,
+    layoutGenerating,
+    concepts,
+    selectedConceptIdx,
+    generatingAll,
+    regeneratingIdx,
+    conceptReviews,
+    recommendedConceptLabel,
+    reviewGenerating,
+  ]);
 
   function setMetadata(key, value) {
     setMetadataState(prev => ({ ...prev, [key]: value }));
