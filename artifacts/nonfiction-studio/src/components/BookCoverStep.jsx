@@ -50,7 +50,7 @@ const NONFICTION_CATEGORIES = [
 
 const LANGUAGES = [
   "English", "Spanish", "French", "German", "Portuguese",
-  "Italian", "Dutch", "Japanese", "Chinese", "Korean", "Other",
+  "Italian", "Dutch", "Japanese", "Hebrew", "Yiddish", "Chinese", "Korean", "Other",
 ];
 
 const ZOOM_STEPS = [0.5, 0.75, 1.0, 1.25, 1.5];
@@ -5548,7 +5548,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
         geometry={geometry}
         preflight={coverPreflight}
         surface={surface}
-        setSurface={setSurface}
+        setSurface={(nextSurface) => {
+          setSurface(nextSurface);
+          setCurrentStep("visual");
+        }}
         generatingBack={backCoverGenerating}
         onGenerateBack={handleGenerateBackCover}
       />
