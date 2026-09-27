@@ -21,6 +21,7 @@ import {
 } from "docx";
 import { generateContent, extractJSON } from "../ai/aiRouter.js";
 import { chapterArchitecturePrompt } from "../ai/prompts.js";
+import { normalizePdfPunctuation } from "./pdfText.js";
 import {
   ExportSettings,
   normalizeExportSettings,
@@ -157,14 +158,7 @@ function resolveAuthorName(p: any): string {
 }
 
 function sanitize(text: string): string {
-  return String(text || "")
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/\u2013/g, "-")
-    .replace(/\u2014/g, "--")
-    .replace(/\u2026/g, "...")
-    .replace(/\u00A0/g, " ")
-    .replace(/[^\x00-\x7E]/g, (c) => { try { return c; } catch { return "?"; } });
+  return normalizePdfPunctuation(text);
 }
 
 function toRoman(n: number): string {
