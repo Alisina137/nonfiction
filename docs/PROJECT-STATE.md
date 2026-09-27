@@ -193,6 +193,18 @@ Verification:
 
 - GitHub Actions workflow run #23 passed tests, full TypeScript typecheck, and production build on the cover-overhaul implementation head.
 
+## Regional AI Provider Migration
+
+- Direct Google Gemini / Google AI Studio support was removed because Afghanistan is not on Google's current Gemini API available-regions list.
+- The app no longer reads or requires `GEMINI_API_KEY`.
+- Provider order is now OpenRouter → Groq → SambaNova.
+- OpenRouter is the primary general provider and the document/PDF provider.
+- PDF Reference Intelligence now uses OpenRouter Universal PDF Support with the `file-parser` plugin and Mistral OCR engine, preserving support for scanned/image-heavy PDFs.
+- Cross-book reference synthesis uses a long-context OpenRouter path with fallback to the normal non-Google provider chain.
+- Google/Gemini model fallbacks were removed from task chains to avoid indirect reliance on Google-hosted model availability.
+- Frontend provider status/preferences automatically discard stale Gemini selections saved in localStorage.
+- Vite development now uses a dedicated frontend port variable/default instead of the API `PORT`, and `strictPort` is disabled so a stale process on 5173 no longer terminates the whole parallel dev command.
+
 ## Next phase candidate
 
 ### Phase 04 — Final Book Production & KDP Export

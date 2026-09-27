@@ -13,14 +13,13 @@ const CACHE_TTL_MS  = 30 * 60 * 1000;
 
 export const EXHAUSTED_KEY    = "nonfiction-ai-exhausted-local";   // { [provider]: expiresAt }
 export const MANUAL_OFF_KEY   = "nonfiction-ai-disabled-manual";   // [provider, ...]
-export const PREFERRED_KEY    = "nonfiction-ai-preferred-provider"; // "gemini"|"groq"|"openrouter"|""
+export const PREFERRED_KEY    = "nonfiction-ai-preferred-provider"; // "openrouter"|"groq"|"sambanova"|""
 
 const NO_CACHE_PATHS = ["/api/ai/improve", "/api/ai/niche-outline", "/api/ai/outline"];
 
 export const PROVIDER_LABELS = {
-  gemini:     "Gemini",
-  groq:       "Groq",
   openrouter: "OpenRouter",
+  groq:       "Groq",
   sambanova:  "SambaNova"
 };
 
@@ -50,18 +49,23 @@ export function providerLabel(id) {
 // ─── Credit exhaustion tracking (localStorage) ────────────────────────────────
 // Mirrors server-side tracking on the client with a 24-hour TTL.
 
+function isCurrentProvider(id) {
+  return ["openrouter", "groq", "sambanova"].includes(String(id || ""));
+}
+
 export function getLocallyExhaustedProviders() {
   try {
     const raw = window.localStorage.getItem(EXHAUSTED_KEY);
     if (!raw) return [];
     const map = JSON.parse(raw);
     const now = Date.now();
-    return Object.keys(map).filter((k) => map[k] > now);
+    return Object.keys(map).filter((k) => isCurrentProvider(k) && map[k] > now);
   } catch { return []; }
 }
 
 export function markProvidersExhausted(providers) {
-  if (!providers?.length) return;
+  providers = Array.isArray(providers) ? providers.filter(isCurrentProvider) : [];
+  if (!providers.length) return;
   try {
     const raw = window.localStorage.getItem(EXHAUSTED_KEY);
     const map = raw ? JSON.parse(raw) : {};
@@ -88,11 +92,17 @@ export function clearManuallyDisabledProviders() {
 export function getManuallyDisabledProviders() {
   try {
     const raw = window.localStorage.getItem(MANUAL_OFF_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const values = raw ? JSON.parse(raw) : [];
+    const current = Array.isArray(values) ? values.filter(isCurrentProvider) : [];
+    if (raw && current.length !== values.length) {
+      window.localStorage.setItem(MANUAL_OFF_KEY, JSON.stringify(current));
+    }
+    return current;
   } catch { return []; }
 }
 
 export function setManuallyDisabled(providerId, disabled) {
+  if (!isCurrentProvider(providerId)) return;
   try {
     const list = new Set(getManuallyDisabledProviders());
     if (disabled) list.add(providerId);
@@ -104,11 +114,19 @@ export function setManuallyDisabled(providerId, disabled) {
 // ─── Preferred provider ────────────────────────────────────────────────────────
 
 export function getPreferredProvider() {
-  try { return window.localStorage.getItem(PREFERRED_KEY) || ""; } catch { return ""; }
+  try {
+    const value = window.localStorage.getItem(PREFERRED_KEY) || "";
+    if (!isCurrentProvider(value)) {
+      if (value) window.localStorage.removeItem(PREFERRED_KEY);
+      return "";
+    }
+    return value;
+  } catch { return ""; }
 }
 
 export function setPreferredProvider(providerId) {
   try {
+    if (providerId && !isCurrentProvider(providerId)) return;
     if (providerId) window.localStorage.setItem(PREFERRED_KEY, providerId);
     else window.localStorage.removeItem(PREFERRED_KEY);
   } catch {}

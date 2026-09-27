@@ -19,7 +19,6 @@ interface EnvVar {
 
 const ENV_VARS: EnvVar[] = [
   { key: "DATABASE_URL",       description: "Optional PostgreSQL connection string",   required: false, group: "Database"  },
-  { key: "GEMINI_API_KEY",     description: "Gemini 2.5 Flash/Pro/Lite — primary AI",        required: false, group: "AI chain"  },
   { key: "GROQ_API_KEY",       description: "Groq GPT-OSS 120B — fast inference fallback",  required: false, group: "AI chain"  },
   { key: "OPENROUTER_API_KEY", description: "OpenRouter — DeepSeek R1, Qwen, Maverick pool", required: false, group: "AI chain"  },
   { key: "SAMBANOVA_API_KEY",  description: "SambaNova Cloud — last-resort fallback",         required: false, group: "AI chain"  },
@@ -61,7 +60,7 @@ export function validateEnv(): void {
   if (!aiPresent) {
     warnings.push(
       "NO AI PROVIDER KEYS are set. All AI generation will fail.\n" +
-      "  Set at least one of: GEMINI_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY, SAMBANOVA_API_KEY"
+      "  Set at least one of: OPENROUTER_API_KEY, GROQ_API_KEY, SAMBANOVA_API_KEY"
     );
   }
   if (!amazonPresent) {

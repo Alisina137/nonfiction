@@ -1,12 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Multi-Provider AI Router — 4 independent providers, independent quotas
+// Multi-Provider AI Router — region-safe provider chain
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// PROVIDER CHAIN (both normal and low-cost mode — same order, same providers):
-//   1. Gemini     — Google AI Studio  (GEMINI_API_KEY)
-//   2. Groq       — Groq Cloud        (GROQ_API_KEY)
-//   3. OpenRouter — OpenRouter        (OPENROUTER_API_KEY)
-//   4. SambaNova  — SambaNova Cloud   (SAMBANOVA_API_KEY)
+// PROVIDER CHAIN:
+//   1. OpenRouter — multi-model routing + universal PDF support
+//   2. Groq       — GPT-OSS inference
+//   3. SambaNova  — Llama fallback
 //
 // QUOTA TRACKING:
 //   On 429 / quota / rate-limit / daily-limit errors:
@@ -23,26 +22,33 @@
 
 // ─── Provider configuration ───────────────────────────────────────────────
 
-export type ProviderId = "gemini" | "groq" | "openrouter" | "sambanova";
+export type ProviderId = "groq" | "openrouter" | "sambanova";
 
 export interface ProviderConfig {
   id:             ProviderId;
   label:          string;
   model:          string;
-  fallbackModels?: string[];   // tried in order when primary model quota-exhausted
+  fallbackModels?: string[];
   apiUrl:         string;
   apiKey:         () => string | undefined;
   order:          number;
 }
 
+const OPENROUTER_PRIMARY = "nvidia/nemotron-3-super-120b-a12b:free";
+const OPENROUTER_FALLBACKS = [
+  "openai/gpt-oss-120b:free",
+  "meta-llama/llama-3.3-70b-instruct:free"
+];
+
 export const PROVIDERS: ProviderConfig[] = [
   {
-    id:     "gemini",
-    label:  "Gemini 2.5 Flash",
-    model:  "gemini-2.5-flash",
-    apiUrl: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-    apiKey: () => process.env.GEMINI_API_KEY,
-    order:  1
+    id:             "openrouter",
+    label:          "OpenRouter (multi-model + PDF)",
+    model:          OPENROUTER_PRIMARY,
+    fallbackModels: OPENROUTER_FALLBACKS,
+    apiUrl:         "https://openrouter.ai/api/v1/chat/completions",
+    apiKey:         () => process.env.OPENROUTER_API_KEY,
+    order:          1
   },
   {
     id:             "groq",
@@ -54,47 +60,18 @@ export const PROVIDERS: ProviderConfig[] = [
     order:          2
   },
   {
-    id:             "openrouter",
-    label:          "OpenRouter (multi-model)",
-    model:          "nvidia/nemotron-3-super-120b-a12b:free",
-    fallbackModels: [
-      "openai/gpt-oss-120b:free",
-      "google/gemma-4-31b-it:free",
-      "meta-llama/llama-3.3-70b-instruct:free"
-    ],
-    apiUrl: "https://openrouter.ai/api/v1/chat/completions",
-    apiKey: () => process.env.OPENROUTER_API_KEY,
-    order:  3
-  },
-  {
     id:             "sambanova",
     label:          "SambaNova (Llama 3.3)",
     model:          "Meta-Llama-3.3-70B-Instruct",
     fallbackModels: ["Meta-Llama-3.1-8B-Instruct"],
     apiUrl:         "https://api.sambanova.ai/v1/chat/completions",
     apiKey:         () => process.env.SAMBANOVA_API_KEY,
-    order:          4
+    order:          3
   }
 ];
 
-// ─── Task type → specialized model chain ─────────────────────────────────────
-//
-// Each phase of the book creation pipeline uses the model best suited for that
-// task.  When a TaskType is set in GenOptions, runChain uses the task-specific
-// provider order instead of the default PROVIDERS order.
-//
-// Providers that have no API key are automatically skipped at runtime.
-// The same provider may specify model + fallbackModels so that one API key can
-// serve multiple quality tiers (e.g. gemini-2.5-pro → gemini-2.5-flash).
-//
-// PHASE MAP:
-//   idea     → Phase 1: Title / idea generation  (Gemini Flash primary)
-//   research → Phase 2: Market / competitor analysis  (DeepSeek R1 primary)
-//   outline  → Phase 3: Structure / outline  (Gemini Pro primary)
-  //   write    → Phase 4: Long-form prose  (Gemini Pro + 4-model pool)
-//   edit     → Phase 5: Editing / improvement  (Llama 4 Maverick primary)
-//   metadata → Phase 6: Description / SEO / metadata  (Gemini Flash-Lite primary)
-
+// Task-specific chains avoid Google-hosted models so the app has no Gemini
+// dependency and no Google regional dependency.
 export type TaskType = "idea" | "research" | "outline" | "write" | "edit" | "metadata";
 
 interface ModelSpec {
@@ -104,61 +81,32 @@ interface ModelSpec {
   fallbackModels?: string[];
 }
 
+const OR_NEMOTRON: ModelSpec = {
+  providerId: "openrouter",
+  model: OPENROUTER_PRIMARY,
+  label: "OpenRouter Nemotron",
+  fallbackModels: OPENROUTER_FALLBACKS
+};
+const GROQ_OSS: ModelSpec = {
+  providerId: "groq",
+  model: "openai/gpt-oss-120b",
+  label: "Groq GPT-OSS",
+  fallbackModels: ["openai/gpt-oss-20b"]
+};
+const SAMBA_LLAMA: ModelSpec = {
+  providerId: "sambanova",
+  model: "Meta-Llama-3.3-70B-Instruct",
+  label: "SambaNova Llama",
+  fallbackModels: ["Meta-Llama-3.1-8B-Instruct"]
+};
+
 export const TASK_CHAINS: Record<TaskType, ModelSpec[]> = {
-
-  // ── Phase 1: Book idea & title generation ──────────────────────────────
-  // Gemini Flash leads — fast creative ideation and marketable angles.
-  idea: [
-    { providerId: "gemini",     model: "gemini-2.5-flash",                              label: "Gemini Flash" },
-    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
-    { providerId: "openrouter", model: "google/gemma-4-31b-it:free",                    label: "Gemma 4",           fallbackModels: ["openai/gpt-oss-120b:free", "nvidia/nemotron-3-super-120b-a12b:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
-  ],
-
-  // ── Phase 2: Market analysis & research ────────────────────────────────
-  // Nemotron Ultra leads — large reasoning model for competitive intel.
-  research: [
-    { providerId: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free",        label: "Nemotron Super",    fallbackModels: ["openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "gemini",     model: "gemini-2.5-pro",                                label: "Gemini Pro",        fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
-    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
-  ],
-
-  // ── Phase 3: Book structure & outline ─────────────────────────────────
-  // Gemini Pro leads — excellent at hierarchical structure and chapter planning.
-  outline: [
-    { providerId: "gemini",     model: "gemini-2.5-pro",                                label: "Gemini Pro",        fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free",        label: "Nemotron Super",    fallbackModels: ["openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
-    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
-  ],
-
-  // ── Phase 4: Main content / prose writing ─────────────────────────────
-  // Gemini Pro is the primary author; full 5-model fallback pool.
-  write: [
-    { providerId: "gemini",     model: "gemini-2.5-pro",                                label: "Gemini Pro",        fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free",        label: "Nemotron Super",    fallbackModels: ["openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
-    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
-  ],
-
-  // ── Phase 5: Editing & quality improvement ─────────────────────────────
-  // Gemini Pro leads; full fallback pool.
-  edit: [
-    { providerId: "gemini",     model: "gemini-2.5-pro",                                label: "Gemini Pro",        fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free",        label: "Nemotron Super",    fallbackModels: ["openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
-    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
-  ],
-
-  // ── Phase 6: Metadata generation ──────────────────────────────────────
-  // Gemini Flash-Lite leads — fast, efficient for short SEO / description tasks.
-  metadata: [
-    { providerId: "gemini",     model: "gemini-2.5-flash-lite-preview-06-17",           label: "Gemini Flash-Lite", fallbackModels: ["gemini-2.5-flash"] },
-    { providerId: "groq",       model: "openai/gpt-oss-120b",                           label: "Groq",              fallbackModels: ["openai/gpt-oss-20b"] },
-    { providerId: "openrouter", model: "google/gemma-4-31b-it:free",                    label: "Gemma 4",           fallbackModels: ["openai/gpt-oss-120b:free", "nvidia/nemotron-3-super-120b-a12b:free", "meta-llama/llama-3.3-70b-instruct:free"] },
-    { providerId: "sambanova",  model: "Meta-Llama-3.3-70B-Instruct",                   label: "SambaNova",         fallbackModels: ["Meta-Llama-3.1-8B-Instruct"] },
-  ],
+  idea:     [OR_NEMOTRON, GROQ_OSS, SAMBA_LLAMA],
+  research: [OR_NEMOTRON, GROQ_OSS, SAMBA_LLAMA],
+  outline:  [OR_NEMOTRON, GROQ_OSS, SAMBA_LLAMA],
+  write:    [OR_NEMOTRON, SAMBA_LLAMA, GROQ_OSS],
+  edit:     [OR_NEMOTRON, GROQ_OSS, SAMBA_LLAMA],
+  metadata: [GROQ_OSS, OR_NEMOTRON, SAMBA_LLAMA],
 };
 
 export const PROVIDER_IDS = PROVIDERS.map((p) => p.id);
@@ -349,53 +297,6 @@ const RETRY_DELAYS_MS  = [2000, 5000];
 
 interface CallResult { text: string; status: number }
 
-/** Gemini native REST API (different shape from OpenAI-compatible) */
-async function callGemini(
-  prompt: string,
-  system: string | undefined,
-  maxTokens: number,
-  model = "gemini-2.5-flash"
-): Promise<CallResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw Object.assign(new Error("GEMINI_API_KEY is not configured"), { skipProvider: true });
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const contents: any[] = [];
-  if (system) {
-    contents.push({ role: "user", parts: [{ text: `[System]: ${system}` }] });
-    contents.push({ role: "model", parts: [{ text: "Understood." }] });
-  }
-  contents.push({ role: "user", parts: [{ text: prompt }] });
-
-  const body = {
-    contents,
-    generationConfig: {
-      maxOutputTokens: maxTokens,
-      temperature: 0.7
-    }
-  };
-
-  const res     = await fetch(url, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify(body)
-  });
-  const rawText = await res.text();
-
-  if (!res.ok) {
-    let errMsg = rawText.slice(0, 400);
-    try { const d = JSON.parse(rawText); errMsg = d?.error?.message || errMsg; } catch {}
-    throw Object.assign(new Error(errMsg), { httpStatus: res.status });
-  }
-
-  let data: any = {};
-  try { data = JSON.parse(rawText); } catch {}
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  if (!text) throw new Error("Gemini returned empty response");
-  return { text, status: res.status };
-}
-
 /** OpenAI-compatible caller (Groq, OpenRouter, and other compatible providers) */
 async function callOpenAICompat(
   provider: ProviderConfig,
@@ -525,12 +426,7 @@ async function callProvider(
       }
 
       try {
-        let result: CallResult;
-        if (provider.id === "gemini") {
-          result = await callGemini(finalPrompt, system, finalMax, currentModel);
-        } else {
-          result = await callOpenAICompat(activeProvider, finalPrompt, system, finalMax);
-        }
+        const result: CallResult = await callOpenAICompat(activeProvider, finalPrompt, system, finalMax);
 
         const elapsed = Date.now() - startMs;
         const modelTag = modelIdx > 0 ? ` (fallback: ${currentModel})` : "";
@@ -616,10 +512,8 @@ async function runChain(
 
   // ── Build typed chain items with model overrides ──────────────────────────
   //
-  // Each item carries: the provider config + the specific model to use + its
-  // fallback models for that task.  This lets one provider key serve different
-  // model tiers depending on the task (e.g. gemini-2.5-pro for outline writing,
-  // gemini-2.5-flash-lite for metadata).
+  // Each item carries the provider config plus the task-specific model and
+  // fallback models. Providers without configured keys are skipped.
 
   interface ChainItem {
     provider:      ProviderConfig;
@@ -771,100 +665,158 @@ export async function generateContentFast(
 
 
 /**
- * Analyze a PDF with Gemini's native document understanding.
+ * Analyze a PDF through OpenRouter Universal PDF Support.
  *
- * This deliberately stays Gemini-only because the other configured providers
- * accept text prompts but not PDF document parts. The caller should use this
- * for source-book ingestion, then store the compact structured analysis rather
- * than the original PDF bytes in project state.
+ * OpenRouter's file-parser plugin can process PDFs for text-only routed models.
+ * mistral-ocr is used so scanned/image-heavy PDFs remain supported.
  */
 export async function generatePdfContent(
   dataBase64: string,
   prompt: string,
   system?: string,
-  opts: { maxTokens?: number; model?: string } = {}
+  opts: { maxTokens?: number; model?: string; fileName?: string } = {}
 ): Promise<GenResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is required for PDF reference analysis");
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY is required for PDF reference analysis");
 
   const base64 = String(dataBase64 || "").replace(/^data:application\/pdf;base64,/, "").trim();
   if (!base64) throw new Error("PDF data is required");
 
-  const model = opts.model || "gemini-2.5-flash";
+  const model = opts.model || OPENROUTER_PRIMARY;
   const maxTokens = Math.max(1000, Math.min(Number(opts.maxTokens) || TOKEN_LIMITS.referenceAnalysis, 12000));
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const filename = String(opts.fileName || "reference.pdf").replace(/[\\/]/g, "_").slice(0, 180) || "reference.pdf";
 
-  const contents: any[] = [];
-  if (system) {
-    contents.push({ role: "user", parts: [{ text: `[System]: ${system}` }] });
-    contents.push({ role: "model", parts: [{ text: "Understood." }] });
-  }
-  contents.push({
-    role: "user",
-    parts: [
-      { inlineData: { mimeType: "application/pdf", data: base64 } },
-      { text: prompt }
-    ]
-  });
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents,
-      generationConfig: {
-        maxOutputTokens: maxTokens,
-        temperature: 0.2,
-        responseMimeType: "application/json"
+  const content: any[] = [
+    {
+      type: "text",
+      text: [system ? `SYSTEM INSTRUCTIONS:\n${system}` : "", prompt].filter(Boolean).join("\n\n")
+    },
+    {
+      type: "file",
+      file: {
+        filename,
+        file_data: `data:application/pdf;base64,${base64}`
       }
+    }
+  ];
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://nonfiction-studio.replit.app",
+      "X-Title": "Nonfiction AI Studio"
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content }],
+      plugins: [
+        {
+          id: "file-parser",
+          pdf: { engine: "mistral-ocr" }
+        },
+        { id: "response-healing" }
+      ],
+      temperature: 0.2,
+      max_tokens: maxTokens,
+      stream: false
     })
   });
 
   const rawText = await res.text();
   if (!res.ok) {
-    let message = rawText.slice(0, 500);
+    let message = rawText.slice(0, 700);
     try {
       const parsed = JSON.parse(rawText);
-      message = parsed?.error?.message || message;
+      message = parsed?.error?.message || (typeof parsed?.error === "string" ? parsed.error : message);
     } catch {}
     throw Object.assign(new Error(message), { httpStatus: res.status });
   }
 
   let data: any = {};
   try { data = JSON.parse(rawText); } catch {}
-  const text = (data?.candidates?.[0]?.content?.parts || [])
-    .map((part: any) => typeof part?.text === "string" ? part.text : "")
-    .join("\n")
-    .trim();
+  const message = data?.choices?.[0]?.message;
+  const text = typeof message?.content === "string"
+    ? message.content.trim()
+    : Array.isArray(message?.content)
+      ? message.content.map((part: any) => part?.text || "").join("\n").trim()
+      : "";
 
-  if (!text) throw new Error("Gemini returned an empty PDF analysis");
+  if (!text) throw new Error("OpenRouter returned an empty PDF analysis");
 
   return {
     text,
-    usedProvider: "gemini",
-    usedModel: model,
+    usedProvider: "openrouter",
+    usedModel: data?.model || model,
     exhaustedProviders: []
   };
 }
 
-
 /**
- * Gemini-only text generation without the generic 20k-character prompt clamp.
- * Used for cross-book synthesis where the source index can legitimately be
- * larger than ordinary UI prompts.
+ * Long-context cross-book synthesis through OpenRouter. This deliberately
+ * bypasses the ordinary 20k-character prompt clamp used for UI generations.
  */
-export async function generateGeminiTextContent(
+export async function generateReferenceSynthesisContent(
   prompt: string,
   system?: string,
   opts: { maxTokens?: number; model?: string } = {}
 ): Promise<GenResult> {
-  const model = opts.model || "gemini-2.5-flash";
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    return generateContent(prompt, system, {
+      maxTokens: opts.maxTokens || TOKEN_LIMITS.referenceSynthesis,
+      taskType: "research"
+    });
+  }
+
+  const model = opts.model || OPENROUTER_PRIMARY;
   const maxTokens = Math.max(800, Math.min(Number(opts.maxTokens) || TOKEN_LIMITS.referenceSynthesis, 12000));
-  const result = await callGemini(prompt, system, maxTokens, model);
+  const messages: Array<{ role: string; content: string }> = [];
+  if (system) messages.push({ role: "system", content: system });
+  messages.push({ role: "user", content: String(prompt || "").slice(0, 120000) });
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://nonfiction-studio.replit.app",
+      "X-Title": "Nonfiction AI Studio"
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      plugins: [{ id: "response-healing" }],
+      temperature: 0.25,
+      max_tokens: maxTokens,
+      stream: false
+    })
+  });
+
+  const rawText = await res.text();
+  if (!res.ok) {
+    let message = rawText.slice(0, 700);
+    try {
+      const parsed = JSON.parse(rawText);
+      message = parsed?.error?.message || (typeof parsed?.error === "string" ? parsed.error : message);
+    } catch {}
+    console.warn("[reference-synthesis] OpenRouter long-context call failed; falling back to standard provider chain:", message);
+    return generateContent(prompt, system, {
+      maxTokens,
+      taskType: "research"
+    });
+  }
+
+  let data: any = {};
+  try { data = JSON.parse(rawText); } catch {}
+  const text = data?.choices?.[0]?.message?.content || data?.choices?.[0]?.message?.reasoning || "";
+  if (!text) throw new Error("OpenRouter returned an empty reference synthesis");
+
   return {
-    text: result.text,
-    usedProvider: "gemini",
-    usedModel: model,
+    text,
+    usedProvider: "openrouter",
+    usedModel: data?.model || model,
     exhaustedProviders: []
   };
 }
