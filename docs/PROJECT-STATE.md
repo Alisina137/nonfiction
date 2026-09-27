@@ -8,8 +8,8 @@ Private, personal-use AI nonfiction publishing studio for creating original, hig
 
 - Current product direction: user's latest instruction for a personal KDP book-creation tool.
 - Implementation process: Software Development Workflow V4 supplied on 2026-09-25.
-- Current-source baseline: `main` at `3a54ae638fce3217384b4d09f3cadd4fa0a15811`.
-- Active implementation branch: `phase-01-reference-intelligence`.
+- Current-source baseline for Phase 02: `main` at `a21d89579b1ad3ab1a58896c7e7fce3185b75a21`.
+- Active implementation branch: `phase-02-manuscript-evidence-kdp-qa`.
 
 ## Technology stack
 
@@ -24,29 +24,41 @@ Private, personal-use AI nonfiction publishing studio for creating original, hig
 
 ## Current phase
 
-### Phase 01 — Reference Intelligence & Publishing Safety
+### Phase 02 — Manuscript Evidence Review & KDP QA
 
-Objective: make uploaded reference books genuinely useful for original nonfiction creation while reducing fabricated citations, unsupported factual claims, and accidental reuse of source wording.
+Objective: make source usage visible at the section and whole-manuscript level, identify claim-like prose that lacks matching retained evidence, keep revision actions source-grounded, and provide a deterministic pre-export publishing preflight.
 
 ### Implemented outcomes
 
-- Native Gemini PDF document analysis for uploaded PDF reference books.
-- PDF reference limit increased to 50 MB; raw PDF bytes are discarded from project state after indexing.
-- Compact per-book research index containing source metadata, chapter map, concepts, lessons, claims, frameworks, examples, short verified quotes, and phrase fingerprints.
-- Cross-book synthesis engine for themes, lesson candidates, agreements, disagreements, and research gaps.
-- Cross-book synthesis is fed into outline generation.
-- Per-subsection source retrieval selects relevant indexed evidence for writing.
-- Generated lesson records retain the evidence items used for that subsection.
-- Source-grounding prompt rules prohibit fabricated studies, statistics, quotations, named real-world cases, citations, URLs, and reference metadata.
-- Expert quotes are allowed only when retrieved evidence contains a verified quote.
-- References are generated deterministically from verified project sources only.
-- Further Reading can only select from verified project sources.
-- AI-invented competitor metadata fallback removed; fallback is now Open Library.
-- Reference-overlap safety scan checks the manuscript against indexed short quotations and distinctive phrase fingerprints before export.
-- Automated unit tests added for evidence retrieval, source-list verification, and phrase-overlap detection.
-- GitHub verification workflow added for tests, typecheck, and production build.
-- Replit/Linux-only package-manager guard made cross-platform for Windows local development.
-- Windows x64 native dependency exclusions removed from workspace overrides.
+- Added a deterministic manuscript evidence audit engine.
+- Tracks drafted sections with/without retained source evidence.
+- Tracks actual source usage by uploaded source ID, section, and PDF page.
+- Detects claim-like sentences involving statistics, studies/research, attributed findings, quotations, dates, and large numeric claims.
+- Compares claim-like sentences only against the evidence retained for that section and flags unmatched claims for editorial review.
+- Added a per-section Source Inspector in the Write step showing source title, page label, and evidence text.
+- Added whole-manuscript Evidence Audit in the Finish step with coverage, used-source count, supported claim count, review count, source inspector, and claim-review list.
+- Added deterministic publishing preflight checks for required metadata, manuscript presence, listing description, trim selection, title/subtitle consistency, reference wording overlap, claim review, and References presence.
+- Publishing preflight is explicitly presented as an internal QA tool, not Amazon approval or external fact checking.
+- Generated References and Further Reading now use only verified sources actually retained by manuscript sections, rather than every source in the project library.
+- Improve/Edit actions now receive the section's retained evidence and are prohibited from adding unsupported studies, statistics, quotations, named real cases, URLs, or page references.
+- Improve/Edit actions retain existing source evidence and recompute reference-overlap safety after revisions.
+- Added Phase 02 unit tests for evidence coverage, unsupported-claim detection, used-source filtering, and publishing-preflight behavior.
+
+### Verification status
+
+- Phase 01 local verification supplied by the user: reference tests PASS and full TypeScript typecheck PASS.
+- Phase 02 unit tests/typecheck/build are pending local verification on this branch.
+- Connector-created GitHub commits do not reliably start repository Actions, so a CI pass is not assumed.
+
+### Phase 02 known limitations
+
+- Claim detection is intentionally heuristic and conservative; it is not an external fact-checking service.
+- A claim marked “supported” means it has lexical support in evidence retained by the project, not that an independent source was externally verified at audit time.
+- Source usage is based on retained `sourceEvidence` from generated sections. Manual prose can still require human review even when a section has attached evidence.
+- Sources manually added outside the section-evidence flow are not automatically treated as “used” for generated References.
+- Retrieval remains lightweight keyword-based retrieval over compact PDF indexes rather than embeddings/vector search.
+- Reference-overlap detection remains fingerprint/verified-quote based rather than a full plagiarism database.
+- EPUB export is not part of this phase.
 
 ## Architecture decisions
 
@@ -80,9 +92,11 @@ Objective: make uploaded reference books genuinely useful for original nonfictio
 
 ## Next phase candidate
 
-Phase 02 — Manuscript Evidence Review & KDP QA:
-- evidence/claim review at chapter and whole-manuscript level,
-- stronger unsupported-claim detection,
-- per-section source inspector UI,
-- KDP preflight checks for metadata/manuscript consistency,
-- optional EPUB export if desired.
+Phase 03 — Evidence Precision & Publishing Automation:
+- optional semantic/embedding retrieval over indexed source evidence,
+- source-use pruning after major manual rewrites,
+- richer citation styles and in-manuscript citation insertion when desired,
+- automated metadata/cover/manuscript consistency report,
+- optional EPUB export,
+- final export bundle checklist and publication archive.
+
