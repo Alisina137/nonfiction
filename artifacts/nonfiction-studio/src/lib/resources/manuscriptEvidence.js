@@ -174,7 +174,7 @@ export function buildUsedVerifiedSourceList(project) {
 function projectText(project, paths) {
   for (const path of paths) {
     const value = path.split(".").reduce((obj, key) => obj?.[key], project);
-    if (clean(value)) return clean(value);
+    if ((typeof value === "string" || typeof value === "number") && clean(value)) return clean(value);
   }
   return "";
 }
@@ -203,7 +203,7 @@ export function buildPublishingPreflight({
   const coverTitle = projectText(project, ["bookCover.title"]);
   const subtitle = projectText(project, ["bookDetails.subtitle", "research.bookSubtitle"]);
   const coverSubtitle = projectText(project, ["bookCover.subtitle"]);
-  const author = projectText(project, ["bookDetails.author", "bookDetails.authorName", "author.name", "authorName"]);
+  const author = projectText(project, ["authorBio.authorName", "research.authorName", "bookDetails.author", "bookDetails.authorName", "author.name", "authorName"]);
   const description = projectText(project, ["description.description", "description", "bookDescription.description"]);
   const indexedReferences = (project?.resources?.files || []).filter((file) => file?.referenceAnalysis).length;
 
@@ -266,12 +266,6 @@ export function buildPublishingPreflight({
   );
 
   if (indexedReferences > 0) {
-    add(
-      "evidence-coverage",
-      "Source coverage",
-      audit.coveragePercent >= 70 ? "pass" : "warn",
-      `${audit.coveragePercent}% of drafted sections currently retain source evidence (${audit.sectionsWithEvidence}/${audit.draftedSections}).`
-    );
     add(
       "claim-review",
       "Unsupported-claim review",
