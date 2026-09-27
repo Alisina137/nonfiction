@@ -47,8 +47,11 @@ Objective: make source usage visible at the section and whole-manuscript level, 
 ### Verification status
 
 - Phase 01 local verification supplied by the user: reference tests PASS and full TypeScript typecheck PASS.
-- Phase 02 unit tests/typecheck/build are pending local verification on this branch.
-- Connector-created GitHub commits do not reliably start repository Actions, so a CI pass is not assumed.
+- Phase 02 GitHub Actions verification: PASS.
+- Phase 02 unit tests: PASS.
+- Phase 02 full TypeScript typecheck: PASS.
+- Phase 02 production build: PASS.
+- Verified workflow run: `Verify phase` run #18 against implementation head `827bd691af0b65a7b0bc204abf8e7f7447087efe`.
 
 ### Phase 02 known limitations
 
