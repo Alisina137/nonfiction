@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { aiFetch } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
-import { buildUsedVerifiedSourceList } from "@/lib/resources/manuscriptEvidence";
+import { buildPrecisionUsedSourceList } from "@/lib/resources/publicationEvidence";
 import { buildChapterSummaries, buildManuscriptContext } from "@/lib/writeBlocks";
 
 // ─── Project helpers ──────────────────────────────────────────────────────────
@@ -727,7 +727,7 @@ export default function BackMatterSection({
       bookContext:       buildBookContext(fullProject),
       chapterSummaries:  buildChapterSummaries(blocks, lessons),
       manuscriptContent: buildManuscriptContext(blocks, lessons),
-      verifiedSources:   buildUsedVerifiedSourceList({ ...fullProject, lessons }),
+      verifiedSources:   buildPrecisionUsedSourceList({ ...fullProject, lessons }),
       tone:              writingTone(fullProject),
       audience:          writingAudience(fullProject),
     };
