@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 function workspaceBackground(id) {
-  if (id === "light") return { background: "#e5e7eb" };
+  if (id === "light") return { background: "#f4f1eb" };
   if (id === "checkerboard") {
     return {
       backgroundColor: "#f8f8f8",
