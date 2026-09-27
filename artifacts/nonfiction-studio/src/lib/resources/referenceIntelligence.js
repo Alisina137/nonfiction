@@ -24,6 +24,40 @@ function tokenize(value) {
     .filter((token) => token.length >= 3 && !STOP_WORDS.has(token));
 }
 
+function stableHash(value) {
+  let hash = 2166136261;
+  const text = String(value || "");
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function bigrams(tokens) {
+  const out = new Set();
+  for (let i = 0; i < tokens.length - 1; i += 1) out.add(`${tokens[i]} ${tokens[i + 1]}`);
+  return out;
+}
+
+function overlapRatio(aTokens, bTokens) {
+  const a = new Set(aTokens);
+  const b = new Set(bTokens);
+  if (!a.size || !b.size) return 0;
+  let shared = 0;
+  for (const token of a) if (b.has(token)) shared += 1;
+  return shared / Math.max(1, Math.min(a.size, b.size));
+}
+
+function bigramOverlap(aTokens, bTokens) {
+  const a = bigrams(aTokens);
+  const b = bigrams(bTokens);
+  if (!a.size || !b.size) return 0;
+  let shared = 0;
+  for (const gram of a) if (b.has(gram)) shared += 1;
+  return shared / Math.max(1, Math.min(a.size, b.size));
+}
+
 function pagesOf(item) {
   if (Array.isArray(item?.pages)) return item.pages.filter((n) => Number.isFinite(Number(n))).map(Number);
   if (Number.isFinite(Number(item?.page))) return [Number(item.page)];
@@ -53,13 +87,18 @@ function priorityBonus(priority) {
 function makeCandidate(file, kind, item, text, detail = "") {
   const analysis = file?.referenceAnalysis || {};
   const pages = pagesOf(item);
+  const sourceId = file?.id || "";
+  const sourceTitle = clean(analysis.title || file?.title || file?.originalName || "Reference");
+  const title = clean(item?.title || item?.name || item?.claim || kind);
+  const body = clean(text);
   return {
-    sourceId: file?.id || "",
-    sourceTitle: clean(analysis.title || file?.title || file?.originalName || "Reference"),
+    evidenceId: `ev-${stableHash(`${sourceId}|${kind}|${title}|${body}`)}`,
+    sourceId,
+    sourceTitle,
     sourceAuthor: clean(analysis.author || ""),
     kind,
-    title: clean(item?.title || item?.name || item?.claim || kind),
-    text: clean(text),
+    title,
+    text: body,
     detail: clean(detail),
     pages,
     pageLabel: pageLabel(pages),
@@ -100,43 +139,38 @@ function candidateItems(file) {
 }
 
 function scoreCandidate(candidate, queryTokens, normalizedQuery) {
+  const titleTokens = tokenize(candidate.title);
+  const bodyTokens = tokenize(`${candidate.text} ${candidate.detail}`);
   const haystack = normalize(`${candidate.title} ${candidate.text} ${candidate.detail}`);
   if (!haystack) return -Infinity;
 
   let score = priorityBonus(candidate.priority);
   for (const token of queryTokens) {
-    if (haystack.includes(token)) score += 1.4;
-    if (normalize(candidate.title).includes(token)) score += 1.2;
+    if (haystack.includes(token)) score += 1.1;
+    if (titleTokens.includes(token)) score += 1.5;
   }
+
+  // Hybrid local relevance: exact lexical coverage + phrase/order similarity.
+  score += overlapRatio(queryTokens, bodyTokens) * 8;
+  score += overlapRatio(queryTokens, titleTokens) * 6;
+  score += bigramOverlap(queryTokens, bodyTokens) * 8;
 
   const queryPhrase = normalizedQuery.length >= 8 ? normalizedQuery : "";
   if (queryPhrase && haystack.includes(queryPhrase)) score += 6;
 
-  if (candidate.kind === "claim") score += 0.8;
-  if (candidate.kind === "framework") score += 0.6;
-  if (candidate.kind === "lesson") score += 0.5;
+  if (candidate.kind === "claim") score += 1.0;
+  if (candidate.kind === "framework") score += 0.7;
+  if (candidate.kind === "lesson") score += 0.6;
+  if (candidate.kind === "concept") score += 0.4;
   if (candidate.kind === "verified_quote") score -= 0.2;
 
   return score;
 }
 
-export function buildReferenceEvidence(resources, query, options = {}) {
-  const files = Array.isArray(resources?.files) ? resources.files : [];
-  const indexed = files.filter((file) => file?.referenceAnalysis);
-  if (!indexed.length) return { items: [], text: "", sourceCount: 0 };
-
-  const maxItems = Math.max(1, Math.min(16, Number(options.maxItems) || 10));
-  const maxPerSource = Math.max(1, Math.min(5, Number(options.maxPerSource) || 3));
-  const maxChars = Math.max(1000, Math.min(16000, Number(options.maxChars) || 9000));
-  const normalizedQuery = normalize(query);
-  const queryTokens = tokenize(query);
-
-  const candidates = indexed
-    .flatMap(candidateItems)
-    .map((candidate) => ({ ...candidate, _score: scoreCandidate(candidate, queryTokens, normalizedQuery) }))
-    .filter((candidate) => candidate._score > 0)
-    .sort((a, b) => b._score - a._score);
-
+function selectEvidenceItems(candidates, options = {}) {
+  const maxItems = Math.max(1, Math.min(30, Number(options.maxItems) || 10));
+  const maxPerSource = Math.max(1, Math.min(8, Number(options.maxPerSource) || 3));
+  const maxChars = Math.max(1000, Math.min(30000, Number(options.maxChars) || 9000));
   const perSource = new Map();
   const seen = new Set();
   const picked = [];
@@ -164,6 +198,7 @@ export function buildReferenceEvidence(resources, query, options = {}) {
     chars += line.length;
     lines.push(line);
     items.push({
+      evidenceId: item.evidenceId,
       sourceId: item.sourceId,
       sourceTitle: item.sourceTitle,
       sourceAuthor: item.sourceAuthor,
@@ -171,7 +206,9 @@ export function buildReferenceEvidence(resources, query, options = {}) {
       title: item.title,
       text: item.text,
       pages: item.pages,
-      pageLabel: item.pageLabel
+      pageLabel: item.pageLabel,
+      relevanceScore: Number.isFinite(item._score) ? Number(item._score.toFixed(3)) : undefined,
+      semanticReason: item.semanticReason || ""
     });
   }
 
@@ -179,6 +216,64 @@ export function buildReferenceEvidence(resources, query, options = {}) {
     items,
     text: lines.join("\n"),
     sourceCount: new Set(items.map((item) => item.sourceId)).size
+  };
+}
+
+export function buildReferenceEvidence(resources, query, options = {}) {
+  const files = Array.isArray(resources?.files) ? resources.files : [];
+  const indexed = files.filter((file) => file?.referenceAnalysis);
+  if (!indexed.length) return { items: [], text: "", sourceCount: 0, query: clean(query), retrievalMode: "local-hybrid" };
+
+  const normalizedQuery = normalize(query);
+  const queryTokens = tokenize(query);
+  const maxCandidates = Math.max(1, Math.min(40, Number(options.maxCandidates) || Number(options.maxItems) || 10));
+
+  const candidates = indexed
+    .flatMap(candidateItems)
+    .map((candidate) => ({ ...candidate, _score: scoreCandidate(candidate, queryTokens, normalizedQuery) }))
+    .filter((candidate) => candidate._score > 0)
+    .sort((a, b) => b._score - a._score)
+    .slice(0, maxCandidates);
+
+  return {
+    ...selectEvidenceItems(candidates, {
+      maxItems: Number(options.maxItems) || 10,
+      maxPerSource: Number(options.maxPerSource) || 3,
+      maxChars: Number(options.maxChars) || 9000
+    }),
+    query: clean(query),
+    retrievalMode: "local-hybrid"
+  };
+}
+
+export function rerankReferenceEvidence(evidence, ranking, options = {}) {
+  const baseItems = Array.isArray(evidence?.items) ? evidence.items : [];
+  const rankItems = Array.isArray(ranking) ? ranking : [];
+  if (!baseItems.length || !rankItems.length) return evidence;
+
+  const byId = new Map(baseItems.map((item) => [item.evidenceId, item]));
+  const ordered = [];
+  const used = new Set();
+
+  for (const rank of rankItems) {
+    const id = String(rank?.evidenceId || "");
+    const item = byId.get(id);
+    if (!item || used.has(id)) continue;
+    used.add(id);
+    ordered.push({
+      ...item,
+      _score: Number.isFinite(Number(rank?.score)) ? Number(rank.score) * 10 : item.relevanceScore,
+      semanticReason: clean(rank?.reason)
+    });
+  }
+  for (const item of baseItems) {
+    if (!used.has(item.evidenceId)) ordered.push({ ...item, _score: item.relevanceScore });
+  }
+
+  return {
+    ...selectEvidenceItems(ordered, options),
+    query: evidence?.query || "",
+    retrievalMode: "semantic-reranked"
   };
 }
 

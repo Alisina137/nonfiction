@@ -4,7 +4,8 @@ import {
   assessReferenceOverlap,
   buildReferenceEvidence,
   buildVerifiedSourceList,
-  compactReferenceAnalyses
+  compactReferenceAnalyses,
+  rerankReferenceEvidence
 } from "./referenceIntelligence.js";
 
 const resources = {
@@ -72,4 +73,27 @@ test("buildVerifiedSourceList excludes invented AI competitor metadata", () => {
   assert.ok(refs.some((r) => r.title === "Focused Work"));
   assert.ok(refs.some((r) => r.title === "Verified"));
   assert.ok(!refs.some((r) => r.title === "Invented"));
+});
+
+
+test("semantic rerank only reorders known evidence IDs", () => {
+  const local = buildReferenceEvidence(resources, "attention focus task switching", {
+    maxItems: 4,
+    maxCandidates: 6,
+    maxPerSource: 4,
+    maxChars: 12000
+  });
+  assert.ok(local.items.length >= 2);
+  assert.ok(local.items.every((item) => item.evidenceId));
+
+  const preferred = local.items[1];
+  const reranked = rerankReferenceEvidence(local, [
+    { evidenceId: preferred.evidenceId, score: 0.99, reason: "Most directly relevant" },
+    { evidenceId: "invented-id", score: 1, reason: "Must be ignored" },
+    { evidenceId: local.items[0].evidenceId, score: 0.7, reason: "Secondary" }
+  ], { maxItems: 3, maxPerSource: 3, maxChars: 9000 });
+
+  assert.equal(reranked.items[0].evidenceId, preferred.evidenceId);
+  assert.ok(!reranked.items.some((item) => item.evidenceId === "invented-id"));
+  assert.equal(reranked.retrievalMode, "semantic-reranked");
 });

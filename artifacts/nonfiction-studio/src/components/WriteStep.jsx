@@ -12,7 +12,8 @@ import {
 } from "@/lib/writeBlocks";
 import { aiFetch, GenerationCanceledError } from "@/lib/ai/aiFetch";
 import { buildBookContext } from "@/lib/bookContext";
-import { assessReferenceOverlap, buildReferenceEvidence } from "@/lib/resources/referenceIntelligence";
+import { assessReferenceOverlap, buildReferenceEvidence, rerankReferenceEvidence } from "@/lib/resources/referenceIntelligence";
+import { pruneStaleSourceEvidence } from "@/lib/resources/publicationEvidence";
 import BackMatterSection from "@/components/BackMatterSection";
 
 const IMPROVE_ACTIONS = [
@@ -80,6 +81,9 @@ function BlockContent({ block, blockId, lessons, busyId, isBusy, onGenerate, onI
   const isThisBusy = busyId === blockId;
   const lesson     = lessons?.[blockId]?.lesson;
   const sourceEvidence = Array.isArray(lessons?.[blockId]?.sourceEvidence) ? lessons[blockId].sourceEvidence : [];
+  const evidenceFreshness = pruneStaleSourceEvidence(prose, sourceEvidence);
+  const activeEvidence = evidenceFreshness.active;
+  const staleEvidence = evidenceFreshness.stale;
   const [editOpen, setEditOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [editInstructions, setEditInstructions] = useState("");
@@ -163,7 +167,7 @@ function BlockContent({ block, blockId, lessons, busyId, isBusy, onGenerate, onI
             {action.label}
           </button>
         ))}
-        {sourceEvidence.length > 0 && (
+        {activeEvidence.length > 0 && (
           <>
             <span className="text-slate-200">|</span>
             <button
@@ -171,17 +175,17 @@ function BlockContent({ block, blockId, lessons, busyId, isBusy, onGenerate, onI
               onClick={() => setSourceOpen((open) => !open)}
               className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition ${sourceOpen ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"}`}
             >
-              {sourceOpen ? "Hide sources" : `Sources (${new Set(sourceEvidence.map((item) => item.sourceId)).size})`}
+              {sourceOpen ? "Hide sources" : `Sources (${new Set(activeEvidence.map((item) => item.sourceId)).size})`}
             </button>
           </>
         )}
       </div>
 
-      {sourceOpen && sourceEvidence.length > 0 && (
+      {sourceOpen && activeEvidence.length > 0 && (
         <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
           <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Source Inspector</p>
           <div className="mt-2 space-y-2">
-            {sourceEvidence.map((item, i) => (
+            {activeEvidence.map((item, i) => (
               <div key={`${item.sourceId || "source"}-${i}`} className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
                 <p className="text-[11px] font-semibold text-slate-800">
                   {item.sourceTitle || "Reference"}
@@ -191,6 +195,11 @@ function BlockContent({ block, blockId, lessons, busyId, isBusy, onGenerate, onI
               </div>
             ))}
           </div>
+          {staleEvidence.length > 0 && (
+            <p className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-2.5 py-1.5 text-[10px] text-amber-700">
+              {staleEvidence.length} older evidence item{staleEvidence.length === 1 ? "" : "s"} no longer match the current prose and will be excluded from citations and final References.
+            </p>
+          )}
         </div>
       )}
       {editOpen && (
@@ -436,19 +445,48 @@ export default function WriteStep({
       const updatedCache    = chapterStrategy && block.chapterKey
         ? { ...strategyCache, [block.chapterKey]: chapterStrategy }
         : strategyCache;
-      const sourceEvidence = buildReferenceEvidence(
+      const evidenceQuery = [
+        block.chapterContext?.title,
+        block.chapterContext?.summary,
+        block.sectionTitle,
+        block.sectionObjective,
+        block.label,
+        block.subsection?.objective,
+        block.subsection?.description
+      ].filter(Boolean).join(" ");
+      let sourceEvidence = buildReferenceEvidence(
         fullProject?.resources,
-        [
-          block.chapterContext?.title,
-          block.chapterContext?.summary,
-          block.sectionTitle,
-          block.sectionObjective,
-          block.label,
-          block.subsection?.objective,
-          block.subsection?.description
-        ].filter(Boolean).join(" "),
-        { maxItems: 10, maxPerSource: 3, maxChars: 9000 }
+        evidenceQuery,
+        { maxItems: 24, maxCandidates: 30, maxPerSource: 6, maxChars: 24000 }
       );
+      let evidenceRetrieval = { mode: sourceEvidence.retrievalMode || "local-hybrid", provider: "local-hybrid" };
+      if (sourceEvidence.items.length >= 2) {
+        try {
+          const rerank = await aiFetch("/api/ai/rerank-evidence", {
+            query: evidenceQuery,
+            candidates: sourceEvidence.items
+          }, { noCache: true });
+          sourceEvidence = rerankReferenceEvidence(sourceEvidence, rerank.ranking, {
+            maxItems: 10,
+            maxPerSource: 3,
+            maxChars: 9000
+          });
+          evidenceRetrieval = {
+            mode: sourceEvidence.retrievalMode || "semantic-reranked",
+            provider: rerank._provider || "semantic-reranker"
+          };
+        } catch {
+          sourceEvidence = rerankReferenceEvidence(
+            sourceEvidence,
+            sourceEvidence.items.map((item, i) => ({
+              evidenceId: item.evidenceId,
+              score: Math.max(0.2, 1 - i * 0.04),
+              reason: "Local hybrid fallback"
+            })),
+            { maxItems: 10, maxPerSource: 3, maxChars: 9000 }
+          );
+        }
+      }
       const data = await aiFetch("/api/ai/lesson", {
         subsection:          block.subsection,
         targetSubsectionTitle: block.label || block.subsection?.title || "",
@@ -479,6 +517,7 @@ export default function WriteStep({
         lesson,
         prose,
         sourceEvidence: sourceEvidence.items,
+        evidenceRetrieval,
         referenceSafety,
         targetSubsectionTitle: block.label || block.subsection?.title || "",
         targetSubsectionPurpose: block.subsection?.description || block.subsection?.purpose || "",
@@ -526,7 +565,13 @@ export default function WriteStep({
       if (data.text) {
         const revised = cleanManuscriptProse(data.text);
         const referenceSafety = assessReferenceOverlap(revised, fullProject?.resources);
-        patchLesson(blockId, { prose: revised, referenceSafety });
+        const freshness = pruneStaleSourceEvidence(revised, sourceEvidence);
+        patchLesson(blockId, {
+          prose: revised,
+          sourceEvidence: freshness.active,
+          staleSourceEvidence: freshness.stale,
+          referenceSafety
+        });
         setStatus(referenceSafety.risk === "review" ? "Applied refinement; source-like wording needs review." : "Applied AI refinement.");
       } else {
         setStatus("Refinement returned empty text — your draft was kept.");
@@ -566,7 +611,13 @@ export default function WriteStep({
       } else if (data.text) {
         const revised = cleanManuscriptProse(data.text);
         const referenceSafety = assessReferenceOverlap(revised, fullProject?.resources);
-        patchLesson(blockId, { prose: revised, referenceSafety });
+        const freshness = pruneStaleSourceEvidence(revised, sourceEvidence);
+        patchLesson(blockId, {
+          prose: revised,
+          sourceEvidence: freshness.active,
+          staleSourceEvidence: freshness.stale,
+          referenceSafety
+        });
         setStatus(referenceSafety.risk === "review" ? "Applied edit; source-like wording needs review." : "Applied your edit instructions.");
       } else {
         setStatus("Edit returned empty text — your draft was kept.");
