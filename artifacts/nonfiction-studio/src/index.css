@@ -225,12 +225,6 @@ button:focus-visible, a:focus-visible {
   color: rgb(35 67 59);
 }
 
-.builder-word-card {
-  border: 1px solid rgb(215 222 214 / 0.92);
-  background: linear-gradient(145deg, rgb(239 246 240 / 0.92), rgb(248 247 241 / 0.78));
-  box-shadow: 0 8px 20px rgb(57 91 77 / 0.06);
-}
-
 .builder-main {
   background:
     radial-gradient(ellipse 80% 45% at 50% 0%, rgb(255 255 255 / 0.6), transparent 70%),
