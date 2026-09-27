@@ -3,6 +3,7 @@ import { PDFDocument, PDFPage, PDFFont, StandardFonts, rgb, PDFName, PDFArray } 
 import fontkit from "@pdf-lib/fontkit";
 import fs from "fs";
 import path from "path";
+import { createHash } from "crypto";
 import { fileURLToPath } from "url";
 import {
   Document,
@@ -31,6 +32,7 @@ import {
   DOCX_FONT_NAME,
   PDF_FONT_FILES,
 } from "./exportSettings.js";
+import { buildFinalProductionReport } from "./productionQa.js";
 
 const router = Router();
 
@@ -393,7 +395,7 @@ interface TocEntry {
   pdfPageRef?: PDFPage;  // reference to actual PDF page (set when page is created)
 }
 
-async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array> {
+async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{ bytes: Uint8Array; pageCount: number }> {
   const settings = normalizeExportSettings(options.settings);
   const lessonsForCount = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
   const estWordCount: number = (Object.values(lessonsForCount) as any[]).reduce<number>(
@@ -1045,8 +1047,14 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   }
 
   console.log("[Export] TOC generated —", tocEntries.length, "entries on", tocPage2 ? "2" : "1", "TOC page(s)");
-  console.log("[Export] PDF render completed —", pdf.getPageCount(), "total pages");
-  return pdf.save();
+  const pageCount = pdf.getPageCount();
+  console.log("[Export] PDF render completed —", pageCount, "total pages");
+  const bytes = await pdf.save();
+  return { bytes, pageCount };
+}
+
+async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array> {
+  return (await buildBookPdfArtifact(project, options)).bytes;
 }
 
 // ─── DOCX BUILDER ─────────────────────────────────────────────────────────────
