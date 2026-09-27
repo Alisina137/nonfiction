@@ -6333,10 +6333,38 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <CoverToolRail currentStep={currentStep} onStepChange={setCurrentStep} />
+        <CoverToolRail
+          currentStep={currentStep}
+          onStepChange={setCurrentStep}
+          toolStatuses={toolStatuses}
+        />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#f1eee7]">
-          {currentStep === "review" ? (
+          <CoverMissionBar toolId={currentStep} status={toolStatuses[currentStep]} />
+
+          {currentStep === "typography" ? (
+            <TypographyWorkflowPanel
+              profile={typographyProfile}
+              generating={typographyGenerating}
+              onRegenerate={() => generateTypography(true)}
+              onApply={applyTypographyProfile}
+              hasAppliedOverrides={!!typographyOverrides?.aiTypographyAppliedAt}
+            />
+          ) : currentStep === "layout" ? (
+            <LayoutWorkflowPanel
+              profile={layoutProfile}
+              generating={layoutGenerating}
+              onRegenerate={() => generateLayout(true)}
+              onApply={applyLayoutProfile}
+            />
+          ) : currentStep === "bookInfo" ? (
+            <SetupWorkflowPanel
+              metadata={metadata}
+              geometry={geometry}
+              preflight={coverPreflight}
+              printSetup={printSetup}
+            />
+          ) : currentStep === "review" ? (
             <ReviewPanel
               concepts={concepts}
               conceptReviews={conceptReviews}
