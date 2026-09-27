@@ -56,7 +56,7 @@ import {
   generateContent,
   generateContentFast,
   generatePdfContent,
-  generateGeminiTextContent,
+  generateReferenceSynthesisContent,
   extractJSON,
   getModelStatus,
   resetProviders,
@@ -164,7 +164,7 @@ function sanitizeOutlineSections(chapters: any[]): any[] {
 
 /**
  * Express response shape for AI endpoints:
- *   - 200: { ...payload, _provider: "openai"|"anthropic"|"xai"|"gemini" }
+ *   - 200: { ...payload, _provider: "openrouter"|"groq"|"sambanova" }
  *   - 500: { error }
  */
 function aiErrorResponse(res: any, error: any) {
@@ -2140,7 +2140,7 @@ router.post("/analyze-reference", async (req, res) => {
       base64,
       referenceAnalysisPrompt(String(fileName), String(category)),
       "You are a precise source-analysis engine. Use only the attached document and return strict JSON.",
-      { maxTokens: TOKEN_LIMITS.referenceAnalysis, model: "gemini-2.5-flash" }
+      { maxTokens: TOKEN_LIMITS.referenceAnalysis, fileName: String(fileName) }
     );
     const parsed = extractJSON(generated.text);
     const analysis = normalizeReferenceAnalysis(parsed, String(fileName).replace(/\.pdf$/i, ""));
@@ -2248,10 +2248,10 @@ RULES:
 - Prefer cross-book synthesis over one-source lessons when evidence supports it.
 - "gaps" are areas the new book can add through the author's own analysis or future verified research; do not fabricate content to fill them.`;
 
-    const generated = await generateGeminiTextContent(
+    const generated = await generateReferenceSynthesisContent(
       prompt,
       "You are a rigorous cross-book synthesis engine. Never invent source evidence.",
-      { maxTokens: TOKEN_LIMITS.referenceSynthesis, model: "gemini-2.5-flash" }
+      { maxTokens: TOKEN_LIMITS.referenceSynthesis }
     );
     const parsed = extractJSON(generated.text);
     const allowedIds = new Set(references.map((r: any) => r.sourceId).filter(Boolean));
