@@ -8,7 +8,7 @@
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test src/lib/resources/referenceIntelligence.test.js src/lib/resources/manuscriptEvidence.test.js"
+    "test": "node --test src/lib/resources/referenceIntelligence.test.js src/lib/resources/manuscriptEvidence.test.js src/lib/resources/publicationEvidence.test.js"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
