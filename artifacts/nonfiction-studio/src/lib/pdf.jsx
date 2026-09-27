@@ -1,16 +1,17 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { enumerateWriteBlocks } from "@/lib/writeBlocks";
 import { resolveAuthorName, resolveBookTitle } from "@/lib/projectMeta";
+import { normalizePdfPunctuation } from "@/lib/pdfText";
 
 export async function buildBookPdf(project) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const title = resolveBookTitle(project);
-  const author = resolveAuthorName(project);
+  const title = normalizePdfPunctuation(resolveBookTitle(project));
+  const author = normalizePdfPunctuation(resolveAuthorName(project));
 
   function wrapLines(text, maxChars = 92) {
-    const raw = String(text || "");
+    const raw = normalizePdfPunctuation(text);
     return raw.split(/\n/).flatMap((paragraph) => {
       const trimmed = paragraph.trim();
       if (!trimmed) return [""];
@@ -21,7 +22,7 @@ export async function buildBookPdf(project) {
 
   function addTextPage(heading, bodyLines) {
     const page = pdf.addPage([595, 842]);
-    page.drawText(heading.slice(0, 120), {
+    page.drawText(normalizePdfPunctuation(heading).slice(0, 120), {
       x: 50,
       y: 790,
       size: 18,
