@@ -4,7 +4,7 @@ import {
   kdpMinimumInsideMargin,
   normalizeExportSettings,
   resolveMargins,
-} from "./exportSettings.js";
+} from "./exportSettings.ts";
 
 export type ProductionCheckStatus = "pass" | "review" | "block";
 
