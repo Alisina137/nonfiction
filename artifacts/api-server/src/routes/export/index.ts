@@ -1537,6 +1537,120 @@ async function buildBookDocx(project: any, options: any = {}): Promise<Buffer> {
   return Packer.toBuffer(doc);
 }
 
+// ─── Publication bundle ZIP ───────────────────────────────────────────────────
+
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let value = n;
+    for (let k = 0; k < 8; k++) {
+      value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);
+    }
+    table[n] = value >>> 0;
+  }
+  return table;
+})();
+
+function crc32(buffer: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of buffer) crc = CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function dosDateTime(date = new Date()): { time: number; date: number } {
+  const year = Math.max(1980, date.getFullYear());
+  return {
+    time: ((date.getHours() & 0x1f) << 11) | ((date.getMinutes() & 0x3f) << 5) | ((Math.floor(date.getSeconds() / 2)) & 0x1f),
+    date: (((year - 1980) & 0x7f) << 9) | (((date.getMonth() + 1) & 0x0f) << 5) | (date.getDate() & 0x1f)
+  };
+}
+
+function buildStoredZip(files: Array<{ name: string; data: Buffer | Uint8Array | string }>): Buffer {
+  const localParts: Buffer[] = [];
+  const centralParts: Buffer[] = [];
+  let offset = 0;
+  const stamp = dosDateTime();
+
+  for (const file of files) {
+    const name = Buffer.from(String(file.name || "file").replace(/\\/g, "/"), "utf8");
+    const data = Buffer.isBuffer(file.data)
+      ? file.data
+      : typeof file.data === "string"
+        ? Buffer.from(file.data, "utf8")
+        : Buffer.from(file.data);
+    const checksum = crc32(data);
+
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0, 6);
+    local.writeUInt16LE(0, 8);
+    local.writeUInt16LE(stamp.time, 10);
+    local.writeUInt16LE(stamp.date, 12);
+    local.writeUInt32LE(checksum, 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    local.writeUInt16LE(0, 28);
+
+    localParts.push(local, name, data);
+
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0, 8);
+    central.writeUInt16LE(0, 10);
+    central.writeUInt16LE(stamp.time, 12);
+    central.writeUInt16LE(stamp.date, 14);
+    central.writeUInt32LE(checksum, 16);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt16LE(0, 30);
+    central.writeUInt16LE(0, 32);
+    central.writeUInt16LE(0, 34);
+    central.writeUInt16LE(0, 36);
+    central.writeUInt32LE(0, 38);
+    central.writeUInt32LE(offset, 42);
+    centralParts.push(central, name);
+
+    offset += local.length + name.length + data.length;
+  }
+
+  const centralBuffer = Buffer.concat(centralParts);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(files.length, 8);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(centralBuffer.length, 12);
+  end.writeUInt32LE(offset, 16);
+  end.writeUInt16LE(0, 20);
+
+  return Buffer.concat([...localParts, centralBuffer, end]);
+}
+
+function publicationMetadata(project: any, settings: any, citationStyle: string) {
+  const coverMeta = project?.bookCover?.coverStudio?.metadata || {};
+  const description = project?.description?.description || project?.description || "";
+  return {
+    title: resolveBookTitle(project),
+    subtitle: project?.bookDetails?.subtitle || project?.research?.bookSubtitle || "",
+    author: resolveAuthorName(project),
+    description,
+    shortHook: project?.bookMarketing?.shortHook || "",
+    keywords: project?.bookMarketing?.keywords || "",
+    primaryCategory: coverMeta.primaryCategory || project?.bookCover?.primaryCategory || "",
+    secondaryCategory: coverMeta.secondaryCategory || project?.bookCover?.secondaryCategory || "",
+    language: coverMeta.language || project?.bookCover?.language || "English",
+    trimSize: settings?.trimSize || "",
+    citationStyle: citationStyle || "none",
+    generatedAt: new Date().toISOString()
+  };
+}
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 router.post("/book", async (req, res) => {
@@ -1568,6 +1682,79 @@ router.post("/docx", async (req, res) => {
   } catch (error: any) {
     console.error("DOCX export error:", error);
     return res.status(500).json({ error: error.message || "Failed to export DOCX" });
+  }
+});
+
+router.post("/publication-bundle", async (req, res) => {
+  try {
+    const {
+      project,
+      preset,
+      settings,
+      citationStyle,
+      publicationReport,
+      dedication,
+      acknowledgments,
+      preface,
+      howToUseThisBook,
+      whatYouWillLearn,
+      whoThisBookIsFor
+    } = req.body || {};
+
+    if (!project || typeof project !== "object") {
+      return res.status(400).json({ error: "Missing project payload" });
+    }
+
+    const options = { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor };
+    const [pdfBytes, docxBuffer] = await Promise.all([
+      buildBookPdf(project, options),
+      buildBookDocx(project, options)
+    ]);
+
+    const slug = (resolveBookTitle(project) || "book")
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-|-$/g, "") || "book";
+    const metadata = publicationMetadata(project, settings, citationStyle);
+    const report = publicationReport && typeof publicationReport === "object" ? publicationReport : {};
+    const description = String(metadata.description || "");
+    const keywords = String(metadata.keywords || "");
+
+    const readme = [
+      "Nonfiction AI Studio — Publication Bundle",
+      "",
+      "Files:",
+      "- manuscript/" + slug + ".pdf — print-ready manuscript export",
+      "- manuscript/" + slug + ".docx — editable manuscript export",
+      "- metadata/publishing-metadata.json — title, author, listing, category, trim, citation settings",
+      "- reports/evidence-audit.json — retained source usage and claim review",
+      "- reports/kdp-preflight.json — deterministic pre-export checks",
+      "- reports/publication-consistency.json — manuscript/cover/listing consistency checks",
+      "- reports/citation-registry.json — verified sources available to exported citation markers",
+      "- listing/description.txt — current listing description",
+      "- listing/keywords.txt — current discovery keywords",
+      "",
+      "Important: this bundle is an internal production archive. KDP's online preview and current publishing requirements remain the final upload checks."
+    ].join("\n");
+
+    const zip = buildStoredZip([
+      { name: "manuscript/" + slug + ".pdf", data: Buffer.from(pdfBytes) },
+      { name: "manuscript/" + slug + ".docx", data: docxBuffer },
+      { name: "metadata/publishing-metadata.json", data: JSON.stringify(metadata, null, 2) },
+      { name: "reports/evidence-audit.json", data: JSON.stringify(report.evidenceAudit || {}, null, 2) },
+      { name: "reports/kdp-preflight.json", data: JSON.stringify(report.publishingPreflight || {}, null, 2) },
+      { name: "reports/publication-consistency.json", data: JSON.stringify(report.publicationConsistency || {}, null, 2) },
+      { name: "reports/citation-registry.json", data: JSON.stringify(report.citationRegistry || {}, null, 2) },
+      { name: "listing/description.txt", data: description },
+      { name: "listing/keywords.txt", data: keywords },
+      { name: "README.txt", data: readme }
+    ]);
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${slug}-publication-bundle.zip"`);
+    return res.status(200).send(zip);
+  } catch (error: any) {
+    console.error("Publication bundle export error:", error);
+    return res.status(500).json({ error: error.message || "Failed to build publication bundle" });
   }
 });
 
