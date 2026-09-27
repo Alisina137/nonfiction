@@ -503,3 +503,29 @@ button:focus-visible, a:focus-visible {
   .landing-reveal, .floating-sheet, .workflow-pulse, .workflow-stage, .workflow-stage-icon, .workflow-progress, .workflow-countdown { animation: none; }
   .btn-primary:hover, .btn-secondary:hover, .feature-card:hover, .story-card:hover, .workflow-arrow:hover { transform: none; }
 }
+
+.cover-horizontal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(161 171 163 / 0.78) transparent;
+  overscroll-behavior-x: contain;
+}
+
+.cover-horizontal-scroll::-webkit-scrollbar {
+  height: 7px;
+}
+
+.cover-horizontal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cover-horizontal-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgb(161 171 163 / 0.78);
+  background-clip: padding-box;
+}
+
+.cover-horizontal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(101 126 115 / 0.9);
+  background-clip: padding-box;
+}
