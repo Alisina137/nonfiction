@@ -5869,54 +5869,25 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   return (
     <div
-      className="flex flex-col overflow-hidden"
-      style={{ minHeight: "calc(100vh - 12rem)", minWidth: 0, background: "#0d1117" }}
+      className="flex min-h-0 flex-col overflow-hidden rounded-none bg-[#0b0d10] text-slate-200"
+      style={{ height: "calc(100vh - 74px)", minWidth: 0 }}
     >
-      {/* ── Header ── */}
       <WorkspaceHeader
         metadata={metadata}
         lastSaved={lastSaved}
         saveStatus={saveStatus}
-      />
-
-      <CoverProductionControls
-        metadata={metadata}
-        printSetup={printSetup}
-        setPrintSetup={setPrintSetup}
-        backCover={backCover}
-        setBackCover={setBackCover}
-        geometry={geometry}
-        preflight={coverPreflight}
         surface={surface}
         setSurface={(nextSurface) => {
           setSurface(nextSurface);
           setCurrentStep("visual");
         }}
-        generatingBack={backCoverGenerating}
-        onGenerateBack={handleGenerateBackCover}
+        preflight={coverPreflight}
       />
 
-      {/* ── Three-panel layout ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <CoverToolRail currentStep={currentStep} onStepChange={setCurrentStep} />
 
-        {/* ── LEFT PANEL (~300px) — Workflow Navigator + Project Status ── */}
-        <div
-          className="shrink-0 border-r border-gray-800 flex flex-col overflow-hidden"
-          style={{ width: 300, background: "#111827" }}
-        >
-          <WorkflowNavigator currentStep={currentStep} onStepChange={setCurrentStep} />
-          <ProjectStatusCard
-            metadata={metadata}
-            lastSaved={lastSaved}
-            validationErrors={validationErrors}
-          />
-        </div>
-
-        {/* ── CENTER WORKSPACE — Toolbar + Canvas + Filmstrip ── */}
-        <div
-          className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden"
-          style={{ background: "#1a1f2e" }}
-        >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#1a1d23]">
           {currentStep === "review" ? (
             <ReviewPanel
               concepts={concepts}
@@ -6019,16 +5990,19 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                 />
               </div>
 
-              <FilmstripBar />
+              <FilmstripBar
+                concepts={concepts}
+                selectedConceptIdx={selectedConceptIdx}
+                onSelect={setSelectedConceptIdx}
+                metadata={metadata}
+                onGenerate={handleGenerateConcepts}
+                generating={generatingAll}
+              />
             </>
           )}
         </div>
 
-        {/* ── RIGHT PANEL (~360px) — Tabbed Design Properties ── */}
-        <div
-          className="shrink-0 border-l border-gray-800 flex flex-col overflow-hidden"
-          style={{ width: 360, background: "#111827" }}
-        >
+        <div className="flex w-[330px] shrink-0 flex-col overflow-hidden border-l border-white/[0.07] bg-[#13161b] xl:w-[350px]">
           <RightPanel
             metadata={metadata}
             onChange={setMetadata}
@@ -6043,9 +6017,18 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             backgroundOverrides={backgroundOverrides}
             onBgChange={handleBgChange}
             onBgReset={handleBgReset}
+            currentStep={currentStep}
+            surface={surface}
+            printSetup={printSetup}
+            setPrintSetup={setPrintSetup}
+            geometry={geometry}
+            preflight={coverPreflight}
+            backCover={backCover}
+            setBackCover={setBackCover}
+            backCoverGenerating={backCoverGenerating}
+            onGenerateBack={handleGenerateBackCover}
           />
         </div>
-
       </div>
 
       {/* ── Step errors from parent ── */}
