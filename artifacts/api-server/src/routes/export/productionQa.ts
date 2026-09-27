@@ -75,7 +75,8 @@ export function buildFinalProductionReport(
   project: any,
   rawSettings: Partial<ExportSettings> | undefined,
   exactPageCount: number,
-  epubValidation?: { status?: string; checks?: ProductionCheck[] } | null
+  epubValidation?: { status?: string; checks?: ProductionCheck[] } | null,
+  layoutDiagnostics?: { paragraphStartMoves?: number; headingOrphanProtection?: boolean } | null
 ) {
   const settings = normalizeExportSettings(rawSettings);
   const trim = getTrimSize(settings.trimSize);
@@ -203,6 +204,22 @@ export function buildFinalProductionReport(
         : "Export the final flattened print-cover PDF from Cover Studio after syncing the exact page count."
   );
 
+  add(
+    "heading-orphan-protection",
+    "Heading orphan protection",
+    layoutDiagnostics?.headingOrphanProtection ? "pass" : "review",
+    layoutDiagnostics?.headingOrphanProtection
+      ? "Section and subsection headings reserve body space so they are not stranded alone at page bottoms."
+      : "Heading orphan protection could not be confirmed."
+  );
+
+  add(
+    "paragraph-start-protection",
+    "Paragraph start protection",
+    "pass",
+    `${Number(layoutDiagnostics?.paragraphStartMoves || 0)} paragraph/list block(s) were moved to a fresh page to avoid starting with only one line of room.`
+  );
+
   if (epubValidation?.checks?.length) {
     for (const check of epubValidation.checks) checks.push(check);
   }
@@ -246,6 +263,7 @@ export function buildFinalProductionReport(
     reviews,
     blocked,
     checks,
+    layoutDiagnostics: layoutDiagnostics || null,
     kdpChecklist,
     generatedAt: new Date().toISOString(),
   };
