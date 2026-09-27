@@ -2029,7 +2029,7 @@ router.post("/production-report", async (req, res) => {
       buildBookPdfArtifact(project, options),
       Promise.resolve(buildEpubArtifact(project, options))
     ]);
-    const report = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation);
+    const report = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation, pdfArtifact.layoutDiagnostics);
     const metadata = publicationMetadata(project, settings, req.body?.citationStyle || "none");
     const manifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, report, epub.validation);
 
@@ -2135,7 +2135,7 @@ router.post("/publication-bundle", async (req, res) => {
       .replace(/^-|-$/g, "") || "book";
     const metadata = publicationMetadata(project, settings, citationStyle);
     const report = publicationReport && typeof publicationReport === "object" ? publicationReport : {};
-    const productionReport = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation);
+    const productionReport = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation, pdfArtifact.layoutDiagnostics);
     const archiveManifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, productionReport, epub.validation);
     const description = String(metadata.description || "");
     const keywords = String(metadata.keywords || "");
