@@ -5,6 +5,13 @@ import {
   resolveBookTitle,
   resolveGenre,
 } from "@/lib/projectMeta";
+import CoverProductionControls from "@/components/CoverProductionControls";
+import CoverWrapPreview from "@/components/CoverWrapPreview";
+import {
+  buildCoverPreflight,
+  calculatePaperbackGeometry,
+  estimateCoverPageCount,
+} from "@/lib/coverKdp";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -66,12 +73,12 @@ const WORKFLOW_STEPS = [
   { id: "bookInfo",    num: 1,  label: "Book Information",    state: "unlocked" },
   { id: "market",      num: 2,  label: "Market Analysis",     state: "unlocked" },
   { id: "strategy",    num: 3,  label: "Cover Strategy",      state: "unlocked" },
-  { id: "visual",      num: 4,  label: "Visual Direction",    state: "locked" },
+  { id: "visual",      num: 4,  label: "Visual Direction",    state: "unlocked" },
   { id: "mood",        num: 5,  label: "Mood Board",          state: "unlocked" },
   { id: "color",       num: 6,  label: "Color Palette",       state: "unlocked" },
   { id: "elements",    num: 7,  label: "Design Elements",     state: "unlocked" },
-  { id: "typography",  num: 8,  label: "Typography",          state: "locked" },
-  { id: "layout",      num: 9,  label: "Layout & Composition",state: "locked" },
+  { id: "typography",  num: 8,  label: "Typography",          state: "unlocked" },
+  { id: "layout",      num: 9,  label: "Layout & Composition",state: "unlocked" },
   { id: "concepts",    num: 10, label: "Generate Concepts",   state: "unlocked" },
   { id: "review",      num: 11, label: "Review",               state: "unlocked" },
 ];
@@ -155,6 +162,36 @@ function initMetadata(bookCover, fullProject) {
     language:          cs?.language          ?? bookCover?.language             ?? "English",
     bookSize:          cs?.bookSize          ?? BOOK_SIZES[4].label,
     publisher:         cs?.publisher         ?? bookCover?.publisher            ?? "",
+  };
+}
+
+function initPrintSetup(bookCover, fullProject) {
+  const saved = bookCover?.coverStudio?.printSetup || bookCover?.printSetup || {};
+  const hasSavedPages = Number.isFinite(Number(saved.pageCount)) && Number(saved.pageCount) >= 24;
+  return {
+    format: "paperback",
+    pageCount: hasSavedPages ? Number(saved.pageCount) : estimateCoverPageCount(fullProject),
+    estimatedPageCount: hasSavedPages ? !!saved.estimatedPageCount : true,
+    interiorId: saved.interiorId || "bw-white",
+    readingDirection: saved.readingDirection || "ltr",
+    showGuides: saved.showGuides !== false,
+    spineText: saved.spineText !== false,
+    barcodeMode: saved.barcodeMode || "kdp",
+    generatedTrim: saved.generatedTrim || null,
+  };
+}
+
+function initBackCover(bookCover, fullProject) {
+  const saved = bookCover?.coverStudio?.backCover || bookCover?.backCover || {};
+  const description = typeof fullProject?.description === "string"
+    ? fullProject.description
+    : fullProject?.description?.description || "";
+  return {
+    layout: saved.layout || "editorial",
+    headline: saved.headline || "",
+    blurb: saved.blurb || description || "",
+    bullets: Array.isArray(saved.bullets) ? saved.bullets : [],
+    authorLine: saved.authorLine || "",
   };
 }
 
@@ -4566,6 +4603,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [lastSaved, setLastSaved] = useState(null);
   const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "saving" | "unsaved"
   const [currentStep, setCurrentStep] = useState("bookInfo");
+  const [surface, setSurface] = useState(() => bookCover?.coverStudio?.surface || "front");
+  const [printSetup, setPrintSetup] = useState(() => initPrintSetup(bookCover, fullProject));
+  const [backCover, setBackCover] = useState(() => initBackCover(bookCover, fullProject));
+  const [backCoverGenerating, setBackCoverGenerating] = useState(false);
 
   // Cover concepts generation state
   const [concepts, setConceptsState] = useState(() =>
@@ -4727,6 +4768,45 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     [metadata.bookSize]
   );
 
+  const geometry = useMemo(
+    () => calculatePaperbackGeometry({
+      trimWidth: bookSize.w,
+      trimHeight: bookSize.h,
+      pageCount: printSetup.pageCount,
+      interiorId: printSetup.interiorId,
+      readingDirection: printSetup.readingDirection,
+    }),
+    [bookSize, printSetup.pageCount, printSetup.interiorId, printSetup.readingDirection]
+  );
+
+  const coverPreflight = useMemo(
+    () => buildCoverPreflight({
+      metadata,
+      printSetup,
+      geometry,
+      backCover,
+      concepts,
+      selectedConceptIndex: selectedConceptIdx,
+    }),
+    [metadata, printSetup, geometry, backCover, concepts, selectedConceptIdx]
+  );
+
+  const selectedConcept = useMemo(
+    () => Array.isArray(concepts) && concepts.length > 0
+      ? concepts[selectedConceptIdx ?? 0] || concepts[0]
+      : DEFAULT_CONCEPT,
+    [concepts, selectedConceptIdx]
+  );
+
+  const previewData = useMemo(
+    () => buildCoverData(selectedConcept, {
+      subtitle: typographyOverrides?.subtitle ?? metadata.subtitle,
+      authorLine: typographyOverrides?.author ?? metadata.author,
+      tagline: "",
+    }, (typographyOverrides?.title ?? metadata.title) || "Your Book Title"),
+    [selectedConcept, typographyOverrides, metadata]
+  );
+
   function setMetadata(key, value) {
     setMetadataState(prev => ({ ...prev, [key]: value }));
   }
@@ -4812,6 +4892,44 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     }
   }
 
+  async function handleGenerateBackCover() {
+    if (backCoverGenerating || !metadata.title?.trim()) return;
+    setBackCoverGenerating(true);
+    try {
+      const description = typeof fullProject?.description === "string"
+        ? fullProject.description
+        : fullProject?.description?.description || "";
+      const res = await fetch("/api/ai/back-cover-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: metadata.title,
+          subtitle: metadata.subtitle || "",
+          author: metadata.author || "",
+          description,
+          audience: metadata.audience || resolveAudience(fullProject) || "",
+          usp: fullProject?.bookDetails?.uniqueSellingProposition || fullProject?.proposedBook?.content?.uniqueSellingProposition || "",
+          authorBio: fullProject?.authorBio?.generatedBio || fullProject?.authorBio?.professionalBackground || "",
+          category: metadata.primaryCategory || resolveGenre(fullProject) || "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Back-cover copy generation failed");
+      setBackCover((prev) => ({
+        ...prev,
+        headline: data.headline || prev.headline || "",
+        blurb: data.blurb || prev.blurb || "",
+        bullets: Array.isArray(data.bullets) ? data.bullets : prev.bullets || [],
+        authorLine: data.authorLine || prev.authorLine || "",
+      }));
+      setSurface("back");
+    } catch (err) {
+      console.error("[BackCover] generation error:", err);
+    } finally {
+      setBackCoverGenerating(false);
+    }
+  }
+
   async function handleGenerateConcepts() {
     if (generatingAll) return;
     setGeneratingAll(true);
@@ -4830,6 +4948,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       if (!res.ok) throw new Error(data?.error || "Generation failed");
       if (Array.isArray(data.concepts)) {
         setConceptsState(data.concepts);
+        setPrintSetup((prev) => ({ ...prev, generatedTrim: metadata.bookSize }));
         // Auto-select first concept if none selected
         setSelectedConceptIdx(prev => prev !== null ? prev : 0);
         // Auto-trigger review for the newly generated concepts
@@ -5366,6 +5485,8 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           typographyOverrides:    typographyOverrides        || null,
           imageOverrides:         imageOverrides             || null,
           backgroundOverrides:    backgroundOverrides        || null,
+          printSetup:              { ...printSetup },
+          backCover:               { ...backCover },
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -5375,6 +5496,9 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             typographyOverrides:  typographyOverrides  || null,
             imageOverrides:       imageOverrides       || null,
             backgroundOverrides:  backgroundOverrides  || null,
+            printSetup:           { ...printSetup },
+            backCover:            { ...backCover },
+            surface,
             layout:               layoutProfile        || null,
             marketAnalysis:       marketAnalysis       || null,
             coverStrategy:        coverStrategyProfile || null,
@@ -5392,7 +5516,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides, imageOverrides, backgroundOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides, imageOverrides, backgroundOverrides, printSetup, backCover, surface]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -5413,6 +5537,20 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
         metadata={metadata}
         lastSaved={lastSaved}
         saveStatus={saveStatus}
+      />
+
+      <CoverProductionControls
+        metadata={metadata}
+        printSetup={printSetup}
+        setPrintSetup={setPrintSetup}
+        backCover={backCover}
+        setBackCover={setBackCover}
+        geometry={geometry}
+        preflight={coverPreflight}
+        surface={surface}
+        setSurface={setSurface}
+        generatingBack={backCoverGenerating}
+        onGenerateBack={handleGenerateBackCover}
       />
 
       {/* ── Three-panel layout ── */}
@@ -5511,15 +5649,30 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
               {/* Canvas occupies ~70% of remaining height via flex */}
               <div className="flex-1 min-h-0 overflow-hidden">
-                <CoverPreviewCanvas
-                  metadata={metadata}
-                  bookCover={bookCover}
+                <CoverWrapPreview
+                  surface={surface}
                   zoom={canvas.zoomLevel}
                   canvasBg={canvas.background}
-                  bookSize={bookSize}
-                  typographyOverrides={typographyOverrides}
-                  imageOverrides={imageOverrides}
-                  backgroundOverrides={backgroundOverrides}
+                  geometry={geometry}
+                  printSetup={printSetup}
+                  metadata={metadata}
+                  backCover={backCover}
+                  palette={previewData}
+                  bookSizeLabel={bookSize.label}
+                  frontContent={
+                    <>
+                      <BackgroundLayer bo={backgroundOverrides} />
+                      <CoverImageLayer io={imageOverrides} />
+                      <div style={{ position: "relative", zIndex: 2, width: "100%", height: "100%" }}>
+                        <ConceptRenderer
+                          cd={previewData}
+                          typo={typographyOverrides}
+                          imageOverrides={imageOverrides}
+                          backgroundOverrides={backgroundOverrides}
+                        />
+                      </div>
+                    </>
+                  }
                 />
               </div>
 
