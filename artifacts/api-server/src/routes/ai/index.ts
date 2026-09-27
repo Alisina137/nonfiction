@@ -2248,6 +2248,101 @@ router.post("/extract-resource", async (req, res) => {
   }
 });
 
+router.post("/rerank-evidence", async (req, res) => {
+  try {
+    const query = String(req.body?.query || "").trim();
+    const rawCandidates = Array.isArray(req.body?.candidates) ? req.body.candidates : [];
+    const candidates = rawCandidates
+      .filter((item: any) => item && item.evidenceId && (item.text || item.title))
+      .slice(0, 30)
+      .map((item: any) => ({
+        evidenceId: String(item.evidenceId),
+        sourceTitle: String(item.sourceTitle || "Reference").slice(0, 200),
+        kind: String(item.kind || "evidence").slice(0, 40),
+        title: String(item.title || "").slice(0, 300),
+        text: String(item.text || "").replace(/\s+/g, " ").trim().slice(0, 1800),
+        pageLabel: String(item.pageLabel || "").slice(0, 80)
+      }));
+
+    if (!query || candidates.length < 2) {
+      return res.json({
+        ranking: candidates.map((item: any, i: number) => ({
+          evidenceId: item.evidenceId,
+          score: Math.max(0.2, 1 - i * 0.04),
+          reason: "Local ranking retained."
+        })),
+        _provider: "local-hybrid"
+      });
+    }
+
+    const allowedIds = new Set(candidates.map((item: any) => item.evidenceId));
+    const prompt = `You are a semantic evidence reranker for a nonfiction writing system.
+
+WRITING TARGET:
+${query.slice(0, 3500)}
+
+CANDIDATE EVIDENCE WHITELIST:
+${JSON.stringify(candidates)}
+
+Rank the candidates by how directly they support the WRITING TARGET.
+
+Return ONLY valid JSON:
+{
+  "ranking": [
+    {
+      "evidenceId": "exact ID from whitelist",
+      "score": 0.0,
+      "reason": "short explanation of semantic relevance"
+    }
+  ]
+}
+
+Rules:
+- Use ONLY evidenceId values from the whitelist.
+- Never invent or alter source facts.
+- Prefer evidence that directly explains, supports, qualifies, or gives a relevant example for the target.
+- Do not reward a candidate merely for sharing generic words.
+- score must be between 0 and 1.
+- Return at most 16 candidates.
+- reason must be under 160 characters.`;
+
+    try {
+      const generated = await generateContentFast(prompt, systemPrompt(), {
+        ...aiOptsFromReq(req, 1800),
+        taskType: "research"
+      });
+      setProviderHeader(res, generated.usedProvider, generated.exhaustedProviders);
+      const parsed = extractJSON(generated.text);
+      const ranking = (Array.isArray(parsed?.ranking) ? parsed.ranking : [])
+        .filter((item: any) => allowedIds.has(String(item?.evidenceId || "")))
+        .map((item: any) => ({
+          evidenceId: String(item.evidenceId),
+          score: Math.max(0, Math.min(1, Number(item.score) || 0)),
+          reason: String(item.reason || "").replace(/\s+/g, " ").trim().slice(0, 160)
+        }))
+        .sort((a: any, b: any) => b.score - a.score)
+        .slice(0, 16);
+
+      if (ranking.length) {
+        return res.json({ ranking, _provider: generated.usedProvider });
+      }
+    } catch (rerankError: any) {
+      console.warn("[rerank-evidence] semantic rerank unavailable; using local order:", rerankError?.message?.slice(0, 180));
+    }
+
+    return res.json({
+      ranking: candidates.map((item: any, i: number) => ({
+        evidenceId: item.evidenceId,
+        score: Math.max(0.2, 1 - i * 0.04),
+        reason: "Semantic rerank unavailable; local hybrid order retained."
+      })),
+      _provider: "local-hybrid"
+    });
+  } catch (error: any) {
+    return aiErrorResponse(res, error);
+  }
+});
+
 router.post("/improve", async (req, res) => {
   try {
     const {
