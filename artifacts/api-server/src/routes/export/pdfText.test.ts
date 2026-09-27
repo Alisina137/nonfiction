@@ -19,3 +19,11 @@ test("normalizes smart quotes, ellipsis, non-breaking spaces and invisible joine
 test("keeps ordinary text and supported accented letters unchanged", () => {
   assert.equal(normalizePdfPunctuation("Café résumé — test"), "Café résumé -- test");
 });
+
+
+test("normalizes common AI symbols that built-in TimesRoman cannot encode", () => {
+  assert.equal(
+    normalizePdfPunctuation("A → B ✓ if x ≤ y and y ≠ z"),
+    "A -> B OK if x <= y and y != z"
+  );
+});
