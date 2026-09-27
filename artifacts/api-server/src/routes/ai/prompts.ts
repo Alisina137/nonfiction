@@ -4469,7 +4469,38 @@ Return ONLY valid JSON — no markdown fences, no commentary outside the JSON:
 }`;
 }
 
-export function improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, subsectionPurpose, bookContext, blueprintComponents }: any) {
+function editorEvidenceBlock(sourceEvidence: any): string {
+  const items = Array.isArray(sourceEvidence) ? sourceEvidence.filter((item) => item?.sourceId && (item?.text || item?.title)).slice(0, 12) : [];
+  if (!items.length) {
+    return `
+════════════════════════════════════
+SOURCE-GROUNDING STATUS
+════════════════════════════════════
+No verified subsection evidence is attached.
+Do not add new statistics, studies, expert quotations, named real-world cases, research findings, URLs, page references, or factual attributions.
+If an example is needed, make it clearly hypothetical or composite rather than presenting it as a verified real event.
+`;
+  }
+
+  return `
+════════════════════════════════════
+VERIFIED SOURCE EVIDENCE
+════════════════════════════════════
+${items.map((item: any, i: number) => {
+    const source = [item.sourceTitle, item.sourceAuthor, item.pageLabel].filter(Boolean).join(" — ");
+    return `[${i + 1}] ${source || "Verified reference"}\nTYPE: ${String(item.kind || "evidence").toUpperCase()}\n${String(item.text || item.title || "").trim()}`;
+  }).join("\n\n")}
+
+SOURCE RULES:
+- Any NEW factual/statistical/attributed claim must be supported by the evidence above.
+- Never invent a study, statistic, expert, quotation, named case, citation, URL, or page number.
+- Quotations may be retained/added only when the evidence item is a VERIFIED_QUOTE.
+- Synthesize in original wording; do not copy source headings, distinctive phrasing, or source structure.
+- If the evidence does not support a requested new fact, write generally or use a clearly hypothetical/composite example.
+`;
+}
+
+export function improvementPrompt({ action, currentText, tone, audience, bookStructure, subsectionTitle, subsectionPurpose, bookContext, blueprintComponents, sourceEvidence }: any) {
   const toneInstr = resolveToneInstruction(tone || "");
 
   const contextLines: string[] = [];
@@ -4496,7 +4527,7 @@ export function improvementPrompt({ action, currentText, tone, audience, bookStr
     expand:      hasBlueprint
       ? "Deepen the content — add a nuanced sub-point, richer detail, or sharper insight that the reader can immediately apply, built ONLY from the components already allowed for this subsection (see BLUEPRINT COMPONENTS below). Do NOT add filler or generic summaries. Do NOT introduce a new structural element (e.g. a case study, exercise, checklist) that isn't already an allowed component. Add genuine depth only."
       : "Deepen the content — add a concrete example, case study, or nuanced sub-point that the reader can immediately apply. Do NOT add filler or generic summaries. Add genuine depth only.",
-    add_example: "Insert a vivid, specific, real-world example that makes the main concept tangible. Place it naturally within the existing flow. The example must be concrete, not hypothetical.",
+    add_example: "Insert a vivid, concrete example that makes the main concept tangible. Use a verified real-world example only when the attached source evidence supports it; otherwise use a clearly hypothetical or composite example.",
   };
   const instruction = ACTION_INSTRUCTIONS[action] || `Apply the following refinement: "${action}".`;
 
@@ -4514,6 +4545,8 @@ ${!(blueprintComponents as string[]).includes("Case Study") ? "✗ Case Study / 
 `
     : "";
 
+  const evidenceBlock = editorEvidenceBlock(sourceEvidence);
+
   return `You are a professional nonfiction editor refining a single book section.
 
 ════════════════════════════════════
@@ -4521,7 +4554,7 @@ BOOK CONTEXT
 ════════════════════════════════════
 ${ctxBlock}Voice & Tone: ${tone || "Direct & practical"}
 Tone Instruction: ${toneInstr}
-${blueprintBlock}
+${blueprintBlock}${evidenceBlock}
 ════════════════════════════════════
 EDITING ACTION
 ════════════════════════════════════
@@ -4536,7 +4569,8 @@ EDITING RULES (non-negotiable)
 - Do NOT add a generic summary paragraph or motivational closer at the end
 - Do NOT introduce markdown headers inside the prose
 - Keep the revised text mostly as plain paragraphs. Use at most one or two short bold phrases only when emphasis genuinely improves readability; do not use # headings, decorative separators, or repeated bold markers.
-- Preserve any specific examples, data points, named frameworks, or statistics already present
+- Preserve any specific examples, data points, named frameworks, or statistics already present unless the requested edit explicitly changes them
+- Do not introduce new factual/statistical/attributed details unless VERIFIED SOURCE EVIDENCE supports them
 - The refined text must feel like it belongs in a book with the context above
 ${hasBlueprint ? "- Do NOT introduce any component listed as FORBIDDEN above, even as a single sentence" : ""}
 
@@ -4557,7 +4591,8 @@ export function editContentPrompt({
   subsectionTitle,
   subsectionPurpose,
   bookContext,
-  blueprintComponents
+  blueprintComponents,
+  sourceEvidence
 }: any) {
   const toneInstr = resolveToneInstruction(tone || "");
 
@@ -4591,6 +4626,7 @@ ${forbiddenComponents.map((c: string) => `✗ ${c}`).join("\n")}
 ${!(blueprintComponents as string[]).includes("Case Study") ? "✗ Case Study / real-world story framed as a case study\n" : ""}${!(blueprintComponents as string[]).includes("Action Plan") ? "✗ Action Steps / Next Steps / To-Do / Practice Steps\n" : ""}${!(blueprintComponents as string[]).includes("Exercise") ? "✗ Try This / Activity / Practice Exercise / Exercise\n" : ""}${!(blueprintComponents as string[]).includes("Reflection Questions") ? "✗ Reflect / Think About / Self-Assessment questions\n" : ""}If the author's instructions conflict with this list, follow this list.
 `
     : "";
+  const evidenceBlock = editorEvidenceBlock(sourceEvidence);
 
   return `You are a professional nonfiction editor revising one existing book subsection.
 
@@ -4599,7 +4635,7 @@ BOOK CONTEXT
 ════════════════════════════════════
 ${ctxBlock}Voice & Tone: ${tone || "Direct & practical"}
 Tone Instruction: ${toneInstr}
-${blueprintBlock}
+${blueprintBlock}${evidenceBlock}
 ════════════════════════════════════
 AUTHOR'S EDIT BRIEF
 ════════════════════════════════════
@@ -4616,7 +4652,7 @@ EDITING RULES (non-negotiable)
 - Keep the edit anchored to the exact subsection title and purpose above. Do not broaden it into the chapter or a neighboring subsection.
 - Apply clear, feasible requests from the author's brief.
 - Keep positive points and strengths the author identifies; correct or improve negative points they identify.
-- Do not blindly follow a request that would introduce unsupported facts. When a requested change needs new facts, write it generally and safely rather than inventing precise claims.
+- Do not blindly follow a request that would introduce unsupported facts. Any NEW factual/statistical/attributed claim must be supported by VERIFIED SOURCE EVIDENCE; otherwise write generally or use a clearly hypothetical/composite example.
 - Match the existing voice, tone, and reading level exactly.
 - If the brief is ambiguous, interpret it narrowly and change only the smallest relevant passage.
 - Do not add a generic summary paragraph or motivational closer.
@@ -4642,6 +4678,7 @@ export function editContentRepairPrompt({
   subsectionPurpose,
   bookContext,
   blueprintComponents,
+  sourceEvidence,
   reasons
 }: any) {
   return `${editContentPrompt({
@@ -4653,7 +4690,8 @@ export function editContentRepairPrompt({
     subsectionTitle,
     subsectionPurpose,
     bookContext,
-    blueprintComponents
+    blueprintComponents,
+    sourceEvidence
   })}
 
 ════════════════════════════════════
