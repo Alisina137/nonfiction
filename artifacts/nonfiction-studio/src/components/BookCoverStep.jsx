@@ -257,6 +257,8 @@ function initPrintSetup(bookCover, fullProject) {
     format: "paperback",
     pageCount: hasSavedPages ? Number(saved.pageCount) : estimateCoverPageCount(fullProject),
     estimatedPageCount: hasSavedPages ? !!saved.estimatedPageCount : true,
+    pageCountSource: saved.pageCountSource || (hasSavedPages ? "saved" : "estimated"),
+    syncedAt: saved.syncedAt || null,
     interiorId: saved.interiorId || "bw-white",
     readingDirection: saved.readingDirection || "ltr",
     showGuides: saved.showGuides !== false,
