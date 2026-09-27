@@ -1383,10 +1383,139 @@ function syntheticFrontMatterSubsection(title, role) {
   };
 }
 
-export default function FinishStep({ project, onMarkComplete, bookOutline, lessons, setLessons, fullProject }) {
+function FinalProductionPanel({ report, busy, error, onRun, onSync, canSync }) {
+  const statusTone = report?.status === "pass"
+    ? "border-emerald-200 bg-emerald-50/50"
+    : report?.status === "block"
+      ? "border-red-200 bg-red-50/40"
+      : "border-amber-200 bg-amber-50/40";
+
+  return (
+    <section className={`book-panel border ${report ? statusTone : "border-slate-200"}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Phase 04 · Final Production</p>
+          <h3 className="mt-1 text-sm font-bold text-slate-900">Final pagination & KDP production check</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600">
+            Renders the real paperback interior, validates final margins and trim, checks Cover Studio synchronization,
+            and validates the generated EPUB structure before the final archive is created.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onRun}
+          disabled={busy}
+          className="shrink-0 rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:opacity-50"
+        >
+          {busy ? "Running final check…" : report ? "↻ Re-run final check" : "Run Final Production Check"}
+        </button>
+      </div>
+
+      {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{error}</p>}
+
+      {!report && !busy && !error && (
+        <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-500">
+          Run this after your manuscript layout and front matter are final. The exact rendered page count is what should drive the paperback spine width.
+        </div>
+      )}
+
+      {report && (
+        <>
+          <div className="mt-4 grid gap-2 sm:grid-cols-4">
+            <div className="rounded-xl border border-white/80 bg-white/80 p-3 text-center">
+              <p className="text-xl font-extrabold text-slate-900">{report.exactPageCount}</p>
+              <p className="text-[10px] text-slate-500">Exact PDF pages</p>
+            </div>
+            <div className="rounded-xl border border-white/80 bg-white/80 p-3 text-center">
+              <p className="text-sm font-extrabold text-slate-900">{report.trim?.label || "—"}</p>
+              <p className="text-[10px] text-slate-500">Interior trim</p>
+            </div>
+            <div className="rounded-xl border border-white/80 bg-white/80 p-3 text-center">
+              <p className="text-xl font-extrabold text-slate-900">{Number(report.cover?.spineWidth || 0).toFixed(3)}″</p>
+              <p className="text-[10px] text-slate-500">Final spine width</p>
+            </div>
+            <div className="rounded-xl border border-white/80 bg-white/80 p-3 text-center">
+              <p className={`text-sm font-extrabold uppercase ${
+                report.status === "pass" ? "text-emerald-700" : report.status === "block" ? "text-red-700" : "text-amber-700"
+              }`}>{report.status}</p>
+              <p className="text-[10px] text-slate-500">{report.passed} pass · {report.reviews} review · {report.blocked} block</p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {report.checks?.map((check) => (
+              <div key={check.id} className="flex gap-2 rounded-xl border border-white/80 bg-white/75 px-3 py-2.5">
+                <span className={`mt-0.5 shrink-0 font-bold ${
+                  check.status === "pass" ? "text-emerald-600" : check.status === "block" ? "text-red-600" : "text-amber-600"
+                }`}>
+                  {check.status === "pass" ? "✓" : check.status === "block" ? "!" : "•"}
+                </span>
+                <div>
+                  <p className="text-xs font-semibold text-slate-800">{check.label}</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{check.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
+              report.epub?.status === "block"
+                ? "bg-red-100 text-red-700"
+                : report.epub?.status === "pass"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-amber-100 text-amber-700"
+            }`}>
+              EPUB {String(report.epub?.status || "review").toUpperCase()}
+            </span>
+            {report.archiveManifest?.archiveId && (
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-600">
+                Archive {report.archiveManifest.archiveId}
+              </span>
+            )}
+            {canSync && (
+              <button
+                type="button"
+                onClick={onSync}
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100"
+              >
+                Sync {report.exactPageCount} pages to Cover Studio
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {[
+              ["Paperback upload checklist", report.kdpChecklist?.paperback || []],
+              ["Kindle eBook checklist", report.kdpChecklist?.ebook || []],
+            ].map(([label, items]) => (
+              <div key={label} className="rounded-xl border border-slate-100 bg-white/70 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
+                <div className="mt-2 space-y-1.5">
+                  {items.map((item) => (
+                    <p key={item.id} className="flex gap-2 text-[11px] leading-relaxed text-slate-600">
+                      <span className={item.done ? "text-emerald-600" : "text-slate-300"}>{item.done ? "✓" : "○"}</span>
+                      <span>{item.label}</span>
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+export default function FinishStep({ project, onMarkComplete, bookOutline, lessons, setLessons, fullProject, updateProject }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [docxBusy, setDocxBusy] = useState(false);
+  const [epubBusy, setEpubBusy] = useState(false);
   const [bundleBusy, setBundleBusy] = useState(false);
+  const [productionBusy, setProductionBusy] = useState(false);
+  const [productionReport, setProductionReport] = useState(null);
+  const [productionError, setProductionError] = useState("");
   const [citationStyle, setCitationStyle] = useState(() => {
     try { return window.localStorage.getItem(CITATION_STYLE_KEY) || "none"; } catch { return "none"; }
   });
@@ -1645,6 +1774,58 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     }
   }
 
+  async function runProductionReport() {
+    setProductionBusy(true);
+    setProductionError("");
+    setStatus("");
+    try {
+      const res = await fetch("/api/export/production-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(exportPayload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Final production check failed.");
+      setProductionReport(data);
+    } catch (e) {
+      setProductionError(e.message || "Could not run the final production check.");
+    } finally {
+      setProductionBusy(false);
+    }
+  }
+
+  function syncFinalPageCountToCover() {
+    const count = Number(productionReport?.exactPageCount);
+    if (!count || !updateProject) return;
+    updateProject((current) => {
+      const cover = current?.bookCover || {};
+      const studio = cover.coverStudio || {};
+      const topSetup = cover.printSetup || {};
+      const studioSetup = studio.printSetup || {};
+      return {
+        ...current,
+        bookCover: {
+          ...cover,
+          printSetup: { ...topSetup, pageCount: count, estimatedPageCount: false },
+          coverStudio: {
+            ...studio,
+            printSetup: { ...studioSetup, pageCount: count, estimatedPageCount: false }
+          }
+        }
+      };
+    });
+    setProductionReport((prev) => prev ? {
+      ...prev,
+      cover: { ...(prev.cover || {}), pageCount: count, synced: true },
+      checks: (prev.checks || []).map((check) =>
+        check.id === "cover-page-sync"
+          ? { ...check, status: "pass", detail: `Cover Studio now uses the exact final page count (${count}).` }
+          : check
+      )
+    } : prev);
+    setStatus(`Synced ${count} final pages to Cover Studio. Re-open Book Cover to review the final spine.`);
+  }
+
   async function downloadFromApi(endpoint, filename, mimeType, setBusy, label) {
     setBusy(true);
     setStatus("");
@@ -1697,6 +1878,10 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
 
   function exportDocx() {
     downloadFromApi("/api/export/docx", `${slug}.docx`, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", setDocxBusy, "Word document");
+  }
+
+  function exportEpub() {
+    downloadFromApi("/api/export/epub", `${slug}.epub`, "application/epub+zip", setEpubBusy, "EPUB");
   }
 
   function exportPublicationBundle() {
@@ -1802,6 +1987,15 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         mfBusy={mfBusy}
         mfError={mfError}
         onRetry={() => { mfTriggered.current = false; runMultiFormat(); }}
+      />
+
+      <FinalProductionPanel
+        report={productionReport}
+        busy={productionBusy}
+        error={productionError}
+        onRun={runProductionReport}
+        onSync={syncFinalPageCountToCover}
+        canSync={Boolean(productionReport?.exactPageCount) && !productionReport?.cover?.synced}
       />
 
       <section className="book-panel space-y-4">
@@ -1972,7 +2166,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       <section className="book-panel">
         <h3 className="text-sm font-bold text-slate-900">Download</h3>
         <p className="mt-1 text-xs text-slate-500">
-          PDF is print-ready. DOCX opens in Word or Google Docs — update the table of contents after opening.
+          PDF is the paperback interior. EPUB is the reflowable Kindle manuscript. DOCX remains the editable source. Run Final Production Check before creating the final archive.
         </p>
 
         {status && (
@@ -2000,11 +2194,19 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
           </button>
           <button
             type="button"
+            disabled={epubBusy}
+            onClick={exportEpub}
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100 disabled:opacity-50"
+          >
+            {epubBusy ? "Building EPUB…" : "Download EPUB (.epub)"}
+          </button>
+          <button
+            type="button"
             disabled={bundleBusy}
             onClick={exportPublicationBundle}
             className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-800 shadow-sm hover:bg-indigo-100 disabled:opacity-50"
           >
-            {bundleBusy ? "Building bundle…" : "Download Publication Bundle (.zip)"}
+            {bundleBusy ? "Building archive…" : "Download Final Publication Archive (.zip)"}
           </button>
         </div>
 
