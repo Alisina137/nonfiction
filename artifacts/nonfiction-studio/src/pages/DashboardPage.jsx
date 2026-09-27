@@ -11,7 +11,7 @@ import AuthorBioStep from "@/components/AuthorBioStep";
 import OutlineStep from "@/components/OutlineStep";
 import WriteStep from "@/components/WriteStep";
 import DescriptionStep from "@/components/DescriptionStep";
-import BookCoverPlaceholder from "@/components/BookCoverPlaceholder";
+import BookCoverStep from "@/components/BookCoverStep";
 import FinishStep from "@/components/FinishStep";
 import { blockHasContent, enumerateWriteBlocks } from "@/lib/writeBlocks";
 import { BOOK_BUILDER_STEPS } from "@/lib/constants";
@@ -1395,7 +1395,20 @@ export default function Dashboard() {
           )}
 
           {currentStep === COVER_STEP && (
-            <BookCoverPlaceholder />
+            <BookCoverStep
+              bookCover={project.bookCover}
+              setBookCover={(partial) =>
+                setProject((p) => ({
+                  ...p,
+                  bookCover:
+                    typeof partial === "function"
+                      ? partial(p.bookCover || emptyBookCover)
+                      : { ...(p.bookCover || emptyBookCover), ...partial }
+                }))
+              }
+              fullProject={project}
+              errors={coverErrors}
+            />
           )}
 
           {currentStep === FINISH_STEP && (
