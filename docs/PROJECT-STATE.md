@@ -18,7 +18,7 @@ Private, personal-use AI nonfiction publishing studio for creating original, sou
 - TypeScript 5.9
 - React 19 + Vite
 - Express 5 API
-- Gemini / Groq / OpenRouter / SambaNova AI routing
+- OpenRouter / Groq / SambaNova AI routing
 - Rainforest + Scale SERP + Open Library market research chain
 - PDF and DOCX manuscript export
 - Browser/localStorage project persistence by design
@@ -27,7 +27,7 @@ Private, personal-use AI nonfiction publishing studio for creating original, sou
 
 ### Phase 01 — Reference Intelligence & Publishing Safety
 
-- Gemini-native PDF reference indexing.
+- OpenRouter PDF reference indexing with Universal PDF Support / Mistral OCR.
 - Compact source intelligence indexes instead of storing raw PDFs.
 - Cross-book synthesis.
 - Per-subsection evidence retrieval.
@@ -132,7 +132,7 @@ Objective: improve evidence relevance, prevent stale source links after rewritin
 
 ## Known limitations
 
-- PDF indexing still depends on Gemini native PDF understanding.
+- PDF indexing depends on OpenRouter document parsing; scanned/image-heavy PDFs use the configured PDF parser path.
 - DOC/DOCX reference files do not yet receive the same deep native-document index as PDFs.
 - Semantic reranking uses an existing text-generation provider rather than a dedicated embedding/vector database.
 - Freshness and claim support are conservative lexical/semantic assistance signals, not external verification.
@@ -143,8 +143,8 @@ Objective: improve evidence relevance, prevent stale source links after rewritin
 
 ## External requirements
 
-- `GEMINI_API_KEY` for PDF reference analysis.
-- At least one configured AI provider for AI generation and semantic reranking.
+- `OPENROUTER_API_KEY` for PDF reference analysis.
+- At least one configured AI provider for ordinary AI generation and semantic reranking.
 - Semantic reranking gracefully falls back to deterministic local retrieval if no provider is available.
 - Rainforest/Scale SERP are optional because Open Library remains the real-data fallback.
 - PostgreSQL remains optional for the current personal/localStorage workflow.
@@ -219,14 +219,136 @@ The Cover Studio sidebar is now a goal-driven design workflow rather than a navi
 - Text/Layout are not considered complete merely because AI advice exists; the author must apply the guidance.
 - Full workflow semantics are documented in `docs/COVER-SIDEBAR-WORKFLOW.md`.
 
+## Phase 04 — Final Book Production & KDP Export
+
+Objective: convert the finished manuscript and cover design into reproducible final production artifacts with exact pagination, current paperback geometry, EPUB output, print-cover output, upload checklists, and versioned publication archives.
+
+### Implemented production pipeline
+
+#### Exact final pagination
+
+- PDF rendering now returns the real final page count instead of relying on a words-per-page estimate.
+- Finish can run **Final Production Check**, which renders the actual interior and reports exact page count, trim, margins, final spine width, and production checks.
+- The exact final page count can be synced back into Cover Studio.
+- Cover Studio records the source as `final-production`; manual edits change the source back to `manual`.
+- Print-cover export is blocked until the exact final page count has been synchronized.
+
+#### Current paperback margin validation
+
+- Replaced the old approximate gutter table with the current KDP minimum inside-margin thresholds:
+  - 24–150 pages: 0.375 in,
+  - 151–300 pages: 0.500 in,
+  - 301–500 pages: 0.625 in,
+  - 501–700 pages: 0.750 in,
+  - 701–828 pages: 0.875 in.
+- KDP automatic margins still use 0.750 in top/bottom and 0.500 in outside margins, which remain above the current no-bleed minimums.
+- The PDF renderer now automatically re-renders when exact final pagination crosses a gutter threshold that the original estimate did not anticipate.
+- Custom margins are validated against the exact final page count and can produce blocking production checks.
+
+#### Layout QA
+
+- Existing section/subsection heading orphan protection remains enabled.
+- Multi-line paragraph/list blocks now avoid starting when only one line of room remains on the current page.
+- The final production report records how many blocks were moved by this protection.
+- Final visual validation is still required in KDP Print Previewer; internal checks do not claim to replace Amazon's preview.
+
+#### EPUB 3 export
+
+- Added dependency-free EPUB 3 generation using the project's existing ZIP engine.
+- EPUB contains:
+  - required `mimetype`,
+  - META-INF container,
+  - EPUB 3 package metadata,
+  - navigation document,
+  - reading-order spine,
+  - CSS,
+  - title page,
+  - optional front matter,
+  - introduction,
+  - chapters/sections/subsections,
+  - conclusion,
+  - back matter,
+  - About the Author.
+- Metadata includes title, author, language, deterministic identifier, and modification timestamp.
+- Added internal structural validation.
+- Finish exposes **Download EPUB (.epub)**.
+- Kindle Previewer validation remains an explicit manual checklist item before publication.
+
+#### Final flattened paperback cover PDF
+
+- Cover Studio Print inspector exposes **Export Final Print Cover PDF**.
+- Export requires a page count synchronized from Final Production Check.
+- The current Full Cover artwork is rasterized in-browser at the exact 300-DPI full-wrap pixel dimensions.
+- Safe-area, bleed-guide, spine-guide, and barcode-guide overlays are excluded from the exported artwork.
+- The API validates the expected pixel dimensions and effective DPI.
+- The API creates one flattened exact-size PDF page containing back + spine + front.
+- Successful exports store metadata only:
+  - final page count,
+  - trim,
+  - effective DPI,
+  - full-wrap dimensions,
+  - pixel dimensions,
+  - cover design hash,
+  - export timestamp.
+- The large cover PDF/image is not persisted in localStorage.
+- Any material cover-design change invalidates the stored final-export metadata so stale cover files do not remain marked current.
+
+#### Final production report and KDP upload checklist
+
+- Final Production Check validates:
+  - exact paperback page count,
+  - interior trim,
+  - exact-page-count inside margin,
+  - outside/top/bottom margins,
+  - Cover Studio page-count synchronization,
+  - cover/interior trim consistency,
+  - selected concept,
+  - back-cover copy,
+  - spine-text eligibility,
+  - barcode policy,
+  - current final-cover export metadata,
+  - heading/paragraph pagination protection,
+  - EPUB structure.
+- Generates separate paperback and Kindle eBook upload checklists.
+- Paperback checklist explicitly requires KDP Print Previewer and proof review.
+- Kindle checklist explicitly requires Kindle Previewer and a separately uploaded eBook front-cover image.
+
+#### Versioned final publication archive
+
+- Final Publication Archive now includes:
+  - paperback interior PDF,
+  - editable DOCX,
+  - EPUB 3,
+  - publishing metadata,
+  - evidence/preflight/consistency/citation reports,
+  - final production report,
+  - EPUB validation report,
+  - KDP upload checklist,
+  - listing description and keywords,
+  - print-cover export metadata,
+  - archive manifest.
+- Archive manifest includes SHA-256 production fingerprint, exact page count, trim, production status, EPUB status, and archive ID.
+- Archive filenames are versioned by archive ID instead of silently replacing a generic final ZIP.
+- Successful archive downloads are recorded in project state as a rolling production history (up to 10 snapshots).
+- The flattened cover PDF itself remains a separate download because the app deliberately avoids persisting that large binary in browser project state; its metadata is included in the archive fingerprint.
+
+### Phase 04 verification status
+
+- GitHub Actions `Verify phase` run #38: PASS.
+- Unit/regression tests: PASS.
+- Full TypeScript typecheck: PASS.
+- Production build: PASS.
+- Verified implementation head: `28f728216673ef389531b6d3f0eeebf430460e1e`.
+- A final documentation-only verification run is expected after this state update.
+
 ## Next phase candidate
 
-### Phase 04 — Final Book Production & KDP Export
+### Phase 05 — Release Validation & Publishing Operations
 
 Potential scope:
-- EPUB generation and validation,
-- print-cover file integration with trim/spine/bleed consistency checks,
-- final publication archive history/versioning,
-- richer citation style templates if needed,
-- export-time orphan/widow/layout QA,
-- final KDP upload checklist and project freeze/archive workflow.
+- richer visual/manual preview assistance for final paperback pages,
+- enhanced EPUB/Kindle accessibility checks,
+- archive comparison/diff between production versions,
+- richer citation-style templates when a book requires formal academic formatting,
+- publication freeze/unfreeze workflow,
+- optional KDP metadata handoff helpers while keeping final publication decisions and uploads under the author's control.

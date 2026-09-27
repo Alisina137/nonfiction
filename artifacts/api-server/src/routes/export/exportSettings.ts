@@ -89,14 +89,15 @@ export function getTrimSize(id: string): TrimSize {
   return TRIM_SIZES.find((t) => t.id === id) || TRIM_SIZES.find((t) => t.id === DEFAULT_TRIM_SIZE)!;
 }
 
-// ── KDP gutter recommendation table (approximate, based on estimated page count) ──
-// The gutter (inside margin) increases with page count so the book still opens flat.
-function kdpGutterForPageCount(pages: number): number {
-  if (pages <= 150) return 0.75;
-  if (pages <= 300) return 0.875;
-  if (pages <= 500) return 1.0;
-  if (pages <= 700) return 1.125;
-  return 1.25;
+// ── KDP minimum inside-margin table ──────────────────────────────────────────
+// Current KDP paperback guidance for no-bleed interiors. Phase 04 validates
+// final pagination against these thresholds after the PDF is actually rendered.
+export function kdpMinimumInsideMargin(pages: number): number {
+  if (pages <= 150) return 0.375;
+  if (pages <= 300) return 0.5;
+  if (pages <= 500) return 0.625;
+  if (pages <= 700) return 0.75;
+  return 0.875;
 }
 
 export interface ResolvedMargins { top: number; bottom: number; inside: number; outside: number }
@@ -109,7 +110,7 @@ export function resolveMargins(settings: ExportSettings, estimatedPageCount: num
     top: 0.75,
     bottom: 0.75,
     outside: 0.5,
-    inside: kdpGutterForPageCount(estimatedPageCount),
+    inside: kdpMinimumInsideMargin(estimatedPageCount),
   };
 }
 

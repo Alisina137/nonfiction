@@ -56,6 +56,90 @@ const LANGUAGES = [
 
 const ZOOM_STEPS = [0.5, 0.75, 1.0, 1.25, 1.5];
 
+function stableCoverHash(value) {
+  const text = typeof value === "string" ? value : JSON.stringify(value ?? null);
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function collectCoverExportCss() {
+  const chunks = [];
+  for (const sheet of Array.from(document.styleSheets || [])) {
+    try {
+      for (const rule of Array.from(sheet.cssRules || [])) chunks.push(rule.cssText);
+    } catch {
+      // Ignore cross-origin stylesheets; app styles are same-origin in normal use.
+    }
+  }
+  return chunks.join("\n");
+}
+
+async function rasterizeCoverNode(node, targetWidth, targetHeight, backgroundColor) {
+  if (!node) throw new Error("Full Cover artwork is not available.");
+  const rect = node.getBoundingClientRect();
+  if (!rect.width || !rect.height) throw new Error("Cover artwork has no renderable size.");
+
+  if (document.fonts?.ready) {
+    try { await document.fonts.ready; } catch { /* continue with loaded fonts */ }
+  }
+
+  const clone = node.cloneNode(true);
+  clone.querySelectorAll?.('[data-cover-guide="true"]').forEach((el) => el.remove());
+  clone.style.width = `${rect.width}px`;
+  clone.style.height = `${rect.height}px`;
+  clone.style.boxShadow = "none";
+  clone.style.borderRadius = "0";
+  clone.style.margin = "0";
+
+  const css = collectCoverExportCss();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}" viewBox="0 0 ${rect.width} ${rect.height}">
+    <foreignObject x="0" y="0" width="100%" height="100%">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="width:${rect.width}px;height:${rect.height}px;overflow:hidden;">
+        <style>${css}</style>
+        ${clone.outerHTML}
+      </div>
+    </foreignObject>
+  </svg>`;
+
+  const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+  try {
+    const image = new Image();
+    image.decoding = "sync";
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("Could not rasterize the cover artwork. Check any externally hosted cover images."));
+      image.src = url;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(targetWidth));
+    canvas.height = Math.max(1, Math.round(targetHeight));
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) throw new Error("Canvas rendering is unavailable in this browser.");
+    ctx.fillStyle = backgroundColor || "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/png");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function nextPaintFrames(count = 2) {
+  return new Promise((resolve) => {
+    const step = (remaining) => {
+      if (remaining <= 0) resolve();
+      else requestAnimationFrame(() => step(remaining - 1));
+    };
+    step(count);
+  });
+}
+
 const CANVAS_BACKGROUNDS = [
   { id: "dark",         label: "Dark Workspace",           shortLabel: "Dark"  },
   { id: "light",        label: "Light Workspace",          shortLabel: "Light" },
@@ -173,6 +257,8 @@ function initPrintSetup(bookCover, fullProject) {
     format: "paperback",
     pageCount: hasSavedPages ? Number(saved.pageCount) : estimateCoverPageCount(fullProject),
     estimatedPageCount: hasSavedPages ? !!saved.estimatedPageCount : true,
+    pageCountSource: saved.pageCountSource || (hasSavedPages ? "saved" : "estimated"),
+    syncedAt: saved.syncedAt || null,
     interiorId: saved.interiorId || "bw-white",
     readingDirection: saved.readingDirection || "ltr",
     showGuides: saved.showGuides !== false,
@@ -2076,7 +2162,17 @@ function CoverToolRail({ currentStep, onStepChange, toolStatuses = {} }) {
   );
 }
 
-function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, preflight }) {
+function PrintInspectorPanel({
+  metadata,
+  printSetup,
+  setPrintSetup,
+  geometry,
+  preflight,
+  exportBusy,
+  exportStatus,
+  finalExport,
+  onExportCover,
+}) {
   const update = (key, value) => setPrintSetup((prev) => ({ ...prev, [key]: value }));
 
   return (
@@ -2111,8 +2207,12 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
             step="2"
             value={printSetup.pageCount}
             onChange={(e) => {
-              update("pageCount", Math.max(24, Number(e.target.value) || 24));
-              update("estimatedPageCount", false);
+              setPrintSetup((prev) => ({
+                ...prev,
+                pageCount: Math.max(24, Number(e.target.value) || 24),
+                estimatedPageCount: false,
+                pageCountSource: "manual",
+              }));
             }}
             className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500"
           />
@@ -2158,6 +2258,53 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
             <option value="none">No reserve</option>
           </select>
         </label>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold text-emerald-900">Final KDP cover file</p>
+            <p className="mt-1 text-[9px] leading-relaxed text-emerald-800/80">
+              Uses the Full Cover artwork, removes guide overlays, rasterizes at the exact 300-DPI wrap size,
+              and creates one flattened PDF containing back, spine, and front.
+            </p>
+          </div>
+          {finalExport && (
+            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-bold text-emerald-700">EXPORTED</span>
+          )}
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[9px]">
+          <div className="rounded-lg bg-white/80 p-2">
+            <p className="text-[#8e9692]">Raster size</p>
+            <p className="mt-0.5 font-bold text-[#314a46]">{geometry.pixels300.width} × {geometry.pixels300.height}px</p>
+          </div>
+          <div className="rounded-lg bg-white/80 p-2">
+            <p className="text-[#8e9692]">Page-count source</p>
+            <p className={`mt-0.5 font-bold ${printSetup.pageCountSource === "final-production" ? "text-emerald-700" : "text-amber-700"}`}>
+              {printSetup.pageCountSource === "final-production" ? "Final Production Check" : "Not final-synced"}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onExportCover}
+          disabled={exportBusy}
+          className="mt-3 w-full rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+        >
+          {exportBusy ? "Building print cover…" : finalExport ? "Re-export Final Print Cover PDF" : "Export Final Print Cover PDF"}
+        </button>
+
+        {exportStatus && (
+          <p className={`mt-2 rounded-lg px-2.5 py-2 text-[9px] leading-relaxed ${
+            /could not|failed|resolve|run final/i.test(exportStatus)
+              ? "bg-red-50 text-red-700"
+              : "bg-white/70 text-emerald-800"
+          }`}>
+            {exportStatus}
+          </p>
+        )}
       </div>
 
       <div className={`mt-4 rounded-xl border p-3 ${
@@ -3579,6 +3726,10 @@ function RightPanel({
   setBackCover,
   backCoverGenerating,
   onGenerateBack,
+  coverExportBusy,
+  coverExportStatus,
+  finalCoverExport,
+  onExportCover,
 }) {
   const [activeTab, setActiveTab] = useState("design");
 
@@ -3640,6 +3791,10 @@ function RightPanel({
             setPrintSetup={setPrintSetup}
             geometry={geometry}
             preflight={preflight}
+            exportBusy={coverExportBusy}
+            exportStatus={coverExportStatus}
+            finalExport={finalCoverExport}
+            onExportCover={onExportCover}
           />
         ) : (
           <BackInspectorPanel
@@ -5283,6 +5438,12 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [printSetup, setPrintSetup] = useState(() => initPrintSetup(bookCover, fullProject));
   const [backCover, setBackCover] = useState(() => initBackCover(bookCover, fullProject));
   const [backCoverGenerating, setBackCoverGenerating] = useState(false);
+  const [coverExportBusy, setCoverExportBusy] = useState(false);
+  const [coverExportStatus, setCoverExportStatus] = useState("");
+  const [finalCoverExport, setFinalCoverExport] = useState(() =>
+    bookCover?.finalExport || bookCover?.coverStudio?.finalExport || null
+  );
+  const coverArtworkRef = useRef(null);
 
   // Cover concepts generation state
   const [concepts, setConceptsState] = useState(() =>
@@ -5548,6 +5709,27 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     }, (typographyOverrides?.title ?? metadata.title) || "Your Book Title"),
     [selectedConcept, typographyOverrides, metadata]
   );
+
+  const coverDesignHash = useMemo(
+    () => stableCoverHash({
+      metadata,
+      printSetup,
+      backCover,
+      selectedConceptIdx,
+      selectedConcept,
+      typographyOverrides,
+      imageOverrides,
+      backgroundOverrides,
+    }),
+    [metadata, printSetup, backCover, selectedConceptIdx, selectedConcept, typographyOverrides, imageOverrides, backgroundOverrides]
+  );
+
+  useEffect(() => {
+    if (!finalCoverExport) return;
+    if (finalCoverExport.designHash !== coverDesignHash) {
+      setFinalCoverExport(null);
+    }
+  }, [coverDesignHash]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toolStatuses = useMemo(() => {
     const status = (done, working = false) => working ? "working" : done ? "complete" : "todo";
@@ -6258,6 +6440,86 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     return () => { if (typoDebounceRef.current) clearTimeout(typoDebounceRef.current); };
   }, [metadata.title, metadata.subtitle, selectedConceptIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  async function handleExportPrintCover() {
+    if (coverExportBusy) return;
+    if (coverPreflight.status === "block") {
+      setCoverExportStatus("Resolve blocking cover preflight issues before export.");
+      return;
+    }
+    if (printSetup.pageCountSource !== "final-production") {
+      setCoverExportStatus("Run Final Production Check in Finish and sync the exact page count before exporting the KDP cover.");
+      return;
+    }
+
+    setCoverExportBusy(true);
+    setCoverExportStatus("Preparing full-wrap artwork at 300 DPI…");
+    try {
+      if (surface !== "full" || currentStep !== "visual") {
+        setSurface("full");
+        setCurrentStep("visual");
+        setCanvasState((prev) => ({ ...prev, zoomLevel: "fit" }));
+        await nextPaintFrames(3);
+      }
+
+      const pngData = await rasterizeCoverNode(
+        coverArtworkRef.current,
+        geometry.pixels300.width,
+        geometry.pixels300.height,
+        previewData?.bg || "#ffffff"
+      );
+
+      setCoverExportStatus("Building flattened KDP cover PDF…");
+      const res = await fetch("/api/export/cover-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageData: pngData,
+          fullWidth: geometry.fullWidth,
+          fullHeight: geometry.fullHeight,
+          expectedWidthPx: geometry.pixels300.width,
+          expectedHeightPx: geometry.pixels300.height,
+          title: metadata.title || "book",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Print-cover export failed.");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const disposition = res.headers.get("content-disposition") || "";
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      a.download = match?.[1] || "print-cover.pdf";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      const dpi = Number(res.headers.get("x-cover-dpi")) || 300;
+      const exportMeta = {
+        pageCount: Number(printSetup.pageCount),
+        trimSize: metadata.bookSize,
+        dpi,
+        fullWidth: geometry.fullWidth,
+        fullHeight: geometry.fullHeight,
+        pixels: { ...geometry.pixels300 },
+        designHash: coverDesignHash,
+        exportedAt: new Date().toISOString(),
+      };
+      setFinalCoverExport(exportMeta);
+      setCoverExportStatus(`Print cover exported at ${dpi.toFixed(0)} DPI for ${printSetup.pageCount} final pages.`);
+    } catch (err) {
+      setCoverExportStatus(err?.message || "Could not export the print cover.");
+    } finally {
+      setCoverExportBusy(false);
+    }
+  }
+
   // Validate on every metadata change
   useEffect(() => {
     setValidationErrors(validateMetadata(metadata));
@@ -6298,6 +6560,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           backgroundOverrides:    backgroundOverrides        || null,
           printSetup:              { ...printSetup },
           backCover:               { ...backCover },
+          finalExport:             finalCoverExport ? { ...finalCoverExport } : null,
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -6309,6 +6572,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             backgroundOverrides:  backgroundOverrides  || null,
             printSetup:           { ...printSetup },
             backCover:            { ...backCover },
+            finalExport:          finalCoverExport ? { ...finalCoverExport } : null,
             surface,
             layout:               layoutProfile        || null,
             marketAnalysis:       marketAnalysis       || null,
@@ -6327,7 +6591,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides, imageOverrides, backgroundOverrides, printSetup, backCover, surface]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides, imageOverrides, backgroundOverrides, printSetup, backCover, finalCoverExport, surface]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
@@ -6472,6 +6736,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                   backCover={backCover}
                   palette={previewData}
                   bookSizeLabel={bookSize.label}
+                  artworkRef={coverArtworkRef}
                   frontContent={
                     <>
                       <BackgroundLayer bo={backgroundOverrides} />
@@ -6526,6 +6791,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             setBackCover={setBackCover}
             backCoverGenerating={backCoverGenerating}
             onGenerateBack={handleGenerateBackCover}
+            coverExportBusy={coverExportBusy}
+            coverExportStatus={coverExportStatus}
+            finalCoverExport={finalCoverExport}
+            onExportCover={handleExportPrintCover}
           />
         </div>
       </div>

@@ -3,6 +3,7 @@ import { PDFDocument, PDFPage, PDFFont, StandardFonts, rgb, PDFName, PDFArray } 
 import fontkit from "@pdf-lib/fontkit";
 import fs from "fs";
 import path from "path";
+import { createHash } from "crypto";
 import { fileURLToPath } from "url";
 import {
   Document,
@@ -28,9 +29,11 @@ import {
   getTrimSize,
   resolveMargins,
   estimatePageCount,
+  kdpMinimumInsideMargin,
   DOCX_FONT_NAME,
   PDF_FONT_FILES,
 } from "./exportSettings.js";
+import { buildFinalProductionReport } from "./productionQa.js";
 
 const router = Router();
 
@@ -57,9 +60,11 @@ function loadFontBytes(fileName: string): Buffer {
 // Builds a fully-resolved layout object (page geometry, margins, typography,
 // and page-numbering rules) from user-facing ExportSettings + an estimated
 // word count (used only to size the KDP gutter before pagination is known).
-function buildLayout(settings: ExportSettings, wordCount: number) {
+function buildLayout(settings: ExportSettings, wordCount: number, pageCountHint?: number) {
   const trim = getTrimSize(settings.trimSize);
-  const estPages = estimatePageCount(wordCount, settings.fontSize);
+  const estPages = pageCountHint && pageCountHint > 0
+    ? Math.round(pageCountHint)
+    : estimatePageCount(wordCount, settings.fontSize);
   const margins = resolveMargins(settings, estPages); // inches
   const W = trim.widthIn * 72;
   const H = trim.heightIn * 72;
@@ -393,14 +398,18 @@ interface TocEntry {
   pdfPageRef?: PDFPage;  // reference to actual PDF page (set when page is created)
 }
 
-async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array> {
+async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{
+  bytes: Uint8Array;
+  pageCount: number;
+  layoutDiagnostics: { paragraphStartMoves: number; headingOrphanProtection: boolean };
+}> {
   const settings = normalizeExportSettings(options.settings);
   const lessonsForCount = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
   const estWordCount: number = (Object.values(lessonsForCount) as any[]).reduce<number>(
     (acc, l) => acc + String(l?.prose || "").split(/\s+/).filter(Boolean).length,
     0
   );
-  const P = buildLayout(settings, estWordCount || 30000);
+  const P = buildLayout(settings, estWordCount || 30000, Number(options?.finalPageCountHint) || undefined);
 
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit as any);
@@ -444,6 +453,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   // so headings never get orphaned alone at the bottom of a page.
   const SEC_MIN_ROOM = 130;
   const SUB_MIN_ROOM = 110;
+  let paragraphStartMoves = 0;
 
   const black     = rgb(0,    0,    0);
   const darkGray  = rgb(0.15, 0.15, 0.15);
@@ -723,6 +733,18 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
       }
     }
 
+    function ensureBlockStart(lineCount: number) {
+      if (lineCount < 2) return;
+      const available = Math.floor((y - (MB + 20)) / LH);
+      if (available >= 2) return;
+      arabicPageNum++;
+      currentPage = newPage();
+      const label = chNum > 0 ? `${P.chapterPrefix} ${chNum}` : "";
+      drawHeader(currentPage, label, arabicPageNum, false);
+      y = H - MT - 10;
+      paragraphStartMoves++;
+    }
+
     const justify = P.alignment === "justified";
 
     for (const block of blocks) {
@@ -730,6 +752,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         firstPara = false;
         const bulletText = `\u2022  ${sanitize(block.text)}`;
         const lines = wrapTextPdf(bulletText, regular, BODY, textW - 18);
+        ensureBlockStart(lines.length);
         for (let i = 0; i < lines.length; i++) {
           ensureLineRoom();
           drawAlignedLine(currentPage, lines[i], ML + 14, y, BODY, regular, black, textW - 18, justify, i === lines.length - 1);
@@ -740,6 +763,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         firstPara = false;
         const numText = `${block.num}.  ${sanitize(block.text)}`;
         const lines = wrapTextPdf(numText, regular, BODY, textW - 18);
+        ensureBlockStart(lines.length);
         for (let i = 0; i < lines.length; i++) {
           ensureLineRoom();
           drawAlignedLine(currentPage, lines[i], ML + 14, y, BODY, regular, black, textW - 18, justify, i === lines.length - 1);
@@ -750,6 +774,7 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
         const indent = firstPara ? P.indent : 0;
         firstPara = false;
         const lines = wrapTextPdf(sanitize(block.text), regular, BODY, textW - indent);
+        ensureBlockStart(lines.length);
         for (let i = 0; i < lines.length; i++) {
           ensureLineRoom();
           const lineIndent = i === 0 ? indent : 0;
@@ -1045,8 +1070,41 @@ async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array
   }
 
   console.log("[Export] TOC generated —", tocEntries.length, "entries on", tocPage2 ? "2" : "1", "TOC page(s)");
-  console.log("[Export] PDF render completed —", pdf.getPageCount(), "total pages");
-  return pdf.save();
+  const pageCount = pdf.getPageCount();
+  const insideMargin = P.mLeft / 72;
+  const requiredInside = kdpMinimumInsideMargin(pageCount);
+  const paginationPass = Number(options?.paginationPass) || 0;
+
+  if (
+    settings.marginsMode === "kdp"
+    && insideMargin + 1e-6 < requiredInside
+    && paginationPass < 3
+  ) {
+    console.log(
+      "[Export] Re-rendering with final-page gutter —",
+      insideMargin.toFixed(3), "→", requiredInside.toFixed(3), "in for", pageCount, "pages"
+    );
+    return buildBookPdfArtifact(project, {
+      ...options,
+      finalPageCountHint: pageCount,
+      paginationPass: paginationPass + 1,
+    });
+  }
+
+  console.log("[Export] PDF render completed —", pageCount, "total pages");
+  const bytes = await pdf.save();
+  return {
+    bytes,
+    pageCount,
+    layoutDiagnostics: {
+      paragraphStartMoves,
+      headingOrphanProtection: true,
+    },
+  };
+}
+
+async function buildBookPdf(project: any, options: any = {}): Promise<Uint8Array> {
+  return (await buildBookPdfArtifact(project, options)).bytes;
 }
 
 // ─── DOCX BUILDER ─────────────────────────────────────────────────────────────
@@ -1645,6 +1703,279 @@ function publicationMetadata(project: any, settings: any, citationStyle: string)
   };
 }
 
+// ─── EPUB 3 BUILDER ───────────────────────────────────────────────────────────
+
+function xmlEscape(value: unknown): string {
+  return String(value ?? "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function epubLanguage(value: unknown): string {
+  const raw = String(value || "English").trim().toLowerCase();
+  const map: Record<string, string> = {
+    english: "en", spanish: "es", french: "fr", german: "de", italian: "it",
+    portuguese: "pt", dutch: "nl", japanese: "ja", hebrew: "he", yiddish: "yi",
+    arabic: "ar", persian: "fa", dari: "fa", pashto: "ps", chinese: "zh", korean: "ko"
+  };
+  return map[raw] || (raw.length === 2 ? raw : "en");
+}
+
+function proseBlocksToXhtml(prose: string): string {
+  const blocks = parseProseBlocks(String(prose || ""));
+  if (!blocks.length) return "";
+  let listType: "ul" | "ol" | null = null;
+  const out: string[] = [];
+
+  const closeList = () => {
+    if (listType) out.push(`</${listType}>`);
+    listType = null;
+  };
+
+  for (const block of blocks) {
+    if (block.kind === "bullet") {
+      if (listType !== "ul") { closeList(); listType = "ul"; out.push("<ul>"); }
+      out.push(`<li>${xmlEscape(block.text)}</li>`);
+    } else if (block.kind === "numbered") {
+      if (listType !== "ol") { closeList(); listType = "ol"; out.push("<ol>"); }
+      out.push(`<li>${xmlEscape(block.text)}</li>`);
+    } else {
+      closeList();
+      out.push(`<p>${xmlEscape(block.text)}</p>`);
+    }
+  }
+  closeList();
+  return out.join("\n");
+}
+
+function epubXhtmlDocument(title: string, body: string, language: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="${xmlEscape(language)}" lang="${xmlEscape(language)}">
+<head>
+  <meta charset="utf-8"/>
+  <title>${xmlEscape(title)}</title>
+  <link rel="stylesheet" type="text/css" href="styles/book.css"/>
+</head>
+<body>
+${body}
+</body>
+</html>`;
+}
+
+function buildEpubArtifact(project: any, options: any = {}): {
+  bytes: Buffer;
+  validation: { status: "pass" | "review" | "block"; checks: any[]; sectionCount: number; navCount: number };
+} {
+  const title = resolveBookTitle(project);
+  const author = resolveAuthorName(project);
+  const metadata = project?.bookCover?.coverStudio?.metadata || {};
+  const language = epubLanguage(metadata.language || project?.bookCover?.language || "English");
+  const lessons = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
+  const hier = buildHierarchy(project?.bookOutline);
+  const sections: Array<{ id: string; title: string; body: string }> = [];
+
+  const subtitle = project?.bookDetails?.subtitle || project?.research?.bookSubtitle || "";
+  sections.push({
+    id: "title-page",
+    title,
+    body: `<section class="title-page"><h1>${xmlEscape(title)}</h1>${subtitle ? `<p class="subtitle">${xmlEscape(subtitle)}</p>` : ""}<p class="author">by ${xmlEscape(author)}</p></section>`
+  });
+
+  const optionalFront: Array<[string, string]> = [
+    ["Dedication", options.dedication || ""],
+    ["Acknowledgments", options.acknowledgments || ""],
+    ["Preface", options.preface || ""],
+    ["How to Use This Book", options.howToUseThisBook || ""],
+    ["What You Will Learn", options.whatYouWillLearn || ""],
+    ["Who This Book Is For", options.whoThisBookIsFor || ""],
+  ];
+  for (const [label, text] of optionalFront) {
+    if (!String(text).trim()) continue;
+    const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    sections.push({ id, title: label, body: `<h1>${xmlEscape(label)}</h1>\n${proseBlocksToXhtml(text)}` });
+  }
+
+  if (hier.introduction) {
+    const prose = String(lessons[hier.introduction.id]?.prose || "").trim();
+    if (prose) sections.push({
+      id: "introduction",
+      title: hier.introduction.title,
+      body: `<h1>${xmlEscape(hier.introduction.title)}</h1>\n${proseBlocksToXhtml(prose)}`
+    });
+  }
+
+  for (const ch of hier.chapters) {
+    const sectionTitles = ch.sections.map((s) => s.title);
+    const parts: string[] = [`<h1>Chapter ${ch.chNum}: ${xmlEscape(ch.title)}</h1>`];
+    const chIntro = buildChapterIntro(ch.title, sectionTitles);
+    if (chIntro) parts.push(`<p class="chapter-intro">${xmlEscape(chIntro)}</p>`);
+
+    let hasContent = false;
+    for (const sec of ch.sections) {
+      const secLabel = `${ch.chNum}.${sec.secNum}`;
+      const secParts: string[] = [];
+      if (sec.subsections.length === 0) {
+        const prose = String(lessons[sec.id]?.prose || "").trim();
+        if (!prose) continue;
+        hasContent = true;
+        secParts.push(`<h2>${secLabel} ${xmlEscape(sec.title)}</h2>`);
+        secParts.push(`<p class="section-intro">${xmlEscape(buildSectionIntro(sec.title, ch.title))}</p>`);
+        secParts.push(proseBlocksToXhtml(prose));
+      } else {
+        const populated = sec.subsections.filter((sub) => String(lessons[sub.id]?.prose || "").trim());
+        if (!populated.length) continue;
+        hasContent = true;
+        secParts.push(`<h2>${secLabel} ${xmlEscape(sec.title)}</h2>`);
+        secParts.push(`<p class="section-intro">${xmlEscape(buildSectionIntro(sec.title, ch.title))}</p>`);
+        for (const sub of populated) {
+          secParts.push(`<h3>${secLabel}.${sub.subNum} ${xmlEscape(sub.title)}</h3>`);
+          secParts.push(proseBlocksToXhtml(String(lessons[sub.id]?.prose || "")));
+        }
+      }
+      parts.push(secParts.join("\n"));
+    }
+
+    if (hasContent) sections.push({
+      id: `chapter-${ch.chNum}`,
+      title: `Chapter ${ch.chNum}: ${ch.title}`,
+      body: parts.join("\n")
+    });
+  }
+
+  if (hier.conclusion) {
+    const prose = String(lessons[hier.conclusion.id]?.prose || "").trim();
+    if (prose) sections.push({
+      id: "conclusion",
+      title: hier.conclusion.title,
+      body: `<h1>${xmlEscape(hier.conclusion.title)}</h1>\n${proseBlocksToXhtml(prose)}`
+    });
+  }
+
+  for (const bm of hier.backMatter) {
+    const prose = String(lessons[bm.id]?.prose || "").trim();
+    if (!prose) continue;
+    const id = `back-${bm.id.replace(/[^a-z0-9_-]+/gi, "-")}`;
+    sections.push({ id, title: bm.title, body: `<h1>${xmlEscape(bm.title)}</h1>\n${proseBlocksToXhtml(prose)}` });
+  }
+
+  const authorBio = project?.authorBio?.bio || project?.authorBio?.background || "";
+  if (String(authorBio).trim()) {
+    sections.push({ id: "about-author", title: "About the Author", body: `<h1>About the Author</h1>\n${proseBlocksToXhtml(String(authorBio))}` });
+  }
+
+  const digest = createHash("sha256")
+    .update(JSON.stringify({ title, author, outline: project?.bookOutline || {}, lessons }))
+    .digest("hex");
+  const identifier = `urn:nonfiction-ai-studio:${digest.slice(0, 32)}`;
+  const modified = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+
+  const manifestItems = sections.map((s, i) =>
+    `<item id="s${i + 1}" href="text/${s.id}.xhtml" media-type="application/xhtml+xml"/>`
+  ).join("\n    ");
+  const spineItems = sections.map((_, i) => `<itemref idref="s${i + 1}"/>`).join("\n    ");
+  const navItems = sections.map((s) => `<li><a href="text/${s.id}.xhtml">${xmlEscape(s.title)}</a></li>`).join("\n        ");
+
+  const nav = epubXhtmlDocument("Contents", `<nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="toc" id="toc">
+  <h1>Contents</h1>
+  <ol>
+        ${navItems}
+  </ol>
+</nav>`, language);
+
+  const opf = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${xmlEscape(language)}">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="book-id">${xmlEscape(identifier)}</dc:identifier>
+    <dc:title>${xmlEscape(title)}</dc:title>
+    <dc:creator>${xmlEscape(author)}</dc:creator>
+    <dc:language>${xmlEscape(language)}</dc:language>
+    <meta property="dcterms:modified">${modified}</meta>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="css" href="styles/book.css" media-type="text/css"/>
+    ${manifestItems}
+  </manifest>
+  <spine>
+    ${spineItems}
+  </spine>
+</package>`;
+
+  const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`;
+
+  const css = `body{font-family:serif;line-height:1.45;margin:5%;color:#111}h1{font-size:1.7em;margin:1.8em 0 .8em}h2{font-size:1.35em;margin:1.5em 0 .7em}h3{font-size:1.1em;margin:1.2em 0 .5em}p{margin:0 0 .8em;text-indent:1.25em}.title-page{text-align:center;margin-top:30%}.title-page p{text-indent:0}.subtitle{font-style:italic}.author{margin-top:2em}.chapter-intro,.section-intro{font-style:italic;text-indent:0;color:#444}li{margin:.35em 0}nav ol{padding-left:1.4em}`;
+
+  const files: Array<{ name: string; data: Buffer | Uint8Array | string }> = [
+    { name: "mimetype", data: "application/epub+zip" },
+    { name: "META-INF/container.xml", data: containerXml },
+    { name: "OEBPS/content.opf", data: opf },
+    { name: "OEBPS/nav.xhtml", data: nav },
+    { name: "OEBPS/styles/book.css", data: css },
+    ...sections.map((s) => ({
+      name: `OEBPS/text/${s.id}.xhtml`,
+      data: epubXhtmlDocument(s.title, s.body, language)
+    }))
+  ];
+
+  const checks: any[] = [];
+  const add = (id: string, label: string, status: "pass" | "review" | "block", detail: string) =>
+    checks.push({ id, label, status, detail });
+  add("epub-title", "EPUB title", title.trim() ? "pass" : "block", title.trim() ? "Title metadata is present." : "Title metadata is missing.");
+  add("epub-author", "EPUB author", author.trim() ? "pass" : "review", author.trim() ? "Author metadata is present." : "Author metadata is missing.");
+  add("epub-navigation", "EPUB navigation", sections.length > 1 ? "pass" : "block", `${sections.length} reading-order document(s) are included in the EPUB navigation.`);
+  add("epub-language", "EPUB language", language ? "pass" : "review", `EPUB language is ${language || "not set"}.`);
+  add("kindle-previewer", "Kindle Previewer validation", "review", "Run the exported EPUB through Kindle Previewer before KDP upload.");
+
+  const blocked = checks.filter((x) => x.status === "block").length;
+  const reviews = checks.filter((x) => x.status === "review").length;
+  const validation = {
+    status: blocked ? "block" as const : reviews ? "review" as const : "pass" as const,
+    checks,
+    sectionCount: sections.length,
+    navCount: sections.length,
+  };
+
+  return { bytes: buildStoredZip(files), validation };
+}
+
+function buildArchiveManifest(project: any, metadata: any, pageCount: number, productionReport: any, epubValidation: any) {
+  const snapshot = {
+    title: metadata.title,
+    author: metadata.author,
+    pageCount,
+    trimSize: metadata.trimSize,
+    citationStyle: metadata.citationStyle,
+    productionStatus: productionReport?.status || "unknown",
+    epubStatus: epubValidation?.status || "unknown",
+    finalCoverExport: project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || null,
+    outline: project?.bookOutline || null,
+    lessons: project?.lessons || {},
+  };
+  const fingerprint = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
+  const createdAt = new Date().toISOString();
+  const version = createdAt.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  return {
+    schemaVersion: 1,
+    archiveId: `${String(metadata.title || "book").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "book"}-${version}-${fingerprint.slice(0, 8)}`,
+    fingerprintSha256: fingerprint,
+    createdAt,
+    exactPageCount: pageCount,
+    trimSize: metadata.trimSize,
+    productionStatus: productionReport?.status || "unknown",
+    epubStatus: epubValidation?.status || "unknown",
+  };
+}
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 router.post("/book", async (req, res) => {
@@ -1652,11 +1983,12 @@ router.post("/book", async (req, res) => {
     const { project, preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor } = req.body;
     if (!project || typeof project !== "object")
       return res.status(400).json({ error: "Missing project payload" });
-    const bytes = await buildBookPdf(project, { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
+    const artifact = await buildBookPdfArtifact(project, { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
     const slug = (project.bookDetails?.title || project.title || "book").replace(/[^a-z0-9]/gi, "-");
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${slug || "book"}.pdf"`);
-    return res.status(200).send(Buffer.from(bytes));
+    res.setHeader("X-Book-Page-Count", String(artifact.pageCount));
+    return res.status(200).send(Buffer.from(artifact.bytes));
   } catch (error: any) {
     console.error("PDF export error:", error);
     return res.status(500).json({ error: error.message || "Failed to export PDF" });
@@ -1676,6 +2008,122 @@ router.post("/docx", async (req, res) => {
   } catch (error: any) {
     console.error("DOCX export error:", error);
     return res.status(500).json({ error: error.message || "Failed to export DOCX" });
+  }
+});
+
+router.post("/epub", async (req, res) => {
+  try {
+    const { project, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor } = req.body || {};
+    if (!project || typeof project !== "object")
+      return res.status(400).json({ error: "Missing project payload" });
+
+    const epub = buildEpubArtifact(project, { dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
+    if (epub.validation.status === "block") {
+      return res.status(400).json({ error: "EPUB validation has blocking issues", validation: epub.validation });
+    }
+    const slug = (resolveBookTitle(project) || "book").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "book";
+    res.setHeader("Content-Type", "application/epub+zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${slug}.epub"`);
+    res.setHeader("X-EPUB-Validation", epub.validation.status);
+    return res.status(200).send(epub.bytes);
+  } catch (error: any) {
+    console.error("EPUB export error:", error);
+    return res.status(500).json({ error: error.message || "Failed to export EPUB" });
+  }
+});
+
+router.post("/production-report", async (req, res) => {
+  try {
+    const {
+      project,
+      preset,
+      settings,
+      dedication,
+      acknowledgments,
+      preface,
+      howToUseThisBook,
+      whatYouWillLearn,
+      whoThisBookIsFor
+    } = req.body || {};
+    if (!project || typeof project !== "object")
+      return res.status(400).json({ error: "Missing project payload" });
+
+    const options = { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor };
+    const [pdfArtifact, epub] = await Promise.all([
+      buildBookPdfArtifact(project, options),
+      Promise.resolve(buildEpubArtifact(project, options))
+    ]);
+    const report = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation, pdfArtifact.layoutDiagnostics);
+    const metadata = publicationMetadata(project, settings, req.body?.citationStyle || "none");
+    const manifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, report, epub.validation);
+
+    return res.json({
+      ...report,
+      epub: epub.validation,
+      archiveManifest: manifest
+    });
+  } catch (error: any) {
+    console.error("Production report error:", error);
+    return res.status(500).json({ error: error.message || "Failed to build production report" });
+  }
+});
+
+router.post("/cover-pdf", async (req, res) => {
+  try {
+    const { imageData, fullWidth, fullHeight, expectedWidthPx, expectedHeightPx, title } = req.body || {};
+    const widthIn = Number(fullWidth);
+    const heightIn = Number(fullHeight);
+    if (!Number.isFinite(widthIn) || !Number.isFinite(heightIn) || widthIn <= 0 || heightIn <= 0) {
+      return res.status(400).json({ error: "Invalid cover dimensions" });
+    }
+    const match = String(imageData || "").match(/^data:image\/png;base64,(.+)$/);
+    if (!match) return res.status(400).json({ error: "A PNG cover image is required" });
+
+    const pngBytes = Buffer.from(match[1], "base64");
+    if (!pngBytes.length) return res.status(400).json({ error: "Cover PNG is empty" });
+
+    const pdf = await PDFDocument.create();
+    const image = await pdf.embedPng(pngBytes);
+    const dpiX = image.width / widthIn;
+    const dpiY = image.height / heightIn;
+    const effectiveDpi = Math.min(dpiX, dpiY);
+
+    if (effectiveDpi < 295) {
+      return res.status(400).json({
+        error: `Cover raster resolution is too low (${effectiveDpi.toFixed(0)} DPI). Export at 300 DPI before creating the KDP cover PDF.`
+      });
+    }
+
+    if (
+      Number.isFinite(Number(expectedWidthPx))
+      && Math.abs(image.width - Number(expectedWidthPx)) > 2
+    ) {
+      return res.status(400).json({ error: "Cover pixel width does not match the requested 300-DPI geometry." });
+    }
+    if (
+      Number.isFinite(Number(expectedHeightPx))
+      && Math.abs(image.height - Number(expectedHeightPx)) > 2
+    ) {
+      return res.status(400).json({ error: "Cover pixel height does not match the requested 300-DPI geometry." });
+    }
+
+    const page = pdf.addPage([widthIn * 72, heightIn * 72]);
+    page.drawImage(image, { x: 0, y: 0, width: widthIn * 72, height: heightIn * 72 });
+    pdf.setTitle(String(title || "Book Cover"));
+    pdf.setProducer("Nonfiction AI Studio");
+    const bytes = await pdf.save();
+
+    const slug = String(title || "book")
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-|-$/g, "") || "book";
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${slug}-print-cover.pdf"`);
+    res.setHeader("X-Cover-DPI", effectiveDpi.toFixed(2));
+    res.setHeader("X-Cover-Pixel-Size", `${image.width}x${image.height}`);
+    return res.status(200).send(Buffer.from(bytes));
+  } catch (error: any) {
+    console.error("Cover PDF export error:", error);
+    return res.status(500).json({ error: error.message || "Failed to export print cover PDF" });
   }
 });
 
@@ -1700,9 +2148,10 @@ router.post("/publication-bundle", async (req, res) => {
     }
 
     const options = { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor };
-    const [pdfBytes, docxBuffer] = await Promise.all([
-      buildBookPdf(project, options),
-      buildBookDocx(project, options)
+    const [pdfArtifact, docxBuffer, epub] = await Promise.all([
+      buildBookPdfArtifact(project, options),
+      buildBookDocx(project, options),
+      Promise.resolve(buildEpubArtifact(project, options))
     ]);
 
     const slug = (resolveBookTitle(project) || "book")
@@ -1710,6 +2159,8 @@ router.post("/publication-bundle", async (req, res) => {
       .replace(/^-|-$/g, "") || "book";
     const metadata = publicationMetadata(project, settings, citationStyle);
     const report = publicationReport && typeof publicationReport === "object" ? publicationReport : {};
+    const productionReport = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation, pdfArtifact.layoutDiagnostics);
+    const archiveManifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, productionReport, epub.validation);
     const description = String(metadata.description || "");
     const keywords = String(metadata.keywords || "");
 
@@ -1717,34 +2168,48 @@ router.post("/publication-bundle", async (req, res) => {
       "Nonfiction AI Studio — Publication Bundle",
       "",
       "Files:",
-      "- manuscript/" + slug + ".pdf — print-ready manuscript export",
+      "- manuscript/" + slug + ".pdf — print-ready paperback interior",
       "- manuscript/" + slug + ".docx — editable manuscript export",
+      "- ebook/" + slug + ".epub — reflowable EPUB 3 for Kindle upload",
       "- metadata/publishing-metadata.json — title, author, listing, category, trim, citation settings",
       "- reports/evidence-audit.json — retained source usage and claim review",
       "- reports/kdp-preflight.json — deterministic pre-export checks",
       "- reports/publication-consistency.json — manuscript/cover/listing consistency checks",
       "- reports/citation-registry.json — verified sources available to exported citation markers",
+      "- reports/final-production-report.json — exact final pagination + KDP production checks",
+      "- reports/epub-validation.json — internal EPUB structure checks",
+      "- reports/kdp-upload-checklist.json — paperback/eBook upload checklist",
+      "- archive/archive-manifest.json — version id + SHA-256 production fingerprint",
+      "- cover/print-cover-export.json — metadata for the separately downloaded flattened cover PDF",
       "- listing/description.txt — current listing description",
       "- listing/keywords.txt — current discovery keywords",
       "",
-      "Important: this bundle is an internal production archive. KDP's online preview and current publishing requirements remain the final upload checks."
+      "Important: the flattened print-cover PDF is downloaded separately from Cover Studio and is intentionally not stored in browser project state. This archive records its export metadata/fingerprint. Validate the EPUB in Kindle Previewer and run KDP Print Previewer on the paperback files before publishing."
     ].join("\n");
 
     const zip = buildStoredZip([
-      { name: "manuscript/" + slug + ".pdf", data: Buffer.from(pdfBytes) },
+      { name: "manuscript/" + slug + ".pdf", data: Buffer.from(pdfArtifact.bytes) },
       { name: "manuscript/" + slug + ".docx", data: docxBuffer },
+      { name: "ebook/" + slug + ".epub", data: epub.bytes },
       { name: "metadata/publishing-metadata.json", data: JSON.stringify(metadata, null, 2) },
       { name: "reports/evidence-audit.json", data: JSON.stringify(report.evidenceAudit || {}, null, 2) },
       { name: "reports/kdp-preflight.json", data: JSON.stringify(report.publishingPreflight || {}, null, 2) },
       { name: "reports/publication-consistency.json", data: JSON.stringify(report.publicationConsistency || {}, null, 2) },
       { name: "reports/citation-registry.json", data: JSON.stringify(report.citationRegistry || {}, null, 2) },
+      { name: "reports/final-production-report.json", data: JSON.stringify(productionReport, null, 2) },
+      { name: "reports/epub-validation.json", data: JSON.stringify(epub.validation, null, 2) },
+      { name: "reports/kdp-upload-checklist.json", data: JSON.stringify(productionReport.kdpChecklist, null, 2) },
+      { name: "archive/archive-manifest.json", data: JSON.stringify(archiveManifest, null, 2) },
+      { name: "cover/print-cover-export.json", data: JSON.stringify(project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || {}, null, 2) },
       { name: "listing/description.txt", data: description },
       { name: "listing/keywords.txt", data: keywords },
       { name: "README.txt", data: readme }
     ]);
 
     res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", `attachment; filename="${slug}-publication-bundle.zip"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${archiveManifest.archiveId}.zip"`);
+    res.setHeader("X-Book-Page-Count", String(pdfArtifact.pageCount));
+    res.setHeader("X-Publication-Archive-Id", archiveManifest.archiveId);
     return res.status(200).send(zip);
   } catch (error: any) {
     console.error("Publication bundle export error:", error);
