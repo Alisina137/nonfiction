@@ -5,12 +5,13 @@ import {
   resolveBookTitle,
   resolveGenre,
 } from "@/lib/projectMeta";
-import CoverProductionControls from "@/components/CoverProductionControls";
 import CoverWrapPreview from "@/components/CoverWrapPreview";
 import {
   buildCoverPreflight,
   calculatePaperbackGeometry,
   estimateCoverPageCount,
+  formatInches,
+  PAPERBACK_INTERIORS,
 } from "@/lib/coverKdp";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1680,6 +1681,227 @@ function LayoutCard({ profile, generating, onRegenerate }) {
       >
         ↻ Regenerate Layout
       </button>
+    </div>
+  );
+}
+
+// ─── Creative editor rail ────────────────────────────────────────────────────
+
+const COVER_EDITOR_TOOLS = [
+  { id: "concepts",   icon: "✦", label: "Generate" },
+  { id: "visual",     icon: "▣", label: "Canvas" },
+  { id: "typography", icon: "T", label: "Text" },
+  { id: "elements",   icon: "◆", label: "Elements" },
+  { id: "color",      icon: "●", label: "Colors" },
+  { id: "layout",     icon: "▦", label: "Layout" },
+  { id: "review",     icon: "★", label: "Review" },
+];
+
+const COVER_INTELLIGENCE_TOOLS = [
+  { id: "market",   icon: "↗", label: "Market" },
+  { id: "strategy", icon: "◎", label: "Strategy" },
+  { id: "mood",     icon: "◫", label: "Mood" },
+];
+
+function CoverToolRail({ currentStep, onStepChange }) {
+  const button = (tool) => {
+    const active = currentStep === tool.id;
+    return (
+      <button
+        key={tool.id}
+        type="button"
+        onClick={() => onStepChange(tool.id)}
+        title={tool.label}
+        className={`group flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition ${
+          active
+            ? "bg-white/10 text-white shadow-inner ring-1 ring-white/10"
+            : "text-slate-500 hover:bg-white/[0.06] hover:text-slate-200"
+        }`}
+      >
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-[15px] font-black transition ${
+          active ? "bg-violet-600 text-white shadow-lg shadow-violet-950/30" : "bg-white/[0.04] text-slate-400 group-hover:text-white"
+        }`}>
+          {tool.icon}
+        </span>
+        <span className="text-[9px] font-semibold leading-none">{tool.label}</span>
+      </button>
+    );
+  };
+
+  return (
+    <aside className="flex w-[76px] shrink-0 flex-col border-r border-white/[0.07] bg-[#111318] px-2 py-3">
+      <div className="flex h-9 items-center justify-center">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600 text-[13px] font-black text-white shadow-lg shadow-violet-950/40">C</div>
+      </div>
+      <div className="mt-3 space-y-1">{COVER_EDITOR_TOOLS.map(button)}</div>
+      <div className="my-3 border-t border-white/[0.07]" />
+      <p className="mb-1 text-center text-[7px] font-bold uppercase tracking-[0.18em] text-slate-700">Intel</p>
+      <div className="space-y-1">{COVER_INTELLIGENCE_TOOLS.map(button)}</div>
+      <div className="mt-auto pt-3">
+        {button({ id: "bookInfo", icon: "⚙", label: "Setup" })}
+      </div>
+    </aside>
+  );
+}
+
+function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, preflight }) {
+  const update = (key, value) => setPrintSetup((prev) => ({ ...prev, [key]: value }));
+
+  return (
+    <div className="h-full overflow-y-auto px-4 py-4 text-slate-200">
+      <div className="mb-4">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Print setup</p>
+        <h3 className="mt-1 text-sm font-bold text-white">KDP paperback</h3>
+        <p className="mt-1 text-[10px] leading-relaxed text-slate-500">Set the real trim and page geometry before final artwork/export.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
+          <p className="text-[8px] font-bold uppercase tracking-wider text-slate-600">Full wrap</p>
+          <p className="mt-1 text-[12px] font-semibold text-white">{formatInches(geometry.fullWidth)} × {formatInches(geometry.fullHeight)}</p>
+        </div>
+        <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
+          <p className="text-[8px] font-bold uppercase tracking-wider text-slate-600">Spine</p>
+          <p className="mt-1 text-[12px] font-semibold text-white">{formatInches(geometry.spineWidth)}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <label className="block">
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Trim size</span>
+          <div className="rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] font-semibold text-slate-200">{metadata.bookSize}</div>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Page count</span>
+          <input
+            type="number"
+            min="24"
+            step="2"
+            value={printSetup.pageCount}
+            onChange={(e) => {
+              update("pageCount", Math.max(24, Number(e.target.value) || 24));
+              update("estimatedPageCount", false);
+            }}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Interior</span>
+          <select
+            value={printSetup.interiorId}
+            onChange={(e) => update("interiorId", e.target.value)}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500"
+          >
+            {PAPERBACK_INTERIORS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Reading direction</span>
+          <select
+            value={printSetup.readingDirection}
+            onChange={(e) => update("readingDirection", e.target.value)}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500"
+          >
+            <option value="ltr">Left to right</option>
+            <option value="rtl">Right to left</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="mt-4 space-y-2 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
+        {[
+          ["showGuides", "Safe & bleed guides"],
+          ["spineText", "Spine text"],
+        ].map(([key, label]) => (
+          <label key={key} className="flex items-center justify-between gap-3 text-[11px] text-slate-300">
+            <span>{label}</span>
+            <input type="checkbox" checked={!!printSetup[key]} onChange={(e) => update(key, e.target.checked)} />
+          </label>
+        ))}
+        <label className="flex items-center justify-between gap-3 text-[11px] text-slate-300">
+          <span>Barcode</span>
+          <select value={printSetup.barcodeMode} onChange={(e) => update("barcodeMode", e.target.value)} className="rounded border border-white/[0.08] bg-[#171a20] px-2 py-1 text-[10px]">
+            <option value="kdp">KDP places it</option>
+            <option value="own">My barcode</option>
+            <option value="none">No reserve</option>
+          </select>
+        </label>
+      </div>
+
+      <div className={`mt-4 rounded-xl border p-3 ${
+        preflight.status === "pass"
+          ? "border-emerald-500/20 bg-emerald-500/[0.06]"
+          : preflight.status === "block"
+            ? "border-red-500/20 bg-red-500/[0.06]"
+            : "border-amber-500/20 bg-amber-500/[0.06]"
+      }`}>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-bold text-white">KDP preflight</p>
+          <span className="text-[9px] font-bold uppercase text-slate-400">{preflight.status}</span>
+        </div>
+        <div className="mt-2 space-y-1.5">
+          {preflight.checks.slice(0, 5).map((check) => (
+            <div key={check.id} className="flex items-start gap-2 text-[9px]">
+              <span className={check.status === "pass" ? "text-emerald-400" : check.status === "block" ? "text-red-400" : "text-amber-400"}>
+                {check.status === "pass" ? "✓" : "•"}
+              </span>
+              <span className="text-slate-400">{check.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate }) {
+  const update = (key, value) => setBackCover((prev) => ({ ...prev, [key]: value }));
+  const layouts = ["editorial", "authority", "benefits", "minimal"];
+
+  return (
+    <div className="h-full overflow-y-auto px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Back cover</p>
+          <h3 className="mt-1 text-sm font-bold text-white">Sales copy & layout</h3>
+        </div>
+        <button type="button" onClick={onGenerate} disabled={generating} className="rounded-lg bg-violet-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-violet-500 disabled:opacity-50">
+          {generating ? "Writing…" : "✦ Write"}
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        {layouts.map((layout) => (
+          <button
+            key={layout}
+            type="button"
+            onClick={() => update("layout", layout)}
+            className={`rounded-xl border px-3 py-2 text-left text-[10px] font-semibold capitalize transition ${
+              backCover.layout === layout
+                ? "border-violet-400 bg-violet-500/10 text-violet-300"
+                : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            {layout}
+          </button>
+        ))}
+      </div>
+
+      <label className="mt-4 block">
+        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Headline</span>
+        <input value={backCover.headline || ""} onChange={(e) => update("headline", e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500" />
+      </label>
+      <label className="mt-3 block">
+        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Blurb</span>
+        <textarea rows={8} value={backCover.blurb || ""} onChange={(e) => update("blurb", e.target.value)} className="w-full resize-y rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] leading-relaxed text-slate-200 outline-none focus:border-violet-500" />
+      </label>
+      <label className="mt-3 block">
+        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Author line</span>
+        <input value={backCover.authorLine || ""} onChange={(e) => update("authorLine", e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500" />
+      </label>
+      <p className="mt-3 rounded-lg border border-amber-500/10 bg-amber-500/[0.05] px-3 py-2 text-[9px] leading-relaxed text-amber-200/70">
+        The barcode-safe region remains reserved in Full Cover view.
+      </p>
     </div>
   );
 }
@@ -4602,7 +4824,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [validationErrors, setValidationErrors] = useState({});
   const [lastSaved, setLastSaved] = useState(null);
   const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "saving" | "unsaved"
-  const [currentStep, setCurrentStep] = useState("bookInfo");
+  const [currentStep, setCurrentStep] = useState("visual");
   const [surface, setSurface] = useState(() => bookCover?.coverStudio?.surface || "front");
   const [printSetup, setPrintSetup] = useState(() => initPrintSetup(bookCover, fullProject));
   const [backCover, setBackCover] = useState(() => initBackCover(bookCover, fullProject));
