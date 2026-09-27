@@ -25,7 +25,7 @@ function normalizeTrimText(value: unknown): string {
     .toLowerCase()
     .replace(/["″]/g, "")
     .replace(/[×x]/g, "x")
-    .replace(/s+/g, "")
+    .replace(/\s+/g, "")
     .replace(/—.*$/, "");
 }
 
