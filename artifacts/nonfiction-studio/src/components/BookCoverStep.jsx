@@ -5375,10 +5375,14 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   function applyTypographyProfile() {
     if (!typographyProfile) return;
 
-    const rawCategory = String(typographyProfile.titleFontCategory || "").trim().toLowerCase();
-    const matchedCategory = FONT_CATEGORIES.find((item) => item.toLowerCase() === rawCategory)
-      || FONT_CATEGORIES.find((item) => rawCategory.includes(item.toLowerCase()))
-      || null;
+    const rawCategory = String(typographyProfile.titleFontCategory || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ");
+    const matchedCategory = FONT_CATEGORIES.find(
+      (item) => item.toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ") === rawCategory
+    ) || null;
 
     const rawAlignment = String(typographyProfile.titleAlignment || "").trim().toLowerCase();
     const alignment = ["left", "center", "right"].includes(rawAlignment) ? rawAlignment : null;
