@@ -56,6 +56,90 @@ const LANGUAGES = [
 
 const ZOOM_STEPS = [0.5, 0.75, 1.0, 1.25, 1.5];
 
+function stableCoverHash(value) {
+  const text = typeof value === "string" ? value : JSON.stringify(value ?? null);
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function collectCoverExportCss() {
+  const chunks = [];
+  for (const sheet of Array.from(document.styleSheets || [])) {
+    try {
+      for (const rule of Array.from(sheet.cssRules || [])) chunks.push(rule.cssText);
+    } catch {
+      // Ignore cross-origin stylesheets; app styles are same-origin in normal use.
+    }
+  }
+  return chunks.join("\n");
+}
+
+async function rasterizeCoverNode(node, targetWidth, targetHeight, backgroundColor) {
+  if (!node) throw new Error("Full Cover artwork is not available.");
+  const rect = node.getBoundingClientRect();
+  if (!rect.width || !rect.height) throw new Error("Cover artwork has no renderable size.");
+
+  if (document.fonts?.ready) {
+    try { await document.fonts.ready; } catch { /* continue with loaded fonts */ }
+  }
+
+  const clone = node.cloneNode(true);
+  clone.querySelectorAll?.('[data-cover-guide="true"]').forEach((el) => el.remove());
+  clone.style.width = `${rect.width}px`;
+  clone.style.height = `${rect.height}px`;
+  clone.style.boxShadow = "none";
+  clone.style.borderRadius = "0";
+  clone.style.margin = "0";
+
+  const css = collectCoverExportCss();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}" viewBox="0 0 ${rect.width} ${rect.height}">
+    <foreignObject x="0" y="0" width="100%" height="100%">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="width:${rect.width}px;height:${rect.height}px;overflow:hidden;">
+        <style>${css}</style>
+        ${clone.outerHTML}
+      </div>
+    </foreignObject>
+  </svg>`;
+
+  const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+  try {
+    const image = new Image();
+    image.decoding = "sync";
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("Could not rasterize the cover artwork. Check any externally hosted cover images."));
+      image.src = url;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(targetWidth));
+    canvas.height = Math.max(1, Math.round(targetHeight));
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) throw new Error("Canvas rendering is unavailable in this browser.");
+    ctx.fillStyle = backgroundColor || "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/png");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function nextPaintFrames(count = 2) {
+  return new Promise((resolve) => {
+    const step = (remaining) => {
+      if (remaining <= 0) resolve();
+      else requestAnimationFrame(() => step(remaining - 1));
+    };
+    step(count);
+  });
+}
+
 const CANVAS_BACKGROUNDS = [
   { id: "dark",         label: "Dark Workspace",           shortLabel: "Dark"  },
   { id: "light",        label: "Light Workspace",          shortLabel: "Light" },
