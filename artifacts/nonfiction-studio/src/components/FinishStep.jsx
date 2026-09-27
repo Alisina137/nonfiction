@@ -1383,7 +1383,7 @@ function syntheticFrontMatterSubsection(title, role) {
   };
 }
 
-function FinalProductionPanel({ report, busy, error, onRun, onSync, canSync }) {
+function FinalProductionPanel({ report, busy, error, onRun, onSync, canSync, archiveHistory = [] }) {
   const statusTone = report?.status === "pass"
     ? "border-emerald-200 bg-emerald-50/50"
     : report?.status === "block"
@@ -1471,6 +1471,11 @@ function FinalProductionPanel({ report, busy, error, onRun, onSync, canSync }) {
             {report.archiveManifest?.archiveId && (
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-600">
                 Archive {report.archiveManifest.archiveId}
+              </span>
+            )}
+            {archiveHistory.length > 0 && (
+              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-medium text-indigo-700">
+                {archiveHistory.length} saved production snapshot{archiveHistory.length === 1 ? "" : "s"}
               </span>
             )}
             {canSync && (
@@ -1877,8 +1882,14 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
       // download asynchronously after click().
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setStatus(`${label} downloaded.`);
+      return {
+        filename: getDownloadFilename(res, filename),
+        pageCount: Number(res.headers.get("x-book-page-count")) || null,
+        archiveId: res.headers.get("x-publication-archive-id") || null,
+      };
     } catch (e) {
       setStatus(e.message || `Could not export ${label}.`);
+      return null;
     } finally {
       setBusy(false);
     }
@@ -1896,8 +1907,37 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     downloadFromApi("/api/export/epub", `${slug}.epub`, "application/epub+zip", setEpubBusy, "EPUB");
   }
 
-  function exportPublicationBundle() {
-    downloadFromApi("/api/export/publication-bundle", `${slug}-publication-bundle.zip`, "application/zip", setBundleBusy, "Publication bundle");
+  async function exportPublicationBundle() {
+    const result = await downloadFromApi(
+      "/api/export/publication-bundle",
+      `${slug}-publication-bundle.zip`,
+      "application/zip",
+      setBundleBusy,
+      "Final publication archive"
+    );
+    if (!result?.archiveId || !updateProject) return;
+
+    const snapshot = {
+      archiveId: result.archiveId,
+      pageCount: result.pageCount || productionReport?.exactPageCount || null,
+      status: productionReport?.status || null,
+      fingerprintSha256: productionReport?.archiveManifest?.fingerprintSha256 || null,
+      trimSize: productionReport?.trim?.id || settings.trimSize,
+      coverExportedAt: fullProject?.bookCover?.coverStudio?.finalExport?.exportedAt
+        || fullProject?.bookCover?.finalExport?.exportedAt
+        || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    updateProject((current) => ({
+      ...current,
+      productionArchives: [
+        snapshot,
+        ...(Array.isArray(current?.productionArchives) ? current.productionArchives : [])
+          .filter((item) => item?.archiveId !== snapshot.archiveId),
+      ].slice(0, 10),
+      productionSnapshot: snapshot,
+    }));
   }
 
   return (
@@ -2008,6 +2048,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         onRun={runProductionReport}
         onSync={syncFinalPageCountToCover}
         canSync={Boolean(productionReport?.exactPageCount) && !productionReport?.cover?.synced}
+        archiveHistory={Array.isArray(fullProject?.productionArchives) ? fullProject.productionArchives : []}
       />
 
       <section className="book-panel space-y-4">
