@@ -1472,6 +1472,11 @@ export default function Dashboard() {
                 }))
               }
               fullProject={project}
+              updateProject={(updater) =>
+                setProject((current) =>
+                  typeof updater === "function" ? updater(current) : { ...current, ...updater }
+                )
+              }
             />
           )}
         </main>
