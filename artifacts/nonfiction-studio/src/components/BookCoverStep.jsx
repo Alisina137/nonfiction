@@ -2162,7 +2162,17 @@ function CoverToolRail({ currentStep, onStepChange, toolStatuses = {} }) {
   );
 }
 
-function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, preflight }) {
+function PrintInspectorPanel({
+  metadata,
+  printSetup,
+  setPrintSetup,
+  geometry,
+  preflight,
+  exportBusy,
+  exportStatus,
+  finalExport,
+  onExportCover,
+}) {
   const update = (key, value) => setPrintSetup((prev) => ({ ...prev, [key]: value }));
 
   return (
@@ -2248,6 +2258,53 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
             <option value="none">No reserve</option>
           </select>
         </label>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold text-emerald-900">Final KDP cover file</p>
+            <p className="mt-1 text-[9px] leading-relaxed text-emerald-800/80">
+              Uses the Full Cover artwork, removes guide overlays, rasterizes at the exact 300-DPI wrap size,
+              and creates one flattened PDF containing back, spine, and front.
+            </p>
+          </div>
+          {finalExport && (
+            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-bold text-emerald-700">EXPORTED</span>
+          )}
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[9px]">
+          <div className="rounded-lg bg-white/80 p-2">
+            <p className="text-[#8e9692]">Raster size</p>
+            <p className="mt-0.5 font-bold text-[#314a46]">{geometry.pixels300.width} × {geometry.pixels300.height}px</p>
+          </div>
+          <div className="rounded-lg bg-white/80 p-2">
+            <p className="text-[#8e9692]">Page-count source</p>
+            <p className={`mt-0.5 font-bold ${printSetup.pageCountSource === "final-production" ? "text-emerald-700" : "text-amber-700"}`}>
+              {printSetup.pageCountSource === "final-production" ? "Final Production Check" : "Not final-synced"}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onExportCover}
+          disabled={exportBusy}
+          className="mt-3 w-full rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+        >
+          {exportBusy ? "Building print cover…" : finalExport ? "Re-export Final Print Cover PDF" : "Export Final Print Cover PDF"}
+        </button>
+
+        {exportStatus && (
+          <p className={`mt-2 rounded-lg px-2.5 py-2 text-[9px] leading-relaxed ${
+            /could not|failed|resolve|run final/i.test(exportStatus)
+              ? "bg-red-50 text-red-700"
+              : "bg-white/70 text-emerald-800"
+          }`}>
+            {exportStatus}
+          </p>
+        )}
       </div>
 
       <div className={`mt-4 rounded-xl border p-3 ${
@@ -3669,6 +3726,10 @@ function RightPanel({
   setBackCover,
   backCoverGenerating,
   onGenerateBack,
+  coverExportBusy,
+  coverExportStatus,
+  finalCoverExport,
+  onExportCover,
 }) {
   const [activeTab, setActiveTab] = useState("design");
 
@@ -3730,6 +3791,10 @@ function RightPanel({
             setPrintSetup={setPrintSetup}
             geometry={geometry}
             preflight={preflight}
+            exportBusy={coverExportBusy}
+            exportStatus={coverExportStatus}
+            finalExport={finalCoverExport}
+            onExportCover={onExportCover}
           />
         ) : (
           <BackInspectorPanel
@@ -6671,6 +6736,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                   backCover={backCover}
                   palette={previewData}
                   bookSizeLabel={bookSize.label}
+                  artworkRef={coverArtworkRef}
                   frontContent={
                     <>
                       <BackgroundLayer bo={backgroundOverrides} />
@@ -6725,6 +6791,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             setBackCover={setBackCover}
             backCoverGenerating={backCoverGenerating}
             onGenerateBack={handleGenerateBackCover}
+            coverExportBusy={coverExportBusy}
+            coverExportStatus={coverExportStatus}
+            finalCoverExport={finalCoverExport}
+            onExportCover={handleExportPrintCover}
           />
         </div>
       </div>
