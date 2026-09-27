@@ -334,18 +334,21 @@ Objective: convert the finished manuscript and cover design into reproducible fi
 
 ### Phase 04 verification status
 
-- Implementation branch: `phase-04-final-book-production-kdp-export`.
-- Verification pending GitHub Actions.
-- Do not claim Phase 04 tests/typecheck/build passed until the final branch workflow is green.
+- GitHub Actions `Verify phase` run #38: PASS.
+- Unit/regression tests: PASS.
+- Full TypeScript typecheck: PASS.
+- Production build: PASS.
+- Verified implementation head: `28f728216673ef389531b6d3f0eeebf430460e1e`.
+- A final documentation-only verification run is expected after this state update.
 
 ## Next phase candidate
 
-### Phase 04 — Final Book Production & KDP Export
+### Phase 05 — Release Validation & Publishing Operations
 
 Potential scope:
-- EPUB generation and validation,
-- print-cover file integration with trim/spine/bleed consistency checks,
-- final publication archive history/versioning,
-- richer citation style templates if needed,
-- export-time orphan/widow/layout QA,
-- final KDP upload checklist and project freeze/archive workflow.
+- richer visual/manual preview assistance for final paperback pages,
+- enhanced EPUB/Kindle accessibility checks,
+- archive comparison/diff between production versions,
+- richer citation-style templates when a book requires formal academic formatting,
+- publication freeze/unfreeze workflow,
+- optional KDP metadata handoff helpers while keeping final publication decisions and uploads under the author's control.
