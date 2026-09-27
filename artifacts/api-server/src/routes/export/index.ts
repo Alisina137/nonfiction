@@ -1653,6 +1653,278 @@ function publicationMetadata(project: any, settings: any, citationStyle: string)
   };
 }
 
+// ─── EPUB 3 BUILDER ───────────────────────────────────────────────────────────
+
+function xmlEscape(value: unknown): string {
+  return String(value ?? "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function epubLanguage(value: unknown): string {
+  const raw = String(value || "English").trim().toLowerCase();
+  const map: Record<string, string> = {
+    english: "en", spanish: "es", french: "fr", german: "de", italian: "it",
+    portuguese: "pt", dutch: "nl", japanese: "ja", hebrew: "he", yiddish: "yi",
+    arabic: "ar", persian: "fa", dari: "fa", pashto: "ps", chinese: "zh", korean: "ko"
+  };
+  return map[raw] || (raw.length === 2 ? raw : "en");
+}
+
+function proseBlocksToXhtml(prose: string): string {
+  const blocks = parseProseBlocks(String(prose || ""));
+  if (!blocks.length) return "";
+  let listType: "ul" | "ol" | null = null;
+  const out: string[] = [];
+
+  const closeList = () => {
+    if (listType) out.push(`</${listType}>`);
+    listType = null;
+  };
+
+  for (const block of blocks) {
+    if (block.kind === "bullet") {
+      if (listType !== "ul") { closeList(); listType = "ul"; out.push("<ul>"); }
+      out.push(`<li>${xmlEscape(block.text)}</li>`);
+    } else if (block.kind === "numbered") {
+      if (listType !== "ol") { closeList(); listType = "ol"; out.push("<ol>"); }
+      out.push(`<li>${xmlEscape(block.text)}</li>`);
+    } else {
+      closeList();
+      out.push(`<p>${xmlEscape(block.text)}</p>`);
+    }
+  }
+  closeList();
+  return out.join("\n");
+}
+
+function epubXhtmlDocument(title: string, body: string, language: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="${xmlEscape(language)}" lang="${xmlEscape(language)}">
+<head>
+  <meta charset="utf-8"/>
+  <title>${xmlEscape(title)}</title>
+  <link rel="stylesheet" type="text/css" href="styles/book.css"/>
+</head>
+<body>
+${body}
+</body>
+</html>`;
+}
+
+function buildEpubArtifact(project: any, options: any = {}): {
+  bytes: Buffer;
+  validation: { status: "pass" | "review" | "block"; checks: any[]; sectionCount: number; navCount: number };
+} {
+  const title = resolveBookTitle(project);
+  const author = resolveAuthorName(project);
+  const metadata = project?.bookCover?.coverStudio?.metadata || {};
+  const language = epubLanguage(metadata.language || project?.bookCover?.language || "English");
+  const lessons = project?.lessons && typeof project.lessons === "object" ? project.lessons : {};
+  const hier = buildHierarchy(project?.bookOutline);
+  const sections: Array<{ id: string; title: string; body: string }> = [];
+
+  const subtitle = project?.bookDetails?.subtitle || project?.research?.bookSubtitle || "";
+  sections.push({
+    id: "title-page",
+    title,
+    body: `<section class="title-page"><h1>${xmlEscape(title)}</h1>${subtitle ? `<p class="subtitle">${xmlEscape(subtitle)}</p>` : ""}<p class="author">by ${xmlEscape(author)}</p></section>`
+  });
+
+  const optionalFront: Array<[string, string]> = [
+    ["Dedication", options.dedication || ""],
+    ["Acknowledgments", options.acknowledgments || ""],
+    ["Preface", options.preface || ""],
+    ["How to Use This Book", options.howToUseThisBook || ""],
+    ["What You Will Learn", options.whatYouWillLearn || ""],
+    ["Who This Book Is For", options.whoThisBookIsFor || ""],
+  ];
+  for (const [label, text] of optionalFront) {
+    if (!String(text).trim()) continue;
+    const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    sections.push({ id, title: label, body: `<h1>${xmlEscape(label)}</h1>\n${proseBlocksToXhtml(text)}` });
+  }
+
+  if (hier.introduction) {
+    const prose = String(lessons[hier.introduction.id]?.prose || "").trim();
+    if (prose) sections.push({
+      id: "introduction",
+      title: hier.introduction.title,
+      body: `<h1>${xmlEscape(hier.introduction.title)}</h1>\n${proseBlocksToXhtml(prose)}`
+    });
+  }
+
+  for (const ch of hier.chapters) {
+    const sectionTitles = ch.sections.map((s) => s.title);
+    const parts: string[] = [`<h1>Chapter ${ch.chNum}: ${xmlEscape(ch.title)}</h1>`];
+    const chIntro = buildChapterIntro(ch.title, sectionTitles);
+    if (chIntro) parts.push(`<p class="chapter-intro">${xmlEscape(chIntro)}</p>`);
+
+    let hasContent = false;
+    for (const sec of ch.sections) {
+      const secLabel = `${ch.chNum}.${sec.secNum}`;
+      const secParts: string[] = [];
+      if (sec.subsections.length === 0) {
+        const prose = String(lessons[sec.id]?.prose || "").trim();
+        if (!prose) continue;
+        hasContent = true;
+        secParts.push(`<h2>${secLabel} ${xmlEscape(sec.title)}</h2>`);
+        secParts.push(`<p class="section-intro">${xmlEscape(buildSectionIntro(sec.title, ch.title))}</p>`);
+        secParts.push(proseBlocksToXhtml(prose));
+      } else {
+        const populated = sec.subsections.filter((sub) => String(lessons[sub.id]?.prose || "").trim());
+        if (!populated.length) continue;
+        hasContent = true;
+        secParts.push(`<h2>${secLabel} ${xmlEscape(sec.title)}</h2>`);
+        secParts.push(`<p class="section-intro">${xmlEscape(buildSectionIntro(sec.title, ch.title))}</p>`);
+        for (const sub of populated) {
+          secParts.push(`<h3>${secLabel}.${sub.subNum} ${xmlEscape(sub.title)}</h3>`);
+          secParts.push(proseBlocksToXhtml(String(lessons[sub.id]?.prose || "")));
+        }
+      }
+      parts.push(secParts.join("\n"));
+    }
+
+    if (hasContent) sections.push({
+      id: `chapter-${ch.chNum}`,
+      title: `Chapter ${ch.chNum}: ${ch.title}`,
+      body: parts.join("\n")
+    });
+  }
+
+  if (hier.conclusion) {
+    const prose = String(lessons[hier.conclusion.id]?.prose || "").trim();
+    if (prose) sections.push({
+      id: "conclusion",
+      title: hier.conclusion.title,
+      body: `<h1>${xmlEscape(hier.conclusion.title)}</h1>\n${proseBlocksToXhtml(prose)}`
+    });
+  }
+
+  for (const bm of hier.backMatter) {
+    const prose = String(lessons[bm.id]?.prose || "").trim();
+    if (!prose) continue;
+    const id = `back-${bm.id.replace(/[^a-z0-9_-]+/gi, "-")}`;
+    sections.push({ id, title: bm.title, body: `<h1>${xmlEscape(bm.title)}</h1>\n${proseBlocksToXhtml(prose)}` });
+  }
+
+  const authorBio = project?.authorBio?.bio || project?.authorBio?.background || "";
+  if (String(authorBio).trim()) {
+    sections.push({ id: "about-author", title: "About the Author", body: `<h1>About the Author</h1>\n${proseBlocksToXhtml(String(authorBio))}` });
+  }
+
+  const digest = createHash("sha256")
+    .update(JSON.stringify({ title, author, outline: project?.bookOutline || {}, lessons }))
+    .digest("hex");
+  const identifier = `urn:nonfiction-ai-studio:${digest.slice(0, 32)}`;
+  const modified = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+
+  const manifestItems = sections.map((s, i) =>
+    `<item id="s${i + 1}" href="text/${s.id}.xhtml" media-type="application/xhtml+xml"/>`
+  ).join("\n    ");
+  const spineItems = sections.map((_, i) => `<itemref idref="s${i + 1}"/>`).join("\n    ");
+  const navItems = sections.map((s) => `<li><a href="text/${s.id}.xhtml">${xmlEscape(s.title)}</a></li>`).join("\n        ");
+
+  const nav = epubXhtmlDocument("Contents", `<nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="toc" id="toc">
+  <h1>Contents</h1>
+  <ol>
+        ${navItems}
+  </ol>
+</nav>`, language);
+
+  const opf = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${xmlEscape(language)}">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="book-id">${xmlEscape(identifier)}</dc:identifier>
+    <dc:title>${xmlEscape(title)}</dc:title>
+    <dc:creator>${xmlEscape(author)}</dc:creator>
+    <dc:language>${xmlEscape(language)}</dc:language>
+    <meta property="dcterms:modified">${modified}</meta>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="css" href="styles/book.css" media-type="text/css"/>
+    ${manifestItems}
+  </manifest>
+  <spine>
+    ${spineItems}
+  </spine>
+</package>`;
+
+  const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`;
+
+  const css = `body{font-family:serif;line-height:1.45;margin:5%;color:#111}h1{font-size:1.7em;margin:1.8em 0 .8em}h2{font-size:1.35em;margin:1.5em 0 .7em}h3{font-size:1.1em;margin:1.2em 0 .5em}p{margin:0 0 .8em;text-indent:1.25em}.title-page{text-align:center;margin-top:30%}.title-page p{text-indent:0}.subtitle{font-style:italic}.author{margin-top:2em}.chapter-intro,.section-intro{font-style:italic;text-indent:0;color:#444}li{margin:.35em 0}nav ol{padding-left:1.4em}`;
+
+  const files: Array<{ name: string; data: Buffer | Uint8Array | string }> = [
+    { name: "mimetype", data: "application/epub+zip" },
+    { name: "META-INF/container.xml", data: containerXml },
+    { name: "OEBPS/content.opf", data: opf },
+    { name: "OEBPS/nav.xhtml", data: nav },
+    { name: "OEBPS/styles/book.css", data: css },
+    ...sections.map((s) => ({
+      name: `OEBPS/text/${s.id}.xhtml`,
+      data: epubXhtmlDocument(s.title, s.body, language)
+    }))
+  ];
+
+  const checks: any[] = [];
+  const add = (id: string, label: string, status: "pass" | "review" | "block", detail: string) =>
+    checks.push({ id, label, status, detail });
+  add("epub-title", "EPUB title", title.trim() ? "pass" : "block", title.trim() ? "Title metadata is present." : "Title metadata is missing.");
+  add("epub-author", "EPUB author", author.trim() ? "pass" : "review", author.trim() ? "Author metadata is present." : "Author metadata is missing.");
+  add("epub-navigation", "EPUB navigation", sections.length > 1 ? "pass" : "block", `${sections.length} reading-order document(s) are included in the EPUB navigation.`);
+  add("epub-language", "EPUB language", language ? "pass" : "review", `EPUB language is ${language || "not set"}.`);
+  add("kindle-previewer", "Kindle Previewer validation", "review", "Run the exported EPUB through Kindle Previewer before KDP upload.");
+
+  const blocked = checks.filter((x) => x.status === "block").length;
+  const reviews = checks.filter((x) => x.status === "review").length;
+  const validation = {
+    status: blocked ? "block" as const : reviews ? "review" as const : "pass" as const,
+    checks,
+    sectionCount: sections.length,
+    navCount: sections.length,
+  };
+
+  return { bytes: buildStoredZip(files), validation };
+}
+
+function buildArchiveManifest(project: any, metadata: any, pageCount: number, productionReport: any, epubValidation: any) {
+  const snapshot = {
+    title: metadata.title,
+    author: metadata.author,
+    pageCount,
+    trimSize: metadata.trimSize,
+    citationStyle: metadata.citationStyle,
+    productionStatus: productionReport?.status || "unknown",
+    epubStatus: epubValidation?.status || "unknown",
+    outline: project?.bookOutline || null,
+    lessons: project?.lessons || {},
+  };
+  const fingerprint = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
+  const createdAt = new Date().toISOString();
+  const version = createdAt.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  return {
+    schemaVersion: 1,
+    archiveId: `${String(metadata.title || "book").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "book"}-${version}-${fingerprint.slice(0, 8)}`,
+    fingerprintSha256: fingerprint,
+    createdAt,
+    exactPageCount: pageCount,
+    trimSize: metadata.trimSize,
+    productionStatus: productionReport?.status || "unknown",
+    epubStatus: epubValidation?.status || "unknown",
+  };
+}
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 router.post("/book", async (req, res) => {
