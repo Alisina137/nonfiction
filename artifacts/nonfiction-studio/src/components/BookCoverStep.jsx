@@ -654,7 +654,7 @@ function deriveCoverStrategy(fullProject, metadata) {
 }
 
 const PURPOSE_COLORS = {
-  Authority:     "bg-slate-800 text-white",
+  Authority:     "bg-slate-800 text-[#203432]",
   Trust:         "bg-emerald-600 text-white",
   Curiosity:     "bg-purple-600 text-white",
   Premium:       "bg-amber-600 text-white",
@@ -681,13 +681,13 @@ function CoverStrategyCard({ strategy }) {
       {/* Visual Goal */}
       <div className="rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 px-3 py-2.5">
         <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f] mb-1">Visual Goal</p>
-        <p className="text-[12px] font-bold text-white leading-tight capitalize">{strategy.coverGoal}</p>
+        <p className="text-[12px] font-bold text-[#203432] leading-tight capitalize">{strategy.coverGoal}</p>
       </div>
 
       {/* Cover Purpose */}
       <div>
         <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f] mb-1.5">Cover Purpose</p>
-        <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${PURPOSE_COLORS[strategy.coverPurpose] || "bg-slate-700 text-white"}`}>
+        <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${PURPOSE_COLORS[strategy.coverPurpose] || "bg-slate-700 text-[#203432]"}`}>
           {strategy.coverPurpose}
         </span>
       </div>
@@ -880,7 +880,7 @@ function VisualDirectionCard({ direction }) {
     Modern:       "bg-sky-100 text-sky-800",
     Premium:      "bg-amber-100 text-amber-800",
     Elegant:      "bg-purple-100 text-purple-800",
-    Corporate:    "bg-slate-800 text-white",
+    Corporate:    "bg-slate-800 text-[#203432]",
     Luxury:       "bg-amber-900 text-amber-100",
     Academic:     "bg-emerald-100 text-emerald-800",
     Bold:         "bg-rose-100 text-rose-800",
@@ -1714,7 +1714,7 @@ function CoverToolRail({ currentStep, onStepChange }) {
         title={tool.label}
         className={`group flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition ${
           active
-            ? "bg-white/10 text-white shadow-inner ring-1 ring-white/10"
+            ? "bg-[#e7efe9] text-[#23433d] shadow-inner ring-1 ring-[#bdd0c5]"
             : "text-[#7f8985] hover:bg-white/75 hover:text-[#314a46]"
         }`}
       >
@@ -1751,18 +1751,18 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
     <div className="h-full overflow-y-auto px-4 py-4 text-[#314a46]">
       <div className="mb-4">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7f8985]">Print setup</p>
-        <h3 className="mt-1 text-sm font-bold text-white">KDP paperback</h3>
+        <h3 className="mt-1 text-sm font-bold text-[#203432]">KDP paperback</h3>
         <p className="mt-1 text-[10px] leading-relaxed text-[#7f8985]">Set the real trim and page geometry before final artwork/export.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl border border-[#e3ddd2] bg-white/65 p-3">
           <p className="text-[8px] font-bold uppercase tracking-wider text-[#8e9692]">Full wrap</p>
-          <p className="mt-1 text-[12px] font-semibold text-white">{formatInches(geometry.fullWidth)} × {formatInches(geometry.fullHeight)}</p>
+          <p className="mt-1 text-[12px] font-semibold text-[#203432]">{formatInches(geometry.fullWidth)} × {formatInches(geometry.fullHeight)}</p>
         </div>
         <div className="rounded-xl border border-[#e3ddd2] bg-white/65 p-3">
           <p className="text-[8px] font-bold uppercase tracking-wider text-[#8e9692]">Spine</p>
-          <p className="mt-1 text-[12px] font-semibold text-white">{formatInches(geometry.spineWidth)}</p>
+          <p className="mt-1 text-[12px] font-semibold text-[#203432]">{formatInches(geometry.spineWidth)}</p>
         </div>
       </div>
 
@@ -1782,7 +1782,7 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
               update("pageCount", Math.max(24, Number(e.target.value) || 24));
               update("estimatedPageCount", false);
             }}
-            className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-white outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500"
           />
         </label>
         <label className="block">
@@ -1790,7 +1790,7 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
           <select
             value={printSetup.interiorId}
             onChange={(e) => update("interiorId", e.target.value)}
-            className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-white outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500"
           >
             {PAPERBACK_INTERIORS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
           </select>
@@ -1800,7 +1800,7 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
           <select
             value={printSetup.readingDirection}
             onChange={(e) => update("readingDirection", e.target.value)}
-            className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-white outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500"
           >
             <option value="ltr">Left to right</option>
             <option value="rtl">Right to left</option>
@@ -1836,7 +1836,7 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
             : "border-amber-500/20 bg-amber-500/[0.06]"
       }`}>
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold text-white">KDP preflight</p>
+          <p className="text-[10px] font-bold text-[#203432]">KDP preflight</p>
           <span className="text-[9px] font-bold uppercase text-[#64736f]">{preflight.status}</span>
         </div>
         <div className="mt-2 space-y-1.5">
@@ -1863,7 +1863,7 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7f8985]">Back cover</p>
-          <h3 className="mt-1 text-sm font-bold text-white">Sales copy & layout</h3>
+          <h3 className="mt-1 text-sm font-bold text-[#203432]">Sales copy & layout</h3>
         </div>
         <button type="button" onClick={onGenerate} disabled={generating} className="rounded-lg bg-teal-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-teal-500 disabled:opacity-50">
           {generating ? "Writing…" : "✦ Write"}
@@ -1889,7 +1889,7 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
 
       <label className="mt-4 block">
         <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Headline</span>
-        <input value={backCover.headline || ""} onChange={(e) => update("headline", e.target.value)} className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-white outline-none focus:border-teal-500" />
+        <input value={backCover.headline || ""} onChange={(e) => update("headline", e.target.value)} className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500" />
       </label>
       <label className="mt-3 block">
         <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Blurb</span>
@@ -1897,7 +1897,7 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
       </label>
       <label className="mt-3 block">
         <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Author line</span>
-        <input value={backCover.authorLine || ""} onChange={(e) => update("authorLine", e.target.value)} className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-white outline-none focus:border-teal-500" />
+        <input value={backCover.authorLine || ""} onChange={(e) => update("authorLine", e.target.value)} className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500" />
       </label>
       <p className="mt-3 rounded-lg border border-amber-500/10 bg-amber-500/[0.05] px-3 py-2 text-[9px] leading-relaxed text-amber-200/70">
         The barcode-safe region remains reserved in Full Cover view.
@@ -2048,7 +2048,7 @@ function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface,
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-xs font-black text-white shadow-lg shadow-teal-950/30">C</div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="truncate text-[12px] font-bold text-white">Cover Studio</h2>
+            <h2 className="truncate text-[12px] font-bold text-[#203432]">Cover Studio</h2>
             <span className="hidden rounded-full border border-[#ddd7cc] bg-white/70 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#7f8985] sm:inline">KDP</span>
           </div>
           <p className="mt-0.5 max-w-[260px] truncate text-[9px] text-[#8e9692]">{metadata.title || "Untitled book"}</p>
@@ -2063,7 +2063,7 @@ function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface,
             onClick={() => setSurface(item.id)}
             className={`rounded-lg px-4 py-1.5 text-[10px] font-bold transition ${
               surface === item.id
-                ? "bg-white text-[#111318] shadow-sm"
+                ? "bg-[#315b53] text-white shadow-sm"
                 : "text-[#7f8985] hover:text-[#314a46]"
             }`}
           >
@@ -2094,7 +2094,7 @@ function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface,
             if (!document.fullscreenElement) el.requestFullscreen?.();
             else document.exitFullscreen?.();
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#ddd7cc] bg-white/70 text-[13px] text-[#64736f] transition hover:bg-white/80 hover:text-white"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#ddd7cc] bg-white/70 text-[13px] text-[#64736f] transition hover:bg-white hover:text-[#23433d]"
         >
           ⛶
         </button>
@@ -3267,7 +3267,7 @@ function RightPanel({
             onClick={() => setActiveTab(tab.id)}
             className={`relative py-3 text-[9px] font-bold tracking-wide transition ${
               activeTab === tab.id
-                ? "text-white"
+                ? "text-[#203432]"
                 : "text-[#8e9692] hover:text-[#465b57]"
             }`}
           >
@@ -3373,7 +3373,7 @@ function DesignElementsPanel({ designElements: de, generating, onRegenerate, onR
               <span className="text-sm">🎯</span>
               <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Main Subject</p>
             </div>
-            <p className="text-[17px] font-bold text-white leading-tight">{de.mainSubject}</p>
+            <p className="text-[17px] font-bold text-[#203432] leading-tight">{de.mainSubject}</p>
             <p className="text-[11px] text-cyan-300/70 leading-snug italic">{de.mainSubjectReason}</p>
           </div>
 
@@ -3508,7 +3508,7 @@ function ColorPaletteCard({ palette, index, isSelected, isRegenerating, onSelect
           ? "border-emerald-500 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500/40"
           : "border-[#d8d1c5]/60 hover:border-[#c9c0b4] hover:shadow-md hover:shadow-black/30 hover:-translate-y-0.5"
       }`}
-      style={{ background: "#1a2035" }}
+      style={{ background: "#ffffff" }}
       onClick={() => !isSelected && onSelect(index)}
     >
       {isSelected && (
@@ -3829,7 +3829,7 @@ function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onR
           ? "border-emerald-500 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500/40"
           : "border-[#d8d1c5]/60 hover:border-[#c9c0b4] hover:shadow-md hover:shadow-black/30 hover:-translate-y-0.5"
       }`}
-      style={{ background: "#1a2035" }}
+      style={{ background: "#ffffff" }}
       onClick={() => !isSelected && onSelect(index)}
     >
       {/* Selected badge */}
@@ -4064,7 +4064,7 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
               <span className="text-sm">💡</span>
               <p className="text-[10px] font-bold uppercase tracking-wider text-teal-400">Primary Message</p>
             </div>
-            <p className="text-[15px] font-semibold text-white leading-snug">
+            <p className="text-[15px] font-semibold text-[#203432] leading-snug">
               {coverStrategy.primaryMessage}
             </p>
           </div>
@@ -4275,7 +4275,7 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
               <span className="text-2xl leading-none">
                 {directionIcon[analysis.designDirection] || "🎨"}
               </span>
-              <p className="text-xl font-bold text-white">{analysis.designDirection}</p>
+              <p className="text-xl font-bold text-[#203432]">{analysis.designDirection}</p>
             </div>
             {Array.isArray(analysis.keySignals) && analysis.keySignals.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
@@ -4314,7 +4314,7 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
                 <span className="text-sm">📊</span>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Confidence</p>
               </div>
-              <p className="text-2xl font-bold text-white">{analysis.confidence}%</p>
+              <p className="text-2xl font-bold text-[#203432]">{analysis.confidence}%</p>
               <div className="h-1.5 rounded-full bg-[#ece7de] overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all"
@@ -4749,7 +4749,7 @@ function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, 
         {/* Selected checkmark */}
         {isSelected && !isRegenerating && (
           <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-md">
-            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+            <svg className="w-3 h-3 text-[#203432]" fill="currentColor" viewBox="0 0 12 12">
               <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             </svg>
           </div>
@@ -4808,7 +4808,7 @@ function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, 
             className={`flex-1 rounded-lg py-1.5 text-[10px] font-semibold transition-all ${
               isSelected
                 ? "bg-emerald-600 text-white"
-                : "bg-[#ece7de]/70 text-[#465b57] hover:bg-[#dfd7cc]/70 hover:text-white"
+                : "bg-[#ece7de]/70 text-[#465b57] hover:bg-[#dfd7cc]/70 hover:text-[#203432]"
             } disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             {isSelected ? "✓ Selected" : "Select"}
