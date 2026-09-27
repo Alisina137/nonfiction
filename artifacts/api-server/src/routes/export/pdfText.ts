@@ -13,5 +13,17 @@ export function normalizePdfPunctuation(text: unknown): string {
     // Invisible joiners / zero-width characters should never reach pdf-lib
     .replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, "")
     // Soft hyphen is discretionary; use a visible ASCII hyphen in exported text
-    .replace(/\u00AD/g, "-");
+    .replace(/\u00AD/g, "-")
+    // Common symbols emitted by AI that are not available in WinAnsi fonts
+    .replace(/\u2192/g, "->")
+    .replace(/\u2190/g, "<-")
+    .replace(/\u2194/g, "<->")
+    .replace(/\u2191/g, "^")
+    .replace(/\u2193/g, "v")
+    .replace(/[\u2713\u2714]/g, "OK")
+    .replace(/[\u2715\u2716\u2717\u2718]/g, "x")
+    .replace(/\u2264/g, "<=")
+    .replace(/\u2265/g, ">=")
+    .replace(/\u2260/g, "!=")
+    .replace(/[\u2028\u2029]/g, "\n");
 }
