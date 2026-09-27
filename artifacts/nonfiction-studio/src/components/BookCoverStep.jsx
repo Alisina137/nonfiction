@@ -3212,38 +3212,68 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
 // ─── Right Panel (tabbed) ─────────────────────────────────────────────────────
 
 const RIGHT_TABS = [
-  { id: "design",     label: "Design"     },
-  { id: "typography", label: "Typography" },
-  { id: "image",      label: "Image"      },
-  { id: "layout",     label: "Layout"     },
-  { id: "effects",    label: "Effects"    },
+  { id: "design",     label: "Design" },
+  { id: "typography", label: "Text"   },
+  { id: "image",      label: "Image"  },
+  { id: "print",      label: "Print"  },
+  { id: "back",       label: "Back"   },
 ];
 
-function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoChange, onTypoReset, imageOverrides, onImageChange, onImageReset, concepts, backgroundOverrides, onBgChange, onBgReset }) {
+function RightPanel({
+  metadata,
+  onChange,
+  errors,
+  typographyOverrides,
+  onTypoChange,
+  onTypoReset,
+  imageOverrides,
+  onImageChange,
+  onImageReset,
+  concepts,
+  backgroundOverrides,
+  onBgChange,
+  onBgReset,
+  currentStep,
+  surface,
+  printSetup,
+  setPrintSetup,
+  geometry,
+  preflight,
+  backCover,
+  setBackCover,
+  backCoverGenerating,
+  onGenerateBack,
+}) {
   const [activeTab, setActiveTab] = useState("design");
 
+  useEffect(() => {
+    if (surface === "back") setActiveTab("back");
+    else if (surface === "full") setActiveTab("print");
+    else if (currentStep === "typography") setActiveTab("typography");
+    else if (currentStep === "bookInfo") setActiveTab("design");
+  }, [surface, currentStep]);
+
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Tab bar */}
-      <div className="flex shrink-0 border-b border-gray-800">
-        {RIGHT_TABS.map(tab => (
+    <div className="flex h-full flex-col overflow-hidden bg-[#13161b]">
+      <div className="grid shrink-0 grid-cols-5 border-b border-white/[0.07] bg-[#101217]">
+        {RIGHT_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2.5 text-[10px] font-semibold tracking-wide transition-colors ${
+            className={`relative py-3 text-[9px] font-bold tracking-wide transition ${
               activeTab === tab.id
-                ? "text-indigo-400 border-b-2 border-indigo-500"
-                : "text-gray-600 hover:text-gray-300"
+                ? "text-white"
+                : "text-slate-600 hover:text-slate-300"
             }`}
           >
             {tab.label}
+            {activeTab === tab.id && <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-violet-500" />}
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {activeTab === "design" ? (
           <MetadataPanel
             metadata={metadata}
@@ -3267,12 +3297,21 @@ function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoCha
             onImageReset={onImageReset}
             concepts={concepts}
           />
+        ) : activeTab === "print" ? (
+          <PrintInspectorPanel
+            metadata={metadata}
+            printSetup={printSetup}
+            setPrintSetup={setPrintSetup}
+            geometry={geometry}
+            preflight={preflight}
+          />
         ) : (
-          <div className="flex items-start justify-center pt-10 px-4">
-            <p className="text-[11px] text-gray-600 text-center italic">
-              Coming in upcoming implementation.
-            </p>
-          </div>
+          <BackInspectorPanel
+            backCover={backCover}
+            setBackCover={setBackCover}
+            generating={backCoverGenerating}
+            onGenerate={onGenerateBack}
+          />
         )}
       </div>
     </div>
