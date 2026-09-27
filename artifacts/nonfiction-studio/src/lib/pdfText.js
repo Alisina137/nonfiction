@@ -1,0 +1,22 @@
+export function normalizePdfPunctuation(text) {
+  return String(text ?? "")
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u2010\u2011\u2012\u2013\u2212\u2043]/g, "-")
+    .replace(/[\u2014\u2015]/g, "--")
+    .replace(/\u2026/g, "...")
+    .replace(/[\u00A0\u2007\u202F]/g, " ")
+    .replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, "")
+    .replace(/\u00AD/g, "-")
+    .replace(/\u2192/g, "->")
+    .replace(/\u2190/g, "<-")
+    .replace(/\u2194/g, "<->")
+    .replace(/\u2191/g, "^")
+    .replace(/\u2193/g, "v")
+    .replace(/[\u2713\u2714]/g, "OK")
+    .replace(/[\u2715\u2716\u2717\u2718]/g, "x")
+    .replace(/\u2264/g, "<=")
+    .replace(/\u2265/g, ">=")
+    .replace(/\u2260/g, "!=")
+    .replace(/[\u2028\u2029]/g, "\n");
+}
