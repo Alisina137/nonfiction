@@ -1957,6 +1957,7 @@ function buildArchiveManifest(project: any, metadata: any, pageCount: number, pr
     citationStyle: metadata.citationStyle,
     productionStatus: productionReport?.status || "unknown",
     epubStatus: epubValidation?.status || "unknown",
+    finalCoverExport: project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || null,
     outline: project?.bookOutline || null,
     lessons: project?.lessons || {},
   };
@@ -2179,10 +2180,11 @@ router.post("/publication-bundle", async (req, res) => {
       "- reports/epub-validation.json — internal EPUB structure checks",
       "- reports/kdp-upload-checklist.json — paperback/eBook upload checklist",
       "- archive/archive-manifest.json — version id + SHA-256 production fingerprint",
+      "- cover/print-cover-export.json — metadata for the separately downloaded flattened cover PDF",
       "- listing/description.txt — current listing description",
       "- listing/keywords.txt — current discovery keywords",
       "",
-      "Important: validate the EPUB in Kindle Previewer and run KDP Print Previewer on the paperback files before publishing."
+      "Important: the flattened print-cover PDF is downloaded separately from Cover Studio and is intentionally not stored in browser project state. This archive records its export metadata/fingerprint. Validate the EPUB in Kindle Previewer and run KDP Print Previewer on the paperback files before publishing."
     ].join("\n");
 
     const zip = buildStoredZip([
@@ -2198,6 +2200,7 @@ router.post("/publication-bundle", async (req, res) => {
       { name: "reports/epub-validation.json", data: JSON.stringify(epub.validation, null, 2) },
       { name: "reports/kdp-upload-checklist.json", data: JSON.stringify(productionReport.kdpChecklist, null, 2) },
       { name: "archive/archive-manifest.json", data: JSON.stringify(archiveManifest, null, 2) },
+      { name: "cover/print-cover-export.json", data: JSON.stringify(project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || {}, null, 2) },
       { name: "listing/description.txt", data: description },
       { name: "listing/keywords.txt", data: keywords },
       { name: "README.txt", data: readme }
