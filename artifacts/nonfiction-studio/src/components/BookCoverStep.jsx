@@ -198,9 +198,9 @@ function initBackCover(bookCover, fullProject) {
 
 function initCanvas(bookCover) {
   const cs = bookCover?.coverStudio?.canvas;
-  // Normalize: accept stored ID or fall back to "dark" (legacy hex values → dark)
+  // Normalize: keep an explicit saved choice; otherwise match the app's light paper workspace.
   const rawBg = cs?.background;
-  const bg = CANVAS_BACKGROUNDS.some(b => b.id === rawBg) ? rawBg : "dark";
+  const bg = CANVAS_BACKGROUNDS.some(b => b.id === rawBg) ? rawBg : "light";
   return {
     background:   bg,
     zoomLevel:    cs?.zoomLevel    ?? "fit",
@@ -224,7 +224,7 @@ function resolveCanvasBgStyle(bgId) {
       backgroundColor:    "#f8f8f8",
     };
   }
-  if (bgId === "light") return { background: "#e5e7eb" };
+  if (bgId === "light") return { background: "#f4f1eb" };
   return { background: "#111827" }; // "dark" (default)
 }
 
@@ -654,12 +654,12 @@ function deriveCoverStrategy(fullProject, metadata) {
 }
 
 const PURPOSE_COLORS = {
-  Authority:     "bg-slate-800 text-white",
+  Authority:     "bg-slate-800 text-[#203432]",
   Trust:         "bg-emerald-600 text-white",
   Curiosity:     "bg-purple-600 text-white",
   Premium:       "bg-amber-600 text-white",
   Professional:  "bg-sky-700 text-white",
-  Educational:   "bg-indigo-600 text-white",
+  Educational:   "bg-emerald-600 text-white",
   Inspirational: "bg-rose-600 text-white",
 };
 
@@ -680,54 +680,54 @@ function CoverStrategyCard({ strategy }) {
     <div className="space-y-3">
       {/* Visual Goal */}
       <div className="rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 px-3 py-2.5">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Visual Goal</p>
-        <p className="text-[12px] font-bold text-white leading-tight capitalize">{strategy.coverGoal}</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f] mb-1">Visual Goal</p>
+        <p className="text-[12px] font-bold text-[#203432] leading-tight capitalize">{strategy.coverGoal}</p>
       </div>
 
       {/* Cover Purpose */}
       <div>
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Cover Purpose</p>
-        <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${PURPOSE_COLORS[strategy.coverPurpose] || "bg-slate-700 text-white"}`}>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f] mb-1.5">Cover Purpose</p>
+        <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${PURPOSE_COLORS[strategy.coverPurpose] || "bg-slate-700 text-[#203432]"}`}>
           {strategy.coverPurpose}
         </span>
       </div>
 
       {/* Color Direction */}
       <div>
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Color Direction</p>
-        <p className="text-[11px] font-semibold text-slate-800">{strategy.colorDirection}</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f] mb-0.5">Color Direction</p>
+        <p className="text-[11px] font-semibold text-[#263b37]">{strategy.colorDirection}</p>
       </div>
 
       {/* Image Style */}
       <div>
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Image Style</p>
-        <p className="text-[11px] font-semibold text-slate-800">{strategy.imageStyle}</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f] mb-0.5">Image Style</p>
+        <p className="text-[11px] font-semibold text-[#263b37]">{strategy.imageStyle}</p>
       </div>
 
       {/* Details */}
       <div className="border-t border-slate-100 pt-2 space-y-1.5">
         {strategy.genre && (
           <div className="flex justify-between items-start gap-2">
-            <span className="text-[9px] text-slate-400 shrink-0 mt-px">Genre</span>
-            <span className="text-[10px] font-medium text-slate-600 text-right leading-tight">{strategy.genre}</span>
+            <span className="text-[9px] text-[#64736f] shrink-0 mt-px">Genre</span>
+            <span className="text-[10px] font-medium text-[#8e9692] text-right leading-tight">{strategy.genre}</span>
           </div>
         )}
         {strategy.subgenre && (
           <div className="flex justify-between items-start gap-2">
-            <span className="text-[9px] text-slate-400 shrink-0 mt-px">Subgenre</span>
-            <span className="text-[10px] font-medium text-slate-600 text-right leading-tight">{strategy.subgenre}</span>
+            <span className="text-[9px] text-[#64736f] shrink-0 mt-px">Subgenre</span>
+            <span className="text-[10px] font-medium text-[#8e9692] text-right leading-tight">{strategy.subgenre}</span>
           </div>
         )}
         {strategy.audience && (
           <div className="flex justify-between items-start gap-2">
-            <span className="text-[9px] text-slate-400 shrink-0 mt-px">Audience</span>
-            <span className="text-[10px] font-medium text-slate-600 text-right leading-tight max-w-[110px]">{strategy.audience}</span>
+            <span className="text-[9px] text-[#64736f] shrink-0 mt-px">Audience</span>
+            <span className="text-[10px] font-medium text-[#8e9692] text-right leading-tight max-w-[110px]">{strategy.audience}</span>
           </div>
         )}
         {strategy.complexity && (
           <div className="flex justify-between items-center gap-2">
-            <span className="text-[9px] text-slate-400 shrink-0">Complexity</span>
-            <span className="text-[10px] font-medium text-slate-600">{strategy.complexity}</span>
+            <span className="text-[9px] text-[#64736f] shrink-0">Complexity</span>
+            <span className="text-[10px] font-medium text-[#8e9692]">{strategy.complexity}</span>
           </div>
         )}
       </div>
@@ -876,13 +876,13 @@ function VisualDirectionCard({ direction }) {
   if (!direction) return null;
 
   const STYLE_COLORS = {
-    Minimal:      "bg-slate-100 text-slate-700",
+    Minimal:      "bg-slate-100 text-[#465451]",
     Modern:       "bg-sky-100 text-sky-800",
     Premium:      "bg-amber-100 text-amber-800",
     Elegant:      "bg-purple-100 text-purple-800",
-    Corporate:    "bg-slate-800 text-white",
+    Corporate:    "bg-slate-800 text-[#203432]",
     Luxury:       "bg-amber-900 text-amber-100",
-    Academic:     "bg-indigo-100 text-indigo-800",
+    Academic:     "bg-emerald-100 text-emerald-800",
     Bold:         "bg-rose-100 text-rose-800",
     Clean:        "bg-emerald-100 text-emerald-800",
     Creative:     "bg-pink-100 text-pink-800",
@@ -902,14 +902,14 @@ function VisualDirectionCard({ direction }) {
     Elegant:       "◇",
   };
 
-  const styleCls = STYLE_COLORS[direction.visualStyle] || "bg-slate-100 text-slate-700";
+  const styleCls = STYLE_COLORS[direction.visualStyle] || "bg-slate-100 text-[#465451]";
   const moodIcon = MOOD_ICONS[direction.designMood] || "◉";
 
   return (
     <div className="space-y-3">
       {/* Visual Style */}
       <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Visual Style</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f]">Visual Style</p>
         <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${styleCls}`}>
           {direction.visualStyle}
         </span>
@@ -917,22 +917,22 @@ function VisualDirectionCard({ direction }) {
 
       {/* Design Mood */}
       <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Design Mood</p>
-        <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
-          <span className="text-[10px] text-slate-400">{moodIcon}</span>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f]">Design Mood</p>
+        <span className="text-[11px] font-semibold text-[#465451] flex items-center gap-1">
+          <span className="text-[10px] text-[#64736f]">{moodIcon}</span>
           {direction.designMood}
         </span>
       </div>
 
       {/* Composition */}
       <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Composition</p>
-        <span className="text-[11px] font-semibold text-slate-700">{direction.composition}</span>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f]">Composition</p>
+        <span className="text-[11px] font-semibold text-[#465451]">{direction.composition}</span>
       </div>
 
       {/* Visual Complexity */}
       <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Complexity</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f]">Complexity</p>
         <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${
           direction.complexity === "Simple"   ? "bg-emerald-50 text-emerald-700" :
           direction.complexity === "Detailed" ? "bg-purple-50 text-purple-700"  :
@@ -942,29 +942,29 @@ function VisualDirectionCard({ direction }) {
 
       {/* Focal Point */}
       <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Focal Point</p>
-        <span className="text-[11px] font-semibold text-slate-700">{direction.focalPoint}</span>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f]">Focal Point</p>
+        <span className="text-[11px] font-semibold text-[#465451]">{direction.focalPoint}</span>
       </div>
 
       {/* Visual Hierarchy */}
       <div className="border-t border-slate-100 pt-2.5">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Visual Hierarchy</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f] mb-2">Visual Hierarchy</p>
         <ol className="space-y-1">
           {direction.hierarchy.map((item, i) => (
             <li key={i} className="flex items-center gap-2">
-              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-500 text-[9px] font-bold flex items-center justify-center shrink-0">
+              <span className="w-4 h-4 rounded-full bg-slate-100 text-[#7f8985] text-[9px] font-bold flex items-center justify-center shrink-0">
                 {i + 1}
               </span>
-              <span className="text-[10px] text-slate-700 font-medium">{item}</span>
+              <span className="text-[10px] text-[#465451] font-medium">{item}</span>
             </li>
           ))}
         </ol>
       </div>
 
       {/* Style Summary */}
-      <div className="rounded-lg bg-gradient-to-br from-indigo-50 to-sky-50 border border-indigo-100 px-3 py-2.5">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-indigo-400 mb-1">Style Summary</p>
-        <p className="text-[10px] text-indigo-900 leading-relaxed italic">"{direction.summary}"</p>
+      <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-sky-50 border border-emerald-100 px-3 py-2.5">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-400 mb-1">Style Summary</p>
+        <p className="text-[10px] text-emerald-900 leading-relaxed italic">"{direction.summary}"</p>
       </div>
     </div>
   );
@@ -1157,7 +1157,7 @@ function AiPromptCard({
   if (!prompt) {
     return (
       <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-4 text-center">
-        <p className="text-[10px] text-slate-400">Complete Cover Strategy to generate prompt.</p>
+        <p className="text-[10px] text-[#64736f]">Complete Cover Strategy to generate prompt.</p>
       </div>
     );
   }
@@ -1176,7 +1176,7 @@ function AiPromptCard({
 
   const CONCEPT_STYLE_COLORS = {
     Professional: "bg-sky-50 border-sky-200 text-sky-800",
-    Minimal:      "bg-slate-50 border-slate-200 text-slate-700",
+    Minimal:      "bg-slate-50 border-slate-200 text-[#465451]",
     Bold:         "bg-rose-50 border-rose-200 text-rose-800",
     Creative:     "bg-purple-50 border-purple-200 text-purple-800",
   };
@@ -1187,8 +1187,8 @@ function AiPromptCard({
       <div className="space-y-2">
         {fields.map(({ label, value }) => (
           <div key={label}>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{label}</p>
-            <p className="text-[10px] text-slate-700 leading-relaxed">{value}</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f] mb-0.5">{label}</p>
+            <p className="text-[10px] text-[#465451] leading-relaxed">{value}</p>
           </div>
         ))}
       </div>
@@ -1196,16 +1196,16 @@ function AiPromptCard({
       {/* Final Prompt */}
       <div className="border-t border-slate-100 pt-3">
         <div className="flex items-center justify-between mb-1.5">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Final Prompt</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f]">Final Prompt</p>
           <button
             onClick={() => handleCopy(prompt.finalPrompt, setCopied)}
-            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-semibold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
           >
             {copied ? "✓ Copied" : "Copy"}
           </button>
         </div>
         <div className="rounded-lg bg-slate-900 px-3 py-2.5">
-          <p className="text-[10px] text-slate-200 leading-relaxed font-mono break-words whitespace-pre-wrap select-all">
+          <p className="text-[10px] text-[#314a46] leading-relaxed font-mono break-words whitespace-pre-wrap select-all">
             {prompt.finalPrompt}
           </p>
         </div>
@@ -1214,7 +1214,7 @@ function AiPromptCard({
       {/* Negative Prompt */}
       <div className="border-t border-slate-100 pt-3">
         <div className="flex items-center justify-between mb-1.5">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Negative Prompt</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f]">Negative Prompt</p>
           <button
             onClick={() => handleCopy(prompt.negativePrompt, setCopiedNeg)}
             className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-semibold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors"
@@ -1236,13 +1236,13 @@ function AiPromptCard({
           disabled={generatingAll}
           className={`w-full rounded-xl py-2.5 text-[11px] font-bold tracking-wide transition-all flex items-center justify-center gap-2 ${
             generatingAll
-              ? "bg-indigo-100 text-indigo-400 cursor-not-allowed"
-              : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow"
+              ? "bg-emerald-100 text-emerald-400 cursor-not-allowed"
+              : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow"
           }`}
         >
           {generatingAll ? (
             <>
-              <span className="inline-block w-3 h-3 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin" />
+              <span className="inline-block w-3 h-3 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin" />
               Generating Cover Concepts...
             </>
           ) : (
@@ -1254,19 +1254,19 @@ function AiPromptCard({
       {/* ── Concepts Grid ── */}
       {(concepts && concepts.length > 0) && (
         <div className="border-t border-slate-100 pt-3 space-y-2">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Cover Concepts</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-[#64736f]">Cover Concepts</p>
           <div className="grid grid-cols-2 gap-2">
             {concepts.map((concept, idx) => {
               const isSelected   = selectedConceptIdx === idx;
               const isRegenerating = regeneratingIdx === idx;
-              const styleCls     = CONCEPT_STYLE_COLORS[concept.name] || "bg-slate-50 border-slate-200 text-slate-700";
+              const styleCls     = CONCEPT_STYLE_COLORS[concept.name] || "bg-slate-50 border-slate-200 text-[#465451]";
 
               return (
                 <div
                   key={idx}
                   className={`relative rounded-xl border-2 overflow-hidden transition-all ${
                     isSelected
-                      ? "border-indigo-500 shadow-md shadow-indigo-100"
+                      ? "border-emerald-500 shadow-md shadow-emerald-100"
                       : "border-slate-200 hover:border-slate-300"
                   }`}
                 >
@@ -1274,8 +1274,8 @@ function AiPromptCard({
                   <div className="relative bg-slate-100" style={{ aspectRatio: "9/11" }}>
                     {isRegenerating ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
-                        <span className="inline-block w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mb-2" />
-                        <span className="text-[9px] text-slate-400">Regenerating…</span>
+                        <span className="inline-block w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mb-2" />
+                        <span className="text-[9px] text-[#64736f]">Regenerating…</span>
                       </div>
                     ) : concept.error ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-rose-50 p-2">
@@ -1291,13 +1291,13 @@ function AiPromptCard({
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
-                        <span className="text-[9px] text-slate-400">No image</span>
+                        <span className="text-[9px] text-[#64736f]">No image</span>
                       </div>
                     )}
 
                     {/* Selected badge */}
                     {isSelected && !isRegenerating && (
-                      <div className="absolute top-1.5 right-1.5 bg-indigo-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow">
+                      <div className="absolute top-1.5 right-1.5 bg-emerald-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow">
                         ✓
                       </div>
                     )}
@@ -1310,11 +1310,11 @@ function AiPromptCard({
                         {concept.name}
                       </span>
                       {concept.resolution && (
-                        <span className="text-[8px] text-slate-400">{concept.resolution}</span>
+                        <span className="text-[8px] text-[#64736f]">{concept.resolution}</span>
                       )}
                     </div>
                     {concept.generatedAt && (
-                      <p className="text-[8px] text-slate-400">
+                      <p className="text-[8px] text-[#64736f]">
                         {concept.generationMs ? `${(concept.generationMs / 1000).toFixed(1)}s` : ""}
                       </p>
                     )}
@@ -1324,8 +1324,8 @@ function AiPromptCard({
                         disabled={isRegenerating}
                         className={`flex-1 rounded-md py-0.5 text-[9px] font-semibold transition-colors ${
                           isSelected
-                            ? "bg-indigo-100 text-indigo-700"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-slate-100 text-[#8e9692] hover:bg-slate-200"
                         }`}
                       >
                         {isSelected ? "Selected" : "Select"}
@@ -1333,7 +1333,7 @@ function AiPromptCard({
                       <button
                         onClick={() => onRegenerateConcept(idx)}
                         disabled={isRegenerating || generatingAll}
-                        className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors disabled:opacity-40"
+                        className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-slate-100 text-[#7f8985] hover:bg-slate-200 transition-colors disabled:opacity-40"
                         title="Regenerate this concept"
                       >
                         ↻
@@ -1357,7 +1357,7 @@ function TypographyStars({ count }) {
   return (
     <span style={{ letterSpacing: 1 }}>
       <span className="text-amber-400">{"★".repeat(n)}</span>
-      <span className="text-slate-200">{"★".repeat(5 - n)}</span>
+      <span className="text-[#314a46]">{"★".repeat(5 - n)}</span>
     </span>
   );
 }
@@ -1368,11 +1368,11 @@ function TypographyCard({ profile, generating, onRegenerate }) {
       <div className="flex flex-col items-center justify-center gap-2 py-5">
         <div className="flex gap-1">
           {[0, 1, 2].map(i => (
-            <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"
+            <div key={i} className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
               style={{ animationDelay: `${i * 0.15}s` }} />
           ))}
         </div>
-        <span className="text-[10px] text-slate-400">Generating typography profile…</span>
+        <span className="text-[10px] text-[#64736f]">Generating typography profile…</span>
       </div>
     );
   }
@@ -1380,13 +1380,13 @@ function TypographyCard({ profile, generating, onRegenerate }) {
   if (!profile) {
     return (
       <div className="flex flex-col items-center gap-2 py-4 text-center">
-        <p className="text-[10px] text-slate-400 leading-relaxed">
+        <p className="text-[10px] text-[#64736f] leading-relaxed">
           Select a cover concept to automatically generate a typography profile.
         </p>
         <button
           type="button"
           onClick={onRegenerate}
-          className="text-[10px] font-semibold text-indigo-500 hover:text-indigo-700 transition"
+          className="text-[10px] font-semibold text-emerald-500 hover:text-emerald-700 transition"
         >
           Generate Now ↻
         </button>
@@ -1399,7 +1399,7 @@ function TypographyCard({ profile, generating, onRegenerate }) {
     Good:      "bg-sky-50 text-sky-700 border-sky-200",
     Fair:      "bg-amber-50 text-amber-700 border-amber-200",
     Poor:      "bg-red-50 text-red-700 border-red-200",
-  }[profile.thumbnailReadability] || "bg-slate-50 text-slate-600 border-slate-200";
+  }[profile.thumbnailReadability] || "bg-slate-50 text-[#8e9692] border-slate-200";
 
   const readabilityIcon = { Excellent: "★", Good: "✓", Fair: "~", Poor: "!" }[profile.thumbnailReadability] || "";
 
@@ -1408,15 +1408,15 @@ function TypographyCard({ profile, generating, onRegenerate }) {
 
       {/* Font Categories */}
       <div className="space-y-1.5">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Font Categories</p>
+        <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Font Categories</p>
         {[
           { label: "Title",    value: profile.titleFontCategory    },
           { label: "Subtitle", value: profile.subtitleFontCategory },
           { label: "Author",   value: profile.authorFontCategory   },
         ].map(({ label, value }) => (
           <div key={label} className="flex items-start justify-between gap-2">
-            <span className="text-slate-400 shrink-0">{label}</span>
-            <span className="font-semibold text-slate-800 text-right leading-tight">{value}</span>
+            <span className="text-[#64736f] shrink-0">{label}</span>
+            <span className="font-semibold text-[#263b37] text-right leading-tight">{value}</span>
           </div>
         ))}
       </div>
@@ -1424,15 +1424,15 @@ function TypographyCard({ profile, generating, onRegenerate }) {
       {/* Font Pairing */}
       {profile.fontPairing && (
         <div className="rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-2 space-y-0.5">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Font Pairing</p>
-          <p className="text-slate-700 leading-relaxed">{profile.fontPairing}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Font Pairing</p>
+          <p className="text-[#465451] leading-relaxed">{profile.fontPairing}</p>
         </div>
       )}
 
       {/* Text Hierarchy */}
       {profile.textHierarchy && (
         <div className="space-y-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Text Hierarchy</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Text Hierarchy</p>
           {[
             { label: "Title",    n: profile.textHierarchy.title    },
             { label: "Subtitle", n: profile.textHierarchy.subtitle },
@@ -1440,7 +1440,7 @@ function TypographyCard({ profile, generating, onRegenerate }) {
             { label: "Series",   n: profile.textHierarchy.series   },
           ].map(({ label, n }) => (
             <div key={label} className="flex items-center justify-between">
-              <span className="text-slate-500">{label}</span>
+              <span className="text-[#7f8985]">{label}</span>
               <TypographyStars count={n} />
             </div>
           ))}
@@ -1450,12 +1450,12 @@ function TypographyCard({ profile, generating, onRegenerate }) {
       {/* Alignment + Position */}
       <div className="flex flex-wrap gap-1.5">
         {profile.titleAlignment && (
-          <div className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 capitalize">
+          <div className="rounded-md bg-emerald-50 border border-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 capitalize">
             {profile.titleAlignment} aligned
           </div>
         )}
         {profile.textPosition && (
-          <div className="rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+          <div className="rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-[#8e9692]">
             {profile.textPosition}
           </div>
         )}
@@ -1464,7 +1464,7 @@ function TypographyCard({ profile, generating, onRegenerate }) {
       {/* Relative Text Sizes */}
       {profile.textSizes && (
         <div className="space-y-1.5">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Relative Sizes</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Relative Sizes</p>
           {[
             { label: "Title",    pct: 100 },
             { label: "Subtitle", pct: profile.textSizes.subtitle },
@@ -1473,11 +1473,11 @@ function TypographyCard({ profile, generating, onRegenerate }) {
           ].filter(x => x.pct).map(({ label, pct }) => (
             <div key={label} className="space-y-0.5">
               <div className="flex justify-between">
-                <span className="text-slate-500">{label}</span>
-                <span className="font-semibold text-slate-700">{pct}%</span>
+                <span className="text-[#7f8985]">{label}</span>
+                <span className="font-semibold text-[#465451]">{pct}%</span>
               </div>
               <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
-                <div className="h-full rounded-full bg-indigo-400 transition-all" style={{ width: `${pct}%` }} />
+                <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} />
               </div>
             </div>
           ))}
@@ -1487,30 +1487,30 @@ function TypographyCard({ profile, generating, onRegenerate }) {
       {/* Color Recommendation */}
       {profile.textColor && (
         <div className="space-y-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Recommended Text Color</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Recommended Text Color</p>
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded border border-slate-200 shrink-0 shadow-sm"
               style={{ background: profile.textColor }} />
-            <span className="font-mono font-semibold text-slate-700">{profile.textColor}</span>
+            <span className="font-mono font-semibold text-[#465451]">{profile.textColor}</span>
           </div>
           {profile.textContrast && (
-            <p className="text-slate-500 leading-relaxed">{profile.textContrast}</p>
+            <p className="text-[#7f8985] leading-relaxed">{profile.textContrast}</p>
           )}
           {profile.colorReason && (
-            <p className="text-[9px] text-slate-400 leading-relaxed">{profile.colorReason}</p>
+            <p className="text-[9px] text-[#64736f] leading-relaxed">{profile.colorReason}</p>
           )}
         </div>
       )}
 
       {/* Thumbnail Readability */}
       <div className="space-y-1">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Thumbnail Readability</p>
+        <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Thumbnail Readability</p>
         <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${readabilityStyle}`}>
           <span>{readabilityIcon}</span>
           {profile.thumbnailReadability}
         </div>
         {profile.thumbnailReason && (
-          <p className="text-[9px] text-slate-400 leading-relaxed mt-0.5">{profile.thumbnailReason}</p>
+          <p className="text-[9px] text-[#64736f] leading-relaxed mt-0.5">{profile.thumbnailReason}</p>
         )}
       </div>
 
@@ -1518,7 +1518,7 @@ function TypographyCard({ profile, generating, onRegenerate }) {
       <button
         type="button"
         onClick={onRegenerate}
-        className="w-full text-center text-[9px] font-semibold text-indigo-400 hover:text-indigo-600 py-1 transition"
+        className="w-full text-center text-[9px] font-semibold text-emerald-400 hover:text-emerald-600 py-1 transition"
       >
         ↻ Regenerate Profile
       </button>
@@ -1534,11 +1534,11 @@ function LayoutCard({ profile, generating, onRegenerate }) {
       <div className="flex flex-col items-center justify-center gap-2 py-5">
         <div className="flex gap-1">
           {[0, 1, 2].map(i => (
-            <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"
+            <div key={i} className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
               style={{ animationDelay: `${i * 0.15}s` }} />
           ))}
         </div>
-        <span className="text-[10px] text-slate-400">Generating layout profile…</span>
+        <span className="text-[10px] text-[#64736f]">Generating layout profile…</span>
       </div>
     );
   }
@@ -1546,13 +1546,13 @@ function LayoutCard({ profile, generating, onRegenerate }) {
   if (!profile) {
     return (
       <div className="flex flex-col items-center gap-2 py-4 text-center">
-        <p className="text-[10px] text-slate-400 leading-relaxed">
+        <p className="text-[10px] text-[#64736f] leading-relaxed">
           Select a cover concept to automatically generate a layout profile.
         </p>
         <button
           type="button"
           onClick={onRegenerate}
-          className="text-[10px] font-semibold text-indigo-500 hover:text-indigo-700 transition"
+          className="text-[10px] font-semibold text-emerald-500 hover:text-emerald-700 transition"
         >
           Generate Now ↻
         </button>
@@ -1565,7 +1565,7 @@ function LayoutCard({ profile, generating, onRegenerate }) {
     Low:    "bg-sky-50 text-sky-700 border-sky-200",
     Medium: "bg-amber-50 text-amber-700 border-amber-200",
     High:   "bg-red-50 text-red-700 border-red-200",
-  }[profile.textOverlapRisk] || "bg-slate-50 text-slate-600 border-slate-200";
+  }[profile.textOverlapRisk] || "bg-slate-50 text-[#8e9692] border-slate-200";
 
   const balanceDot = {
     "Balanced":       "◉",
@@ -1586,8 +1586,8 @@ function LayoutCard({ profile, generating, onRegenerate }) {
 
       {/* Layout Type */}
       <div className="space-y-1">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Layout Type</p>
-        <div className="rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-1.5 font-bold text-indigo-800">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Layout Type</p>
+        <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-2.5 py-1.5 font-bold text-emerald-800">
           {profile.layoutType}
         </div>
       </div>
@@ -1595,17 +1595,17 @@ function LayoutCard({ profile, generating, onRegenerate }) {
       {/* Visual Balance + Focal Area side by side */}
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Balance</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Balance</p>
           <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 border border-slate-100 px-2 py-1.5">
-            <span className="text-slate-500">{balanceDot}</span>
-            <span className="font-semibold text-slate-700 leading-tight">{profile.visualBalance}</span>
+            <span className="text-[#7f8985]">{balanceDot}</span>
+            <span className="font-semibold text-[#465451] leading-tight">{profile.visualBalance}</span>
           </div>
         </div>
         <div className="space-y-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Focal Area</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Focal Area</p>
           <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 border border-slate-100 px-2 py-1.5">
-            <span className="text-slate-400 text-[8px]">{focalIcon}</span>
-            <span className="font-semibold text-slate-700 leading-tight">{profile.focalArea}</span>
+            <span className="text-[#64736f] text-[8px]">{focalIcon}</span>
+            <span className="font-semibold text-[#465451] leading-tight">{profile.focalArea}</span>
           </div>
         </div>
       </div>
@@ -1613,14 +1613,14 @@ function LayoutCard({ profile, generating, onRegenerate }) {
       {/* Alignment + Safe Margin side by side */}
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Alignment</p>
-          <div className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-1 text-center font-semibold text-indigo-700">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Alignment</p>
+          <div className="rounded-md bg-emerald-50 border border-emerald-100 px-2 py-1 text-center font-semibold text-emerald-700">
             {profile.alignment}
           </div>
         </div>
         <div className="space-y-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Safe Margin</p>
-          <div className="rounded-md bg-slate-100 border border-slate-200 px-2 py-1 text-center font-semibold text-slate-600">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Safe Margin</p>
+          <div className="rounded-md bg-slate-100 border border-slate-200 px-2 py-1 text-center font-semibold text-[#8e9692]">
             {profile.safeMargin}
           </div>
         </div>
@@ -1629,30 +1629,30 @@ function LayoutCard({ profile, generating, onRegenerate }) {
       {/* Text Position */}
       {profile.textPosition && (
         <div className="space-y-0.5">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Text Position</p>
-          <p className="text-slate-700 leading-relaxed">{profile.textPosition}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Text Position</p>
+          <p className="text-[#465451] leading-relaxed">{profile.textPosition}</p>
         </div>
       )}
 
       {/* Image Position */}
       {profile.imagePosition && (
         <div className="space-y-0.5">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Image Position</p>
-          <p className="text-slate-700 leading-relaxed">{profile.imagePosition}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Image Position</p>
+          <p className="text-[#465451] leading-relaxed">{profile.imagePosition}</p>
         </div>
       )}
 
       {/* White Space */}
       {profile.whiteSpace && (
         <div className="space-y-0.5">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">White Space</p>
-          <p className="text-slate-600 leading-relaxed">{profile.whiteSpace}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">White Space</p>
+          <p className="text-[#8e9692] leading-relaxed">{profile.whiteSpace}</p>
         </div>
       )}
 
       {/* Text Overlap Check */}
       <div className="space-y-1">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Text Overlap Risk</p>
+        <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Text Overlap Risk</p>
         <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-bold ${overlapColor}`}>
           <span>{ { None:"✓", Low:"~", Medium:"!", High:"⚠" }[profile.textOverlapRisk] }</span>
           {profile.textOverlapRisk}
@@ -1668,8 +1668,8 @@ function LayoutCard({ profile, generating, onRegenerate }) {
       {/* Composition Notes */}
       {profile.compositionNotes && (
         <div className="rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-2 space-y-0.5">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Composition Notes</p>
-          <p className="text-slate-700 leading-relaxed">{profile.compositionNotes}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#64736f]">Composition Notes</p>
+          <p className="text-[#465451] leading-relaxed">{profile.compositionNotes}</p>
         </div>
       )}
 
@@ -1677,7 +1677,7 @@ function LayoutCard({ profile, generating, onRegenerate }) {
       <button
         type="button"
         onClick={onRegenerate}
-        className="w-full text-center text-[9px] font-semibold text-indigo-400 hover:text-indigo-600 py-1 transition"
+        className="w-full text-center text-[9px] font-semibold text-emerald-400 hover:text-emerald-600 py-1 transition"
       >
         ↻ Regenerate Layout
       </button>
@@ -1714,12 +1714,12 @@ function CoverToolRail({ currentStep, onStepChange }) {
         title={tool.label}
         className={`group flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition ${
           active
-            ? "bg-white/10 text-white shadow-inner ring-1 ring-white/10"
-            : "text-slate-500 hover:bg-white/[0.06] hover:text-slate-200"
+            ? "bg-[#e7efe9] text-[#23433d] shadow-inner ring-1 ring-[#bdd0c5]"
+            : "text-[#7f8985] hover:bg-white/75 hover:text-[#314a46]"
         }`}
       >
         <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-[15px] font-black transition ${
-          active ? "bg-violet-600 text-white shadow-lg shadow-violet-950/30" : "bg-white/[0.04] text-slate-400 group-hover:text-white"
+          active ? "bg-[#315b53] text-white shadow-lg shadow-[#315b53]/20" : "bg-white text-[#64736f] group-hover:text-[#23433d]"
         }`}>
           {tool.icon}
         </span>
@@ -1729,13 +1729,13 @@ function CoverToolRail({ currentStep, onStepChange }) {
   };
 
   return (
-    <aside className="flex w-[76px] shrink-0 flex-col border-r border-white/[0.07] bg-[#111318] px-2 py-3">
+    <aside className="flex w-[76px] shrink-0 flex-col border-r border-[#e3ddd2] bg-[#f7f4ee] px-2 py-3">
       <div className="flex h-9 items-center justify-center">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600 text-[13px] font-black text-white shadow-lg shadow-violet-950/40">C</div>
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-600 text-[13px] font-black text-white shadow-lg shadow-teal-950/40">C</div>
       </div>
       <div className="mt-3 space-y-1">{COVER_EDITOR_TOOLS.map(button)}</div>
-      <div className="my-3 border-t border-white/[0.07]" />
-      <p className="mb-1 text-center text-[7px] font-bold uppercase tracking-[0.18em] text-slate-700">Intel</p>
+      <div className="my-3 border-t border-[#e3ddd2]" />
+      <p className="mb-1 text-center text-[7px] font-bold uppercase tracking-[0.18em] text-[#465451]">Intel</p>
       <div className="space-y-1">{COVER_INTELLIGENCE_TOOLS.map(button)}</div>
       <div className="mt-auto pt-3">
         {button({ id: "bookInfo", icon: "⚙", label: "Setup" })}
@@ -1748,31 +1748,31 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
   const update = (key, value) => setPrintSetup((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-4 text-slate-200">
+    <div className="h-full overflow-y-auto px-4 py-4 text-[#314a46]">
       <div className="mb-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Print setup</p>
-        <h3 className="mt-1 text-sm font-bold text-white">KDP paperback</h3>
-        <p className="mt-1 text-[10px] leading-relaxed text-slate-500">Set the real trim and page geometry before final artwork/export.</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7f8985]">Print setup</p>
+        <h3 className="mt-1 text-sm font-bold text-[#203432]">KDP paperback</h3>
+        <p className="mt-1 text-[10px] leading-relaxed text-[#7f8985]">Set the real trim and page geometry before final artwork/export.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
-          <p className="text-[8px] font-bold uppercase tracking-wider text-slate-600">Full wrap</p>
-          <p className="mt-1 text-[12px] font-semibold text-white">{formatInches(geometry.fullWidth)} × {formatInches(geometry.fullHeight)}</p>
+        <div className="rounded-xl border border-[#e3ddd2] bg-white/65 p-3">
+          <p className="text-[8px] font-bold uppercase tracking-wider text-[#8e9692]">Full wrap</p>
+          <p className="mt-1 text-[12px] font-semibold text-[#203432]">{formatInches(geometry.fullWidth)} × {formatInches(geometry.fullHeight)}</p>
         </div>
-        <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
-          <p className="text-[8px] font-bold uppercase tracking-wider text-slate-600">Spine</p>
-          <p className="mt-1 text-[12px] font-semibold text-white">{formatInches(geometry.spineWidth)}</p>
+        <div className="rounded-xl border border-[#e3ddd2] bg-white/65 p-3">
+          <p className="text-[8px] font-bold uppercase tracking-wider text-[#8e9692]">Spine</p>
+          <p className="mt-1 text-[12px] font-semibold text-[#203432]">{formatInches(geometry.spineWidth)}</p>
         </div>
       </div>
 
       <div className="mt-4 space-y-3">
         <label className="block">
-          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Trim size</span>
-          <div className="rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] font-semibold text-slate-200">{metadata.bookSize}</div>
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Trim size</span>
+          <div className="rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] font-semibold text-[#314a46]">{metadata.bookSize}</div>
         </label>
         <label className="block">
-          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Page count</span>
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Page count</span>
           <input
             type="number"
             min="24"
@@ -1782,25 +1782,25 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
               update("pageCount", Math.max(24, Number(e.target.value) || 24));
               update("estimatedPageCount", false);
             }}
-            className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500"
+            className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Interior</span>
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Interior</span>
           <select
             value={printSetup.interiorId}
             onChange={(e) => update("interiorId", e.target.value)}
-            className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500"
+            className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500"
           >
             {PAPERBACK_INTERIORS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Reading direction</span>
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Reading direction</span>
           <select
             value={printSetup.readingDirection}
             onChange={(e) => update("readingDirection", e.target.value)}
-            className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500"
+            className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500"
           >
             <option value="ltr">Left to right</option>
             <option value="rtl">Right to left</option>
@@ -1808,19 +1808,19 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
         </label>
       </div>
 
-      <div className="mt-4 space-y-2 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
+      <div className="mt-4 space-y-2 rounded-xl border border-[#e3ddd2] bg-white/60 p-3">
         {[
           ["showGuides", "Safe & bleed guides"],
           ["spineText", "Spine text"],
         ].map(([key, label]) => (
-          <label key={key} className="flex items-center justify-between gap-3 text-[11px] text-slate-300">
+          <label key={key} className="flex items-center justify-between gap-3 text-[11px] text-[#465b57]">
             <span>{label}</span>
             <input type="checkbox" checked={!!printSetup[key]} onChange={(e) => update(key, e.target.checked)} />
           </label>
         ))}
-        <label className="flex items-center justify-between gap-3 text-[11px] text-slate-300">
+        <label className="flex items-center justify-between gap-3 text-[11px] text-[#465b57]">
           <span>Barcode</span>
-          <select value={printSetup.barcodeMode} onChange={(e) => update("barcodeMode", e.target.value)} className="rounded border border-white/[0.08] bg-[#171a20] px-2 py-1 text-[10px]">
+          <select value={printSetup.barcodeMode} onChange={(e) => update("barcodeMode", e.target.value)} className="rounded border border-[#ddd7cc] bg-white px-2 py-1 text-[10px]">
             <option value="kdp">KDP places it</option>
             <option value="own">My barcode</option>
             <option value="none">No reserve</option>
@@ -1836,8 +1836,8 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
             : "border-amber-500/20 bg-amber-500/[0.06]"
       }`}>
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold text-white">KDP preflight</p>
-          <span className="text-[9px] font-bold uppercase text-slate-400">{preflight.status}</span>
+          <p className="text-[10px] font-bold text-[#203432]">KDP preflight</p>
+          <span className="text-[9px] font-bold uppercase text-[#64736f]">{preflight.status}</span>
         </div>
         <div className="mt-2 space-y-1.5">
           {preflight.checks.slice(0, 5).map((check) => (
@@ -1845,7 +1845,7 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
               <span className={check.status === "pass" ? "text-emerald-400" : check.status === "block" ? "text-red-400" : "text-amber-400"}>
                 {check.status === "pass" ? "✓" : "•"}
               </span>
-              <span className="text-slate-400">{check.label}</span>
+              <span className="text-[#64736f]">{check.label}</span>
             </div>
           ))}
         </div>
@@ -1862,10 +1862,10 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
     <div className="h-full overflow-y-auto px-4 py-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Back cover</p>
-          <h3 className="mt-1 text-sm font-bold text-white">Sales copy & layout</h3>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7f8985]">Back cover</p>
+          <h3 className="mt-1 text-sm font-bold text-[#203432]">Sales copy & layout</h3>
         </div>
-        <button type="button" onClick={onGenerate} disabled={generating} className="rounded-lg bg-violet-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-violet-500 disabled:opacity-50">
+        <button type="button" onClick={onGenerate} disabled={generating} className="rounded-lg bg-teal-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-[#3f6f65] disabled:opacity-50">
           {generating ? "Writing…" : "✦ Write"}
         </button>
       </div>
@@ -1878,8 +1878,8 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
             onClick={() => update("layout", layout)}
             className={`rounded-xl border px-3 py-2 text-left text-[10px] font-semibold capitalize transition ${
               backCover.layout === layout
-                ? "border-violet-400 bg-violet-500/10 text-violet-300"
-                : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:text-slate-200"
+                ? "border-[#7fa797] bg-[#e8f0eb] text-[#315b53]"
+                : "border-[#e3ddd2] bg-white/60 text-[#64736f] hover:text-[#314a46]"
             }`}
           >
             {layout}
@@ -1888,18 +1888,18 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
       </div>
 
       <label className="mt-4 block">
-        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Headline</span>
-        <input value={backCover.headline || ""} onChange={(e) => update("headline", e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500" />
+        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Headline</span>
+        <input value={backCover.headline || ""} onChange={(e) => update("headline", e.target.value)} className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500" />
       </label>
       <label className="mt-3 block">
-        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Blurb</span>
-        <textarea rows={8} value={backCover.blurb || ""} onChange={(e) => update("blurb", e.target.value)} className="w-full resize-y rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] leading-relaxed text-slate-200 outline-none focus:border-violet-500" />
+        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Blurb</span>
+        <textarea rows={8} value={backCover.blurb || ""} onChange={(e) => update("blurb", e.target.value)} className="w-full resize-y rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] leading-relaxed text-[#314a46] outline-none focus:border-teal-500" />
       </label>
       <label className="mt-3 block">
-        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Author line</span>
-        <input value={backCover.authorLine || ""} onChange={(e) => update("authorLine", e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500" />
+        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Author line</span>
+        <input value={backCover.authorLine || ""} onChange={(e) => update("authorLine", e.target.value)} className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500" />
       </label>
-      <p className="mt-3 rounded-lg border border-amber-500/10 bg-amber-500/[0.05] px-3 py-2 text-[9px] leading-relaxed text-amber-200/70">
+      <p className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-[9px] leading-relaxed text-amber-700">
         The barcode-safe region remains reserved in Full Cover view.
       </p>
     </div>
@@ -1911,7 +1911,7 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
 function WorkflowNavigator({ currentStep, onStepChange }) {
   return (
     <div className="flex-1 overflow-y-auto py-4 px-3">
-      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 px-2 mb-3">
+      <p className="text-[9px] font-bold uppercase tracking-widest text-[#969c97] px-2 mb-3">
         Workflow
       </p>
       <div className="space-y-0.5">
@@ -1929,42 +1929,42 @@ function WorkflowNavigator({ currentStep, onStepChange }) {
               onClick={isClickable ? () => onStepChange(step.id) : undefined}
               className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-left ${
                 isActive
-                  ? "bg-indigo-600/15 border border-indigo-500/25"
+                  ? "bg-emerald-600/15 border border-emerald-500/25"
                   : isClickable
-                  ? "hover:bg-gray-800/40 cursor-pointer"
+                  ? "hover:bg-[#faf8f4]/40 cursor-pointer"
                   : "cursor-default"
               }`}
             >
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
                   isActive
-                    ? "bg-indigo-500 text-white shadow-sm shadow-indigo-500/40"
+                    ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/40"
                     : isComplete
                     ? "bg-emerald-500 text-white"
                     : isUnlocked
-                    ? "bg-gray-700 text-gray-400 border border-gray-600"
-                    : "bg-gray-800 text-gray-600 border border-gray-700"
+                    ? "bg-[#ece7de] text-[#5f6e6a] border border-[#c9c0b4]"
+                    : "bg-[#faf8f4] text-[#969c97] border border-[#d8d1c5]"
                 }`}
               >
                 {isComplete ? "✓" : step.num}
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-[11px] font-semibold truncate ${
-                  isActive   ? "text-indigo-300"  :
+                  isActive   ? "text-emerald-700"  :
                   isComplete ? "text-emerald-400" :
-                  isUnlocked ? "text-gray-400"    :
-                               "text-gray-600"
+                  isUnlocked ? "text-[#5f6e6a]"    :
+                               "text-[#969c97]"
                 }`}>
                   {step.label}
                 </p>
                 {isLocked && (
-                  <p className="text-[9px] text-gray-700 truncate leading-tight">
+                  <p className="text-[9px] text-[#a8aaa5] truncate leading-tight">
                     Available in upcoming implementation.
                   </p>
                 )}
               </div>
               {isLocked && (
-                <svg className="w-3 h-3 text-gray-700 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-3 h-3 text-[#a8aaa5] shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
                 </svg>
               )}
@@ -1990,34 +1990,34 @@ function ProjectStatusCard({ metadata, lastSaved, validationErrors }) {
     : "bg-blue-500/15 text-blue-400 border-blue-500/25";
 
   return (
-    <div className="shrink-0 border-t border-gray-800 px-3 py-4 space-y-2">
-      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600">Project Status</p>
-      <div className="rounded-xl bg-gray-800/50 border border-gray-700/40 px-3 py-3 space-y-2.5">
+    <div className="shrink-0 border-t border-[#e3ddd2] px-3 py-4 space-y-2">
+      <p className="text-[9px] font-bold uppercase tracking-widest text-[#969c97]">Project Status</p>
+      <div className="rounded-xl bg-[#faf8f4]/50 border border-[#d8d1c5]/40 px-3 py-3 space-y-2.5">
         <div>
-          <p className="text-[8px] uppercase tracking-widest text-gray-600 mb-0.5">Project</p>
-          <p className="text-[11px] font-semibold text-gray-200 truncate">
+          <p className="text-[8px] uppercase tracking-widest text-[#969c97] mb-0.5">Project</p>
+          <p className="text-[11px] font-semibold text-[#314a46] truncate">
             {metadata.title || "Untitled Book"}
           </p>
         </div>
         <div className="flex items-center justify-between">
-          <p className="text-[9px] text-gray-500">Last Saved</p>
-          <p className="text-[9px] text-gray-400">
+          <p className="text-[9px] text-[#7f8985]">Last Saved</p>
+          <p className="text-[9px] text-[#5f6e6a]">
             {lastSaved
               ? lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
               : "Not yet saved"}
           </p>
         </div>
         <div className="flex items-center justify-between">
-          <p className="text-[9px] text-gray-500">Current Step</p>
-          <p className="text-[9px] text-indigo-400 font-medium">Book Information</p>
+          <p className="text-[9px] text-[#7f8985]">Current Step</p>
+          <p className="text-[9px] text-emerald-400 font-medium">Book Information</p>
         </div>
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <p className="text-[9px] text-gray-500">Completion</p>
-            <p className="text-[9px] font-semibold text-gray-300">{pct}%</p>
+            <p className="text-[9px] text-[#7f8985]">Completion</p>
+            <p className="text-[9px] font-semibold text-[#465b57]">{pct}%</p>
           </div>
-          <div className="h-1.5 rounded-full bg-gray-700 overflow-hidden">
-            <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${pct}%` }} />
+          <div className="h-1.5 rounded-full bg-[#ece7de] overflow-hidden">
+            <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold ${statusColor}`}>
@@ -2030,9 +2030,9 @@ function ProjectStatusCard({ metadata, lastSaved, validationErrors }) {
 
 function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface, preflight }) {
   const statusMap = {
-    saved:   { dot: "bg-emerald-400", text: "text-slate-400", label: lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Saved" },
-    saving:  { dot: "bg-amber-400 animate-pulse", text: "text-amber-300", label: "Saving…" },
-    unsaved: { dot: "bg-amber-400", text: "text-amber-300", label: "Unsaved" },
+    saved:   { dot: "bg-emerald-400", text: "text-[#64736f]", label: lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Saved" },
+    saving:  { dot: "bg-amber-400 animate-pulse", text: "text-amber-700", label: "Saving…" },
+    unsaved: { dot: "bg-amber-400", text: "text-amber-700", label: "Unsaved" },
   };
   const st = statusMap[saveStatus] || statusMap.saved;
   const surfaces = [
@@ -2042,19 +2042,20 @@ function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface,
   ];
 
   return (
-    <div className="grid h-[58px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-white/[0.07] bg-[#0d0f13] px-4">
+    <div className="cover-horizontal-scroll shrink-0 overflow-x-auto border-b border-[#e3ddd2] bg-[#faf8f4]">
+      <div className="grid h-[58px] min-w-[760px] grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] items-center px-4">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-xs font-black text-white shadow-lg shadow-violet-950/30">C</div>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-xs font-black text-white shadow-lg shadow-teal-950/30">C</div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="truncate text-[12px] font-bold text-white">Cover Studio</h2>
-            <span className="hidden rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-500 sm:inline">KDP</span>
+            <h2 className="truncate text-[12px] font-bold text-[#203432]">Cover Studio</h2>
+            <span className="hidden rounded-full border border-[#ddd7cc] bg-white/70 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#7f8985] sm:inline">KDP</span>
           </div>
-          <p className="mt-0.5 max-w-[260px] truncate text-[9px] text-slate-600">{metadata.title || "Untitled book"}</p>
+          <p className="mt-0.5 max-w-[260px] truncate text-[9px] text-[#8e9692]">{metadata.title || "Untitled book"}</p>
         </div>
       </div>
 
-      <div className="flex items-center rounded-xl border border-white/[0.08] bg-[#17191f] p-1 shadow-inner">
+      <div className="flex items-center rounded-xl border border-[#ddd7cc] bg-[#eee9df] p-1 shadow-inner">
         {surfaces.map((item) => (
           <button
             key={item.id}
@@ -2062,8 +2063,8 @@ function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface,
             onClick={() => setSurface(item.id)}
             className={`rounded-lg px-4 py-1.5 text-[10px] font-bold transition ${
               surface === item.id
-                ? "bg-white text-[#111318] shadow-sm"
-                : "text-slate-500 hover:text-slate-200"
+                ? "bg-[#315b53] text-white shadow-sm"
+                : "text-[#7f8985] hover:text-[#314a46]"
             }`}
           >
             {item.label}
@@ -2078,10 +2079,10 @@ function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface,
         </div>
         <span className={`hidden rounded-lg border px-2.5 py-1 text-[8px] font-black uppercase tracking-wider lg:inline-flex ${
           preflight.status === "pass"
-            ? "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300"
+            ? "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-700"
             : preflight.status === "block"
-              ? "border-red-500/20 bg-red-500/[0.07] text-red-300"
-              : "border-amber-500/20 bg-amber-500/[0.07] text-amber-300"
+              ? "border-red-500/20 bg-red-500/[0.07] text-red-700"
+              : "border-amber-500/20 bg-amber-500/[0.07] text-amber-700"
         }`}>
           {preflight.status === "pass" ? "Print ready" : preflight.status === "block" ? "Blocked" : "Review"}
         </span>
@@ -2093,10 +2094,11 @@ function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface,
             if (!document.fullscreenElement) el.requestFullscreen?.();
             else document.exitFullscreen?.();
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-[13px] text-slate-400 transition hover:bg-white/[0.08] hover:text-white"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#ddd7cc] bg-white/70 text-[13px] text-[#64736f] transition hover:bg-white hover:text-[#23433d]"
         >
           ⛶
         </button>
+      </div>
       </div>
     </div>
   );
@@ -2115,7 +2117,8 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-gray-900/90 shrink-0 gap-4">
+    <div className="cover-horizontal-scroll shrink-0 overflow-x-auto border-b border-[#e3ddd2] bg-[#f4f1eb]/90">
+      <div className="flex min-w-[690px] items-center justify-between gap-4 px-4 py-2">
       {/* Left: zoom controls */}
       <div className="flex items-center gap-0.5">
         <button
@@ -2123,8 +2126,8 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
           onClick={onFitToScreen}
           className={`rounded px-2.5 py-1 text-[10px] font-semibold transition ${
             zoom === "fit"
-              ? "bg-indigo-600 text-white"
-              : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+              ? "bg-emerald-600 text-white"
+              : "text-[#5f6e6a] hover:bg-[#faf8f4] hover:text-[#314a46]"
           }`}
         >
           Fit
@@ -2136,19 +2139,19 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
             onClick={() => onZoom(z)}
             className={`rounded px-2.5 py-1 text-[10px] font-semibold transition ${
               zoom === z
-                ? "bg-indigo-600 text-white"
-                : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                ? "bg-emerald-600 text-white"
+                : "text-[#5f6e6a] hover:bg-[#faf8f4] hover:text-[#314a46]"
             }`}
           >
             {Math.round(z * 100)}%
           </button>
         ))}
-        <div className="w-px h-4 bg-gray-700 mx-1.5" />
+        <div className="w-px h-4 bg-[#ece7de] mx-1.5" />
         <button
           type="button"
           onClick={handleZoomOut}
           title="Zoom out"
-          className="rounded px-2 py-1 text-[13px] font-bold text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition leading-none"
+          className="rounded px-2 py-1 text-[13px] font-bold text-[#5f6e6a] hover:bg-[#faf8f4] hover:text-[#314a46] transition leading-none"
         >
           −
         </button>
@@ -2156,14 +2159,14 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
           type="button"
           onClick={handleZoomIn}
           title="Zoom in"
-          className="rounded px-2 py-1 text-[13px] font-bold text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition leading-none"
+          className="rounded px-2 py-1 text-[13px] font-bold text-[#5f6e6a] hover:bg-[#faf8f4] hover:text-[#314a46] transition leading-none"
         >
           +
         </button>
         <button
           type="button"
           title="Fullscreen"
-          className="rounded px-2 py-1 text-[11px] text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition leading-none"
+          className="rounded px-2 py-1 text-[11px] text-[#5f6e6a] hover:bg-[#faf8f4] hover:text-[#314a46] transition leading-none"
           onClick={() => {
             const el = document.documentElement;
             if (!document.fullscreenElement) el.requestFullscreen?.();
@@ -2177,7 +2180,7 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
       {/* Right: canvas background + book size label */}
       <div className="flex items-center gap-2 shrink-0">
         {/* Background switcher */}
-        <div className="flex items-center gap-0.5 rounded-lg bg-gray-800/60 border border-gray-700/50 p-0.5">
+        <div className="flex items-center gap-0.5 rounded-lg bg-[#faf8f4]/60 border border-[#d8d1c5]/50 p-0.5">
           {CANVAS_BACKGROUNDS.map(bg => (
             <button
               key={bg.id}
@@ -2186,8 +2189,8 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
               title={bg.label}
               className={`rounded px-2.5 py-1 text-[10px] font-semibold transition ${
                 canvasBg === bg.id
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-gray-500 hover:text-gray-200"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "text-[#7f8985] hover:text-[#314a46]"
               }`}
             >
               {bg.shortLabel}
@@ -2195,8 +2198,9 @@ function CanvasToolbar({ zoom, onZoom, onFitToScreen, bookSizeLabel, canvasBg, o
           ))}
         </div>
         {bookSizeLabel && (
-          <span className="text-[10px] text-gray-600 hidden sm:block">{bookSizeLabel}</span>
+          <span className="text-[10px] text-[#969c97] hidden sm:block">{bookSizeLabel}</span>
         )}
+      </div>
       </div>
     </div>
   );
@@ -2270,7 +2274,7 @@ function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typ
             <ConceptRenderer cd={cd} typo={to} imageOverrides={imageOverrides} backgroundOverrides={backgroundOverrides} />
           </div>
         </div>
-        <div className="text-center mt-3 text-[9px] text-slate-400 font-medium tracking-wide select-none">
+        <div className="text-center mt-3 text-[9px] text-[#64736f] font-medium tracking-wide select-none">
           {bookSize.label} · {zoom === "fit" ? "Fit" : `${Math.round((typeof zoom === "number" ? zoom : 1) * 100)}%`}
         </div>
       </div>
@@ -2281,11 +2285,11 @@ function CoverPreviewCanvas({ metadata, bookCover, zoom, canvasBg, bookSize, typ
 function FormField({ label, required, error, hint, children }) {
   return (
     <div className="space-y-1">
-      <label className="flex items-center gap-1 text-[11px] font-semibold text-gray-300">
+      <label className="flex items-center gap-1 text-[11px] font-semibold text-[#465b57]">
         {label}
         {required && <span className="text-red-400">*</span>}
       </label>
-      {hint && <p className="text-[9px] text-gray-500">{hint}</p>}
+      {hint && <p className="text-[9px] text-[#7f8985]">{hint}</p>}
       {children}
       {error && (
         <p className="text-[10px] text-red-400 font-medium">{error}</p>
@@ -2299,14 +2303,14 @@ function FormField({ label, required, error, hint, children }) {
 function BgColorRow({ label, value, onChange }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">{label}</label>
+      <label className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider shrink-0">{label}</label>
       <div className="flex items-center gap-2">
-        <div className="relative w-6 h-6 rounded-md overflow-hidden border border-gray-700 cursor-pointer shrink-0">
+        <div className="relative w-6 h-6 rounded-md overflow-hidden border border-[#d8d1c5] cursor-pointer shrink-0">
           <div className="absolute inset-0 rounded-md" style={{ background: value }} />
           <input type="color" value={value} onChange={e => onChange(e.target.value)}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
         </div>
-        <span className="text-[8px] font-mono text-gray-600">{value}</span>
+        <span className="text-[8px] font-mono text-[#969c97]">{value}</span>
       </div>
     </div>
   );
@@ -2330,15 +2334,15 @@ function BackgroundSection({ backgroundOverrides, onBgChange, onBgReset }) {
   const chipCls = (active) =>
     `px-2 py-0.5 rounded text-[9px] font-medium border transition-colors ${
       active
-        ? "bg-indigo-600 border-indigo-500 text-white"
-        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200"
+        ? "bg-emerald-600 border-emerald-500 text-white"
+        : "bg-[#faf8f4] border-[#d8d1c5] text-[#5f6e6a] hover:border-[#c9c0b4] hover:text-[#314a46]"
     }`;
 
   const segBtnCls = (active) =>
     `flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${
       active
-        ? "bg-indigo-600 border-indigo-500 text-white"
-        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+        ? "bg-emerald-600 border-emerald-500 text-white"
+        : "bg-[#faf8f4] border-[#d8d1c5] text-[#5f6e6a] hover:border-[#c9c0b4]"
     }`;
 
   return (
@@ -2346,7 +2350,7 @@ function BackgroundSection({ backgroundOverrides, onBgChange, onBgReset }) {
 
       {/* Type selector */}
       <div className="space-y-1.5">
-        <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Type</p>
+        <p className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider">Type</p>
         <div className="flex flex-wrap gap-1">
           {TYPE_BTNS.map(({ id, label }) => (
             <button key={id} className={chipCls(type === id)}
@@ -2389,7 +2393,7 @@ function BackgroundSection({ backgroundOverrides, onBgChange, onBgReset }) {
           <BgColorRow label="Base Color"    value={bo.color       || "#0f1923"} onChange={v => onBgChange("color", v)} />
           <BgColorRow label="Pattern Color" value={bo.patternColor || "#ffffff"} onChange={v => onBgChange("patternColor", v)} />
           <div className="space-y-1">
-            <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Pattern</p>
+            <p className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider">Pattern</p>
             <div className="flex flex-wrap gap-1">
               {["dots","lines","grid","waves","geometric"].map(p => (
                 <button key={p} className={chipCls((bo.pattern || "dots") === p)}
@@ -2410,7 +2414,7 @@ function BackgroundSection({ backgroundOverrides, onBgChange, onBgReset }) {
         <div className="space-y-2">
           <BgColorRow label="Base Color" value={bo.color || "#0f1923"} onChange={v => onBgChange("color", v)} />
           <div className="space-y-1">
-            <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Texture</p>
+            <p className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider">Texture</p>
             <div className="flex flex-wrap gap-1">
               {[
                 { id: "paper",     label: "Paper"     },
@@ -2436,17 +2440,17 @@ function BackgroundSection({ backgroundOverrides, onBgChange, onBgReset }) {
       {type === "image" && (
         <div className="space-y-2">
           {bo.imageSrc ? (
-            <div className="rounded-lg overflow-hidden border border-gray-700" style={{ height: 72 }}>
+            <div className="rounded-lg overflow-hidden border border-[#d8d1c5]" style={{ height: 72 }}>
               <img src={bo.imageSrc} className="w-full h-full object-cover" alt="background" />
             </div>
           ) : (
             <div
-              className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 hover:border-indigo-500 cursor-pointer transition-colors py-5"
+              className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#d8d1c5] hover:border-emerald-500 cursor-pointer transition-colors py-5"
               onClick={() => bgFileRef.current?.click()}
             >
               <span className="text-[18px] mb-1">🖼️</span>
-              <span className="text-[9px] text-gray-500">Click to upload image</span>
-              <span className="text-[8px] text-gray-700 mt-0.5">PNG · JPG · WEBP</span>
+              <span className="text-[9px] text-[#7f8985]">Click to upload image</span>
+              <span className="text-[8px] text-[#a8aaa5] mt-0.5">PNG · JPG · WEBP</span>
             </div>
           )}
           <input ref={bgFileRef} type="file" accept="image/*" className="hidden"
@@ -2461,12 +2465,12 @@ function BackgroundSection({ backgroundOverrides, onBgChange, onBgReset }) {
           />
           {bo.imageSrc && (
             <button onClick={() => bgFileRef.current?.click()}
-              className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-gray-700 text-gray-300 hover:border-indigo-500 transition-colors">
+              className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-[#d8d1c5] text-[#465b57] hover:border-emerald-500 transition-colors">
               Replace Image
             </button>
           )}
           <div className="space-y-1">
-            <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Fit</p>
+            <p className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider">Fit</p>
             <div className="flex gap-1.5">
               {[{ id: "fill", label: "Fill" }, { id: "fit", label: "Fit" }, { id: "stretch", label: "Stretch" }].map(({ id, label }) => (
                 <button key={id} className={segBtnCls((bo.imageFit || "fill") === id)}
@@ -2482,12 +2486,12 @@ function BackgroundSection({ backgroundOverrides, onBgChange, onBgReset }) {
       {/* ── Global opacity + Reset (only when a type is active) ── */}
       {type && (
         <>
-          <div className="h-px bg-gray-800/60 my-0.5" />
+          <div className="h-px bg-[#faf8f4]/60 my-0.5" />
           <TypoSlider label="Opacity" min={0} max={1} step={0.05}
             value={bo.opacity ?? 1} onChange={v => onBgChange("opacity", v)}
             format={v => `${Math.round(v * 100)}%`} />
           <button onClick={onBgReset}
-            className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-gray-700/60 text-gray-500 hover:border-rose-500/50 hover:text-rose-400 transition-colors">
+            className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-[#d8d1c5]/60 text-[#7f8985] hover:border-rose-500/50 hover:text-rose-400 transition-colors">
             Reset Background
           </button>
         </>
@@ -2505,24 +2509,24 @@ function MetadataPanel({ metadata, onChange, errors, backgroundOverrides, onBgCh
   }
 
   const inputCls = (key) =>
-    `w-full rounded-lg border px-2.5 py-1.5 text-[11px] text-gray-200 bg-gray-800 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition ${
+    `w-full rounded-lg border px-2.5 py-1.5 text-[11px] text-[#314a46] bg-[#faf8f4] placeholder:text-[#969c97] focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition ${
       errors[key]
         ? "border-red-500/50 bg-red-900/10"
-        : "border-gray-700 hover:border-gray-600"
+        : "border-[#d8d1c5] hover:border-[#c9c0b4]"
     }`;
 
   const selectCls = (key) =>
-    `w-full rounded-lg border px-2.5 py-1.5 text-[11px] text-gray-200 bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition appearance-none ${
-      errors[key] ? "border-red-500/50" : "border-gray-700 hover:border-gray-600"
+    `w-full rounded-lg border px-2.5 py-1.5 text-[11px] text-[#314a46] bg-[#faf8f4] focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition appearance-none ${
+      errors[key] ? "border-red-500/50" : "border-[#d8d1c5] hover:border-[#c9c0b4]"
     }`;
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-800 shrink-0">
-        <h3 className="text-[10px] font-bold text-gray-100 uppercase tracking-wider">
+      <div className="px-4 py-3 border-b border-[#e3ddd2] shrink-0">
+        <h3 className="text-[10px] font-bold text-[#203432] uppercase tracking-wider">
           Book Metadata
         </h3>
-        <p className="text-[9px] text-gray-500 mt-0.5 leading-relaxed">
+        <p className="text-[9px] text-[#7f8985] mt-0.5 leading-relaxed">
           Drives the live preview and future AI generation.
         </p>
       </div>
@@ -2539,7 +2543,7 @@ function MetadataPanel({ metadata, onChange, errors, backgroundOverrides, onBgCh
             maxLength={120}
           />
           {!errors.title && metadata.title && (
-            <p className="text-[9px] text-gray-600">{metadata.title.length}/80 chars</p>
+            <p className="text-[9px] text-[#969c97]">{metadata.title.length}/80 chars</p>
           )}
         </FormField>
 
@@ -2563,8 +2567,8 @@ function MetadataPanel({ metadata, onChange, errors, backgroundOverrides, onBgCh
           />
         </FormField>
 
-        <div className="border-t border-gray-800 pt-3.5">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-3">
+        <div className="border-t border-[#e3ddd2] pt-3.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#969c97] mb-3">
             Optional Details
           </p>
           <div className="space-y-3.5">
@@ -2597,8 +2601,8 @@ function MetadataPanel({ metadata, onChange, errors, backgroundOverrides, onBgCh
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-3.5">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-3">
+        <div className="border-t border-[#e3ddd2] pt-3.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#969c97] mb-3">
             Classification
           </p>
           <div className="space-y-3.5">
@@ -2642,8 +2646,8 @@ function MetadataPanel({ metadata, onChange, errors, backgroundOverrides, onBgCh
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-3.5">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-3">
+        <div className="border-t border-[#e3ddd2] pt-3.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#969c97] mb-3">
             Print Specifications
           </p>
           <FormField label="Book Size" required error={errors.bookSize}
@@ -2678,11 +2682,11 @@ function FilmstripBar({ concepts, selectedConceptIdx, onSelect, metadata, onGene
   const hasConcepts = Array.isArray(concepts) && concepts.length > 0;
 
   return (
-    <div className="shrink-0 border-t border-white/[0.07] bg-[#0f1115] px-4 py-2.5">
-      <div className="flex h-[86px] items-center gap-2.5 overflow-x-auto">
+    <div className="shrink-0 border-t border-[#e3ddd2] bg-[#f7f4ee] px-4 py-2.5">
+      <div className="cover-horizontal-scroll flex h-[86px] items-center gap-2.5 overflow-x-auto">
         <div className="mr-1 flex min-w-[88px] flex-col justify-center">
-          <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-600">Variants</p>
-          <p className="mt-1 text-[9px] leading-snug text-slate-700">{hasConcepts ? `${concepts.length} generated` : "Generate covers"}</p>
+          <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#8e9692]">Variants</p>
+          <p className="mt-1 text-[9px] leading-snug text-[#465451]">{hasConcepts ? `${concepts.length} generated` : "Generate covers"}</p>
         </div>
 
         {hasConcepts ? concepts.map((concept, idx) => {
@@ -2700,14 +2704,14 @@ function FilmstripBar({ concepts, selectedConceptIdx, onSelect, metadata, onGene
               onClick={() => onSelect(idx)}
               className={`relative h-[68px] w-[52px] shrink-0 overflow-hidden rounded-md border-2 transition ${
                 selected
-                  ? "border-violet-400 shadow-lg shadow-violet-950/40 ring-2 ring-violet-400/20"
-                  : "border-white/[0.08] opacity-70 hover:border-white/20 hover:opacity-100"
+                  ? "border-teal-400 shadow-lg shadow-teal-950/40 ring-2 ring-teal-400/20"
+                  : "border-[#ddd7cc] opacity-70 hover:border-white/20 hover:opacity-100"
               }`}
               title={concept.conceptName || `Concept ${idx + 1}`}
             >
               <div className="absolute inset-0"><ConceptRenderer cd={cd} /></div>
               <span className={`absolute bottom-0 left-0 right-0 bg-black/65 py-0.5 text-center text-[7px] font-black ${
-                selected ? "text-violet-200" : "text-slate-400"
+                selected ? "text-teal-200" : "text-[#64736f]"
               }`}>
                 {concept.conceptLabel || String.fromCharCode(65 + idx)}
               </span>
@@ -2718,7 +2722,7 @@ function FilmstripBar({ concepts, selectedConceptIdx, onSelect, metadata, onGene
             type="button"
             onClick={onGenerate}
             disabled={generating}
-            className="flex h-[68px] min-w-[132px] items-center justify-center rounded-lg border border-dashed border-white/[0.10] bg-white/[0.025] px-4 text-[9px] font-semibold text-slate-500 transition hover:border-violet-500/40 hover:text-violet-300 disabled:opacity-50"
+            className="flex h-[68px] min-w-[132px] items-center justify-center rounded-lg border border-dashed border-[#d8d1c5] bg-white/60 px-4 text-[9px] font-semibold text-[#7f8985] transition hover:border-teal-500/40 hover:text-teal-300 disabled:opacity-50"
           >
             {generating ? "Generating…" : "✦ Generate variants"}
           </button>
@@ -2729,7 +2733,7 @@ function FilmstripBar({ concepts, selectedConceptIdx, onSelect, metadata, onGene
             type="button"
             onClick={onGenerate}
             disabled={generating}
-            className="flex h-[68px] w-[52px] shrink-0 items-center justify-center rounded-md border border-dashed border-white/[0.10] bg-white/[0.025] text-lg text-slate-600 transition hover:border-violet-500/40 hover:text-violet-300 disabled:opacity-50"
+            className="flex h-[68px] w-[52px] shrink-0 items-center justify-center rounded-md border border-dashed border-[#d8d1c5] bg-white/60 text-lg text-[#8e9692] transition hover:border-teal-500/40 hover:text-teal-300 disabled:opacity-50"
             title="Generate a fresh set"
           >
             {generating ? "…" : "+"}
@@ -2745,15 +2749,15 @@ function FilmstripBar({ concepts, selectedConceptIdx, onSelect, metadata, onGene
 function CollapsibleCard({ title: cardTitle, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border border-gray-800 rounded-xl overflow-hidden">
+    <div className="border border-[#e3ddd2] rounded-xl overflow-hidden">
       <button
-        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-800/40 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-[#faf8f4]/40 transition-colors"
         onClick={() => setOpen(o => !o)}
       >
-        <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wide">{cardTitle}</span>
-        <span className="text-[9px] text-gray-600">{open ? "▲" : "▼"}</span>
+        <span className="text-[10px] font-bold text-[#465b57] uppercase tracking-wide">{cardTitle}</span>
+        <span className="text-[9px] text-[#969c97]">{open ? "▲" : "▼"}</span>
       </button>
-      {open && <div className="px-3 pb-3 pt-1.5 space-y-2.5 bg-gray-900/40">{children}</div>}
+      {open && <div className="px-3 pb-3 pt-1.5 space-y-2.5 bg-[#f4f1eb]/40">{children}</div>}
     </div>
   );
 }
@@ -2761,13 +2765,13 @@ function CollapsibleCard({ title: cardTitle, defaultOpen = true, children }) {
 function TypoTextInput({ label, value, placeholder, onChange }) {
   return (
     <div className="space-y-1">
-      <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">{label}</label>
+      <label className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider block">{label}</label>
       <input
         type="text"
         value={value || ""}
         placeholder={placeholder}
         onChange={e => onChange(e.target.value)}
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1.5 text-[10px] text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+        className="w-full bg-[#faf8f4] border border-[#d8d1c5] rounded-lg px-2.5 py-1.5 text-[10px] text-[#314a46] placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
       />
     </div>
   );
@@ -2777,8 +2781,8 @@ function TypoSlider({ label, min, max, step, value, onChange, format }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">{label}</label>
-        <span className="text-[9px] font-mono text-indigo-400">{format ? format(value) : value}</span>
+        <label className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider">{label}</label>
+        <span className="text-[9px] font-mono text-emerald-400">{format ? format(value) : value}</span>
       </div>
       <input
         type="range"
@@ -2787,7 +2791,7 @@ function TypoSlider({ label, min, max, step, value, onChange, format }) {
         step={step}
         value={value}
         onChange={e => onChange(parseFloat(e.target.value))}
-        className="w-full h-1 accent-indigo-500 cursor-pointer"
+        className="w-full h-1 accent-emerald-500 cursor-pointer"
       />
     </div>
   );
@@ -2797,12 +2801,12 @@ function TypoColorRow({ label, value, fallback, onChange }) {
   const displayColor = value || fallback || "#ffffff";
   return (
     <div className="flex items-center justify-between gap-2">
-      <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">{label}</label>
+      <label className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider shrink-0">{label}</label>
       <div className="flex items-center gap-2">
         {value && (
-          <button className="text-[8px] text-gray-600 hover:text-rose-400 transition-colors" onClick={() => onChange(null)} title="Reset color">✕</button>
+          <button className="text-[8px] text-[#969c97] hover:text-rose-400 transition-colors" onClick={() => onChange(null)} title="Reset color">✕</button>
         )}
-        <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-gray-700 cursor-pointer shrink-0">
+        <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-[#d8d1c5] cursor-pointer shrink-0">
           <div className="absolute inset-0 rounded-lg" style={{ background: displayColor }} />
           <input
             type="color"
@@ -2811,7 +2815,7 @@ function TypoColorRow({ label, value, fallback, onChange }) {
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
         </div>
-        <span className="text-[8px] font-mono text-gray-600">{value || "Auto"}</span>
+        <span className="text-[8px] font-mono text-[#969c97]">{value || "Auto"}</span>
       </div>
     </div>
   );
@@ -2829,8 +2833,8 @@ function TypoChipGroup({ options, value, onChange, displayLabel }) {
             onClick={() => onChange(isActive ? null : opt)}
             className={`px-2 py-0.5 rounded text-[9px] font-medium border transition-colors ${
               isActive
-                ? "bg-indigo-600 border-indigo-500 text-white"
-                : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-200"
+                ? "bg-emerald-600 border-emerald-500 text-white"
+                : "bg-[#faf8f4] border-[#d8d1c5] text-[#5f6e6a] hover:border-[#c9c0b4] hover:text-[#314a46]"
             }`}
           >
             {label}
@@ -2846,11 +2850,11 @@ function TypographyEditorPanel({ metadata, typographyOverrides, onTypoChange, on
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-3.5 py-2.5 border-b border-gray-800 flex items-center justify-between">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Typography</span>
+      <div className="shrink-0 px-3.5 py-2.5 border-b border-[#e3ddd2] flex items-center justify-between">
+        <span className="text-[10px] font-bold text-[#5f6e6a] uppercase tracking-wider">Typography</span>
         <button
           onClick={onTypoReset}
-          className="text-[9px] font-semibold text-gray-500 hover:text-rose-400 transition-colors px-2 py-1 rounded border border-gray-700/60 hover:border-rose-500/50"
+          className="text-[9px] font-semibold text-[#7f8985] hover:text-rose-400 transition-colors px-2 py-1 rounded border border-[#d8d1c5]/60 hover:border-rose-500/50"
         >
           Reset
         </button>
@@ -2870,16 +2874,16 @@ function TypographyEditorPanel({ metadata, typographyOverrides, onTypoChange, on
         {/* Font */}
         <CollapsibleCard title="Font">
           <div className="space-y-1.5">
-            <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">Category</label>
+            <label className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider block">Category</label>
             <TypoChipGroup options={FONT_CATEGORIES} value={typo.fontCategory || null} onChange={v => onTypoChange("fontCategory", v)} />
           </div>
           {typo.fontCategory && (
-            <div className="text-[10px] italic text-gray-500 px-0.5 mt-1" style={{ fontFamily: FONT_CATEGORY_CSS[typo.fontCategory] }}>
+            <div className="text-[10px] italic text-[#7f8985] px-0.5 mt-1" style={{ fontFamily: FONT_CATEGORY_CSS[typo.fontCategory] }}>
               The quick brown fox — {typo.fontCategory}
             </div>
           )}
           <div className="space-y-1.5">
-            <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">Weight</label>
+            <label className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider block">Weight</label>
             <TypoChipGroup options={FONT_WEIGHTS} value={typo.fontWeight || null} onChange={v => onTypoChange("fontWeight", v)} />
           </div>
         </CollapsibleCard>
@@ -2911,8 +2915,8 @@ function TypographyEditorPanel({ metadata, typographyOverrides, onTypoChange, on
                 onClick={() => onTypoChange("alignment", typo.alignment === val ? null : val)}
                 className={`flex-1 py-2 rounded-lg text-[9px] font-bold border transition-colors ${
                   typo.alignment === val
-                    ? "bg-indigo-600 border-indigo-500 text-white"
-                    : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+                    ? "bg-emerald-600 border-emerald-500 text-white"
+                    : "bg-[#faf8f4] border-[#d8d1c5] text-[#5f6e6a] hover:border-[#c9c0b4]"
                 }`}
               >
                 {icon} {lbl}
@@ -3030,18 +3034,18 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
   const flipBtnCls = (active) =>
     `flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${
       active
-        ? "bg-indigo-600 border-indigo-500 text-white"
-        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+        ? "bg-emerald-600 border-emerald-500 text-white"
+        : "bg-[#faf8f4] border-[#d8d1c5] text-[#5f6e6a] hover:border-[#c9c0b4]"
     }`;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-3.5 py-2.5 border-b border-gray-800 flex items-center justify-between">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Image</span>
+      <div className="shrink-0 px-3.5 py-2.5 border-b border-[#e3ddd2] flex items-center justify-between">
+        <span className="text-[10px] font-bold text-[#5f6e6a] uppercase tracking-wider">Image</span>
         <button
           onClick={onImageReset}
-          className="text-[9px] font-semibold text-gray-500 hover:text-rose-400 transition-colors px-2 py-1 rounded border border-gray-700/60 hover:border-rose-500/50"
+          className="text-[9px] font-semibold text-[#7f8985] hover:text-rose-400 transition-colors px-2 py-1 rounded border border-[#d8d1c5]/60 hover:border-rose-500/50"
         >
           Reset Image
         </button>
@@ -3055,7 +3059,7 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
           {io.src ? (
             <div className="space-y-2">
               {/* Preview */}
-              <div className="rounded-lg overflow-hidden border border-gray-700" style={{ height: 110 }}>
+              <div className="rounded-lg overflow-hidden border border-[#d8d1c5]" style={{ height: 110 }}>
                 <img src={io.src} alt="Cover" className="w-full h-full object-cover" />
               </div>
               {/* Info */}
@@ -3066,14 +3070,14 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
                   ["Source",       io.sourceName ? io.sourceName.slice(0, 18) : (io.source || "Upload")],
                 ].map(([k, v]) => (
                   <div key={k} className="col-span-2 flex justify-between text-[9px]">
-                    <span className="text-gray-500">{k}</span>
-                    <span className="text-gray-300 font-mono truncate max-w-[120px]">{v}</span>
+                    <span className="text-[#7f8985]">{k}</span>
+                    <span className="text-[#465b57] font-mono truncate max-w-[120px]">{v}</span>
                   </div>
                 ))}
               </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-gray-700 text-gray-300 hover:border-indigo-500 hover:text-indigo-300 transition-colors"
+                className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-[#d8d1c5] text-[#465b57] hover:border-emerald-500 hover:text-emerald-700 transition-colors"
               >
                 Replace Image
               </button>
@@ -3081,12 +3085,12 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
           ) : (
             <div className="space-y-2">
               <div
-                className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 hover:border-indigo-500 cursor-pointer transition-colors py-6 gap-1.5"
+                className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#d8d1c5] hover:border-emerald-500 cursor-pointer transition-colors py-6 gap-1.5"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <span className="text-2xl select-none">🖼</span>
-                <span className="text-[9px] text-gray-500">Click to upload an image</span>
-                <span className="text-[8px] text-gray-600">PNG, JPG, WEBP · max 15 MB</span>
+                <span className="text-[9px] text-[#7f8985]">Click to upload an image</span>
+                <span className="text-[8px] text-[#969c97]">PNG, JPG, WEBP · max 15 MB</span>
               </div>
             </div>
           )}
@@ -3101,7 +3105,7 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
           {/* Previously used concept images */}
           {Array.isArray(concepts) && concepts.some(c => c?.imageSrc) ? (
             <div className="space-y-1.5 pt-1">
-              <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">
+              <label className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider block">
                 Concept Images
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -3109,7 +3113,7 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
                   <button
                     key={i}
                     onClick={() => { onImageChange("src", c.imageSrc); onImageChange("source", "concept"); onImageChange("sourceName", c.label || `Concept ${i + 1}`); }}
-                    className={`w-10 h-14 rounded border-2 overflow-hidden transition-colors ${io.src === c.imageSrc ? "border-indigo-500" : "border-gray-700 hover:border-gray-500"}`}
+                    className={`w-10 h-14 rounded border-2 overflow-hidden transition-colors ${io.src === c.imageSrc ? "border-emerald-500" : "border-[#d8d1c5] hover:border-[#b9b0a3]"}`}
                   >
                     <img src={c.imageSrc} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -3118,7 +3122,7 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
             </div>
           ) : (
             io.src && (
-              <p className="text-[8px] text-gray-600 italic pt-1 leading-relaxed">
+              <p className="text-[8px] text-[#969c97] italic pt-1 leading-relaxed">
                 No AI-generated concept images available. Covers use CSS-based designs — upload a custom image to add photography.
               </p>
             )
@@ -3128,7 +3132,7 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
         {/* ── Transform ─────────────────────────────────────────────────── */}
         <CollapsibleCard title="Transform">
           {!io.src ? (
-            <p className="text-[9px] text-gray-600 italic">Upload an image to enable transforms.</p>
+            <p className="text-[9px] text-[#969c97] italic">Upload an image to enable transforms.</p>
           ) : (
             <div className="space-y-2">
               <TypoSlider label="Scale"      min={0.2} max={3}   step={0.05} value={io.scale    ?? 1}   onChange={v => onImageChange("scale",    v)} format={v => `${Math.round(v * 100)}%`} />
@@ -3136,7 +3140,7 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
               <TypoSlider label="Horizontal" min={-50} max={50}   step={1}   value={io.x        ?? 0}   onChange={v => onImageChange("x",        v)} format={v => `${v >= 0 ? "+" : ""}${v}%`} />
               <TypoSlider label="Vertical"   min={-50} max={50}   step={1}   value={io.y        ?? 0}   onChange={v => onImageChange("y",        v)} format={v => `${v >= 0 ? "+" : ""}${v}%`} />
               <div className="space-y-1.5 pt-0.5">
-                <label className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider block">Flip</label>
+                <label className="text-[9px] font-semibold text-[#7f8985] uppercase tracking-wider block">Flip</label>
                 <div className="flex gap-2">
                   <button className={flipBtnCls(!!io.flipH)} onClick={() => onImageChange("flipH", !io.flipH)}>↔ Horizontal</button>
                   <button className={flipBtnCls(!!io.flipV)} onClick={() => onImageChange("flipV", !io.flipV)}>↕ Vertical</button>
@@ -3149,16 +3153,16 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
         {/* ── Crop ──────────────────────────────────────────────────────── */}
         <CollapsibleCard title="Crop" defaultOpen={false}>
           {!io.src ? (
-            <p className="text-[9px] text-gray-600 italic">Upload an image to enable cropping.</p>
+            <p className="text-[9px] text-[#969c97] italic">Upload an image to enable cropping.</p>
           ) : (
             <div className="space-y-2">
-              <p className="text-[9px] text-gray-500 leading-relaxed">
+              <p className="text-[9px] text-[#7f8985] leading-relaxed">
                 Click and drag on the preview to define the visible crop area.
               </p>
               {/* Mini crop preview */}
               <div
                 ref={cropRef}
-                className="relative select-none rounded-lg overflow-hidden border border-gray-700"
+                className="relative select-none rounded-lg overflow-hidden border border-[#d8d1c5]"
                 style={{ width: "100%", paddingBottom: "150%", cursor: "crosshair" }}
                 onMouseDown={handleCropMouseDown}
               >
@@ -3195,7 +3199,7 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
               {hasCrop && (
                 <button
                   onClick={() => onImageChange("crop", null)}
-                  className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-gray-700 text-gray-400 hover:border-rose-500/50 hover:text-rose-400 transition-colors"
+                  className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-[#d8d1c5] text-[#5f6e6a] hover:border-rose-500/50 hover:text-rose-400 transition-colors"
                 >
                   Clear Crop
                 </button>
@@ -3254,8 +3258,8 @@ function RightPanel({
   }, [surface, currentStep]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#13161b]">
-      <div className="grid shrink-0 grid-cols-5 border-b border-white/[0.07] bg-[#101217]">
+    <div className="flex h-full flex-col overflow-hidden bg-[#faf8f4]">
+      <div className="grid shrink-0 grid-cols-5 border-b border-[#e3ddd2] bg-[#f5f1ea]">
         {RIGHT_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -3263,12 +3267,12 @@ function RightPanel({
             onClick={() => setActiveTab(tab.id)}
             className={`relative py-3 text-[9px] font-bold tracking-wide transition ${
               activeTab === tab.id
-                ? "text-white"
-                : "text-slate-600 hover:text-slate-300"
+                ? "text-[#203432]"
+                : "text-[#8e9692] hover:text-[#465b57]"
             }`}
           >
             {tab.label}
-            {activeTab === tab.id && <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-violet-500" />}
+            {activeTab === tab.id && <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-teal-500" />}
           </button>
         ))}
       </div>
@@ -3322,8 +3326,8 @@ function RightPanel({
 
 const COMPLEXITY_STYLE = {
   Minimal:  { bar: "w-1/3",  color: "bg-sky-500",     text: "text-sky-400"     },
-  Balanced: { bar: "w-2/3",  color: "bg-indigo-500",  text: "text-indigo-400"  },
-  Detailed: { bar: "w-full", color: "bg-violet-500",  text: "text-violet-400"  },
+  Balanced: { bar: "w-2/3",  color: "bg-emerald-500",  text: "text-emerald-400"  },
+  Detailed: { bar: "w-full", color: "bg-teal-500",  text: "text-teal-400"  },
 };
 
 const FOCAL_ICON = { Title: "T", "Main Object": "◉", Illustration: "🖼", Symbol: "◆", Icon: "⬡" };
@@ -3337,8 +3341,8 @@ function DesignElementsPanel({ designElements: de, generating, onRegenerate, onR
           <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
           <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Step 7</p>
         </div>
-        <h2 className="text-lg font-bold text-gray-100">Design Elements</h2>
-        <p className="text-[12px] text-gray-500 leading-relaxed">
+        <h2 className="text-lg font-bold text-[#203432]">Design Elements</h2>
+        <p className="text-[12px] text-[#7f8985] leading-relaxed">
           Visual elements that will guide AI cover generation — auto-updated as you refine strategy and palette.
         </p>
       </div>
@@ -3354,8 +3358,8 @@ function DesignElementsPanel({ designElements: de, generating, onRegenerate, onR
           <p className="text-[11px] text-cyan-400 font-medium">Analysing design elements…</p>
         </div>
       ) : !de ? (
-        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-800/20 p-10 flex flex-col items-center gap-3 text-center">
-          <p className="text-[12px] text-gray-500">Set a book title to generate design elements.</p>
+        <div className="rounded-xl border border-dashed border-[#d8d1c5] bg-[#faf8f4]/20 p-10 flex flex-col items-center gap-3 text-center">
+          <p className="text-[12px] text-[#7f8985]">Set a book title to generate design elements.</p>
           <button type="button" onClick={onRegenerate}
             className="rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-semibold px-4 py-2 transition">
             Generate Elements
@@ -3369,23 +3373,23 @@ function DesignElementsPanel({ designElements: de, generating, onRegenerate, onR
               <span className="text-sm">🎯</span>
               <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Main Subject</p>
             </div>
-            <p className="text-[17px] font-bold text-white leading-tight">{de.mainSubject}</p>
+            <p className="text-[17px] font-bold text-[#203432] leading-tight">{de.mainSubject}</p>
             <p className="text-[11px] text-cyan-300/70 leading-snug italic">{de.mainSubjectReason}</p>
           </div>
 
           {/* 2 — Supporting Elements */}
-          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-3">
+          <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-sm">✦</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Supporting Elements</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Supporting Elements</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {(de.supportingElements || []).map((el, i) => (
                 <span key={i}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-gray-700/60 border border-gray-600 text-gray-300 text-[11px] font-semibold px-3 py-1">
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#ece7de]/60 border border-[#c9c0b4] text-[#465b57] text-[11px] font-semibold px-3 py-1">
                   {el}
                   <button type="button" onClick={() => onRemoveSupportingElement(i)}
-                    className="text-gray-500 hover:text-gray-200 leading-none transition text-[10px]">×</button>
+                    className="text-[#7f8985] hover:text-[#314a46] leading-none transition text-[10px]">×</button>
                 </span>
               ))}
             </div>
@@ -3393,54 +3397,54 @@ function DesignElementsPanel({ designElements: de, generating, onRegenerate, onR
 
           {/* 3+4 — Background Style + Image Style row */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+            <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🖼</span>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Background</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Background</p>
               </div>
-              <p className="text-[13px] font-bold text-gray-200">{de.backgroundStyle}</p>
+              <p className="text-[13px] font-bold text-[#314a46]">{de.backgroundStyle}</p>
             </div>
-            <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+            <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🎨</span>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Image Style</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Image Style</p>
               </div>
-              <span className="inline-flex items-center rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold px-3 py-1">
+              <span className="inline-flex items-center rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 text-[11px] font-bold px-3 py-1">
                 {de.imageStyle}
               </span>
             </div>
           </div>
 
           {/* 5 — Visual Complexity */}
-          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-3">
+          <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm">⚖</span>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Visual Complexity</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Visual Complexity</p>
               </div>
               <span className={`text-[11px] font-bold ${(COMPLEXITY_STYLE[de.visualComplexity] || COMPLEXITY_STYLE.Balanced).text}`}>
                 {de.visualComplexity}
               </span>
             </div>
-            <div className="h-1.5 rounded-full bg-gray-700 overflow-hidden">
+            <div className="h-1.5 rounded-full bg-[#ece7de] overflow-hidden">
               <div className={`h-full rounded-full ${(COMPLEXITY_STYLE[de.visualComplexity] || COMPLEXITY_STYLE.Balanced).color} ${(COMPLEXITY_STYLE[de.visualComplexity] || COMPLEXITY_STYLE.Balanced).bar}`} />
             </div>
-            <div className="flex justify-between text-[9px] text-gray-700 font-semibold uppercase tracking-wide">
+            <div className="flex justify-between text-[9px] text-[#a8aaa5] font-semibold uppercase tracking-wide">
               <span>Minimal</span><span>Balanced</span><span>Detailed</span>
             </div>
           </div>
 
           {/* 6 — Focal Point */}
-          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+          <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-sm">👁</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Focal Point</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Focal Point</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-gray-700 border border-gray-600 flex items-center justify-center text-lg shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-[#ece7de] border border-[#c9c0b4] flex items-center justify-center text-lg shrink-0">
                 {FOCAL_ICON[de.focalPoint] ?? "◉"}
               </div>
-              <p className="text-[14px] font-bold text-gray-200">{de.focalPoint}</p>
+              <p className="text-[14px] font-bold text-[#314a46]">{de.focalPoint}</p>
             </div>
           </div>
 
@@ -3464,7 +3468,7 @@ function DesignElementsPanel({ designElements: de, generating, onRegenerate, onR
       {/* Regenerate */}
       <div className="pt-1">
         <button type="button" onClick={onRegenerate} disabled={generating}
-          className="w-full rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700/60 text-gray-400 hover:text-gray-200 text-[11px] font-semibold py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed">
+          className="w-full rounded-lg border border-[#d8d1c5] bg-[#faf8f4]/60 hover:bg-[#ece7de]/60 text-[#5f6e6a] hover:text-[#314a46] text-[11px] font-semibold py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed">
           {generating ? "Analysing…" : "↻ Regenerate Design Elements"}
         </button>
       </div>
@@ -3489,7 +3493,7 @@ function ColorSwatch({ color, role, size = "md" }) {
         style={{ background: color }}
         title={`${role}: ${color}`}
       />
-      <p className="text-[8px] text-gray-600 font-mono uppercase leading-none">{color}</p>
+      <p className="text-[8px] text-[#969c97] font-mono uppercase leading-none">{color}</p>
     </div>
   );
 }
@@ -3501,24 +3505,24 @@ function ColorPaletteCard({ palette, index, isSelected, isRegenerating, onSelect
     <div
       className={`relative rounded-xl border overflow-hidden flex flex-col transition-all duration-200 cursor-pointer group ${
         isSelected
-          ? "border-indigo-500 shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500/40"
-          : "border-gray-700/60 hover:border-gray-600 hover:shadow-md hover:shadow-black/30 hover:-translate-y-0.5"
+          ? "border-emerald-500 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500/40"
+          : "border-[#d8d1c5]/60 hover:border-[#c9c0b4] hover:shadow-md hover:shadow-black/30 hover:-translate-y-0.5"
       }`}
-      style={{ background: "#1a2035" }}
+      style={{ background: "#ffffff" }}
       onClick={() => !isSelected && onSelect(index)}
     >
       {isSelected && (
-        <div className="absolute top-2 right-2 z-10 rounded-full bg-indigo-500 text-white text-[9px] font-bold px-2 py-0.5 shadow">
+        <div className="absolute top-2 right-2 z-10 rounded-full bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 shadow">
           ✓ Selected
         </div>
       )}
 
       {/* Color bar preview — top strip */}
       {isRegenerating ? (
-        <div className="h-10 flex items-center justify-center bg-gray-800/60">
+        <div className="h-10 flex items-center justify-center bg-[#faf8f4]/60">
           <div className="flex gap-1">
             {[0,1,2].map(i => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" style={{ animationDelay: `${i*0.2}s` }} />
+              <div key={i} className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ animationDelay: `${i*0.2}s` }} />
             ))}
           </div>
         </div>
@@ -3533,8 +3537,8 @@ function ColorPaletteCard({ palette, index, isSelected, isRegenerating, onSelect
       <div className="flex flex-col flex-1 p-3 gap-3">
         {/* Name + description */}
         <div>
-          <p className="text-[13px] font-bold text-gray-100 leading-tight">{palette.paletteName}</p>
-          <p className="text-[11px] text-gray-500 leading-snug mt-1 line-clamp-2">{palette.description}</p>
+          <p className="text-[13px] font-bold text-[#203432] leading-tight">{palette.paletteName}</p>
+          <p className="text-[11px] text-[#7f8985] leading-snug mt-1 line-clamp-2">{palette.description}</p>
         </div>
 
         {/* Five swatches with role labels */}
@@ -3549,8 +3553,8 @@ function ColorPaletteCard({ palette, index, isSelected, isRegenerating, onSelect
             ].map(({ role, color }) => (
               <div key={role} className="flex items-center gap-2">
                 <div className="w-5 h-5 rounded-md border border-black/20 shrink-0 shadow-sm" style={{ background: color }} />
-                <p className="text-[10px] text-gray-500 w-16 shrink-0">{role}</p>
-                <p className="text-[10px] font-mono text-gray-600">{color}</p>
+                <p className="text-[10px] text-[#7f8985] w-16 shrink-0">{role}</p>
+                <p className="text-[10px] font-mono text-[#969c97]">{color}</p>
               </div>
             ))}
           </div>
@@ -3559,10 +3563,10 @@ function ColorPaletteCard({ palette, index, isSelected, isRegenerating, onSelect
         {/* Readability indicator */}
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <p className="text-[9px] uppercase tracking-wider text-gray-600">Readability</p>
+            <p className="text-[9px] uppercase tracking-wider text-[#969c97]">Readability</p>
             <span className={`text-[10px] font-bold ${rd.text}`}>{rd.label}</span>
           </div>
-          <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-[#faf8f4] overflow-hidden">
             <div className={`h-full rounded-full ${rd.bar}`}
               style={{ width: palette.readability === "Excellent" ? "100%" : palette.readability === "Good" ? "67%" : "33%" }} />
           </div>
@@ -3576,8 +3580,8 @@ function ColorPaletteCard({ palette, index, isSelected, isRegenerating, onSelect
             disabled={isSelected}
             className={`flex-1 rounded-lg text-[11px] font-bold py-2 transition ${
               isSelected
-                ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 cursor-default"
-                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                ? "bg-emerald-600/30 text-emerald-700 border border-emerald-500/40 cursor-default"
+                : "bg-emerald-600 hover:bg-emerald-500 text-white"
             }`}
           >
             {isSelected ? "✓ Selected" : "Select"}
@@ -3587,7 +3591,7 @@ function ColorPaletteCard({ palette, index, isSelected, isRegenerating, onSelect
             title="Regenerate this palette"
             onClick={e => { e.stopPropagation(); onRegenerate(index); }}
             disabled={isRegenerating}
-            className="w-8 h-8 rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700 text-gray-500 hover:text-gray-200 flex items-center justify-center transition text-sm disabled:opacity-40"
+            className="w-8 h-8 rounded-lg border border-[#d8d1c5] bg-[#faf8f4]/60 hover:bg-[#ece7de] text-[#7f8985] hover:text-[#314a46] flex items-center justify-center transition text-sm disabled:opacity-40"
           >
             ↻
           </button>
@@ -3610,8 +3614,8 @@ function ColorPalettePanel({ metadata, palettes, selectedPaletteIdx, generating,
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-100">Color Palette</h2>
-            <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">
+            <h2 className="text-lg font-bold text-[#203432]">Color Palette</h2>
+            <p className="text-[12px] text-[#7f8985] mt-0.5 leading-relaxed">
               Four curated color systems matched to your cover strategy and mood.
             </p>
           </div>
@@ -3620,7 +3624,7 @@ function ColorPalettePanel({ metadata, palettes, selectedPaletteIdx, generating,
               type="button"
               onClick={onGenerateAll}
               disabled={generating}
-              className="shrink-0 rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700 text-gray-400 hover:text-gray-200 text-[10px] font-bold px-3 py-1.5 transition disabled:opacity-40"
+              className="shrink-0 rounded-lg border border-[#d8d1c5] bg-[#faf8f4]/60 hover:bg-[#ece7de] text-[#5f6e6a] hover:text-[#314a46] text-[10px] font-bold px-3 py-1.5 transition disabled:opacity-40"
             >
               ↻ Regenerate All
             </button>
@@ -3639,8 +3643,8 @@ function ColorPalettePanel({ metadata, palettes, selectedPaletteIdx, generating,
           <p className="text-[11px] text-rose-400 font-medium">Generating color palettes…</p>
         </div>
       ) : palettes.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-800/20 p-10 flex flex-col items-center gap-3 text-center">
-          <p className="text-[12px] text-gray-500">Set a book title to generate color palettes.</p>
+        <div className="rounded-xl border border-dashed border-[#d8d1c5] bg-[#faf8f4]/20 p-10 flex flex-col items-center gap-3 text-center">
+          <p className="text-[12px] text-[#7f8985]">Set a book title to generate color palettes.</p>
           <button type="button" onClick={onGenerateAll}
             className="rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-semibold px-4 py-2 transition">
             Generate Palettes
@@ -3665,10 +3669,10 @@ function ColorPalettePanel({ metadata, palettes, selectedPaletteIdx, generating,
 
           {/* Selected palette preview bar */}
           {selected && (
-            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-2">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">✓</span>
-                <p className="text-[11px] text-indigo-300 font-semibold">{selected.paletteName} selected</p>
+                <p className="text-[11px] text-emerald-700 font-semibold">{selected.paletteName} selected</p>
               </div>
               <div className="flex h-6 rounded-lg overflow-hidden">
                 {[selected.primary, selected.secondary, selected.accent, selected.background, selected.text].map((c, i) => (
@@ -3808,13 +3812,13 @@ function MoodBoardPreviewSVG({ colorDirection, designStyle, styleName }) {
 
 function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onRegenerate }) {
   const tagColor = {
-    Minimal:           "bg-gray-700/50 text-gray-400 border-gray-600",
-    Editorial:         "bg-slate-700/50 text-slate-300 border-slate-600",
+    Minimal:           "bg-[#ece7de]/50 text-[#5f6e6a] border-[#c9c0b4]",
+    Editorial:         "bg-slate-700/50 text-[#465b57] border-slate-600",
     Bold:              "bg-rose-900/40 text-rose-300 border-rose-700",
-    Classic:           "bg-amber-900/40 text-amber-300 border-amber-700",
+    Classic:           "bg-amber-900/40 text-amber-700 border-amber-700",
     Geometric:         "bg-blue-900/40 text-blue-300 border-blue-700",
-    Organic:           "bg-emerald-900/40 text-emerald-300 border-emerald-700",
-    Typographic:       "bg-violet-900/40 text-violet-300 border-violet-700",
+    Organic:           "bg-emerald-900/40 text-emerald-700 border-emerald-700",
+    Typographic:       "bg-teal-900/40 text-teal-300 border-teal-700",
     Photographic:      "bg-cyan-900/40 text-cyan-300 border-cyan-700",
   };
 
@@ -3822,15 +3826,15 @@ function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onR
     <div
       className={`relative rounded-xl border overflow-hidden flex flex-col transition-all duration-200 cursor-pointer group ${
         isSelected
-          ? "border-indigo-500 shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500/40"
-          : "border-gray-700/60 hover:border-gray-600 hover:shadow-md hover:shadow-black/30 hover:-translate-y-0.5"
+          ? "border-emerald-500 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500/40"
+          : "border-[#d8d1c5]/60 hover:border-[#c9c0b4] hover:shadow-md hover:shadow-black/30 hover:-translate-y-0.5"
       }`}
-      style={{ background: "#1a2035" }}
+      style={{ background: "#ffffff" }}
       onClick={() => !isSelected && onSelect(index)}
     >
       {/* Selected badge */}
       {isSelected && (
-        <div className="absolute top-2 right-2 z-10 rounded-full bg-indigo-500 text-white text-[9px] font-bold px-2 py-0.5 shadow">
+        <div className="absolute top-2 right-2 z-10 rounded-full bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 shadow">
           ✓ Selected
         </div>
       )}
@@ -3838,10 +3842,10 @@ function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onR
       {/* Preview SVG */}
       <div className="shrink-0 overflow-hidden rounded-t-xl">
         {isRegenerating ? (
-          <div className="w-full flex items-center justify-center bg-gray-800/60" style={{ aspectRatio: "280/160" }}>
+          <div className="w-full flex items-center justify-center bg-[#faf8f4]/60" style={{ aspectRatio: "280/160" }}>
             <div className="flex gap-1">
               {[0, 1, 2].map(i => (
-                <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"
+                <div key={i} className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
                   style={{ animationDelay: `${i * 0.2}s` }} />
               ))}
             </div>
@@ -3858,18 +3862,18 @@ function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onR
       {/* Card body */}
       <div className="flex flex-col flex-1 p-3 gap-2">
         <div>
-          <p className="text-[13px] font-bold text-gray-100 leading-tight">{board.styleName}</p>
-          <p className="text-[11px] text-gray-500 leading-snug mt-1 line-clamp-3">{board.description}</p>
+          <p className="text-[13px] font-bold text-[#203432] leading-tight">{board.styleName}</p>
+          <p className="text-[11px] text-[#7f8985] leading-snug mt-1 line-clamp-3">{board.description}</p>
         </div>
 
         {/* Attribute tags */}
         <div className="flex flex-wrap gap-1">
           {[
-            { label: board.designStyle,      base: tagColor[board.designStyle] || "bg-gray-700/50 text-gray-400 border-gray-600" },
-            { label: board.mood,             base: "bg-gray-800/60 text-gray-400 border-gray-700" },
-            { label: board.colorDirection,   base: "bg-gray-800/60 text-gray-400 border-gray-700" },
-            { label: board.typographyStyle,  base: "bg-gray-800/60 text-gray-400 border-gray-700" },
-            { label: board.visualComplexity, base: "bg-gray-800/60 text-gray-400 border-gray-700" },
+            { label: board.designStyle,      base: tagColor[board.designStyle] || "bg-[#ece7de]/50 text-[#5f6e6a] border-[#c9c0b4]" },
+            { label: board.mood,             base: "bg-[#faf8f4]/60 text-[#5f6e6a] border-[#d8d1c5]" },
+            { label: board.colorDirection,   base: "bg-[#faf8f4]/60 text-[#5f6e6a] border-[#d8d1c5]" },
+            { label: board.typographyStyle,  base: "bg-[#faf8f4]/60 text-[#5f6e6a] border-[#d8d1c5]" },
+            { label: board.visualComplexity, base: "bg-[#faf8f4]/60 text-[#5f6e6a] border-[#d8d1c5]" },
           ].map(({ label, base }) => (
             <span key={label} className={`rounded-full border text-[9px] font-semibold px-2 py-0.5 ${base}`}>
               {label}
@@ -3885,8 +3889,8 @@ function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onR
             disabled={isSelected}
             className={`flex-1 rounded-lg text-[11px] font-bold py-2 transition ${
               isSelected
-                ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 cursor-default"
-                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                ? "bg-emerald-600/30 text-emerald-700 border border-emerald-500/40 cursor-default"
+                : "bg-emerald-600 hover:bg-emerald-500 text-white"
             }`}
           >
             {isSelected ? "✓ Selected" : "Select"}
@@ -3896,7 +3900,7 @@ function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onR
             title="Regenerate this card"
             onClick={e => { e.stopPropagation(); onRegenerate(index); }}
             disabled={isRegenerating}
-            className="w-8 h-8 rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700 text-gray-500 hover:text-gray-200 flex items-center justify-center transition text-sm disabled:opacity-40"
+            className="w-8 h-8 rounded-lg border border-[#d8d1c5] bg-[#faf8f4]/60 hover:bg-[#ece7de] text-[#7f8985] hover:text-[#314a46] flex items-center justify-center transition text-sm disabled:opacity-40"
           >
             ↻
           </button>
@@ -3917,8 +3921,8 @@ function MoodBoardPanel({ metadata, moodBoards, selectedMoodBoardIdx, generating
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-100">Mood Board</h2>
-            <p className="text-[12px] text-gray-500 leading-relaxed mt-0.5">
+            <h2 className="text-lg font-bold text-[#203432]">Mood Board</h2>
+            <p className="text-[12px] text-[#7f8985] leading-relaxed mt-0.5">
               Four visual directions for your cover. Select one to guide AI generation.
             </p>
           </div>
@@ -3927,7 +3931,7 @@ function MoodBoardPanel({ metadata, moodBoards, selectedMoodBoardIdx, generating
               type="button"
               onClick={onGenerateAll}
               disabled={generating}
-              className="shrink-0 rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700 text-gray-400 hover:text-gray-200 text-[10px] font-bold px-3 py-1.5 transition disabled:opacity-40"
+              className="shrink-0 rounded-lg border border-[#d8d1c5] bg-[#faf8f4]/60 hover:bg-[#ece7de] text-[#5f6e6a] hover:text-[#314a46] text-[10px] font-bold px-3 py-1.5 transition disabled:opacity-40"
             >
               ↻ Regenerate All
             </button>
@@ -3947,8 +3951,8 @@ function MoodBoardPanel({ metadata, moodBoards, selectedMoodBoardIdx, generating
           <p className="text-[11px] text-amber-400 font-medium">Generating mood boards…</p>
         </div>
       ) : moodBoards.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-800/20 p-10 flex flex-col items-center gap-3 text-center">
-          <p className="text-[12px] text-gray-500">Set a book title to generate mood boards.</p>
+        <div className="rounded-xl border border-dashed border-[#d8d1c5] bg-[#faf8f4]/20 p-10 flex flex-col items-center gap-3 text-center">
+          <p className="text-[12px] text-[#7f8985]">Set a book title to generate mood boards.</p>
           <button
             type="button"
             onClick={onGenerateAll}
@@ -3975,9 +3979,9 @@ function MoodBoardPanel({ metadata, moodBoards, selectedMoodBoardIdx, generating
           </div>
 
           {selectedMoodBoardIdx !== null && (
-            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 flex items-center gap-3">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 flex items-center gap-3">
               <span className="text-sm">✓</span>
-              <p className="text-[11px] text-indigo-300">
+              <p className="text-[11px] text-emerald-700">
                 <span className="font-bold">{moodBoards[selectedMoodBoardIdx]?.styleName}</span>
                 {" "}selected — canvas preview updated.
               </p>
@@ -3998,9 +4002,9 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
     Professional: "bg-sky-500/15 text-sky-300 border-sky-500/30",
     Calm:         "bg-teal-500/15 text-teal-300 border-teal-500/30",
     Bold:         "bg-rose-500/15 text-rose-300 border-rose-500/30",
-    Inspirational:"bg-amber-500/15 text-amber-300 border-amber-500/30",
-    Friendly:     "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    Serious:      "bg-slate-500/15 text-slate-300 border-slate-500/30",
+    Inspirational:"bg-amber-500/15 text-amber-700 border-amber-500/30",
+    Friendly:     "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+    Serious:      "bg-slate-500/15 text-[#465b57] border-slate-500/30",
     Premium:      "bg-purple-500/15 text-purple-300 border-purple-500/30",
     Elegant:      "bg-pink-500/15 text-pink-300 border-pink-500/30",
   };
@@ -4019,35 +4023,35 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
       {/* ── Step header ── */}
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-violet-400">Step 3</p>
+          <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400">Step 3</p>
         </div>
-        <h2 className="text-lg font-bold text-gray-100">Cover Strategy</h2>
-        <p className="text-[12px] text-gray-500 leading-relaxed">
+        <h2 className="text-lg font-bold text-[#203432]">Cover Strategy</h2>
+        <p className="text-[12px] text-[#7f8985] leading-relaxed">
           Converts market analysis into a precise design blueprint for all AI cover generation.
         </p>
       </div>
 
       {/* ── Loading state ── */}
       {generating ? (
-        <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-8 flex flex-col items-center gap-3">
+        <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-8 flex flex-col items-center gap-3">
           <div className="flex gap-1.5">
             {[0, 1, 2].map(i => (
-              <div key={i} className="w-2 h-2 rounded-full bg-violet-400 animate-pulse"
+              <div key={i} className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"
                 style={{ animationDelay: `${i * 0.2}s` }} />
             ))}
           </div>
-          <p className="text-[11px] text-violet-400 font-medium">Building cover strategy…</p>
+          <p className="text-[11px] text-teal-400 font-medium">Building cover strategy…</p>
         </div>
       ) : !coverStrategy ? (
-        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-800/20 p-8 flex flex-col items-center gap-3 text-center">
-          <p className="text-[12px] text-gray-500 leading-relaxed">
+        <div className="rounded-xl border border-dashed border-[#d8d1c5] bg-[#faf8f4]/20 p-8 flex flex-col items-center gap-3 text-center">
+          <p className="text-[12px] text-[#7f8985] leading-relaxed">
             Complete Book Information to generate your cover strategy.
           </p>
           <button
             type="button"
             onClick={onRegenerate}
-            className="rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-semibold px-4 py-2 transition"
+            className="rounded-lg bg-teal-600 hover:bg-[#3f6f65] text-white text-[11px] font-semibold px-4 py-2 transition"
           >
             Generate Strategy
           </button>
@@ -4055,53 +4059,53 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
       ) : (
         <>
           {/* 1 ── Primary Message — highlighted card */}
-          <div className="rounded-xl border border-violet-500/30 bg-gradient-to-br from-violet-900/40 via-violet-900/20 to-violet-800/10 p-4 space-y-2">
+          <div className="rounded-xl border border-teal-500/30 bg-gradient-to-br from-teal-900/40 via-teal-900/20 to-teal-800/10 p-4 space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-sm">💡</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Primary Message</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-teal-400">Primary Message</p>
             </div>
-            <p className="text-[15px] font-semibold text-white leading-snug">
+            <p className="text-[15px] font-semibold text-[#203432] leading-snug">
               {coverStrategy.primaryMessage}
             </p>
           </div>
 
           {/* 2 ── Emotional Tone */}
-          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-3">
+          <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-sm">🎭</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Emotional Tone</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Emotional Tone</p>
             </div>
-            <span className={`inline-flex items-center rounded-full border px-4 py-1.5 text-[12px] font-bold ${toneColor[coverStrategy.emotionalTone] || "bg-gray-700/50 text-gray-300 border-gray-600"}`}>
+            <span className={`inline-flex items-center rounded-full border px-4 py-1.5 text-[12px] font-bold ${toneColor[coverStrategy.emotionalTone] || "bg-[#ece7de]/50 text-[#465b57] border-[#c9c0b4]"}`}>
               {coverStrategy.emotionalTone}
             </span>
           </div>
 
           {/* 3 ── Visual Focus */}
-          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-3">
+          <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-sm">👁</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Visual Focus</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Visual Focus</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-gray-700 border border-gray-600 flex items-center justify-center text-lg font-bold text-gray-300 shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-[#ece7de] border border-[#c9c0b4] flex items-center justify-center text-lg font-bold text-[#465b57] shrink-0">
                 {focusIcon[coverStrategy.visualFocus] ?? "◻"}
               </div>
               <div>
-                <p className="text-[13px] font-bold text-gray-200">{coverStrategy.visualFocus}</p>
-                <p className="text-[11px] text-gray-500 leading-snug">{coverStrategy.visualFocusExplanation}</p>
+                <p className="text-[13px] font-bold text-[#314a46]">{coverStrategy.visualFocus}</p>
+                <p className="text-[11px] text-[#7f8985] leading-snug">{coverStrategy.visualFocusExplanation}</p>
               </div>
             </div>
           </div>
 
           {/* 4 ── Cover Personality */}
-          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-3">
+          <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-sm">✦</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Cover Personality</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Cover Personality</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {(coverStrategy.coverPersonality || []).map((kw, i) => (
-                <span key={i} className="rounded-full bg-gray-700/60 border border-gray-600 text-gray-300 text-[11px] font-semibold px-3 py-1">
+                <span key={i} className="rounded-full bg-[#ece7de]/60 border border-[#c9c0b4] text-[#465b57] text-[11px] font-semibold px-3 py-1">
                   {kw}
                 </span>
               ))}
@@ -4109,27 +4113,27 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
           </div>
 
           {/* 5 ── Reader First Impression */}
-          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+          <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-sm">🧠</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Reader First Impression</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Reader First Impression</p>
             </div>
-            <p className="text-[12px] text-gray-300 leading-relaxed italic">
+            <p className="text-[12px] text-[#465b57] leading-relaxed italic">
               "{coverStrategy.readerFirstImpression}"
             </p>
           </div>
 
           {/* 6 ── Strategy Summary — collapsible */}
-          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 overflow-hidden">
+          <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 overflow-hidden">
             <button
               type="button"
               onClick={() => setSummaryOpen(o => !o)}
-              className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-700/30 transition text-left"
+              className="w-full flex items-center gap-2 px-4 py-3 hover:bg-[#ece7de]/30 transition text-left"
             >
               <span className="text-sm">📋</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 flex-1">Strategy Summary</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985] flex-1">Strategy Summary</p>
               <svg
-                className={`w-3.5 h-3.5 text-gray-600 transition-transform ${summaryOpen ? "rotate-180" : ""}`}
+                className={`w-3.5 h-3.5 text-[#969c97] transition-transform ${summaryOpen ? "rotate-180" : ""}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -4137,7 +4141,7 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
             </button>
             {summaryOpen && (
               <div className="px-4 pb-4">
-                <p className="text-[12px] text-gray-400 leading-relaxed">
+                <p className="text-[12px] text-[#5f6e6a] leading-relaxed">
                   {coverStrategy.strategySummary}
                 </p>
               </div>
@@ -4152,7 +4156,7 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
           type="button"
           onClick={onRegenerate}
           disabled={generating}
-          className="w-full rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700/60 text-gray-400 hover:text-gray-200 text-[11px] font-semibold py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full rounded-lg border border-[#d8d1c5] bg-[#faf8f4]/60 hover:bg-[#ece7de]/60 text-[#5f6e6a] hover:text-[#314a46] text-[11px] font-semibold py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {generating ? "Building strategy…" : "↻ Regenerate Strategy"}
         </button>
@@ -4166,10 +4170,10 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
 function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
   const coverGoalColor = {
     "Build Trust":       "bg-sky-500/15 text-sky-300 border-sky-500/30",
-    "Create Curiosity":  "bg-violet-500/15 text-violet-300 border-violet-500/30",
-    "Look Premium":      "bg-amber-500/15 text-amber-300 border-amber-500/30",
-    "Show Authority":    "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
-    "Feel Friendly":     "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+    "Create Curiosity":  "bg-teal-500/15 text-teal-300 border-teal-500/30",
+    "Look Premium":      "bg-amber-500/15 text-amber-700 border-amber-500/30",
+    "Show Authority":    "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+    "Feel Friendly":     "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
     "Feel Educational":  "bg-teal-500/15 text-teal-300 border-teal-500/30",
     "Inspire Action":    "bg-orange-500/15 text-orange-300 border-orange-500/30",
   };
@@ -4190,31 +4194,31 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
       {/* ── Step header ── */}
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">Step 2</p>
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Step 2</p>
         </div>
-        <h2 className="text-lg font-bold text-gray-100">Market Analysis</h2>
-        <p className="text-[12px] text-gray-500 leading-relaxed">
+        <h2 className="text-lg font-bold text-[#203432]">Market Analysis</h2>
+        <p className="text-[12px] text-[#7f8985] leading-relaxed">
           AI-powered design direction based on your book's category and audience.
         </p>
       </div>
 
       {/* ── Genre section ── */}
-      <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-3">
+      <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <span className="text-sm">📚</span>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Genre</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Genre</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <p className="text-[9px] uppercase tracking-wider text-gray-600">Primary</p>
-            <p className={`text-[12px] font-semibold ${metadata.primaryCategory ? "text-gray-200" : "text-gray-600 italic"}`}>
+            <p className="text-[9px] uppercase tracking-wider text-[#969c97]">Primary</p>
+            <p className={`text-[12px] font-semibold ${metadata.primaryCategory ? "text-[#314a46]" : "text-[#969c97] italic"}`}>
               {metadata.primaryCategory || "Not set"}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-[9px] uppercase tracking-wider text-gray-600">Secondary</p>
-            <p className={`text-[12px] font-semibold ${metadata.secondaryCategory ? "text-gray-200" : "text-gray-600 italic"}`}>
+            <p className="text-[9px] uppercase tracking-wider text-[#969c97]">Secondary</p>
+            <p className={`text-[12px] font-semibold ${metadata.secondaryCategory ? "text-[#314a46]" : "text-[#969c97] italic"}`}>
               {metadata.secondaryCategory || "Not set"}
             </p>
           </div>
@@ -4222,36 +4226,36 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
       </div>
 
       {/* ── Target Audience ── */}
-      <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+      <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-sm">🎯</span>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Target Audience</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Target Audience</p>
         </div>
-        <p className={`text-[12px] font-medium ${metadata.audience ? "text-gray-200" : "text-gray-600 italic"}`}>
+        <p className={`text-[12px] font-medium ${metadata.audience ? "text-[#314a46]" : "text-[#969c97] italic"}`}>
           {metadata.audience || "Not available."}
         </p>
       </div>
 
       {/* ── AI Analysis results ── */}
       {generating ? (
-        <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-6 flex flex-col items-center justify-center gap-3">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6 flex flex-col items-center justify-center gap-3">
           <div className="flex gap-1.5">
             {[0, 1, 2].map(i => (
-              <div key={i} className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"
+              <div key={i} className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
                 style={{ animationDelay: `${i * 0.2}s` }} />
             ))}
           </div>
-          <p className="text-[11px] text-indigo-400 font-medium">Analyzing market signals…</p>
+          <p className="text-[11px] text-emerald-400 font-medium">Analyzing market signals…</p>
         </div>
       ) : !analysis ? (
-        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-800/20 p-6 flex flex-col items-center gap-3 text-center">
-          <p className="text-[12px] text-gray-500 leading-relaxed">
+        <div className="rounded-xl border border-dashed border-[#d8d1c5] bg-[#faf8f4]/20 p-6 flex flex-col items-center gap-3 text-center">
+          <p className="text-[12px] text-[#7f8985] leading-relaxed">
             Set a category and audience to generate the market analysis.
           </p>
           <button
             type="button"
             onClick={onRegenerate}
-            className="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold px-4 py-2 transition"
+            className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold px-4 py-2 transition"
           >
             Analyze Now
           </button>
@@ -4259,24 +4263,24 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
       ) : (
         <>
           {/* Design Direction — highlighted card */}
-          <div className="rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-900/40 via-indigo-900/20 to-indigo-800/10 p-4 space-y-2">
+          <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-900/40 via-emerald-900/20 to-emerald-800/10 p-4 space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-sm">🎨</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Design Direction</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Design Direction</p>
               <div className="ml-auto">
-                <p className="text-[9px] text-indigo-600 font-semibold uppercase tracking-wide">Recommended</p>
+                <p className="text-[9px] text-emerald-600 font-semibold uppercase tracking-wide">Recommended</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-2xl leading-none">
                 {directionIcon[analysis.designDirection] || "🎨"}
               </span>
-              <p className="text-xl font-bold text-white">{analysis.designDirection}</p>
+              <p className="text-xl font-bold text-[#203432]">{analysis.designDirection}</p>
             </div>
             {Array.isArray(analysis.keySignals) && analysis.keySignals.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {analysis.keySignals.map((sig, i) => (
-                  <span key={i} className="rounded-full bg-indigo-500/15 border border-indigo-500/20 text-indigo-300 text-[9px] font-medium px-2 py-0.5">
+                  <span key={i} className="rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-700 text-[9px] font-medium px-2 py-0.5">
                     {sig}
                   </span>
                 ))}
@@ -4285,33 +4289,33 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
           </div>
 
           {/* Reader Expectation */}
-          <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+          <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-sm">👁</span>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Reader Expectation</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Reader Expectation</p>
             </div>
-            <p className="text-[12px] text-gray-300 leading-relaxed">{analysis.readerExpectation}</p>
+            <p className="text-[12px] text-[#465b57] leading-relaxed">{analysis.readerExpectation}</p>
           </div>
 
           {/* Cover Goal + Confidence row */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+            <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🎯</span>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Cover Goal</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Cover Goal</p>
               </div>
-              <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[11px] font-bold ${coverGoalColor[analysis.coverGoal] || "bg-gray-700/50 text-gray-300 border-gray-600"}`}>
+              <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[11px] font-bold ${coverGoalColor[analysis.coverGoal] || "bg-[#ece7de]/50 text-[#465b57] border-[#c9c0b4]"}`}>
                 {analysis.coverGoal}
               </span>
             </div>
 
-            <div className="rounded-xl border border-gray-700/50 bg-gray-800/40 p-4 space-y-2">
+            <div className="rounded-xl border border-[#d8d1c5]/50 bg-[#faf8f4]/40 p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">📊</span>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Confidence</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Confidence</p>
               </div>
-              <p className="text-2xl font-bold text-white">{analysis.confidence}%</p>
-              <div className="h-1.5 rounded-full bg-gray-700 overflow-hidden">
+              <p className="text-2xl font-bold text-[#203432]">{analysis.confidence}%</p>
+              <div className="h-1.5 rounded-full bg-[#ece7de] overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
@@ -4335,7 +4339,7 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
           type="button"
           onClick={onRegenerate}
           disabled={generating}
-          className="w-full rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-700/60 text-gray-400 hover:text-gray-200 text-[11px] font-semibold py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full rounded-lg border border-[#d8d1c5] bg-[#faf8f4]/60 hover:bg-[#ece7de]/60 text-[#5f6e6a] hover:text-[#314a46] text-[11px] font-semibold py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {generating ? "Analyzing…" : "↻ Regenerate Analysis"}
         </button>
@@ -4375,7 +4379,7 @@ function OverallRing({ score }) {
   return (
     <div className="flex flex-col items-center justify-center gap-0.5">
       <span className={`text-3xl font-black tabular-nums ${text}`}>{score}</span>
-      <span className="text-[9px] text-gray-500 font-semibold uppercase tracking-widest">/ 100</span>
+      <span className="text-[9px] text-[#7f8985] font-semibold uppercase tracking-widest">/ 100</span>
       <span className={`text-[10px] font-bold ${text}`}>{grade}</span>
     </div>
   );
@@ -4386,10 +4390,10 @@ function ScoreBar({ label, value }) {
   return (
     <div className="space-y-0.5">
       <div className="flex items-center justify-between">
-        <span className="text-[9px] text-gray-500">{label}</span>
+        <span className="text-[9px] text-[#7f8985]">{label}</span>
         <span className={`text-[9px] font-bold tabular-nums ${text}`}>{value}</span>
       </div>
-      <div className="h-1 rounded-full bg-gray-700/60 overflow-hidden">
+      <div className="h-1 rounded-full bg-[#ece7de]/60 overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${bar}`}
           style={{ width: `${value}%` }}
@@ -4407,12 +4411,12 @@ function ReviewConceptCard({ concept, review, isRecommended }) {
       className={`rounded-2xl border overflow-hidden flex flex-col ${
         isRecommended
           ? "border-amber-500/60 shadow-lg shadow-amber-500/10"
-          : "border-gray-700/50"
+          : "border-[#d8d1c5]/50"
       }`}
-      style={{ background: "#1a2235" }}
+      style={{ background: "#ffffff" }}
     >
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-gray-700/40">
+      <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-3 border-b border-[#d8d1c5]/40">
         <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black shrink-0"
@@ -4421,8 +4425,8 @@ function ReviewConceptCard({ concept, review, isRecommended }) {
             {concept.conceptLabel}
           </div>
           <div>
-            <p className="text-[12px] font-bold text-gray-100 leading-tight">{concept.conceptName}</p>
-            <p className="text-[9px] text-gray-500 uppercase tracking-wider">{concept.primaryStyle}</p>
+            <p className="text-[12px] font-bold text-[#203432] leading-tight">{concept.conceptName}</p>
+            <p className="text-[9px] text-[#7f8985] uppercase tracking-wider">{concept.primaryStyle}</p>
           </div>
         </div>
         <div className="shrink-0 text-right">
@@ -4439,7 +4443,7 @@ function ReviewConceptCard({ concept, review, isRecommended }) {
       )}
 
       {/* Score bars */}
-      <div className="px-4 py-3 space-y-1.5 border-b border-gray-700/30">
+      <div className="px-4 py-3 space-y-1.5 border-b border-[#d8d1c5]/30">
         {SCORE_DIMS.map(({ key, label }) => (
           <ScoreBar key={key} label={label} value={review.scores?.[key] ?? 50} />
         ))}
@@ -4447,13 +4451,13 @@ function ReviewConceptCard({ concept, review, isRecommended }) {
 
       {/* Strengths */}
       {review.strengths?.length > 0 && (
-        <div className="px-4 py-3 border-b border-gray-700/30">
+        <div className="px-4 py-3 border-b border-[#d8d1c5]/30">
           <p className="text-[8px] font-bold uppercase tracking-widest text-emerald-500/70 mb-1.5">Strengths</p>
           <ul className="space-y-1">
             {review.strengths.map((s, i) => (
               <li key={i} className="flex items-start gap-1.5">
                 <span className="text-emerald-500 text-[9px] mt-0.5 shrink-0">✓</span>
-                <span className="text-[10px] text-gray-300 leading-tight">{s}</span>
+                <span className="text-[10px] text-[#465b57] leading-tight">{s}</span>
               </li>
             ))}
           </ul>
@@ -4462,13 +4466,13 @@ function ReviewConceptCard({ concept, review, isRecommended }) {
 
       {/* Improvements */}
       {review.improvements?.length > 0 && (
-        <div className="px-4 py-3 border-b border-gray-700/30">
+        <div className="px-4 py-3 border-b border-[#d8d1c5]/30">
           <p className="text-[8px] font-bold uppercase tracking-widest text-amber-500/70 mb-1.5">Improvements</p>
           <ul className="space-y-1">
             {review.improvements.map((s, i) => (
               <li key={i} className="flex items-start gap-1.5">
                 <span className="text-amber-400 text-[9px] mt-0.5 shrink-0">→</span>
-                <span className="text-[10px] text-gray-300 leading-tight">{s}</span>
+                <span className="text-[10px] text-[#465b57] leading-tight">{s}</span>
               </li>
             ))}
           </ul>
@@ -4478,8 +4482,8 @@ function ReviewConceptCard({ concept, review, isRecommended }) {
       {/* Best use case */}
       {review.bestUseCase && (
         <div className="px-4 py-3">
-          <p className="text-[8px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">Best For</p>
-          <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+          <p className="text-[8px] font-bold uppercase tracking-widest text-[#7f8985] mb-1.5">Best For</p>
+          <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/20">
             {review.bestUseCase}
           </span>
         </div>
@@ -4490,25 +4494,25 @@ function ReviewConceptCard({ concept, review, isRecommended }) {
 
 function ReviewCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-gray-700/50 overflow-hidden bg-gray-800/40 animate-pulse">
-      <div className="px-4 pt-4 pb-3 border-b border-gray-700/40 flex items-center justify-between">
+    <div className="rounded-2xl border border-[#d8d1c5]/50 overflow-hidden bg-[#faf8f4]/40 animate-pulse">
+      <div className="px-4 pt-4 pb-3 border-b border-[#d8d1c5]/40 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-gray-700/60" />
+          <div className="w-8 h-8 rounded-full bg-[#ece7de]/60" />
           <div className="space-y-1">
-            <div className="h-3 w-24 rounded bg-gray-700/60" />
-            <div className="h-2 w-16 rounded bg-gray-700/40" />
+            <div className="h-3 w-24 rounded bg-[#ece7de]/60" />
+            <div className="h-2 w-16 rounded bg-[#ece7de]/40" />
           </div>
         </div>
         <div className="space-y-1 text-right">
-          <div className="h-8 w-12 rounded bg-gray-700/60 ml-auto" />
-          <div className="h-2 w-10 rounded bg-gray-700/40 ml-auto" />
+          <div className="h-8 w-12 rounded bg-[#ece7de]/60 ml-auto" />
+          <div className="h-2 w-10 rounded bg-[#ece7de]/40 ml-auto" />
         </div>
       </div>
       <div className="px-4 py-3 space-y-2">
         {[...Array(7)].map((_, i) => (
           <div key={i} className="space-y-0.5">
-            <div className="h-2 w-20 rounded bg-gray-700/40" />
-            <div className="h-1 rounded-full bg-gray-700/50" />
+            <div className="h-2 w-20 rounded bg-[#ece7de]/40" />
+            <div className="h-1 rounded-full bg-[#ece7de]/50" />
           </div>
         ))}
       </div>
@@ -4544,12 +4548,12 @@ function ReviewPanel({ concepts, conceptReviews, recommendedConceptLabel, review
   });
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: "#0d1117" }}>
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: "#f4f1eb" }}>
       {/* Header */}
-      <div className="shrink-0 px-6 py-4 border-b border-gray-800 flex items-center justify-between" style={{ background: "#111827" }}>
+      <div className="shrink-0 px-6 py-4 border-b border-[#e3ddd2] flex items-center justify-between" style={{ background: "#faf8f4" }}>
         <div>
-          <h2 className="text-[13px] font-bold text-gray-100 tracking-wide">AI Review</h2>
-          <p className="text-[10px] text-gray-500 mt-0.5">
+          <h2 className="text-[13px] font-bold text-[#203432] tracking-wide">AI Review</h2>
+          <p className="text-[10px] text-[#7f8985] mt-0.5">
             {hasReviews
               ? `${conceptReviews.length} concept${conceptReviews.length !== 1 ? "s" : ""} analyzed · Recommended: Concept ${recommendedConceptLabel || "–"}`
               : reviewGenerating
@@ -4563,7 +4567,7 @@ function ReviewPanel({ concepts, conceptReviews, recommendedConceptLabel, review
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="text-[10px] rounded-lg border border-gray-700 bg-gray-800 text-gray-300 px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="text-[10px] rounded-lg border border-[#d8d1c5] bg-[#faf8f4] text-[#465b57] px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
               {SORT_OPTIONS.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -4575,15 +4579,15 @@ function ReviewPanel({ concepts, conceptReviews, recommendedConceptLabel, review
             disabled={reviewGenerating || !hasConcepts}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold tracking-wide transition-all ${
               reviewGenerating
-                ? "bg-indigo-500/30 text-indigo-400 cursor-not-allowed"
+                ? "bg-emerald-500/30 text-emerald-400 cursor-not-allowed"
                 : !hasConcepts
-                ? "bg-gray-700/50 text-gray-500 cursor-not-allowed"
-                : "bg-indigo-600 text-white hover:bg-indigo-500"
+                ? "bg-[#ece7de]/50 text-[#7f8985] cursor-not-allowed"
+                : "bg-emerald-600 text-white hover:bg-emerald-500"
             }`}
           >
             {reviewGenerating ? (
               <>
-                <span className="w-3.5 h-3.5 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin" />
+                <span className="w-3.5 h-3.5 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin" />
                 Analyzing…
               </>
             ) : (
@@ -4598,8 +4602,8 @@ function ReviewPanel({ concepts, conceptReviews, recommendedConceptLabel, review
         {reviewGenerating ? (
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <span className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-[11px] text-gray-500">Evaluating each concept against professional design criteria…</span>
+              <span className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[11px] text-[#7f8985]">Evaluating each concept against professional design criteria…</span>
             </div>
             <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
               {[0, 1, 2, 3].map(i => <ReviewCardSkeleton key={i} />)}
@@ -4618,31 +4622,31 @@ function ReviewPanel({ concepts, conceptReviews, recommendedConceptLabel, review
           </div>
         ) : hasConcepts ? (
           <div className="flex flex-col items-center justify-center h-full min-h-64 text-center gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl bg-[#faf8f4]/60 border border-[#d8d1c5]/50 flex items-center justify-center">
               <span className="text-3xl">★</span>
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-gray-300 mb-1.5">Ready to review</p>
-              <p className="text-[11px] text-gray-600 max-w-xs leading-relaxed">
-                {concepts.length} concept{concepts.length !== 1 ? "s" : ""} ready to be evaluated. Click <strong className="text-gray-400">Analyze Concepts</strong> to score each one against professional design criteria.
+              <p className="text-[13px] font-semibold text-[#465b57] mb-1.5">Ready to review</p>
+              <p className="text-[11px] text-[#969c97] max-w-xs leading-relaxed">
+                {concepts.length} concept{concepts.length !== 1 ? "s" : ""} ready to be evaluated. Click <strong className="text-[#5f6e6a]">Analyze Concepts</strong> to score each one against professional design criteria.
               </p>
             </div>
             <button
               onClick={() => onReview()}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-500 transition-colors"
+              className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-500 transition-colors"
             >
               ★ Analyze Concepts
             </button>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full min-h-64 text-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center">
-              <span className="text-3xl text-gray-700">★</span>
+            <div className="w-16 h-16 rounded-2xl bg-[#faf8f4]/60 border border-[#d8d1c5]/50 flex items-center justify-center">
+              <span className="text-3xl text-[#a8aaa5]">★</span>
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-gray-400 mb-1.5">No concepts yet</p>
-              <p className="text-[11px] text-gray-600 max-w-xs leading-relaxed">
-                Go to <strong className="text-gray-500">Generate Concepts</strong> first, then come back to analyze them.
+              <p className="text-[13px] font-semibold text-[#5f6e6a] mb-1.5">No concepts yet</p>
+              <p className="text-[11px] text-[#969c97] max-w-xs leading-relaxed">
+                Go to <strong className="text-[#7f8985]">Generate Concepts</strong> first, then come back to analyze them.
               </p>
             </div>
           </div>
@@ -4665,40 +4669,40 @@ const STYLE_TO_RENDERER_TYPE = {
 
 const TAG_COLORS = {
   Professional:  "bg-sky-900/60 text-sky-300 border-sky-700/50",
-  Minimal:       "bg-slate-800/60 text-slate-300 border-slate-600/50",
+  Minimal:       "bg-slate-800/60 text-[#465b57] border-slate-600/50",
   Bold:          "bg-rose-900/60 text-rose-300 border-rose-700/50",
   Corporate:     "bg-blue-900/60 text-blue-300 border-blue-700/50",
-  Modern:        "bg-indigo-900/60 text-indigo-300 border-indigo-700/50",
+  Modern:        "bg-emerald-900/60 text-emerald-700 border-emerald-700/50",
   Elegant:       "bg-purple-900/60 text-purple-300 border-purple-700/50",
-  Creative:      "bg-violet-900/60 text-violet-300 border-violet-700/50",
+  Creative:      "bg-teal-900/60 text-teal-300 border-teal-700/50",
   Dynamic:       "bg-orange-900/60 text-orange-300 border-orange-700/50",
-  Classic:       "bg-amber-900/60 text-amber-300 border-amber-700/50",
+  Classic:       "bg-amber-900/60 text-amber-700 border-amber-700/50",
   Premium:       "bg-yellow-900/60 text-yellow-300 border-yellow-700/50",
-  Authoritative: "bg-emerald-900/60 text-emerald-300 border-emerald-700/50",
+  Authoritative: "bg-emerald-900/60 text-emerald-700 border-emerald-700/50",
   Vibrant:       "bg-pink-900/60 text-pink-300 border-pink-700/50",
 };
 
 function ConceptCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-gray-700/50 overflow-hidden bg-gray-800/40 animate-pulse">
-      <div className="bg-gray-700/50" style={{ aspectRatio: "9/11" }} />
+    <div className="rounded-2xl border border-[#d8d1c5]/50 overflow-hidden bg-[#faf8f4]/40 animate-pulse">
+      <div className="bg-[#ece7de]/50" style={{ aspectRatio: "9/11" }} />
       <div className="p-3 space-y-2.5">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-gray-700/60" />
-          <div className="h-3 rounded bg-gray-700/60 flex-1" />
+          <div className="w-6 h-6 rounded-full bg-[#ece7de]/60" />
+          <div className="h-3 rounded bg-[#ece7de]/60 flex-1" />
         </div>
         <div className="space-y-1.5">
-          <div className="h-2.5 rounded bg-gray-700/50 w-full" />
-          <div className="h-2.5 rounded bg-gray-700/50 w-4/5" />
-          <div className="h-2.5 rounded bg-gray-700/50 w-3/5" />
+          <div className="h-2.5 rounded bg-[#ece7de]/50 w-full" />
+          <div className="h-2.5 rounded bg-[#ece7de]/50 w-4/5" />
+          <div className="h-2.5 rounded bg-[#ece7de]/50 w-3/5" />
         </div>
         <div className="flex gap-1.5">
-          <div className="h-5 w-16 rounded-full bg-gray-700/50" />
-          <div className="h-5 w-14 rounded-full bg-gray-700/50" />
+          <div className="h-5 w-16 rounded-full bg-[#ece7de]/50" />
+          <div className="h-5 w-14 rounded-full bg-[#ece7de]/50" />
         </div>
         <div className="flex gap-2 pt-1">
-          <div className="flex-1 h-7 rounded-lg bg-gray-700/50" />
-          <div className="w-8 h-7 rounded-lg bg-gray-700/50" />
+          <div className="flex-1 h-7 rounded-lg bg-[#ece7de]/50" />
+          <div className="w-8 h-7 rounded-lg bg-[#ece7de]/50" />
         </div>
       </div>
     </div>
@@ -4717,17 +4721,17 @@ function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, 
     <div
       className={`rounded-2xl border-2 overflow-hidden transition-all duration-200 hover:scale-[1.01] flex flex-col ${
         isSelected
-          ? "border-indigo-500 shadow-lg shadow-indigo-500/25 ring-1 ring-indigo-400/30"
-          : "border-gray-700/60 hover:border-gray-500/70"
+          ? "border-emerald-500 shadow-lg shadow-emerald-500/25 ring-1 ring-emerald-400/30"
+          : "border-[#d8d1c5]/60 hover:border-[#b9b0a3]/70"
       }`}
-      style={{ background: "#1a2235" }}
+      style={{ background: "#ffffff" }}
     >
       {/* Mini Cover Preview */}
       <div className="relative flex-shrink-0" style={{ aspectRatio: "9/11" }}>
         {isRegenerating ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/80">
-            <div className="w-7 h-7 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mb-2.5" />
-            <span className="text-[10px] text-gray-400">Regenerating…</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#faf8f4]/80">
+            <div className="w-7 h-7 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mb-2.5" />
+            <span className="text-[10px] text-[#5f6e6a]">Regenerating…</span>
           </div>
         ) : (
           <div className="absolute inset-0">
@@ -4737,15 +4741,15 @@ function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, 
 
         {/* Concept letter badge */}
         <div className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-md ${
-          isSelected ? "bg-indigo-500 text-white" : "bg-black/60 text-gray-300"
+          isSelected ? "bg-emerald-500 text-white" : "bg-black/60 text-[#465b57]"
         }`}>
           {concept.conceptLabel}
         </div>
 
         {/* Selected checkmark */}
         {isSelected && !isRegenerating && (
-          <div className="absolute top-2 right-2 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center shadow-md">
-            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+          <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-md">
+            <svg className="w-3 h-3 text-[#203432]" fill="currentColor" viewBox="0 0 12 12">
               <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             </svg>
           </div>
@@ -4756,13 +4760,13 @@ function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, 
       <div className="p-3 flex flex-col gap-2 flex-1">
         {/* Concept name */}
         <div>
-          <p className="text-[12px] font-bold text-gray-100 leading-tight">{concept.conceptName}</p>
-          <p className="text-[9px] text-gray-500 uppercase tracking-wider mt-0.5">{concept.primaryStyle}</p>
+          <p className="text-[12px] font-bold text-[#203432] leading-tight">{concept.conceptName}</p>
+          <p className="text-[9px] text-[#7f8985] uppercase tracking-wider mt-0.5">{concept.primaryStyle}</p>
         </div>
 
         {/* Description */}
         {concept.description && (
-          <p className="text-[10px] text-gray-400 leading-relaxed line-clamp-3 flex-1">
+          <p className="text-[10px] text-[#5f6e6a] leading-relaxed line-clamp-3 flex-1">
             {concept.description}
           </p>
         )}
@@ -4773,7 +4777,7 @@ function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, 
             {concept.styleTags.map((tag, tagIdx) => (
               <span
                 key={`${tag}-${tagIdx}`}
-                className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-full border ${TAG_COLORS[tag] || "bg-gray-800 text-gray-400 border-gray-700"}`}
+                className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-full border ${TAG_COLORS[tag] || "bg-[#faf8f4] text-[#5f6e6a] border-[#d8d1c5]"}`}
               >
                 {tag}
               </span>
@@ -4793,7 +4797,7 @@ function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, 
             style={{ background: concept.accent }}
             title={`Accent: ${concept.accent}`}
           />
-          <span className="text-[9px] text-gray-600 font-mono">{concept.bg}</span>
+          <span className="text-[9px] text-[#969c97] font-mono">{concept.bg}</span>
         </div>
 
         {/* Buttons */}
@@ -4803,8 +4807,8 @@ function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, 
             disabled={isRegenerating}
             className={`flex-1 rounded-lg py-1.5 text-[10px] font-semibold transition-all ${
               isSelected
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-700/70 text-gray-300 hover:bg-gray-600/70 hover:text-white"
+                ? "bg-emerald-600 text-white"
+                : "bg-[#ece7de]/70 text-[#465b57] hover:bg-[#dfd7cc]/70 hover:text-[#203432]"
             } disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             {isSelected ? "✓ Selected" : "Select"}
@@ -4813,7 +4817,7 @@ function ConceptCard({ concept, idx, isSelected, isRegenerating, generatingAll, 
             onClick={() => onRegenerate(idx)}
             disabled={isRegenerating || generatingAll}
             title="Regenerate this concept"
-            className="w-8 rounded-lg bg-gray-700/70 text-gray-400 hover:bg-gray-600/70 hover:text-gray-200 text-[12px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-8 rounded-lg bg-[#ece7de]/70 text-[#5f6e6a] hover:bg-[#dfd7cc]/70 hover:text-[#314a46] text-[12px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
           >
             ↻
           </button>
@@ -4837,15 +4841,15 @@ function GenerateConceptsPanel({
   const hasConcepts = Array.isArray(concepts) && concepts.length > 0;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: "#0d1117" }}>
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: "#f4f1eb" }}>
       {/* Panel header */}
       <div
-        className="shrink-0 px-6 py-4 border-b border-gray-800 flex items-center justify-between"
-        style={{ background: "#111827" }}
+        className="shrink-0 px-6 py-4 border-b border-[#e3ddd2] flex items-center justify-between"
+        style={{ background: "#faf8f4" }}
       >
         <div>
-          <h2 className="text-[13px] font-bold text-gray-100 tracking-wide">Generate Concepts</h2>
-          <p className="text-[10px] text-gray-500 mt-0.5">
+          <h2 className="text-[13px] font-bold text-[#203432] tracking-wide">Generate Concepts</h2>
+          <p className="text-[10px] text-[#7f8985] mt-0.5">
             {hasConcepts
               ? `${concepts.length} concept${concepts.length !== 1 ? "s" : ""} generated · Click to select`
               : "Generate four unique cover design directions"}
@@ -4857,15 +4861,15 @@ function GenerateConceptsPanel({
           disabled={generatingAll || !hasContext}
           className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[11px] font-bold tracking-wide transition-all shadow-sm ${
             generatingAll
-              ? "bg-indigo-500/30 text-indigo-400 cursor-not-allowed"
+              ? "bg-emerald-500/30 text-emerald-400 cursor-not-allowed"
               : !hasContext
-              ? "bg-gray-700/50 text-gray-500 cursor-not-allowed"
-              : "bg-indigo-600 text-white hover:bg-indigo-500 hover:shadow-indigo-500/25 hover:shadow-md"
+              ? "bg-[#ece7de]/50 text-[#7f8985] cursor-not-allowed"
+              : "bg-emerald-600 text-white hover:bg-emerald-500 hover:shadow-emerald-500/25 hover:shadow-md"
           }`}
         >
           {generatingAll ? (
             <>
-              <span className="w-3.5 h-3.5 border-2 border-indigo-300 border-t-transparent rounded-full animate-spin" />
+              <span className="w-3.5 h-3.5 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin" />
               Generating…
             </>
           ) : (
@@ -4880,8 +4884,8 @@ function GenerateConceptsPanel({
           /* Loading state: 4 skeleton cards */
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-[11px] text-gray-500">Generating four unique cover concepts…</span>
+              <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[11px] text-[#7f8985]">Generating four unique cover concepts…</span>
             </div>
             <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
               {[0, 1, 2, 3].map(i => (
@@ -4909,19 +4913,19 @@ function GenerateConceptsPanel({
         ) : (
           /* Empty state */
           <div className="flex flex-col items-center justify-center h-full min-h-64 text-center gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl bg-[#faf8f4]/60 border border-[#d8d1c5]/50 flex items-center justify-center">
               <span className="text-3xl">✦</span>
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-gray-300 mb-1.5">No concepts yet</p>
-              <p className="text-[11px] text-gray-600 max-w-xs leading-relaxed">
-                Click <strong className="text-gray-400">Generate Concepts</strong> to create four unique cover design directions based on your Market Analysis, Cover Strategy, Mood Board, Color Palette and Design Elements.
+              <p className="text-[13px] font-semibold text-[#465b57] mb-1.5">No concepts yet</p>
+              <p className="text-[11px] text-[#969c97] max-w-xs leading-relaxed">
+                Click <strong className="text-[#5f6e6a]">Generate Concepts</strong> to create four unique cover design directions based on your Market Analysis, Cover Strategy, Mood Board, Color Palette and Design Elements.
               </p>
             </div>
             <button
               onClick={onGenerate}
               disabled={generatingAll || !hasContext}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-500 transition-colors disabled:opacity-40"
+              className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-500 transition-colors disabled:opacity-40"
             >
               ✦ Generate Concepts
             </button>
@@ -5869,7 +5873,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   return (
     <div
-      className="flex min-h-0 flex-col overflow-hidden rounded-none bg-[#0b0d10] text-slate-200"
+      className="flex min-h-0 flex-col overflow-hidden rounded-none bg-[#f4f1eb] text-[#314a46]"
       style={{ height: "calc(100vh - 74px)", minWidth: 0 }}
     >
       <WorkspaceHeader
@@ -5887,7 +5891,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <CoverToolRail currentStep={currentStep} onStepChange={setCurrentStep} />
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#1a1d23]">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#f1eee7]">
           {currentStep === "review" ? (
             <ReviewPanel
               concepts={concepts}
@@ -6002,7 +6006,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           )}
         </div>
 
-        <div className="flex w-[330px] shrink-0 flex-col overflow-hidden border-l border-white/[0.07] bg-[#13161b] xl:w-[350px]">
+        <div className="flex w-[330px] shrink-0 flex-col overflow-hidden border-l border-[#e3ddd2] bg-[#faf8f4] xl:w-[350px]">
           <RightPanel
             metadata={metadata}
             onChange={setMetadata}
