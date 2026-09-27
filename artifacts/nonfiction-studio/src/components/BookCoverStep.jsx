@@ -1748,7 +1748,7 @@ function TypographyWorkflowPanel({ profile, generating, onRegenerate, onApply, h
   );
 }
 
-function LayoutWorkflowPanel({ profile, generating, onRegenerate, onApply }) {
+function LayoutWorkflowPanel({ profile, generating, onRegenerate, onApply, hasAppliedLayout }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f4f1eb]">
       <div className="flex shrink-0 items-center justify-between border-b border-[#e3ddd2] bg-[#faf8f4] px-6 py-4">
@@ -1773,7 +1773,7 @@ function LayoutWorkflowPanel({ profile, generating, onRegenerate, onApply }) {
             disabled={!profile || generating}
             className="rounded-xl bg-emerald-700 px-4 py-2 text-[10px] font-bold text-white hover:bg-emerald-800 disabled:opacity-40"
           >
-            Apply Layout Guidance
+            {hasAppliedLayout ? "✓ Re-apply Layout Guidance" : "Apply Layout Guidance"}
           </button>
         </div>
       </div>
@@ -5422,7 +5422,11 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
     const focal = String(layoutProfile.focalArea || "").toLowerCase();
     const imageY = focal.includes("upper") ? -18 : focal.includes("lower") ? 18 : 0;
-    setImageOverrides((prev) => ({ ...(prev || {}), y: imageY }));
+    setImageOverrides((prev) => ({
+      ...(prev || {}),
+      y: imageY,
+      aiLayoutAppliedAt: new Date().toISOString(),
+    }));
 
     setPrintSetup((prev) => ({ ...prev, showGuides: true }));
     setCurrentStep("visual");
@@ -5559,8 +5563,20 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       mood: status(selectedMoodBoardIdx !== null && !!moodBoards?.[selectedMoodBoardIdx], moodBoardsGenerating),
       color: status(selectedPaletteIdx !== null && !!colorPalettes?.[selectedPaletteIdx], paletteGenerating),
       elements: status(!!designElements, designElementsGenerating),
-      typography: status(!!typographyProfile, typographyGenerating),
-      layout: status(!!layoutProfile, layoutGenerating),
+      typography: typographyGenerating
+        ? "working"
+        : typographyProfile && typographyOverrides?.aiTypographyAppliedAt
+          ? "complete"
+          : typographyProfile
+            ? "working"
+            : "todo",
+      layout: layoutGenerating
+        ? "working"
+        : layoutProfile && imageOverrides?.aiLayoutAppliedAt
+          ? "complete"
+          : layoutProfile
+            ? "working"
+            : "todo",
       concepts: status(conceptsReady, generatingAll || regeneratingIdx !== null),
       review: status(reviewsReady, reviewGenerating),
       visual: status(conceptsReady),
@@ -5585,8 +5601,10 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     designElementsGenerating,
     typographyProfile,
     typographyGenerating,
+    typographyOverrides,
     layoutProfile,
     layoutGenerating,
+    imageOverrides,
     concepts,
     selectedConceptIdx,
     generatingAll,
@@ -6356,6 +6374,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
               generating={layoutGenerating}
               onRegenerate={() => generateLayout(true)}
               onApply={applyLayoutProfile}
+              hasAppliedLayout={!!imageOverrides?.aiLayoutAppliedAt}
             />
           ) : currentStep === "bookInfo" ? (
             <SetupWorkflowPanel
