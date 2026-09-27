@@ -13,14 +13,13 @@ const CACHE_TTL_MS  = 30 * 60 * 1000;
 
 export const EXHAUSTED_KEY    = "nonfiction-ai-exhausted-local";   // { [provider]: expiresAt }
 export const MANUAL_OFF_KEY   = "nonfiction-ai-disabled-manual";   // [provider, ...]
-export const PREFERRED_KEY    = "nonfiction-ai-preferred-provider"; // "gemini"|"groq"|"openrouter"|""
+export const PREFERRED_KEY    = "nonfiction-ai-preferred-provider"; // "openrouter"|"groq"|"sambanova"|""
 
 const NO_CACHE_PATHS = ["/api/ai/improve", "/api/ai/niche-outline", "/api/ai/outline"];
 
 export const PROVIDER_LABELS = {
-  gemini:     "Gemini",
-  groq:       "Groq",
   openrouter: "OpenRouter",
+  groq:       "Groq",
   sambanova:  "SambaNova"
 };
 
@@ -50,13 +49,17 @@ export function providerLabel(id) {
 // ─── Credit exhaustion tracking (localStorage) ────────────────────────────────
 // Mirrors server-side tracking on the client with a 24-hour TTL.
 
+function isCurrentProvider(id) {
+  return ["openrouter", "groq", "sambanova"].includes(String(id || ""));
+}
+
 export function getLocallyExhaustedProviders() {
   try {
     const raw = window.localStorage.getItem(EXHAUSTED_KEY);
     if (!raw) return [];
     const map = JSON.parse(raw);
     const now = Date.now();
-    return Object.keys(map).filter((k) => map[k] > now);
+    return Object.keys(map).filter((k) => isCurrentProvider(k) && map[k] > now);
   } catch { return []; }
 }
 
