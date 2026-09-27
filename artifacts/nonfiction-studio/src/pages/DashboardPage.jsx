@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
 import { loadBook, saveBook } from "@/lib/bookLibrary";
 import AnalysisStep from "@/components/AnalysisStep";
@@ -768,6 +768,7 @@ export default function Dashboard() {
   const [writeErrors, setWriteErrors] = useState({});
   const [descriptionErrors, setDescriptionErrors] = useState({});
   const [coverErrors, setCoverErrors] = useState({});
+  const mainWorkspaceRef = useRef(null);
   const [sidebarVisible, setSidebarVisible] = useState(() => {
     try {
       const saved = window.localStorage.getItem(SIDEBAR_VISIBILITY_KEY);
@@ -822,6 +823,16 @@ export default function Dashboard() {
       // Sidebar visibility persistence is optional.
     }
   }, [sidebarVisible]);
+
+  useEffect(() => {
+    // The same <main> element is reused across wizard steps. If a previous
+    // step was scrolled, switching Book Cover to overflow-hidden can preserve
+    // that old scrollTop and visually crop the Cover Studio header.
+    const workspace = mainWorkspaceRef.current;
+    if (!workspace) return;
+    workspace.scrollTop = 0;
+    workspace.scrollLeft = 0;
+  }, [currentStep]);
 
   function goToStep(index) {
     if (!canAccessStep(completedSteps, index)) return;
@@ -1187,11 +1198,14 @@ export default function Dashboard() {
           </aside>
         )}
 
-        <main className={`builder-main relative min-h-0 flex-1 overscroll-contain ${
-          currentStep === COVER_STEP
-            ? "overflow-hidden p-0"
-            : "overflow-y-auto px-4 pb-16 pt-7 sm:px-7 md:px-12 md:pb-20 md:pt-11"
-        }`}>
+        <main
+          ref={mainWorkspaceRef}
+          className={`builder-main relative min-h-0 flex-1 overscroll-contain ${
+            currentStep === COVER_STEP
+              ? "flex flex-col overflow-hidden p-0"
+              : "overflow-y-auto px-4 pb-16 pt-7 sm:px-7 md:px-12 md:pb-20 md:pt-11"
+          }`}
+        >
           {currentStep === 0 && (
             <ResearchStep
               research={project.research}
