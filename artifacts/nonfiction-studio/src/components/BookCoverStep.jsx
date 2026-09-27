@@ -5,12 +5,13 @@ import {
   resolveBookTitle,
   resolveGenre,
 } from "@/lib/projectMeta";
-import CoverProductionControls from "@/components/CoverProductionControls";
 import CoverWrapPreview from "@/components/CoverWrapPreview";
 import {
   buildCoverPreflight,
   calculatePaperbackGeometry,
   estimateCoverPageCount,
+  formatInches,
+  PAPERBACK_INTERIORS,
 } from "@/lib/coverKdp";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1684,6 +1685,227 @@ function LayoutCard({ profile, generating, onRegenerate }) {
   );
 }
 
+// ─── Creative editor rail ────────────────────────────────────────────────────
+
+const COVER_EDITOR_TOOLS = [
+  { id: "concepts",   icon: "✦", label: "Generate" },
+  { id: "visual",     icon: "▣", label: "Canvas" },
+  { id: "typography", icon: "T", label: "Text" },
+  { id: "elements",   icon: "◆", label: "Elements" },
+  { id: "color",      icon: "●", label: "Colors" },
+  { id: "layout",     icon: "▦", label: "Layout" },
+  { id: "review",     icon: "★", label: "Review" },
+];
+
+const COVER_INTELLIGENCE_TOOLS = [
+  { id: "market",   icon: "↗", label: "Market" },
+  { id: "strategy", icon: "◎", label: "Strategy" },
+  { id: "mood",     icon: "◫", label: "Mood" },
+];
+
+function CoverToolRail({ currentStep, onStepChange }) {
+  const button = (tool) => {
+    const active = currentStep === tool.id;
+    return (
+      <button
+        key={tool.id}
+        type="button"
+        onClick={() => onStepChange(tool.id)}
+        title={tool.label}
+        className={`group flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition ${
+          active
+            ? "bg-white/10 text-white shadow-inner ring-1 ring-white/10"
+            : "text-slate-500 hover:bg-white/[0.06] hover:text-slate-200"
+        }`}
+      >
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-[15px] font-black transition ${
+          active ? "bg-violet-600 text-white shadow-lg shadow-violet-950/30" : "bg-white/[0.04] text-slate-400 group-hover:text-white"
+        }`}>
+          {tool.icon}
+        </span>
+        <span className="text-[9px] font-semibold leading-none">{tool.label}</span>
+      </button>
+    );
+  };
+
+  return (
+    <aside className="flex w-[76px] shrink-0 flex-col border-r border-white/[0.07] bg-[#111318] px-2 py-3">
+      <div className="flex h-9 items-center justify-center">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600 text-[13px] font-black text-white shadow-lg shadow-violet-950/40">C</div>
+      </div>
+      <div className="mt-3 space-y-1">{COVER_EDITOR_TOOLS.map(button)}</div>
+      <div className="my-3 border-t border-white/[0.07]" />
+      <p className="mb-1 text-center text-[7px] font-bold uppercase tracking-[0.18em] text-slate-700">Intel</p>
+      <div className="space-y-1">{COVER_INTELLIGENCE_TOOLS.map(button)}</div>
+      <div className="mt-auto pt-3">
+        {button({ id: "bookInfo", icon: "⚙", label: "Setup" })}
+      </div>
+    </aside>
+  );
+}
+
+function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, preflight }) {
+  const update = (key, value) => setPrintSetup((prev) => ({ ...prev, [key]: value }));
+
+  return (
+    <div className="h-full overflow-y-auto px-4 py-4 text-slate-200">
+      <div className="mb-4">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Print setup</p>
+        <h3 className="mt-1 text-sm font-bold text-white">KDP paperback</h3>
+        <p className="mt-1 text-[10px] leading-relaxed text-slate-500">Set the real trim and page geometry before final artwork/export.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
+          <p className="text-[8px] font-bold uppercase tracking-wider text-slate-600">Full wrap</p>
+          <p className="mt-1 text-[12px] font-semibold text-white">{formatInches(geometry.fullWidth)} × {formatInches(geometry.fullHeight)}</p>
+        </div>
+        <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
+          <p className="text-[8px] font-bold uppercase tracking-wider text-slate-600">Spine</p>
+          <p className="mt-1 text-[12px] font-semibold text-white">{formatInches(geometry.spineWidth)}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <label className="block">
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Trim size</span>
+          <div className="rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] font-semibold text-slate-200">{metadata.bookSize}</div>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Page count</span>
+          <input
+            type="number"
+            min="24"
+            step="2"
+            value={printSetup.pageCount}
+            onChange={(e) => {
+              update("pageCount", Math.max(24, Number(e.target.value) || 24));
+              update("estimatedPageCount", false);
+            }}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Interior</span>
+          <select
+            value={printSetup.interiorId}
+            onChange={(e) => update("interiorId", e.target.value)}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500"
+          >
+            {PAPERBACK_INTERIORS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Reading direction</span>
+          <select
+            value={printSetup.readingDirection}
+            onChange={(e) => update("readingDirection", e.target.value)}
+            className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500"
+          >
+            <option value="ltr">Left to right</option>
+            <option value="rtl">Right to left</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="mt-4 space-y-2 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
+        {[
+          ["showGuides", "Safe & bleed guides"],
+          ["spineText", "Spine text"],
+        ].map(([key, label]) => (
+          <label key={key} className="flex items-center justify-between gap-3 text-[11px] text-slate-300">
+            <span>{label}</span>
+            <input type="checkbox" checked={!!printSetup[key]} onChange={(e) => update(key, e.target.checked)} />
+          </label>
+        ))}
+        <label className="flex items-center justify-between gap-3 text-[11px] text-slate-300">
+          <span>Barcode</span>
+          <select value={printSetup.barcodeMode} onChange={(e) => update("barcodeMode", e.target.value)} className="rounded border border-white/[0.08] bg-[#171a20] px-2 py-1 text-[10px]">
+            <option value="kdp">KDP places it</option>
+            <option value="own">My barcode</option>
+            <option value="none">No reserve</option>
+          </select>
+        </label>
+      </div>
+
+      <div className={`mt-4 rounded-xl border p-3 ${
+        preflight.status === "pass"
+          ? "border-emerald-500/20 bg-emerald-500/[0.06]"
+          : preflight.status === "block"
+            ? "border-red-500/20 bg-red-500/[0.06]"
+            : "border-amber-500/20 bg-amber-500/[0.06]"
+      }`}>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-bold text-white">KDP preflight</p>
+          <span className="text-[9px] font-bold uppercase text-slate-400">{preflight.status}</span>
+        </div>
+        <div className="mt-2 space-y-1.5">
+          {preflight.checks.slice(0, 5).map((check) => (
+            <div key={check.id} className="flex items-start gap-2 text-[9px]">
+              <span className={check.status === "pass" ? "text-emerald-400" : check.status === "block" ? "text-red-400" : "text-amber-400"}>
+                {check.status === "pass" ? "✓" : "•"}
+              </span>
+              <span className="text-slate-400">{check.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate }) {
+  const update = (key, value) => setBackCover((prev) => ({ ...prev, [key]: value }));
+  const layouts = ["editorial", "authority", "benefits", "minimal"];
+
+  return (
+    <div className="h-full overflow-y-auto px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Back cover</p>
+          <h3 className="mt-1 text-sm font-bold text-white">Sales copy & layout</h3>
+        </div>
+        <button type="button" onClick={onGenerate} disabled={generating} className="rounded-lg bg-violet-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-violet-500 disabled:opacity-50">
+          {generating ? "Writing…" : "✦ Write"}
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        {layouts.map((layout) => (
+          <button
+            key={layout}
+            type="button"
+            onClick={() => update("layout", layout)}
+            className={`rounded-xl border px-3 py-2 text-left text-[10px] font-semibold capitalize transition ${
+              backCover.layout === layout
+                ? "border-violet-400 bg-violet-500/10 text-violet-300"
+                : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            {layout}
+          </button>
+        ))}
+      </div>
+
+      <label className="mt-4 block">
+        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Headline</span>
+        <input value={backCover.headline || ""} onChange={(e) => update("headline", e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500" />
+      </label>
+      <label className="mt-3 block">
+        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Blurb</span>
+        <textarea rows={8} value={backCover.blurb || ""} onChange={(e) => update("blurb", e.target.value)} className="w-full resize-y rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] leading-relaxed text-slate-200 outline-none focus:border-violet-500" />
+      </label>
+      <label className="mt-3 block">
+        <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-500">Author line</span>
+        <input value={backCover.authorLine || ""} onChange={(e) => update("authorLine", e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#171a20] px-3 py-2 text-[11px] text-white outline-none focus:border-violet-500" />
+      </label>
+      <p className="mt-3 rounded-lg border border-amber-500/10 bg-amber-500/[0.05] px-3 py-2 text-[9px] leading-relaxed text-amber-200/70">
+        The barcode-safe region remains reserved in Full Cover view.
+      </p>
+    </div>
+  );
+}
+
 // ─── Workflow Navigator ───────────────────────────────────────────────────────
 
 function WorkflowNavigator({ currentStep, onStepChange }) {
@@ -1806,46 +2028,74 @@ function ProjectStatusCard({ metadata, lastSaved, validationErrors }) {
   );
 }
 
-function WorkspaceHeader({ metadata, lastSaved, saveStatus }) {
+function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface, preflight }) {
   const statusMap = {
-    saved:   { dot: "bg-emerald-500", text: "text-emerald-500", label: lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Saved" },
-    saving:  { dot: "bg-amber-400 animate-pulse", text: "text-amber-400", label: "Saving…" },
-    unsaved: { dot: "bg-amber-400", text: "text-amber-400", label: "Unsaved changes" },
+    saved:   { dot: "bg-emerald-400", text: "text-slate-400", label: lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Saved" },
+    saving:  { dot: "bg-amber-400 animate-pulse", text: "text-amber-300", label: "Saving…" },
+    unsaved: { dot: "bg-amber-400", text: "text-amber-300", label: "Unsaved" },
   };
   const st = statusMap[saveStatus] || statusMap.saved;
+  const surfaces = [
+    { id: "front", label: "Front" },
+    { id: "back", label: "Back" },
+    { id: "full", label: "Full Cover" },
+  ];
 
   return (
-    <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 bg-gray-900 shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-          <h2 className="text-sm font-bold text-gray-100 truncate">Book Cover Studio</h2>
+    <div className="grid h-[58px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-white/[0.07] bg-[#0d0f13] px-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-xs font-black text-white shadow-lg shadow-violet-950/30">C</div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="truncate text-[12px] font-bold text-white">Cover Studio</h2>
+            <span className="hidden rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-500 sm:inline">KDP</span>
+          </div>
+          <p className="mt-0.5 max-w-[260px] truncate text-[9px] text-slate-600">{metadata.title || "Untitled book"}</p>
         </div>
-        {metadata.title && (
-          <>
-            <span className="text-gray-700 text-xs">·</span>
-            <span className="text-xs text-gray-400 truncate max-w-[220px]">{metadata.title}</span>
-          </>
-        )}
       </div>
-      <div className="flex items-center gap-3 shrink-0">
-        {/* Auto-save status indicator */}
-        <div className="hidden sm:flex items-center gap-1.5">
-          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.dot}`} />
-          <span className={`text-[10px] font-medium ${st.text}`}>{st.label}</span>
+
+      <div className="flex items-center rounded-xl border border-white/[0.08] bg-[#17191f] p-1 shadow-inner">
+        {surfaces.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setSurface(item.id)}
+            className={`rounded-lg px-4 py-1.5 text-[10px] font-bold transition ${
+              surface === item.id
+                ? "bg-white text-[#111318] shadow-sm"
+                : "text-slate-500 hover:text-slate-200"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <div className="hidden items-center gap-1.5 md:flex">
+          <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+          <span className={`text-[9px] font-medium ${st.text}`}>{st.label}</span>
         </div>
+        <span className={`hidden rounded-lg border px-2.5 py-1 text-[8px] font-black uppercase tracking-wider lg:inline-flex ${
+          preflight.status === "pass"
+            ? "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300"
+            : preflight.status === "block"
+              ? "border-red-500/20 bg-red-500/[0.07] text-red-300"
+              : "border-amber-500/20 bg-amber-500/[0.07] text-amber-300"
+        }`}>
+          {preflight.status === "pass" ? "Print ready" : preflight.status === "block" ? "Blocked" : "Review"}
+        </span>
         <button
           type="button"
-          className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-[11px] font-semibold text-gray-300 hover:bg-gray-700 hover:text-white transition"
+          title="Fullscreen cover editor"
+          onClick={() => {
+            const el = document.documentElement;
+            if (!document.fullscreenElement) el.requestFullscreen?.();
+            else document.exitFullscreen?.();
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-[13px] text-slate-400 transition hover:bg-white/[0.08] hover:text-white"
         >
-          Preview
-        </button>
-        <button
-          type="button"
-          disabled
-          className="rounded-lg border border-gray-800 bg-gray-900 px-3 py-1.5 text-[11px] font-semibold text-gray-700 cursor-not-allowed select-none"
-        >
-          Export
+          ⛶
         </button>
       </div>
     </div>
@@ -2424,16 +2674,67 @@ function MetadataPanel({ metadata, onChange, errors, backgroundOverrides, onBgCh
 
 // ─── Filmstrip Bar ────────────────────────────────────────────────────────────
 
-function FilmstripBar() {
+function FilmstripBar({ concepts, selectedConceptIdx, onSelect, metadata, onGenerate, generating }) {
+  const hasConcepts = Array.isArray(concepts) && concepts.length > 0;
+
   return (
-    <div
-      className="shrink-0 border-t border-gray-800 bg-gray-950/80 px-4 py-3 flex items-center gap-3 overflow-x-auto"
-      style={{ height: 84 }}
-    >
-      <div className="flex items-center justify-center rounded-xl border border-dashed border-gray-700 bg-gray-800/40 px-6 h-full min-w-[140px]">
-        <p className="text-[9px] text-gray-600 text-center leading-snug select-none">
-          Cover Concepts<br />will appear here.
-        </p>
+    <div className="shrink-0 border-t border-white/[0.07] bg-[#0f1115] px-4 py-2.5">
+      <div className="flex h-[86px] items-center gap-2.5 overflow-x-auto">
+        <div className="mr-1 flex min-w-[88px] flex-col justify-center">
+          <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-600">Variants</p>
+          <p className="mt-1 text-[9px] leading-snug text-slate-700">{hasConcepts ? `${concepts.length} generated` : "Generate covers"}</p>
+        </div>
+
+        {hasConcepts ? concepts.map((concept, idx) => {
+          const rendererType = STYLE_TO_RENDERER_TYPE[concept.primaryStyle] || concept.type || "authority";
+          const cd = buildCoverData(
+            { ...concept, type: rendererType },
+            { subtitle: metadata?.subtitle || "", authorLine: metadata?.author || "", tagline: "" },
+            metadata?.title || "Book Title"
+          );
+          const selected = selectedConceptIdx === idx;
+          return (
+            <button
+              key={concept.conceptLabel || idx}
+              type="button"
+              onClick={() => onSelect(idx)}
+              className={`relative h-[68px] w-[52px] shrink-0 overflow-hidden rounded-md border-2 transition ${
+                selected
+                  ? "border-violet-400 shadow-lg shadow-violet-950/40 ring-2 ring-violet-400/20"
+                  : "border-white/[0.08] opacity-70 hover:border-white/20 hover:opacity-100"
+              }`}
+              title={concept.conceptName || `Concept ${idx + 1}`}
+            >
+              <div className="absolute inset-0"><ConceptRenderer cd={cd} /></div>
+              <span className={`absolute bottom-0 left-0 right-0 bg-black/65 py-0.5 text-center text-[7px] font-black ${
+                selected ? "text-violet-200" : "text-slate-400"
+              }`}>
+                {concept.conceptLabel || String.fromCharCode(65 + idx)}
+              </span>
+            </button>
+          );
+        }) : (
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating}
+            className="flex h-[68px] min-w-[132px] items-center justify-center rounded-lg border border-dashed border-white/[0.10] bg-white/[0.025] px-4 text-[9px] font-semibold text-slate-500 transition hover:border-violet-500/40 hover:text-violet-300 disabled:opacity-50"
+          >
+            {generating ? "Generating…" : "✦ Generate variants"}
+          </button>
+        )}
+
+        {hasConcepts && (
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating}
+            className="flex h-[68px] w-[52px] shrink-0 items-center justify-center rounded-md border border-dashed border-white/[0.10] bg-white/[0.025] text-lg text-slate-600 transition hover:border-violet-500/40 hover:text-violet-300 disabled:opacity-50"
+            title="Generate a fresh set"
+          >
+            {generating ? "…" : "+"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -2911,38 +3212,68 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
 // ─── Right Panel (tabbed) ─────────────────────────────────────────────────────
 
 const RIGHT_TABS = [
-  { id: "design",     label: "Design"     },
-  { id: "typography", label: "Typography" },
-  { id: "image",      label: "Image"      },
-  { id: "layout",     label: "Layout"     },
-  { id: "effects",    label: "Effects"    },
+  { id: "design",     label: "Design" },
+  { id: "typography", label: "Text"   },
+  { id: "image",      label: "Image"  },
+  { id: "print",      label: "Print"  },
+  { id: "back",       label: "Back"   },
 ];
 
-function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoChange, onTypoReset, imageOverrides, onImageChange, onImageReset, concepts, backgroundOverrides, onBgChange, onBgReset }) {
+function RightPanel({
+  metadata,
+  onChange,
+  errors,
+  typographyOverrides,
+  onTypoChange,
+  onTypoReset,
+  imageOverrides,
+  onImageChange,
+  onImageReset,
+  concepts,
+  backgroundOverrides,
+  onBgChange,
+  onBgReset,
+  currentStep,
+  surface,
+  printSetup,
+  setPrintSetup,
+  geometry,
+  preflight,
+  backCover,
+  setBackCover,
+  backCoverGenerating,
+  onGenerateBack,
+}) {
   const [activeTab, setActiveTab] = useState("design");
 
+  useEffect(() => {
+    if (surface === "back") setActiveTab("back");
+    else if (surface === "full") setActiveTab("print");
+    else if (currentStep === "typography") setActiveTab("typography");
+    else if (currentStep === "bookInfo") setActiveTab("design");
+  }, [surface, currentStep]);
+
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Tab bar */}
-      <div className="flex shrink-0 border-b border-gray-800">
-        {RIGHT_TABS.map(tab => (
+    <div className="flex h-full flex-col overflow-hidden bg-[#13161b]">
+      <div className="grid shrink-0 grid-cols-5 border-b border-white/[0.07] bg-[#101217]">
+        {RIGHT_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2.5 text-[10px] font-semibold tracking-wide transition-colors ${
+            className={`relative py-3 text-[9px] font-bold tracking-wide transition ${
               activeTab === tab.id
-                ? "text-indigo-400 border-b-2 border-indigo-500"
-                : "text-gray-600 hover:text-gray-300"
+                ? "text-white"
+                : "text-slate-600 hover:text-slate-300"
             }`}
           >
             {tab.label}
+            {activeTab === tab.id && <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-violet-500" />}
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {activeTab === "design" ? (
           <MetadataPanel
             metadata={metadata}
@@ -2966,12 +3297,21 @@ function RightPanel({ metadata, onChange, errors, typographyOverrides, onTypoCha
             onImageReset={onImageReset}
             concepts={concepts}
           />
+        ) : activeTab === "print" ? (
+          <PrintInspectorPanel
+            metadata={metadata}
+            printSetup={printSetup}
+            setPrintSetup={setPrintSetup}
+            geometry={geometry}
+            preflight={preflight}
+          />
         ) : (
-          <div className="flex items-start justify-center pt-10 px-4">
-            <p className="text-[11px] text-gray-600 text-center italic">
-              Coming in upcoming implementation.
-            </p>
-          </div>
+          <BackInspectorPanel
+            backCover={backCover}
+            setBackCover={setBackCover}
+            generating={backCoverGenerating}
+            onGenerate={onGenerateBack}
+          />
         )}
       </div>
     </div>
@@ -4602,7 +4942,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [validationErrors, setValidationErrors] = useState({});
   const [lastSaved, setLastSaved] = useState(null);
   const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "saving" | "unsaved"
-  const [currentStep, setCurrentStep] = useState("bookInfo");
+  const [currentStep, setCurrentStep] = useState("visual");
   const [surface, setSurface] = useState(() => bookCover?.coverStudio?.surface || "front");
   const [printSetup, setPrintSetup] = useState(() => initPrintSetup(bookCover, fullProject));
   const [backCover, setBackCover] = useState(() => initBackCover(bookCover, fullProject));
@@ -5529,54 +5869,25 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   return (
     <div
-      className="flex flex-col overflow-hidden"
-      style={{ minHeight: "calc(100vh - 12rem)", minWidth: 0, background: "#0d1117" }}
+      className="flex min-h-0 flex-col overflow-hidden rounded-none bg-[#0b0d10] text-slate-200"
+      style={{ height: "calc(100vh - 74px)", minWidth: 0 }}
     >
-      {/* ── Header ── */}
       <WorkspaceHeader
         metadata={metadata}
         lastSaved={lastSaved}
         saveStatus={saveStatus}
-      />
-
-      <CoverProductionControls
-        metadata={metadata}
-        printSetup={printSetup}
-        setPrintSetup={setPrintSetup}
-        backCover={backCover}
-        setBackCover={setBackCover}
-        geometry={geometry}
-        preflight={coverPreflight}
         surface={surface}
         setSurface={(nextSurface) => {
           setSurface(nextSurface);
           setCurrentStep("visual");
         }}
-        generatingBack={backCoverGenerating}
-        onGenerateBack={handleGenerateBackCover}
+        preflight={coverPreflight}
       />
 
-      {/* ── Three-panel layout ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <CoverToolRail currentStep={currentStep} onStepChange={setCurrentStep} />
 
-        {/* ── LEFT PANEL (~300px) — Workflow Navigator + Project Status ── */}
-        <div
-          className="shrink-0 border-r border-gray-800 flex flex-col overflow-hidden"
-          style={{ width: 300, background: "#111827" }}
-        >
-          <WorkflowNavigator currentStep={currentStep} onStepChange={setCurrentStep} />
-          <ProjectStatusCard
-            metadata={metadata}
-            lastSaved={lastSaved}
-            validationErrors={validationErrors}
-          />
-        </div>
-
-        {/* ── CENTER WORKSPACE — Toolbar + Canvas + Filmstrip ── */}
-        <div
-          className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden"
-          style={{ background: "#1a1f2e" }}
-        >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#1a1d23]">
           {currentStep === "review" ? (
             <ReviewPanel
               concepts={concepts}
@@ -5679,16 +5990,19 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
                 />
               </div>
 
-              <FilmstripBar />
+              <FilmstripBar
+                concepts={concepts}
+                selectedConceptIdx={selectedConceptIdx}
+                onSelect={setSelectedConceptIdx}
+                metadata={metadata}
+                onGenerate={handleGenerateConcepts}
+                generating={generatingAll}
+              />
             </>
           )}
         </div>
 
-        {/* ── RIGHT PANEL (~360px) — Tabbed Design Properties ── */}
-        <div
-          className="shrink-0 border-l border-gray-800 flex flex-col overflow-hidden"
-          style={{ width: 360, background: "#111827" }}
-        >
+        <div className="flex w-[330px] shrink-0 flex-col overflow-hidden border-l border-white/[0.07] bg-[#13161b] xl:w-[350px]">
           <RightPanel
             metadata={metadata}
             onChange={setMetadata}
@@ -5703,9 +6017,18 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             backgroundOverrides={backgroundOverrides}
             onBgChange={handleBgChange}
             onBgReset={handleBgReset}
+            currentStep={currentStep}
+            surface={surface}
+            printSetup={printSetup}
+            setPrintSetup={setPrintSetup}
+            geometry={geometry}
+            preflight={coverPreflight}
+            backCover={backCover}
+            setBackCover={setBackCover}
+            backCoverGenerating={backCoverGenerating}
+            onGenerateBack={handleGenerateBackCover}
           />
         </div>
-
       </div>
 
       {/* ── Step errors from parent ── */}

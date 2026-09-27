@@ -1187,7 +1187,11 @@ export default function Dashboard() {
           </aside>
         )}
 
-        <main className="builder-main relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-16 pt-7 sm:px-7 md:px-12 md:pb-20 md:pt-11">
+        <main className={`builder-main relative min-h-0 flex-1 overscroll-contain ${
+          currentStep === COVER_STEP
+            ? "overflow-hidden p-0"
+            : "overflow-y-auto px-4 pb-16 pt-7 sm:px-7 md:px-12 md:pb-20 md:pt-11"
+        }`}>
           {currentStep === 0 && (
             <ResearchStep
               research={project.research}
