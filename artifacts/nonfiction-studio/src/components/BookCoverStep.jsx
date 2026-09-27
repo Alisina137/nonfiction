@@ -2195,8 +2195,12 @@ function PrintInspectorPanel({ metadata, printSetup, setPrintSetup, geometry, pr
             step="2"
             value={printSetup.pageCount}
             onChange={(e) => {
-              update("pageCount", Math.max(24, Number(e.target.value) || 24));
-              update("estimatedPageCount", false);
+              setPrintSetup((prev) => ({
+                ...prev,
+                pageCount: Math.max(24, Number(e.target.value) || 24),
+                estimatedPageCount: false,
+                pageCountSource: "manual",
+              }));
             }}
             className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500"
           />
@@ -5367,6 +5371,12 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const [printSetup, setPrintSetup] = useState(() => initPrintSetup(bookCover, fullProject));
   const [backCover, setBackCover] = useState(() => initBackCover(bookCover, fullProject));
   const [backCoverGenerating, setBackCoverGenerating] = useState(false);
+  const [coverExportBusy, setCoverExportBusy] = useState(false);
+  const [coverExportStatus, setCoverExportStatus] = useState("");
+  const [finalCoverExport, setFinalCoverExport] = useState(() =>
+    bookCover?.finalExport || bookCover?.coverStudio?.finalExport || null
+  );
+  const coverArtworkRef = useRef(null);
 
   // Cover concepts generation state
   const [concepts, setConceptsState] = useState(() =>
@@ -5632,6 +5642,27 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     }, (typographyOverrides?.title ?? metadata.title) || "Your Book Title"),
     [selectedConcept, typographyOverrides, metadata]
   );
+
+  const coverDesignHash = useMemo(
+    () => stableCoverHash({
+      metadata,
+      printSetup,
+      backCover,
+      selectedConceptIdx,
+      selectedConcept,
+      typographyOverrides,
+      imageOverrides,
+      backgroundOverrides,
+    }),
+    [metadata, printSetup, backCover, selectedConceptIdx, selectedConcept, typographyOverrides, imageOverrides, backgroundOverrides]
+  );
+
+  useEffect(() => {
+    if (!finalCoverExport) return;
+    if (finalCoverExport.designHash !== coverDesignHash) {
+      setFinalCoverExport(null);
+    }
+  }, [coverDesignHash]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toolStatuses = useMemo(() => {
     const status = (done, working = false) => working ? "working" : done ? "complete" : "todo";
@@ -6342,6 +6373,86 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     return () => { if (typoDebounceRef.current) clearTimeout(typoDebounceRef.current); };
   }, [metadata.title, metadata.subtitle, selectedConceptIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  async function handleExportPrintCover() {
+    if (coverExportBusy) return;
+    if (coverPreflight.status === "block") {
+      setCoverExportStatus("Resolve blocking cover preflight issues before export.");
+      return;
+    }
+    if (printSetup.pageCountSource !== "final-production") {
+      setCoverExportStatus("Run Final Production Check in Finish and sync the exact page count before exporting the KDP cover.");
+      return;
+    }
+
+    setCoverExportBusy(true);
+    setCoverExportStatus("Preparing full-wrap artwork at 300 DPI…");
+    try {
+      if (surface !== "full" || currentStep !== "visual") {
+        setSurface("full");
+        setCurrentStep("visual");
+        setCanvasState((prev) => ({ ...prev, zoomLevel: "fit" }));
+        await nextPaintFrames(3);
+      }
+
+      const pngData = await rasterizeCoverNode(
+        coverArtworkRef.current,
+        geometry.pixels300.width,
+        geometry.pixels300.height,
+        previewData?.bg || "#ffffff"
+      );
+
+      setCoverExportStatus("Building flattened KDP cover PDF…");
+      const res = await fetch("/api/export/cover-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageData: pngData,
+          fullWidth: geometry.fullWidth,
+          fullHeight: geometry.fullHeight,
+          expectedWidthPx: geometry.pixels300.width,
+          expectedHeightPx: geometry.pixels300.height,
+          title: metadata.title || "book",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Print-cover export failed.");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const disposition = res.headers.get("content-disposition") || "";
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      a.download = match?.[1] || "print-cover.pdf";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      const dpi = Number(res.headers.get("x-cover-dpi")) || 300;
+      const exportMeta = {
+        pageCount: Number(printSetup.pageCount),
+        trimSize: metadata.bookSize,
+        dpi,
+        fullWidth: geometry.fullWidth,
+        fullHeight: geometry.fullHeight,
+        pixels: { ...geometry.pixels300 },
+        designHash: coverDesignHash,
+        exportedAt: new Date().toISOString(),
+      };
+      setFinalCoverExport(exportMeta);
+      setCoverExportStatus(`Print cover exported at ${dpi.toFixed(0)} DPI for ${printSetup.pageCount} final pages.`);
+    } catch (err) {
+      setCoverExportStatus(err?.message || "Could not export the print cover.");
+    } finally {
+      setCoverExportBusy(false);
+    }
+  }
+
   // Validate on every metadata change
   useEffect(() => {
     setValidationErrors(validateMetadata(metadata));
@@ -6382,6 +6493,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
           backgroundOverrides:    backgroundOverrides        || null,
           printSetup:              { ...printSetup },
           backCover:               { ...backCover },
+          finalExport:             finalCoverExport ? { ...finalCoverExport } : null,
           // Extended cover studio state
           coverStudio: {
             ...project,
@@ -6393,6 +6505,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
             backgroundOverrides:  backgroundOverrides  || null,
             printSetup:           { ...printSetup },
             backCover:            { ...backCover },
+            finalExport:          finalCoverExport ? { ...finalCoverExport } : null,
             surface,
             layout:               layoutProfile        || null,
             marketAnalysis:       marketAnalysis       || null,
@@ -6411,7 +6524,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       setSaveStatus("saved");
     }, 600);
     return () => clearTimeout(timer);
-  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides, imageOverrides, backgroundOverrides, printSetup, backCover, surface]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metadata, canvas, strategy, visualDirection, coverPrompt, concepts, selectedConceptIdx, conceptReviews, recommendedConceptLabel, typographyProfile, layoutProfile, marketAnalysis, coverStrategyProfile, moodBoards, selectedMoodBoardIdx, colorPalettes, selectedPaletteIdx, designElements, typographyOverrides, imageOverrides, backgroundOverrides, printSetup, backCover, finalCoverExport, surface]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed from project on first mount only
   useEffect(() => {
