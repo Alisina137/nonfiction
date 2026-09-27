@@ -1932,11 +1932,12 @@ router.post("/book", async (req, res) => {
     const { project, preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor } = req.body;
     if (!project || typeof project !== "object")
       return res.status(400).json({ error: "Missing project payload" });
-    const bytes = await buildBookPdf(project, { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
+    const artifact = await buildBookPdfArtifact(project, { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
     const slug = (project.bookDetails?.title || project.title || "book").replace(/[^a-z0-9]/gi, "-");
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${slug || "book"}.pdf"`);
-    return res.status(200).send(Buffer.from(bytes));
+    res.setHeader("X-Book-Page-Count", String(artifact.pageCount));
+    return res.status(200).send(Buffer.from(artifact.bytes));
   } catch (error: any) {
     console.error("PDF export error:", error);
     return res.status(500).json({ error: error.message || "Failed to export PDF" });
@@ -1956,6 +1957,63 @@ router.post("/docx", async (req, res) => {
   } catch (error: any) {
     console.error("DOCX export error:", error);
     return res.status(500).json({ error: error.message || "Failed to export DOCX" });
+  }
+});
+
+router.post("/epub", async (req, res) => {
+  try {
+    const { project, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor } = req.body || {};
+    if (!project || typeof project !== "object")
+      return res.status(400).json({ error: "Missing project payload" });
+
+    const epub = buildEpubArtifact(project, { dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
+    if (epub.validation.status === "block") {
+      return res.status(400).json({ error: "EPUB validation has blocking issues", validation: epub.validation });
+    }
+    const slug = (resolveBookTitle(project) || "book").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "book";
+    res.setHeader("Content-Type", "application/epub+zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${slug}.epub"`);
+    res.setHeader("X-EPUB-Validation", epub.validation.status);
+    return res.status(200).send(epub.bytes);
+  } catch (error: any) {
+    console.error("EPUB export error:", error);
+    return res.status(500).json({ error: error.message || "Failed to export EPUB" });
+  }
+});
+
+router.post("/production-report", async (req, res) => {
+  try {
+    const {
+      project,
+      preset,
+      settings,
+      dedication,
+      acknowledgments,
+      preface,
+      howToUseThisBook,
+      whatYouWillLearn,
+      whoThisBookIsFor
+    } = req.body || {};
+    if (!project || typeof project !== "object")
+      return res.status(400).json({ error: "Missing project payload" });
+
+    const options = { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor };
+    const [pdfArtifact, epub] = await Promise.all([
+      buildBookPdfArtifact(project, options),
+      Promise.resolve(buildEpubArtifact(project, options))
+    ]);
+    const report = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation);
+    const metadata = publicationMetadata(project, settings, req.body?.citationStyle || "none");
+    const manifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, report, epub.validation);
+
+    return res.json({
+      ...report,
+      epub: epub.validation,
+      archiveManifest: manifest
+    });
+  } catch (error: any) {
+    console.error("Production report error:", error);
+    return res.status(500).json({ error: error.message || "Failed to build production report" });
   }
 });
 
@@ -1980,9 +2038,10 @@ router.post("/publication-bundle", async (req, res) => {
     }
 
     const options = { preset, settings, dedication, acknowledgments, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor };
-    const [pdfBytes, docxBuffer] = await Promise.all([
-      buildBookPdf(project, options),
-      buildBookDocx(project, options)
+    const [pdfArtifact, docxBuffer, epub] = await Promise.all([
+      buildBookPdfArtifact(project, options),
+      buildBookDocx(project, options),
+      Promise.resolve(buildEpubArtifact(project, options))
     ]);
 
     const slug = (resolveBookTitle(project) || "book")
@@ -1990,6 +2049,8 @@ router.post("/publication-bundle", async (req, res) => {
       .replace(/^-|-$/g, "") || "book";
     const metadata = publicationMetadata(project, settings, citationStyle);
     const report = publicationReport && typeof publicationReport === "object" ? publicationReport : {};
+    const productionReport = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation);
+    const archiveManifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, productionReport, epub.validation);
     const description = String(metadata.description || "");
     const keywords = String(metadata.keywords || "");
 
@@ -1997,34 +2058,46 @@ router.post("/publication-bundle", async (req, res) => {
       "Nonfiction AI Studio — Publication Bundle",
       "",
       "Files:",
-      "- manuscript/" + slug + ".pdf — print-ready manuscript export",
+      "- manuscript/" + slug + ".pdf — print-ready paperback interior",
       "- manuscript/" + slug + ".docx — editable manuscript export",
+      "- ebook/" + slug + ".epub — reflowable EPUB 3 for Kindle upload",
       "- metadata/publishing-metadata.json — title, author, listing, category, trim, citation settings",
       "- reports/evidence-audit.json — retained source usage and claim review",
       "- reports/kdp-preflight.json — deterministic pre-export checks",
       "- reports/publication-consistency.json — manuscript/cover/listing consistency checks",
       "- reports/citation-registry.json — verified sources available to exported citation markers",
+      "- reports/final-production-report.json — exact final pagination + KDP production checks",
+      "- reports/epub-validation.json — internal EPUB structure checks",
+      "- reports/kdp-upload-checklist.json — paperback/eBook upload checklist",
+      "- archive/archive-manifest.json — version id + SHA-256 production fingerprint",
       "- listing/description.txt — current listing description",
       "- listing/keywords.txt — current discovery keywords",
       "",
-      "Important: this bundle is an internal production archive. KDP's online preview and current publishing requirements remain the final upload checks."
+      "Important: validate the EPUB in Kindle Previewer and run KDP Print Previewer on the paperback files before publishing."
     ].join("\n");
 
     const zip = buildStoredZip([
-      { name: "manuscript/" + slug + ".pdf", data: Buffer.from(pdfBytes) },
+      { name: "manuscript/" + slug + ".pdf", data: Buffer.from(pdfArtifact.bytes) },
       { name: "manuscript/" + slug + ".docx", data: docxBuffer },
+      { name: "ebook/" + slug + ".epub", data: epub.bytes },
       { name: "metadata/publishing-metadata.json", data: JSON.stringify(metadata, null, 2) },
       { name: "reports/evidence-audit.json", data: JSON.stringify(report.evidenceAudit || {}, null, 2) },
       { name: "reports/kdp-preflight.json", data: JSON.stringify(report.publishingPreflight || {}, null, 2) },
       { name: "reports/publication-consistency.json", data: JSON.stringify(report.publicationConsistency || {}, null, 2) },
       { name: "reports/citation-registry.json", data: JSON.stringify(report.citationRegistry || {}, null, 2) },
+      { name: "reports/final-production-report.json", data: JSON.stringify(productionReport, null, 2) },
+      { name: "reports/epub-validation.json", data: JSON.stringify(epub.validation, null, 2) },
+      { name: "reports/kdp-upload-checklist.json", data: JSON.stringify(productionReport.kdpChecklist, null, 2) },
+      { name: "archive/archive-manifest.json", data: JSON.stringify(archiveManifest, null, 2) },
       { name: "listing/description.txt", data: description },
       { name: "listing/keywords.txt", data: keywords },
       { name: "README.txt", data: readme }
     ]);
 
     res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", `attachment; filename="${slug}-publication-bundle.zip"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${archiveManifest.archiveId}.zip"`);
+    res.setHeader("X-Book-Page-Count", String(pdfArtifact.pageCount));
+    res.setHeader("X-Publication-Archive-Id", archiveManifest.archiveId);
     return res.status(200).send(zip);
   } catch (error: any) {
     console.error("Publication bundle export error:", error);
