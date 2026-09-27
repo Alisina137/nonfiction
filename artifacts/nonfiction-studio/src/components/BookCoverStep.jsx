@@ -1685,6 +1685,216 @@ function LayoutCard({ profile, generating, onRegenerate }) {
   );
 }
 
+function TypographyWorkflowPanel({ profile, generating, onRegenerate, onApply, hasAppliedOverrides }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f4f1eb]">
+      <div className="flex shrink-0 items-center justify-between border-b border-[#e3ddd2] bg-[#faf8f4] px-6 py-4">
+        <div>
+          <h2 className="text-[13px] font-bold text-[#203432]">Typography Intelligence</h2>
+          <p className="mt-0.5 text-[10px] text-[#7f8985]">
+            Build a title hierarchy that remains readable at Amazon thumbnail size.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={generating}
+            className="rounded-xl border border-[#cfc7ba] bg-white px-4 py-2 text-[10px] font-bold text-[#465b57] hover:border-emerald-400 disabled:opacity-50"
+          >
+            {generating ? "Generating…" : "↻ Re-analyze"}
+          </button>
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={!profile || generating}
+            className="rounded-xl bg-emerald-700 px-4 py-2 text-[10px] font-bold text-white hover:bg-emerald-800 disabled:opacity-40"
+          >
+            {hasAppliedOverrides ? "✓ Re-apply AI Typography" : "Apply AI Typography"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto px-6 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
+        <div className="rounded-2xl border border-[#ddd6ca] bg-white p-5">
+          <div className="mb-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">AI recommendation</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-[#64736f]">
+              The profile below is generated from the selected concept, book title, subtitle, category strategy, and visual direction.
+            </p>
+          </div>
+          <TypographyCard profile={profile} generating={generating} onRegenerate={onRegenerate} />
+        </div>
+
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-[#ddd6ca] bg-white p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">What Apply changes</p>
+            <ul className="mt-3 space-y-2 text-[10px] leading-relaxed text-[#52635f]">
+              <li>• Chooses the recommended title font category when supported.</li>
+              <li>• Applies title alignment to the editable cover text.</li>
+              <li>• Converts AI title/subtitle/author hierarchy into relative text sizes.</li>
+              <li>• Keeps manual editing available in the Text inspector after application.</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">Success target</p>
+            <p className="mt-2 text-[11px] font-semibold leading-relaxed text-emerald-900">
+              A reader should identify the title first, understand the subtitle second, and see the author third—even at thumbnail size.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LayoutWorkflowPanel({ profile, generating, onRegenerate, onApply, hasAppliedLayout }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f4f1eb]">
+      <div className="flex shrink-0 items-center justify-between border-b border-[#e3ddd2] bg-[#faf8f4] px-6 py-4">
+        <div>
+          <h2 className="text-[13px] font-bold text-[#203432]">Layout & Composition</h2>
+          <p className="mt-0.5 text-[10px] text-[#7f8985]">
+            Turn the selected concept into a deliberate visual hierarchy with low collision risk.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={generating}
+            className="rounded-xl border border-[#cfc7ba] bg-white px-4 py-2 text-[10px] font-bold text-[#465b57] hover:border-emerald-400 disabled:opacity-50"
+          >
+            {generating ? "Generating…" : "↻ Re-analyze"}
+          </button>
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={!profile || generating}
+            className="rounded-xl bg-emerald-700 px-4 py-2 text-[10px] font-bold text-white hover:bg-emerald-800 disabled:opacity-40"
+          >
+            {hasAppliedLayout ? "✓ Re-apply Layout Guidance" : "Apply Layout Guidance"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto px-6 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)]">
+        <div className="rounded-2xl border border-[#ddd6ca] bg-white p-5">
+          <LayoutCard profile={profile} generating={generating} onRegenerate={onRegenerate} />
+        </div>
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-[#ddd6ca] bg-white p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">What Apply changes</p>
+            <ul className="mt-3 space-y-2 text-[10px] leading-relaxed text-[#52635f]">
+              <li>• Applies the recommended left/center/right text alignment when explicit.</li>
+              <li>• Moves uploaded imagery toward the recommended upper, center, or lower focal zone.</li>
+              <li>• Turns safe-area guides on so composition can be checked against KDP trim.</li>
+              <li>• Returns you to Canvas to visually confirm the result.</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">Success target</p>
+            <p className="mt-2 text-[11px] font-semibold leading-relaxed text-emerald-900">
+              The cover should have one obvious focal point, comfortable white space, and no important text fighting the image or trim.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SetupWorkflowPanel({ metadata, geometry, preflight, printSetup }) {
+  const setupItems = [
+    ["Title", metadata?.title, "Required"],
+    ["Author", metadata?.author, "Required"],
+    ["Primary category", metadata?.primaryCategory, "Improves genre targeting"],
+    ["Audience", metadata?.audience, "Improves market decisions"],
+    ["Trim", metadata?.bookSize, "Controls aspect ratio"],
+    ["Page count", geometry?.pageCount, "Controls spine width"],
+  ];
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f4f1eb]">
+      <div className="shrink-0 border-b border-[#e3ddd2] bg-[#faf8f4] px-6 py-4">
+        <h2 className="text-[13px] font-bold text-[#203432]">Cover Setup</h2>
+        <p className="mt-0.5 text-[10px] text-[#7f8985]">
+          Lock the book facts and print geometry that every design decision must respect.
+        </p>
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto px-6 py-5 xl:grid-cols-2">
+        <div className="rounded-2xl border border-[#ddd6ca] bg-white p-5">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">Design inputs</p>
+          <div className="mt-4 space-y-2">
+            {setupItems.map(([label, value, why]) => (
+              <div key={label} className="flex items-start justify-between gap-3 rounded-xl border border-[#eee8de] bg-[#fbfaf7] px-3 py-2.5">
+                <div>
+                  <p className="text-[10px] font-bold text-[#314a46]">{label}</p>
+                  <p className="mt-0.5 text-[9px] text-[#8b948f]">{why}</p>
+                </div>
+                <span className={`max-w-[55%] text-right text-[10px] font-semibold ${value ? "text-[#315b53]" : "text-amber-700"}`}>
+                  {value || "Missing"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-[#ddd6ca] bg-white p-5">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#8b948f]">KDP geometry</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-[#f5f1e9] p-3">
+                <p className="text-[8px] uppercase tracking-wide text-[#8b948f]">Full wrap</p>
+                <p className="mt-1 text-[12px] font-bold text-[#315b53]">{formatInches(geometry.fullWidth)} × {formatInches(geometry.fullHeight)}</p>
+              </div>
+              <div className="rounded-xl bg-[#f5f1e9] p-3">
+                <p className="text-[8px] uppercase tracking-wide text-[#8b948f]">Spine</p>
+                <p className="mt-1 text-[12px] font-bold text-[#315b53]">{formatInches(geometry.spineWidth)}</p>
+              </div>
+              <div className="rounded-xl bg-[#f5f1e9] p-3">
+                <p className="text-[8px] uppercase tracking-wide text-[#8b948f]">Interior</p>
+                <p className="mt-1 text-[10px] font-bold text-[#315b53]">{printSetup?.interiorId || "bw-white"}</p>
+              </div>
+              <div className="rounded-xl bg-[#f5f1e9] p-3">
+                <p className="text-[8px] uppercase tracking-wide text-[#8b948f]">Spine text</p>
+                <p className="mt-1 text-[10px] font-bold text-[#315b53]">{geometry.spineTextEligible ? "Eligible" : "Not eligible"}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${
+            preflight.status === "pass"
+              ? "border-emerald-200 bg-emerald-50"
+              : preflight.status === "block"
+                ? "border-red-200 bg-red-50"
+                : "border-amber-200 bg-amber-50"
+          }`}>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#314a46]">Production target</p>
+              <span className="text-[9px] font-bold uppercase">{preflight.status}</span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {preflight.checks.map((check) => (
+                <div key={check.id} className="flex gap-2 text-[10px]">
+                  <span className={check.status === "pass" ? "text-emerald-700" : check.status === "block" ? "text-red-700" : "text-amber-700"}>
+                    {check.status === "pass" ? "✓" : "•"}
+                  </span>
+                  <div>
+                    <p className="font-semibold text-[#314a46]">{check.label}</p>
+                    <p className="text-[9px] text-[#6f7a76]">{check.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Creative editor rail ────────────────────────────────────────────────────
 
 const COVER_EDITOR_TOOLS = [
@@ -1703,7 +1913,119 @@ const COVER_INTELLIGENCE_TOOLS = [
   { id: "mood",     icon: "◫", label: "Mood" },
 ];
 
-function CoverToolRail({ currentStep, onStepChange }) {
+const COVER_TOOL_MISSIONS = {
+  concepts: {
+    name: "Generate",
+    goal: "Turn all approved cover decisions into distinct, usable cover directions.",
+    purpose: "Create multiple visual solutions instead of locking onto the first idea.",
+    target: "Generate 4 differentiated concepts, then select the strongest direction.",
+    output: "Selected cover concept",
+  },
+  visual: {
+    name: "Canvas",
+    goal: "Inspect the selected concept as a real cover, not as an abstract idea.",
+    purpose: "Check visual impact, safe zones, balance, and full-wrap production behavior.",
+    target: "A cover that reads clearly at full size and remains legible at thumbnail size.",
+    output: "Refined front/back/full-wrap preview",
+  },
+  typography: {
+    name: "Text",
+    goal: "Make the title instantly readable and establish a clear text hierarchy.",
+    purpose: "Use typography to communicate genre, authority, tone, and reading order.",
+    target: "Title first, subtitle second, author third, with low overlap risk at thumbnail size.",
+    output: "Applied typography system",
+  },
+  elements: {
+    name: "Elements",
+    goal: "Choose one dominant visual idea and only supporting elements that strengthen it.",
+    purpose: "Prevent clutter and make the cover communicate a single memorable concept.",
+    target: "One focal point, controlled complexity, and an explicit avoid-list.",
+    output: "Approved visual element plan",
+  },
+  color: {
+    name: "Colors",
+    goal: "Choose a palette that signals the genre while keeping title contrast strong.",
+    purpose: "Use color as a recognition and differentiation tool, not decoration.",
+    target: "One selected palette with clear background, text, primary, and accent roles.",
+    output: "Selected cover palette",
+  },
+  layout: {
+    name: "Layout",
+    goal: "Place text and imagery so the eye knows exactly where to look first.",
+    purpose: "Control balance, focal area, white space, and text/image collision risk.",
+    target: "Low overlap risk, deliberate focal area, and safe composition inside trim margins.",
+    output: "Applied composition guidance",
+  },
+  review: {
+    name: "Review",
+    goal: "Evaluate concepts against professional cover criteria before committing.",
+    purpose: "Catch weak readability, genre mismatch, and poor thumbnail performance early.",
+    target: "Every generated concept reviewed, with one intentional final selection.",
+    output: "Reviewed winning direction",
+  },
+  market: {
+    name: "Market",
+    goal: "Understand what readers in this category expect to recognize immediately.",
+    purpose: "Match genre conventions while finding a clear point of differentiation.",
+    target: "Document visual codes, common mistakes, differentiation opportunities, and cover goal.",
+    output: "Market cover brief",
+  },
+  strategy: {
+    name: "Strategy",
+    goal: "Define the one message the cover must communicate before any styling decisions.",
+    purpose: "Translate the book promise and audience into a deliberate visual strategy.",
+    target: "Clear cover purpose, visual style, image approach, complexity, and color direction.",
+    output: "Cover strategy",
+  },
+  mood: {
+    name: "Mood",
+    goal: "Choose the emotional atmosphere readers should feel before reading a word.",
+    purpose: "Keep imagery, color, typography, and composition emotionally consistent.",
+    target: "One selected mood board that matches audience expectations and book promise.",
+    output: "Selected emotional direction",
+  },
+  bookInfo: {
+    name: "Setup",
+    goal: "Lock the factual and production inputs the cover must obey.",
+    purpose: "Prevent beautiful artwork from failing because of wrong metadata, trim, or spine geometry.",
+    target: "Title, author, category, trim, page count, barcode policy, and KDP preflight reviewed.",
+    output: "Production-ready cover setup",
+  },
+};
+
+function CoverMissionBar({ toolId, status = "todo" }) {
+  const mission = COVER_TOOL_MISSIONS[toolId] || COVER_TOOL_MISSIONS.visual;
+  const tone = status === "complete"
+    ? "border-emerald-200 bg-emerald-50/80 text-emerald-800"
+    : status === "working"
+      ? "border-amber-200 bg-amber-50/80 text-amber-800"
+      : "border-[#ded7cb] bg-white/75 text-[#314a46]";
+
+  return (
+    <div className={`shrink-0 border-b px-4 py-3 ${tone}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em]">{mission.name} mission</p>
+            <span className="rounded-full border border-current/20 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide opacity-80">
+              {status === "complete" ? "Complete" : status === "working" ? "In progress" : "Target"}
+            </span>
+          </div>
+          <p className="mt-1 text-[12px] font-bold leading-snug">{mission.goal}</p>
+          <p className="mt-1 max-w-4xl text-[10px] leading-relaxed opacity-80">{mission.purpose}</p>
+        </div>
+        <div className="min-w-[240px] max-w-[360px] rounded-xl border border-current/10 bg-white/45 px-3 py-2">
+          <p className="text-[8px] font-black uppercase tracking-[0.14em] opacity-60">Target</p>
+          <p className="mt-1 text-[10px] font-semibold leading-relaxed">{mission.target}</p>
+          <p className="mt-1 text-[9px] opacity-70">Output: {mission.output}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function CoverToolRail({ currentStep, onStepChange, toolStatuses = {} }) {
   const button = (tool) => {
     const active = currentStep === tool.id;
     return (
@@ -1711,7 +2033,7 @@ function CoverToolRail({ currentStep, onStepChange }) {
         key={tool.id}
         type="button"
         onClick={() => onStepChange(tool.id)}
-        title={tool.label}
+        title={`${tool.label}: ${COVER_TOOL_MISSIONS[tool.id]?.goal || ""}`}
         className={`group flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition ${
           active
             ? "bg-[#e7efe9] text-[#23433d] shadow-inner ring-1 ring-[#bdd0c5]"
@@ -1724,6 +2046,16 @@ function CoverToolRail({ currentStep, onStepChange }) {
           {tool.icon}
         </span>
         <span className="text-[9px] font-semibold leading-none">{tool.label}</span>
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${
+            toolStatuses[tool.id] === "complete"
+              ? "bg-emerald-500"
+              : toolStatuses[tool.id] === "working"
+                ? "bg-amber-400 animate-pulse"
+                : "bg-[#c9c0b4]"
+          }`}
+          aria-label={toolStatuses[tool.id] || "todo"}
+        />
       </button>
     );
   };
@@ -5040,6 +5372,72 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
   const layoutDebounceRef = useRef(null);
   const layoutKeyRef = useRef("");
 
+  function applyTypographyProfile() {
+    if (!typographyProfile) return;
+
+    const rawCategory = String(typographyProfile.titleFontCategory || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ");
+    const matchedCategory = FONT_CATEGORIES.find(
+      (item) => item.toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ") === rawCategory
+    ) || null;
+
+    const rawAlignment = String(typographyProfile.titleAlignment || "").trim().toLowerCase();
+    const alignment = ["left", "center", "right"].includes(rawAlignment) ? rawAlignment : null;
+
+    const ratio = (value, fallback) => {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) return fallback;
+      return Math.max(0.5, Math.min(2, n / 100));
+    };
+
+    setTypographyOverrides((prev) => ({
+      ...(prev || {}),
+      ...(matchedCategory ? { fontCategory: matchedCategory } : {}),
+      ...(alignment ? { alignment } : {}),
+      titleSize: 1,
+      subtitleSize: ratio(typographyProfile.textSizes?.subtitle, prev?.subtitleSize ?? 0.72),
+      authorSize: ratio(typographyProfile.textSizes?.author, prev?.authorSize ?? 0.62),
+      aiTypographyAppliedAt: new Date().toISOString(),
+    }));
+
+    setCurrentStep("visual");
+    setSurface("front");
+    setCanvasState((prev) => ({ ...prev, zoomLevel: "fit" }));
+  }
+
+  function applyLayoutProfile() {
+    if (!layoutProfile) return;
+
+    const alignmentText = String(layoutProfile.alignment || "").toLowerCase();
+    const alignment = alignmentText.includes("left")
+      ? "left"
+      : alignmentText.includes("right")
+        ? "right"
+        : alignmentText.includes("center")
+          ? "center"
+          : null;
+
+    if (alignment) {
+      setTypographyOverrides((prev) => ({ ...(prev || {}), alignment }));
+    }
+
+    const focal = String(layoutProfile.focalArea || "").toLowerCase();
+    const imageY = focal.includes("upper") ? -18 : focal.includes("lower") ? 18 : 0;
+    setImageOverrides((prev) => ({
+      ...(prev || {}),
+      y: imageY,
+      aiLayoutAppliedAt: new Date().toISOString(),
+    }));
+
+    setPrintSetup((prev) => ({ ...prev, showGuides: true }));
+    setCurrentStep("visual");
+    setSurface("front");
+    setCanvasState((prev) => ({ ...prev, zoomLevel: "fit" }));
+  }
+
   // Market Analysis Engine state
   const [marketAnalysis, setMarketAnalysis] = useState(() =>
     bookCover?.marketAnalysis || bookCover?.coverStudio?.marketAnalysis || null
@@ -5150,6 +5548,75 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
     }, (typographyOverrides?.title ?? metadata.title) || "Your Book Title"),
     [selectedConcept, typographyOverrides, metadata]
   );
+
+  const toolStatuses = useMemo(() => {
+    const status = (done, working = false) => working ? "working" : done ? "complete" : "todo";
+    const setupReady = !!metadata.title?.trim()
+      && !!metadata.author?.trim()
+      && !!metadata.bookSize
+      && coverPreflight.status !== "block";
+    const conceptsReady = Array.isArray(concepts) && concepts.length > 0 && selectedConceptIdx !== null;
+    const reviewsReady = conceptsReady
+      && Array.isArray(conceptReviews)
+      && conceptReviews.length >= concepts.length
+      && !!recommendedConceptLabel;
+
+    return {
+      market: status(!!marketAnalysis, marketGenerating),
+      strategy: status(!!coverStrategyProfile, strategyGenerating),
+      mood: status(selectedMoodBoardIdx !== null && !!moodBoards?.[selectedMoodBoardIdx], moodBoardsGenerating),
+      color: status(selectedPaletteIdx !== null && !!colorPalettes?.[selectedPaletteIdx], paletteGenerating),
+      elements: status(!!designElements, designElementsGenerating),
+      typography: typographyGenerating
+        ? "working"
+        : typographyProfile && typographyOverrides?.aiTypographyAppliedAt
+          ? "complete"
+          : typographyProfile
+            ? "working"
+            : "todo",
+      layout: layoutGenerating
+        ? "working"
+        : layoutProfile && imageOverrides?.aiLayoutAppliedAt
+          ? "complete"
+          : layoutProfile
+            ? "working"
+            : "todo",
+      concepts: status(conceptsReady, generatingAll || regeneratingIdx !== null),
+      review: status(reviewsReady, reviewGenerating),
+      visual: status(conceptsReady),
+      bookInfo: status(setupReady),
+    };
+  }, [
+    metadata.title,
+    metadata.author,
+    metadata.bookSize,
+    coverPreflight.status,
+    marketAnalysis,
+    marketGenerating,
+    coverStrategyProfile,
+    strategyGenerating,
+    selectedMoodBoardIdx,
+    moodBoards,
+    moodBoardsGenerating,
+    selectedPaletteIdx,
+    colorPalettes,
+    paletteGenerating,
+    designElements,
+    designElementsGenerating,
+    typographyProfile,
+    typographyGenerating,
+    typographyOverrides,
+    layoutProfile,
+    layoutGenerating,
+    imageOverrides,
+    concepts,
+    selectedConceptIdx,
+    generatingAll,
+    regeneratingIdx,
+    conceptReviews,
+    recommendedConceptLabel,
+    reviewGenerating,
+  ]);
 
   function setMetadata(key, value) {
     setMetadataState(prev => ({ ...prev, [key]: value }));
@@ -5888,10 +6355,39 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <CoverToolRail currentStep={currentStep} onStepChange={setCurrentStep} />
+        <CoverToolRail
+          currentStep={currentStep}
+          onStepChange={setCurrentStep}
+          toolStatuses={toolStatuses}
+        />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#f1eee7]">
-          {currentStep === "review" ? (
+          <CoverMissionBar toolId={currentStep} status={toolStatuses[currentStep]} />
+
+          {currentStep === "typography" ? (
+            <TypographyWorkflowPanel
+              profile={typographyProfile}
+              generating={typographyGenerating}
+              onRegenerate={() => generateTypography(true)}
+              onApply={applyTypographyProfile}
+              hasAppliedOverrides={!!typographyOverrides?.aiTypographyAppliedAt}
+            />
+          ) : currentStep === "layout" ? (
+            <LayoutWorkflowPanel
+              profile={layoutProfile}
+              generating={layoutGenerating}
+              onRegenerate={() => generateLayout(true)}
+              onApply={applyLayoutProfile}
+              hasAppliedLayout={!!imageOverrides?.aiLayoutAppliedAt}
+            />
+          ) : currentStep === "bookInfo" ? (
+            <SetupWorkflowPanel
+              metadata={metadata}
+              geometry={geometry}
+              preflight={coverPreflight}
+              printSetup={printSetup}
+            />
+          ) : currentStep === "review" ? (
             <ReviewPanel
               concepts={concepts}
               conceptReviews={conceptReviews}

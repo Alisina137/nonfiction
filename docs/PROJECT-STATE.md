@@ -205,6 +205,20 @@ Verification:
 - Frontend provider status/preferences automatically discard stale Gemini selections saved in localStorage.
 - Vite development now uses a dedicated frontend port variable/default instead of the API `PORT`, and `strictPort` is disabled so a stale process on 5173 no longer terminates the whole parallel dev command.
 
+## Cover Studio Sidebar Workflow Hardening
+
+The Cover Studio sidebar is now a goal-driven design workflow rather than a navigation-only rail.
+
+- Every sidebar item has an explicit goal, purpose, success target, and output.
+- The active tool shows a mission bar explaining what decision the author is making and what completion means.
+- Sidebar status dots show target/in-progress/complete state.
+- Text now exposes the existing AI Typography Intelligence as a dedicated workflow and can apply supported font-category, alignment, and hierarchy recommendations into editable cover typography.
+- Layout now exposes the existing AI Layout Intelligence as a dedicated workflow and can apply alignment/focal-area guidance, enable KDP guides, and return the author to Canvas for visual verification.
+- Setup now has a dedicated production-readiness workspace showing required metadata, live KDP geometry, and all preflight checks while Design/Print inspector tabs remain editable on the right.
+- Market, Strategy, Mood, Colors, Elements, Generate, Review, and Canvas keep their existing functional engines but now expose a clear design mission and completion target.
+- Text/Layout are not considered complete merely because AI advice exists; the author must apply the guidance.
+- Full workflow semantics are documented in `docs/COVER-SIDEBAR-WORKFLOW.md`.
+
 ## Next phase candidate
 
 ### Phase 04 — Final Book Production & KDP Export
