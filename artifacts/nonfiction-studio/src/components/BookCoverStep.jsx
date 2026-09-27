@@ -1719,7 +1719,7 @@ function CoverToolRail({ currentStep, onStepChange }) {
         }`}
       >
         <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-[15px] font-black transition ${
-          active ? "bg-teal-600 text-white shadow-lg shadow-teal-950/30" : "bg-white/70 text-[#64736f] group-hover:text-white"
+          active ? "bg-[#315b53] text-white shadow-lg shadow-[#315b53]/20" : "bg-white text-[#64736f] group-hover:text-[#23433d]"
         }`}>
           {tool.icon}
         </span>
@@ -1865,7 +1865,7 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7f8985]">Back cover</p>
           <h3 className="mt-1 text-sm font-bold text-[#203432]">Sales copy & layout</h3>
         </div>
-        <button type="button" onClick={onGenerate} disabled={generating} className="rounded-lg bg-teal-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-teal-500 disabled:opacity-50">
+        <button type="button" onClick={onGenerate} disabled={generating} className="rounded-lg bg-teal-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-[#3f6f65] disabled:opacity-50">
           {generating ? "Writing…" : "✦ Write"}
         </button>
       </div>
@@ -1878,7 +1878,7 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
             onClick={() => update("layout", layout)}
             className={`rounded-xl border px-3 py-2 text-left text-[10px] font-semibold capitalize transition ${
               backCover.layout === layout
-                ? "border-teal-400 bg-teal-500/10 text-teal-300"
+                ? "border-[#7fa797] bg-[#e8f0eb] text-[#315b53]"
                 : "border-[#e3ddd2] bg-white/60 text-[#64736f] hover:text-[#314a46]"
             }`}
           >
@@ -1899,7 +1899,7 @@ function BackInspectorPanel({ backCover, setBackCover, generating, onGenerate })
         <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[#7f8985]">Author line</span>
         <input value={backCover.authorLine || ""} onChange={(e) => update("authorLine", e.target.value)} className="w-full rounded-lg border border-[#ddd7cc] bg-white px-3 py-2 text-[11px] text-[#203432] outline-none focus:border-teal-500" />
       </label>
-      <p className="mt-3 rounded-lg border border-amber-500/10 bg-amber-500/[0.05] px-3 py-2 text-[9px] leading-relaxed text-amber-200/70">
+      <p className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-[9px] leading-relaxed text-amber-700">
         The barcode-safe region remains reserved in Full Cover view.
       </p>
     </div>
@@ -1950,7 +1950,7 @@ function WorkflowNavigator({ currentStep, onStepChange }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-[11px] font-semibold truncate ${
-                  isActive   ? "text-emerald-300"  :
+                  isActive   ? "text-emerald-700"  :
                   isComplete ? "text-emerald-400" :
                   isUnlocked ? "text-[#5f6e6a]"    :
                                "text-[#969c97]"
@@ -2031,8 +2031,8 @@ function ProjectStatusCard({ metadata, lastSaved, validationErrors }) {
 function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface, preflight }) {
   const statusMap = {
     saved:   { dot: "bg-emerald-400", text: "text-[#64736f]", label: lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Saved" },
-    saving:  { dot: "bg-amber-400 animate-pulse", text: "text-amber-300", label: "Saving…" },
-    unsaved: { dot: "bg-amber-400", text: "text-amber-300", label: "Unsaved" },
+    saving:  { dot: "bg-amber-400 animate-pulse", text: "text-amber-700", label: "Saving…" },
+    unsaved: { dot: "bg-amber-400", text: "text-amber-700", label: "Unsaved" },
   };
   const st = statusMap[saveStatus] || statusMap.saved;
   const surfaces = [
@@ -2079,10 +2079,10 @@ function WorkspaceHeader({ metadata, lastSaved, saveStatus, surface, setSurface,
         </div>
         <span className={`hidden rounded-lg border px-2.5 py-1 text-[8px] font-black uppercase tracking-wider lg:inline-flex ${
           preflight.status === "pass"
-            ? "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300"
+            ? "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-700"
             : preflight.status === "block"
-              ? "border-red-500/20 bg-red-500/[0.07] text-red-300"
-              : "border-amber-500/20 bg-amber-500/[0.07] text-amber-300"
+              ? "border-red-500/20 bg-red-500/[0.07] text-red-700"
+              : "border-amber-500/20 bg-amber-500/[0.07] text-amber-700"
         }`}>
           {preflight.status === "pass" ? "Print ready" : preflight.status === "block" ? "Blocked" : "Review"}
         </span>
@@ -2683,7 +2683,7 @@ function FilmstripBar({ concepts, selectedConceptIdx, onSelect, metadata, onGene
 
   return (
     <div className="shrink-0 border-t border-[#e3ddd2] bg-[#f7f4ee] px-4 py-2.5">
-      <div className="flex h-[86px] items-center gap-2.5 overflow-x-auto">
+      <div className="cover-horizontal-scroll flex h-[86px] items-center gap-2.5 overflow-x-auto">
         <div className="mr-1 flex min-w-[88px] flex-col justify-center">
           <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#8e9692]">Variants</p>
           <p className="mt-1 text-[9px] leading-snug text-[#465451]">{hasConcepts ? `${concepts.length} generated` : "Generate covers"}</p>
@@ -3077,7 +3077,7 @@ function ImageEditorPanel({ imageOverrides, onImageChange, onImageReset, concept
               </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-[#d8d1c5] text-[#465b57] hover:border-emerald-500 hover:text-emerald-300 transition-colors"
+                className="w-full py-1.5 rounded-lg text-[9px] font-semibold border border-[#d8d1c5] text-[#465b57] hover:border-emerald-500 hover:text-emerald-700 transition-colors"
               >
                 Replace Image
               </button>
@@ -3409,7 +3409,7 @@ function DesignElementsPanel({ designElements: de, generating, onRegenerate, onR
                 <span className="text-sm">🎨</span>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#7f8985]">Image Style</p>
               </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold px-3 py-1">
+              <span className="inline-flex items-center rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 text-[11px] font-bold px-3 py-1">
                 {de.imageStyle}
               </span>
             </div>
@@ -3580,7 +3580,7 @@ function ColorPaletteCard({ palette, index, isSelected, isRegenerating, onSelect
             disabled={isSelected}
             className={`flex-1 rounded-lg text-[11px] font-bold py-2 transition ${
               isSelected
-                ? "bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 cursor-default"
+                ? "bg-emerald-600/30 text-emerald-700 border border-emerald-500/40 cursor-default"
                 : "bg-emerald-600 hover:bg-emerald-500 text-white"
             }`}
           >
@@ -3672,7 +3672,7 @@ function ColorPalettePanel({ metadata, palettes, selectedPaletteIdx, generating,
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">✓</span>
-                <p className="text-[11px] text-emerald-300 font-semibold">{selected.paletteName} selected</p>
+                <p className="text-[11px] text-emerald-700 font-semibold">{selected.paletteName} selected</p>
               </div>
               <div className="flex h-6 rounded-lg overflow-hidden">
                 {[selected.primary, selected.secondary, selected.accent, selected.background, selected.text].map((c, i) => (
@@ -3815,9 +3815,9 @@ function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onR
     Minimal:           "bg-[#ece7de]/50 text-[#5f6e6a] border-[#c9c0b4]",
     Editorial:         "bg-slate-700/50 text-[#465b57] border-slate-600",
     Bold:              "bg-rose-900/40 text-rose-300 border-rose-700",
-    Classic:           "bg-amber-900/40 text-amber-300 border-amber-700",
+    Classic:           "bg-amber-900/40 text-amber-700 border-amber-700",
     Geometric:         "bg-blue-900/40 text-blue-300 border-blue-700",
-    Organic:           "bg-emerald-900/40 text-emerald-300 border-emerald-700",
+    Organic:           "bg-emerald-900/40 text-emerald-700 border-emerald-700",
     Typographic:       "bg-teal-900/40 text-teal-300 border-teal-700",
     Photographic:      "bg-cyan-900/40 text-cyan-300 border-cyan-700",
   };
@@ -3889,7 +3889,7 @@ function MoodBoardCard({ board, index, isSelected, isRegenerating, onSelect, onR
             disabled={isSelected}
             className={`flex-1 rounded-lg text-[11px] font-bold py-2 transition ${
               isSelected
-                ? "bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 cursor-default"
+                ? "bg-emerald-600/30 text-emerald-700 border border-emerald-500/40 cursor-default"
                 : "bg-emerald-600 hover:bg-emerald-500 text-white"
             }`}
           >
@@ -3981,7 +3981,7 @@ function MoodBoardPanel({ metadata, moodBoards, selectedMoodBoardIdx, generating
           {selectedMoodBoardIdx !== null && (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 flex items-center gap-3">
               <span className="text-sm">✓</span>
-              <p className="text-[11px] text-emerald-300">
+              <p className="text-[11px] text-emerald-700">
                 <span className="font-bold">{moodBoards[selectedMoodBoardIdx]?.styleName}</span>
                 {" "}selected — canvas preview updated.
               </p>
@@ -4002,8 +4002,8 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
     Professional: "bg-sky-500/15 text-sky-300 border-sky-500/30",
     Calm:         "bg-teal-500/15 text-teal-300 border-teal-500/30",
     Bold:         "bg-rose-500/15 text-rose-300 border-rose-500/30",
-    Inspirational:"bg-amber-500/15 text-amber-300 border-amber-500/30",
-    Friendly:     "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+    Inspirational:"bg-amber-500/15 text-amber-700 border-amber-500/30",
+    Friendly:     "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
     Serious:      "bg-slate-500/15 text-[#465b57] border-slate-500/30",
     Premium:      "bg-purple-500/15 text-purple-300 border-purple-500/30",
     Elegant:      "bg-pink-500/15 text-pink-300 border-pink-500/30",
@@ -4051,7 +4051,7 @@ function CoverStrategyPanel({ metadata, strategy: coverStrategy, generating, onR
           <button
             type="button"
             onClick={onRegenerate}
-            className="rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-semibold px-4 py-2 transition"
+            className="rounded-lg bg-teal-600 hover:bg-[#3f6f65] text-white text-[11px] font-semibold px-4 py-2 transition"
           >
             Generate Strategy
           </button>
@@ -4171,9 +4171,9 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
   const coverGoalColor = {
     "Build Trust":       "bg-sky-500/15 text-sky-300 border-sky-500/30",
     "Create Curiosity":  "bg-teal-500/15 text-teal-300 border-teal-500/30",
-    "Look Premium":      "bg-amber-500/15 text-amber-300 border-amber-500/30",
-    "Show Authority":    "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    "Feel Friendly":     "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+    "Look Premium":      "bg-amber-500/15 text-amber-700 border-amber-500/30",
+    "Show Authority":    "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+    "Feel Friendly":     "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
     "Feel Educational":  "bg-teal-500/15 text-teal-300 border-teal-500/30",
     "Inspire Action":    "bg-orange-500/15 text-orange-300 border-orange-500/30",
   };
@@ -4280,7 +4280,7 @@ function MarketAnalysisPanel({ metadata, analysis, generating, onRegenerate }) {
             {Array.isArray(analysis.keySignals) && analysis.keySignals.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {analysis.keySignals.map((sig, i) => (
-                  <span key={i} className="rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 text-[9px] font-medium px-2 py-0.5">
+                  <span key={i} className="rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-700 text-[9px] font-medium px-2 py-0.5">
                     {sig}
                   </span>
                 ))}
@@ -4483,7 +4483,7 @@ function ReviewConceptCard({ concept, review, isRecommended }) {
       {review.bestUseCase && (
         <div className="px-4 py-3">
           <p className="text-[8px] font-bold uppercase tracking-widest text-[#7f8985] mb-1.5">Best For</p>
-          <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+          <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/20">
             {review.bestUseCase}
           </span>
         </div>
@@ -4672,13 +4672,13 @@ const TAG_COLORS = {
   Minimal:       "bg-slate-800/60 text-[#465b57] border-slate-600/50",
   Bold:          "bg-rose-900/60 text-rose-300 border-rose-700/50",
   Corporate:     "bg-blue-900/60 text-blue-300 border-blue-700/50",
-  Modern:        "bg-emerald-900/60 text-emerald-300 border-emerald-700/50",
+  Modern:        "bg-emerald-900/60 text-emerald-700 border-emerald-700/50",
   Elegant:       "bg-purple-900/60 text-purple-300 border-purple-700/50",
   Creative:      "bg-teal-900/60 text-teal-300 border-teal-700/50",
   Dynamic:       "bg-orange-900/60 text-orange-300 border-orange-700/50",
-  Classic:       "bg-amber-900/60 text-amber-300 border-amber-700/50",
+  Classic:       "bg-amber-900/60 text-amber-700 border-amber-700/50",
   Premium:       "bg-yellow-900/60 text-yellow-300 border-yellow-700/50",
-  Authoritative: "bg-emerald-900/60 text-emerald-300 border-emerald-700/50",
+  Authoritative: "bg-emerald-900/60 text-emerald-700 border-emerald-700/50",
   Vibrant:       "bg-pink-900/60 text-pink-300 border-pink-700/50",
 };
 
