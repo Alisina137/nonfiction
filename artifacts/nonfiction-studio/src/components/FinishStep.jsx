@@ -1806,10 +1806,22 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         ...current,
         bookCover: {
           ...cover,
-          printSetup: { ...topSetup, pageCount: count, estimatedPageCount: false },
+          printSetup: {
+            ...topSetup,
+            pageCount: count,
+            estimatedPageCount: false,
+            pageCountSource: "final-production",
+            syncedAt: new Date().toISOString(),
+          },
           coverStudio: {
             ...studio,
-            printSetup: { ...studioSetup, pageCount: count, estimatedPageCount: false }
+            printSetup: {
+              ...studioSetup,
+              pageCount: count,
+              estimatedPageCount: false,
+              pageCountSource: "final-production",
+              syncedAt: new Date().toISOString(),
+            }
           }
         }
       };
