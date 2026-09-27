@@ -86,6 +86,7 @@ export function buildFinalProductionReport(
   const meta = coverMetadata(project);
   const back = coverBackMatter(project);
   const concept = selectedCoverConcept(project);
+  const finalCoverExport = project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || null;
   const coverPages = Math.round(num(printSetup.pageCount));
   const coverTrim = meta.bookSize || project?.bookCover?.bookSize || "";
   const expectedTrim = `${trim.widthIn}x${trim.heightIn}`;
@@ -186,6 +187,22 @@ export function buildFinalProductionReport(
         : "KDP barcode placement is reserved on the back cover."
   );
 
+  const coverExportMatches = !!finalCoverExport
+    && Math.round(num(finalCoverExport.pageCount)) === pages
+    && num(finalCoverExport.dpi) >= 300
+    && (!finalCoverExport.trimSize || normalizeTrimText(finalCoverExport.trimSize).includes(expectedTrim));
+
+  add(
+    "final-cover-export",
+    "Final print-cover PDF",
+    coverExportMatches ? "pass" : "review",
+    coverExportMatches
+      ? `Final cover PDF was exported at ${Number(finalCoverExport.dpi).toFixed(0)} DPI for ${pages} pages.`
+      : finalCoverExport
+        ? "A cover PDF was exported previously, but its page count, trim, or resolution no longer matches the current final interior."
+        : "Export the final flattened print-cover PDF from Cover Studio after syncing the exact page count."
+  );
+
   if (epubValidation?.checks?.length) {
     for (const check of epubValidation.checks) checks.push(check);
   }
@@ -197,8 +214,8 @@ export function buildFinalProductionReport(
   const kdpChecklist = {
     paperback: [
       { id: "interior-pdf", label: "Upload the final interior PDF.", done: blocked === 0 },
-      { id: "cover-pdf", label: "Upload one flattened PDF containing back, spine, and front cover.", done: false },
-      { id: "cover-300dpi", label: "Confirm cover artwork is at least 300 DPI and fonts/transparencies are flattened or embedded.", done: false },
+      { id: "cover-pdf", label: "Upload one flattened PDF containing back, spine, and front cover.", done: coverExportMatches },
+      { id: "cover-300dpi", label: "Confirm cover artwork is at least 300 DPI and fonts/transparencies are flattened or embedded.", done: coverExportMatches },
       { id: "previewer", label: "Run KDP Print Previewer and inspect trim, margins, blank pages, and spine alignment.", done: false },
       { id: "proof-copy", label: "Order/inspect a proof copy before final publication when possible.", done: false },
     ],
@@ -222,6 +239,8 @@ export function buildFinalProductionReport(
       spineWidth,
       spineTextEligible: pages >= 80,
       synced: coverPages === pages && trimMatches,
+      finalExport: finalCoverExport,
+      finalExportMatches: coverExportMatches,
     },
     passed,
     reviews,
