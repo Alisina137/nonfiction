@@ -512,10 +512,8 @@ async function runChain(
 
   // ── Build typed chain items with model overrides ──────────────────────────
   //
-  // Each item carries: the provider config + the specific model to use + its
-  // fallback models for that task.  This lets one provider key serve different
-  // model tiers depending on the task (e.g. gemini-2.5-pro for outline writing,
-  // gemini-2.5-flash-lite for metadata).
+  // Each item carries the provider config plus the task-specific model and
+  // fallback models. Providers without configured keys are skipped.
 
   interface ChainItem {
     provider:      ProviderConfig;
