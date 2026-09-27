@@ -2017,6 +2017,65 @@ router.post("/production-report", async (req, res) => {
   }
 });
 
+router.post("/cover-pdf", async (req, res) => {
+  try {
+    const { imageData, fullWidth, fullHeight, expectedWidthPx, expectedHeightPx, title } = req.body || {};
+    const widthIn = Number(fullWidth);
+    const heightIn = Number(fullHeight);
+    if (!Number.isFinite(widthIn) || !Number.isFinite(heightIn) || widthIn <= 0 || heightIn <= 0) {
+      return res.status(400).json({ error: "Invalid cover dimensions" });
+    }
+    const match = String(imageData || "").match(/^data:image\/png;base64,(.+)$/);
+    if (!match) return res.status(400).json({ error: "A PNG cover image is required" });
+
+    const pngBytes = Buffer.from(match[1], "base64");
+    if (!pngBytes.length) return res.status(400).json({ error: "Cover PNG is empty" });
+
+    const pdf = await PDFDocument.create();
+    const image = await pdf.embedPng(pngBytes);
+    const dpiX = image.width / widthIn;
+    const dpiY = image.height / heightIn;
+    const effectiveDpi = Math.min(dpiX, dpiY);
+
+    if (effectiveDpi < 295) {
+      return res.status(400).json({
+        error: `Cover raster resolution is too low (${effectiveDpi.toFixed(0)} DPI). Export at 300 DPI before creating the KDP cover PDF.`
+      });
+    }
+
+    if (
+      Number.isFinite(Number(expectedWidthPx))
+      && Math.abs(image.width - Number(expectedWidthPx)) > 2
+    ) {
+      return res.status(400).json({ error: "Cover pixel width does not match the requested 300-DPI geometry." });
+    }
+    if (
+      Number.isFinite(Number(expectedHeightPx))
+      && Math.abs(image.height - Number(expectedHeightPx)) > 2
+    ) {
+      return res.status(400).json({ error: "Cover pixel height does not match the requested 300-DPI geometry." });
+    }
+
+    const page = pdf.addPage([widthIn * 72, heightIn * 72]);
+    page.drawImage(image, { x: 0, y: 0, width: widthIn * 72, height: heightIn * 72 });
+    pdf.setTitle(String(title || "Book Cover"));
+    pdf.setProducer("Nonfiction AI Studio");
+    const bytes = await pdf.save();
+
+    const slug = String(title || "book")
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-|-$/g, "") || "book";
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${slug}-print-cover.pdf"`);
+    res.setHeader("X-Cover-DPI", effectiveDpi.toFixed(2));
+    res.setHeader("X-Cover-Pixel-Size", `${image.width}x${image.height}`);
+    return res.status(200).send(Buffer.from(bytes));
+  } catch (error: any) {
+    console.error("Cover PDF export error:", error);
+    return res.status(500).json({ error: error.message || "Failed to export print cover PDF" });
+  }
+});
+
 router.post("/publication-bundle", async (req, res) => {
   try {
     const {
