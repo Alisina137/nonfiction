@@ -5873,8 +5873,7 @@ export default function BookCoverStep({ bookCover, setBookCover, fullProject, er
 
   return (
     <div
-      className="flex min-h-0 flex-col overflow-hidden rounded-none bg-[#f4f1eb] text-[#314a46]"
-      style={{ height: "calc(100vh - 74px)", minWidth: 0 }}
+      className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-[#f4f1eb] text-[#314a46]"
     >
       <WorkspaceHeader
         metadata={metadata}
