@@ -18,6 +18,7 @@ function GuideFrame({ trimWidth, trimHeight, safeMargin }) {
   const y = Math.min(18, Math.max(2, safeMargin / trimHeight * 100));
   return (
     <div
+      data-cover-guide="true"
       className="pointer-events-none absolute border border-dashed border-emerald-300/70"
       style={{ left: `${x}%`, right: `${x}%`, top: `${y}%`, bottom: `${y}%` }}
     >
@@ -33,6 +34,7 @@ function BarcodeGuide({ geometry, printSetup }) {
   const side = geometry.barcode.side;
   return (
     <div
+      data-cover-guide="true"
       className="pointer-events-none absolute bottom-[4%] flex items-center justify-center border border-dashed border-amber-300/90 bg-amber-100/10 text-center"
       style={{
         width: `${width}%`,
@@ -144,7 +146,7 @@ function SpineContent({ metadata, palette, geometry, printSetup, showGuides }) {
         </span>
       )}
       {showGuides && (
-        <div className="pointer-events-none absolute inset-y-[3%] border-x border-dashed border-sky-300/60" style={{ left: "18%", right: "18%" }} />
+        <div data-cover-guide="true" className="pointer-events-none absolute inset-y-[3%] border-x border-dashed border-sky-300/60" style={{ left: "18%", right: "18%" }} />
       )}
     </div>
   );
@@ -161,6 +163,7 @@ export default function CoverWrapPreview({
   palette,
   frontContent,
   bookSizeLabel,
+  artworkRef,
 }) {
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ w: 700, h: 520 });
@@ -241,10 +244,10 @@ export default function CoverWrapPreview({
 
         {showGuides && (
           <>
-            <div className="pointer-events-none absolute inset-0 border border-fuchsia-300/50" />
-            <div className="pointer-events-none absolute left-0 right-0 top-0 border-t border-dashed border-fuchsia-300/70" />
-            <div className="pointer-events-none absolute left-0 right-0 bottom-0 border-b border-dashed border-fuchsia-300/70" />
-            <span className="pointer-events-none absolute left-2 top-2 rounded bg-fuchsia-950/80 px-1.5 py-0.5 text-[7px] font-bold text-fuchsia-200">
+            <div data-cover-guide="true" className="pointer-events-none absolute inset-0 border border-fuchsia-300/50" />
+            <div data-cover-guide="true" className="pointer-events-none absolute left-0 right-0 top-0 border-t border-dashed border-fuchsia-300/70" />
+            <div data-cover-guide="true" className="pointer-events-none absolute left-0 right-0 bottom-0 border-b border-dashed border-fuchsia-300/70" />
+            <span data-cover-guide="true" className="pointer-events-none absolute left-2 top-2 rounded bg-fuchsia-950/80 px-1.5 py-0.5 text-[7px] font-bold text-fuchsia-200">
               BLEED {geometry.bleed.toFixed(3)}″
             </span>
           </>
@@ -261,6 +264,8 @@ export default function CoverWrapPreview({
     >
       <div style={{ position: "relative", flexShrink: 0 }}>
         <div
+          ref={artworkRef}
+          data-cover-artwork="true"
           style={{
             width: Math.round(previewW),
             height: Math.round(previewH),
