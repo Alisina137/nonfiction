@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   subscribeAiBus,
   providerLabel,
@@ -73,6 +74,10 @@ const ACTIVE_LABELS = {
   groq:       "Groq",
   sambanova:  "SambaNova"
 };
+
+const PROVIDER_PANEL_WIDTH = 288; // Tailwind w-72
+const PROVIDER_PANEL_GAP = 8;
+const PROVIDER_PANEL_VIEWPORT_PADDING = 12;
 
 // ─── Model list row ───────────────────────────────────────────────────────────
 
@@ -158,6 +163,7 @@ export default function ProviderStatusBadge() {
   const [activeProvider,  setActiveProvider]  = useState(null);
   const [toast,           setToast]           = useState(null);
   const [panelOpen,       setPanelOpen]       = useState(false);
+  const [panelPosition,   setPanelPosition]   = useState({ top: 0, left: 0 });
   const [resetting,       setResetting]       = useState(false);
   const [preferredProv,   setPreferredProv]   = useState(() => getPreferredProvider());
   const panelRef  = useRef(null);
@@ -171,6 +177,33 @@ export default function ProviderStatusBadge() {
   }
 
   const totalCount = Object.keys(PROVIDER_DEFS).length;
+
+  function updatePanelPosition() {
+    if (typeof window === "undefined" || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const maxLeft = Math.max(
+      PROVIDER_PANEL_VIEWPORT_PADDING,
+      window.innerWidth - PROVIDER_PANEL_WIDTH - PROVIDER_PANEL_VIEWPORT_PADDING
+    );
+
+    setPanelPosition({
+      top: rect.bottom + PROVIDER_PANEL_GAP,
+      left: Math.min(Math.max(rect.left, PROVIDER_PANEL_VIEWPORT_PADDING), maxLeft)
+    });
+  }
+
+  // Keep the portaled panel anchored to the provider button while any
+  // scrollable ancestor (including the horizontally scrollable header) moves.
+  useEffect(() => {
+    if (!panelOpen) return;
+    updatePanelPosition();
+    window.addEventListener("resize", updatePanelPosition);
+    window.addEventListener("scroll", updatePanelPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePanelPosition);
+      window.removeEventListener("scroll", updatePanelPosition, true);
+    };
+  }, [panelOpen]);
 
   // Bus subscriptions
   useEffect(() => {
@@ -255,7 +288,10 @@ export default function ProviderStatusBadge() {
           <button
             ref={btnRef}
             type="button"
-            onClick={() => setPanelOpen((v) => !v)}
+            onClick={() => {
+              if (!panelOpen) updatePanelPosition();
+              setPanelOpen((v) => !v);
+            }}
             title="View all AI provider availability"
             className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
               panelOpen
@@ -270,10 +306,11 @@ export default function ProviderStatusBadge() {
           </button>
 
           {/* Dropdown panel */}
-          {panelOpen && (
+          {panelOpen && typeof document !== "undefined" && createPortal(
             <div
               ref={panelRef}
-              className="absolute left-0 top-full z-[200] mt-2 w-72 rounded-2xl border border-slate-200 bg-white shadow-xl"
+              style={{ top: panelPosition.top, left: panelPosition.left }}
+              className="fixed z-[1000] max-h-[calc(100vh-5rem)] w-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl"
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
@@ -360,7 +397,8 @@ export default function ProviderStatusBadge() {
                   {resetting ? "Resetting…" : "Reset all"}
                 </button>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
 

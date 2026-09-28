@@ -388,6 +388,20 @@ Detailed workflow and boundaries: `docs/PHASE-05-RELEASE-OPERATIONS.md`.
 - Production build: PASS.
 - Merged to `main` via pull request #18 as `7b38e9b73b4180670ca95523101975a0aef8cec5`.
 
+
+### Post-Phase 05 hotfix — provider dropdown stacking
+
+- Real-app review on 2026-09-28 exposed a top-navigation layering defect: the AI provider dropdown could be clipped/appear beneath the sidebar and main workspace.
+- Root cause: the dropdown was absolutely positioned inside the header, while the header intentionally uses horizontal overflow scrolling. That overflow creates a clipping boundary that a larger child z-index cannot escape.
+- Fix: the provider panel now renders through a React portal into `document.body`, uses fixed viewport positioning anchored to the provider button, tracks resize/ancestor scroll, clamps horizontally to the viewport, and uses a high `z-[1000]` layer.
+- Short viewports are protected with a maximum panel height and internal vertical scrolling.
+- Existing header horizontal scrolling, sidebar layout, main workspace layout, provider controls, and provider fallback behavior are unchanged.
+- GitHub Actions `Verify phase` run #46: PASS on runtime implementation head `9245e62675cac35bc7feccc84ef66a1349df6e9e`.
+- Nonfiction Studio unit/regression tests: 23 PASS, 0 FAIL.
+- API server unit/regression tests: 12 PASS, 0 FAIL.
+- Full TypeScript typecheck: PASS.
+- Production build: PASS.
+
 ## Next phase candidate
 
 Not defined yet. Choose Phase 06 only after Phase 05 is verified and reviewed in the real app.
