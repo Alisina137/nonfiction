@@ -15,8 +15,18 @@ import {
   buildCitationReadyProject,
   buildCitationRegistry,
   buildPrecisionEvidenceAudit,
-  buildPublicationConsistencyReport
+  buildPublicationConsistencyReport,
+  CITATION_STYLE_OPTIONS
 } from "@/lib/resources/publicationEvidence";
+import {
+  PAPERBACK_PREVIEW_CHECKS,
+  buildKdpMetadataHandoff,
+  buildPublicationFreezeRecord,
+  canFreezePublication,
+  compareProductionArchives,
+  formatKdpMetadataHandoffText,
+  normalizePreviewChecks
+} from "@/lib/releaseOperations";
 import { intelligenceService } from "@/intelligence";
 
 const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
@@ -1513,16 +1523,199 @@ function FinalProductionPanel({ report, busy, error, onRun, onSync, canSync, arc
   );
 }
 
+function ReleaseOperationsPanel({
+  frozen,
+  freezeRecord,
+  freezeGate,
+  previewChecks,
+  onTogglePreviewCheck,
+  onOpenPreview,
+  previewBusy,
+  archiveDiff,
+  currentArchive,
+  previousArchive,
+  handoff,
+  onCopyHandoff,
+  onDownloadHandoff,
+  onFreeze,
+  onUnfreeze,
+}) {
+  return (
+    <section className="book-panel space-y-5 border border-violet-200 bg-gradient-to-br from-violet-50/45 via-white to-sky-50/35">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Phase 05 · Release Operations</p>
+          <h3 className="mt-1 text-sm font-bold text-slate-900">Release validation & publishing handoff</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600">
+            Visually review the final paperback, compare production versions, prepare copy-ready KDP metadata,
+            and freeze the reviewed release so later edits cannot silently change it.
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
+          frozen ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
+        }`}>
+          {frozen ? "Frozen" : "Editable"}
+        </span>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-800">Paperback visual preview</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+              Opens the exact generated interior PDF in a browser tab so you can inspect real pages before freeze.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenPreview}
+            disabled={previewBusy}
+            className="shrink-0 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-50"
+          >
+            {previewBusy ? "Opening preview…" : "Open final PDF preview"}
+          </button>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {PAPERBACK_PREVIEW_CHECKS.map((item) => (
+            <label key={item.id} className={`flex gap-2 rounded-lg border px-3 py-2 text-[11px] leading-relaxed ${
+              previewChecks[item.id] ? "border-emerald-200 bg-emerald-50/60 text-emerald-900" : "border-slate-100 bg-slate-50/60 text-slate-600"
+            }`}>
+              <input
+                type="checkbox"
+                checked={Boolean(previewChecks[item.id])}
+                disabled={frozen}
+                onChange={(event) => onTogglePreviewCheck(item.id, event.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                {item.label}
+                {!item.required && <span className="ml-1 text-slate-400">(recommended)</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
+          <p className="text-xs font-bold text-slate-800">Production archive comparison</p>
+          {!currentArchive && (
+            <p className="mt-2 text-[11px] text-slate-500">Create a Final Publication Archive to establish the first release snapshot.</p>
+          )}
+          {currentArchive && !previousArchive && (
+            <p className="mt-2 text-[11px] text-slate-500">
+              Current archive: <span className="font-semibold text-slate-700">{currentArchive.archiveId}</span>. Create another archive after a revision to see a production diff.
+            </p>
+          )}
+          {archiveDiff && (
+            <>
+              <p className="mt-2 text-[11px] text-slate-500">
+                Comparing the latest archive with the previous saved production snapshot.
+              </p>
+              <div className="mt-3 space-y-1.5">
+                {archiveDiff.changes.length ? archiveDiff.changes.map((change) => (
+                  <div key={change.field} className="rounded-lg bg-slate-50 px-2.5 py-2 text-[10px]">
+                    <p className="font-bold text-slate-700">{change.label}</p>
+                    <p className="mt-0.5 break-all text-slate-500">
+                      {String(change.before || "—")} → <span className="text-slate-800">{String(change.after || "—")}</span>
+                    </p>
+                  </div>
+                )) : (
+                  <p className="rounded-lg bg-emerald-50 px-2.5 py-2 text-[10px] font-medium text-emerald-700">
+                    No tracked production fields changed.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
+          <p className="text-xs font-bold text-slate-800">KDP metadata handoff</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+            Prepare your title, author, description, keywords, categories, trim, page count, EPUB status, and file guidance for manual KDP entry.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
+            <div className="rounded-lg bg-slate-50 p-2">
+              <p className="text-slate-400">Keywords</p>
+              <p className="mt-0.5 font-bold text-slate-700">{handoff?.listing?.keywords?.length || 0}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-2">
+              <p className="text-slate-400">Paperback pages</p>
+              <p className="mt-0.5 font-bold text-slate-700">{handoff?.paperback?.exactPageCount || "—"}</p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={onCopyHandoff} className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[10px] font-bold text-indigo-800 hover:bg-indigo-100">
+              Copy KDP fields
+            </button>
+            <button type="button" onClick={onDownloadHandoff} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50">
+              Download handoff JSON
+            </button>
+          </div>
+          <p className="mt-2 text-[10px] text-slate-400">No KDP field is submitted automatically; final review and upload stay under your control.</p>
+        </div>
+      </div>
+
+      <div className={`rounded-xl border p-4 ${frozen ? "border-amber-200 bg-amber-50/70" : "border-slate-200 bg-white/80"}`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-800">Publication freeze</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+              {frozen
+                ? `Frozen to archive ${freezeRecord?.archiveId || "snapshot"}. Browse the project read-only or unfreeze to make a new revision.`
+                : "Freeze only after the production archive and required visual-review checks represent the version you intend to publish."}
+            </p>
+          </div>
+          {frozen ? (
+            <button
+              type="button"
+              onClick={onUnfreeze}
+              className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-bold text-amber-800 hover:bg-amber-50"
+            >
+              Unfreeze for revision
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onFreeze}
+              disabled={!freezeGate.ok}
+              className="shrink-0 rounded-lg bg-violet-700 px-3 py-2 text-[11px] font-bold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Freeze reviewed publication
+            </button>
+          )}
+        </div>
+        {!frozen && !freezeGate.ok && (
+          <div className="mt-3 space-y-1">
+            {freezeGate.reasons.map((reason) => (
+              <p key={reason} className="text-[10px] text-amber-700">• {reason}</p>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function FinishStep({ project, onMarkComplete, bookOutline, lessons, setLessons, fullProject, updateProject }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [docxBusy, setDocxBusy] = useState(false);
   const [epubBusy, setEpubBusy] = useState(false);
   const [bundleBusy, setBundleBusy] = useState(false);
+  const [previewBusy, setPreviewBusy] = useState(false);
   const [productionBusy, setProductionBusy] = useState(false);
   const [productionReport, setProductionReport] = useState(null);
   const [productionError, setProductionError] = useState("");
   const [citationStyle, setCitationStyle] = useState(() => {
-    try { return window.localStorage.getItem(CITATION_STYLE_KEY) || "none"; } catch { return "none"; }
+    try {
+      const saved = window.localStorage.getItem(CITATION_STYLE_KEY) || "none";
+      if (saved === "numbered") return "ieee";
+      if (saved === "author-year") return "apa7";
+      return CITATION_STYLE_OPTIONS.some((option) => option.id === saved) ? saved : "none";
+    } catch {
+      return "none";
+    }
   });
   const [status, setStatus] = useState("");
   const [settings, setSettings] = useState(DEFAULT_EXPORT_SETTINGS);
