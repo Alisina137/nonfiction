@@ -37,8 +37,11 @@ function Toggle({ checked, onChange, label }) {
   );
 }
 
-export default function ExportSettingsPanel({ settings, onChange }) {
-  const set = (patch) => onChange({ ...settings, ...patch });
+export default function ExportSettingsPanel({ settings, onChange, disabled = false }) {
+  const set = (patch) => {
+    if (disabled) return;
+    onChange({ ...settings, ...patch });
+  };
   const activeTrim = TRIM_SIZES.find((t) => t.id === settings.trimSize);
   const fontFamily = fontCssFamily(settings.font);
 
@@ -50,7 +53,7 @@ export default function ExportSettingsPanel({ settings, onChange }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
       {/* Controls */}
-      <div className="space-y-5">
+      <fieldset disabled={disabled} className={`space-y-5 ${disabled ? "opacity-60" : ""}`}>
         <div>
           <label className="text-xs font-bold text-slate-800">Trim size</label>
           <div className="mt-1.5 flex flex-wrap gap-2">
@@ -148,7 +151,7 @@ export default function ExportSettingsPanel({ settings, onChange }) {
             </div>
           </div>
         )}
-      </div>
+      </fieldset>
 
       {/* Live preview */}
       <div className="flex flex-col items-center">
