@@ -370,7 +370,8 @@ Detailed workflow and boundaries: `docs/PHASE-05-RELEASE-OPERATIONS.md`.
 - Full TypeScript typecheck: PASS.
 - Production build: PASS.
 - The commits after the verified implementation head only add/update Phase 05 documentation and project-state records; no runtime code changed after run #40.
-- Pull request: #17 from `phase-05-release-validation-publishing-operations` into `main`.
+- Phase 05 status: COMPLETE.
+- Merged to `main` via pull request #17 as `f1430f7f9ea975467d763e7141fbd59c82e43d60`.
 
 ## Next phase candidate
 
