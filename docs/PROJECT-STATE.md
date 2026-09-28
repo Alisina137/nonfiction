@@ -364,10 +364,13 @@ Detailed workflow and boundaries: `docs/PHASE-05-RELEASE-OPERATIONS.md`.
 
 ### Phase 05 verification status
 
-- Phase 05 implementation is on branch `phase-05-release-validation-publishing-operations`.
-- Pull request: #17.
-- Repository-level `Verify phase` is the source of truth for tests, TypeScript, and production build.
-- Final verification result will be recorded here after the latest Phase 05 commit passes.
+- GitHub Actions `Verify phase` run #40: PASS on implementation head `9b77035bf1a7ae7f6cb6235533ee4ca426b617a2`.
+- Nonfiction Studio unit/regression tests: 23 PASS, 0 FAIL.
+- API server unit/regression tests: 11 PASS, 0 FAIL.
+- Full TypeScript typecheck: PASS.
+- Production build: PASS.
+- The commits after the verified implementation head only add/update Phase 05 documentation and project-state records; no runtime code changed after run #40.
+- Pull request: #17 from `phase-05-release-validation-publishing-operations` into `main`.
 
 ## Next phase candidate
 
