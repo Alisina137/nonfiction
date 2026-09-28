@@ -194,7 +194,7 @@ const baseProject = {
   lessons: {},
   bookMarketing: { ...emptyBookMarketing },
   bookCover: { ...emptyBookCover },
-  releaseValidation: { paperbackPreview: {} },
+  releaseValidation: { paperbackPreview: {}, exportSettings: null, frontMatter: {}, citationStyle: "none" },
   publicationFreeze: { frozen: false },
   productionArchives: [],
   productionSnapshot: null,
@@ -513,13 +513,22 @@ function migrateProject(raw) {
   }
 
   if (!p.releaseValidation || typeof p.releaseValidation !== "object") {
-    p.releaseValidation = { paperbackPreview: {} };
+    p.releaseValidation = { paperbackPreview: {}, exportSettings: null, frontMatter: {}, citationStyle: "none" };
   } else {
     p.releaseValidation = {
       ...p.releaseValidation,
       paperbackPreview: p.releaseValidation.paperbackPreview && typeof p.releaseValidation.paperbackPreview === "object"
         ? p.releaseValidation.paperbackPreview
         : {},
+      exportSettings: p.releaseValidation.exportSettings && typeof p.releaseValidation.exportSettings === "object"
+        ? p.releaseValidation.exportSettings
+        : null,
+      frontMatter: p.releaseValidation.frontMatter && typeof p.releaseValidation.frontMatter === "object"
+        ? p.releaseValidation.frontMatter
+        : {},
+      citationStyle: typeof p.releaseValidation.citationStyle === "string"
+        ? p.releaseValidation.citationStyle
+        : "none",
     };
   }
   if (!p.publicationFreeze || typeof p.publicationFreeze !== "object") {
