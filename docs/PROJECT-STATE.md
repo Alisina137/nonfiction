@@ -386,6 +386,7 @@ Detailed workflow and boundaries: `docs/PHASE-05-RELEASE-OPERATIONS.md`.
 - API server unit/regression tests: 12 PASS, 0 FAIL.
 - Full TypeScript typecheck: PASS.
 - Production build: PASS.
+- Merged to `main` via pull request #18 as `7b38e9b73b4180670ca95523101975a0aef8cec5`.
 
 ## Next phase candidate
 
