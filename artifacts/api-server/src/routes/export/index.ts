@@ -1975,7 +1975,29 @@ function buildEpubArtifact(project: any, options: any = {}): {
   return { bytes: buildStoredZip(files), validation };
 }
 
-function buildArchiveManifest(project: any, metadata: any, pageCount: number, productionReport: any, epubValidation: any) {
+function buildReleaseFingerprintInputs(settings: any, options: any = {}) {
+  return {
+    exportSettings: normalizeExportSettings(settings),
+    frontMatter: {
+      dedication: String(options.dedication || ""),
+      acknowledgments: String(options.acknowledgments || ""),
+      preface: String(options.preface || ""),
+      howToUseThisBook: String(options.howToUseThisBook || ""),
+      whatYouWillLearn: String(options.whatYouWillLearn || ""),
+      whoThisBookIsFor: String(options.whoThisBookIsFor || ""),
+    },
+  };
+}
+
+function buildArchiveManifest(
+  project: any,
+  metadata: any,
+  pageCount: number,
+  productionReport: any,
+  epubValidation: any,
+  releaseInputs: any
+) {
+  const finalCoverExport = project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || null;
   const snapshot = {
     title: metadata.title,
     author: metadata.author,
@@ -1984,7 +2006,8 @@ function buildArchiveManifest(project: any, metadata: any, pageCount: number, pr
     citationStyle: metadata.citationStyle,
     productionStatus: productionReport?.status || "unknown",
     epubStatus: epubValidation?.status || "unknown",
-    finalCoverExport: project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || null,
+    finalCoverExport,
+    releaseInputs: releaseInputs || null,
     outline: project?.bookOutline || null,
     lessons: project?.lessons || {},
   };
@@ -1992,15 +2015,91 @@ function buildArchiveManifest(project: any, metadata: any, pageCount: number, pr
   const createdAt = new Date().toISOString();
   const version = createdAt.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     archiveId: `${String(metadata.title || "book").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "book"}-${version}-${fingerprint.slice(0, 8)}`,
     fingerprintSha256: fingerprint,
     createdAt,
     exactPageCount: pageCount,
     trimSize: metadata.trimSize,
+    citationStyle: metadata.citationStyle || "none",
     productionStatus: productionReport?.status || "unknown",
     epubStatus: epubValidation?.status || "unknown",
+    coverDesignHash: finalCoverExport?.coverDesignHash || null,
   };
+}
+
+function buildKdpHandoffPayload(project: any, metadata: any, productionReport: any, epubValidation: any) {
+  const finalCoverExport = project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || null;
+  const keywords = String(metadata?.keywords || "")
+    .split(/[\n,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    book: {
+      title: metadata?.title || "",
+      subtitle: metadata?.subtitle || "",
+      author: metadata?.author || "",
+      language: metadata?.language || "English",
+      description: metadata?.description || "",
+    },
+    listing: {
+      keywords,
+      primaryCategory: metadata?.primaryCategory || "",
+      secondaryCategory: metadata?.secondaryCategory || "",
+    },
+    paperback: {
+      trimSize: metadata?.trimSize || "",
+      exactPageCount: productionReport?.exactPageCount || null,
+      productionStatus: productionReport?.status || "unknown",
+      finalCoverExported: Boolean(finalCoverExport),
+      finalCoverExportedAt: finalCoverExport?.exportedAt || null,
+    },
+    ebook: {
+      epubStatus: epubValidation?.status || "unknown",
+      citationStyle: metadata?.citationStyle || "none",
+    },
+    files: {
+      paperbackInterior: "Use the final exported interior PDF.",
+      paperbackCover: "Use the separately exported flattened print-cover PDF.",
+      kindleManuscript: "Use the final exported EPUB.",
+      kindleCover: "Upload the front-cover image separately in KDP.",
+    },
+    control: {
+      uploadsRemainManual: true,
+      note: "Review every field in KDP before saving or publishing. This handoff does not submit anything to Amazon.",
+    },
+  };
+}
+
+function formatKdpHandoffText(handoff: any) {
+  const keywords = Array.isArray(handoff?.listing?.keywords) ? handoff.listing.keywords : [];
+  return [
+    "KDP METADATA HANDOFF",
+    "",
+    `Title: ${handoff?.book?.title || ""}`,
+    `Subtitle: ${handoff?.book?.subtitle || ""}`,
+    `Author: ${handoff?.book?.author || ""}`,
+    `Language: ${handoff?.book?.language || ""}`,
+    "",
+    "DESCRIPTION",
+    handoff?.book?.description || "",
+    "",
+    "KEYWORDS",
+    ...keywords.map((item: string, index: number) => `${index + 1}. ${item}`),
+    "",
+    `Primary category: ${handoff?.listing?.primaryCategory || ""}`,
+    `Secondary category: ${handoff?.listing?.secondaryCategory || ""}`,
+    "",
+    `Paperback trim: ${handoff?.paperback?.trimSize || ""}`,
+    `Paperback pages: ${handoff?.paperback?.exactPageCount || ""}`,
+    `Production status: ${handoff?.paperback?.productionStatus || ""}`,
+    `EPUB status: ${handoff?.ebook?.epubStatus || ""}`,
+    `Citation style: ${handoff?.ebook?.citationStyle || ""}`,
+    "",
+    "Final KDP review and publication remain manual.",
+  ].join("\n");
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -2082,7 +2181,14 @@ router.post("/production-report", async (req, res) => {
     ]);
     const report = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation, pdfArtifact.layoutDiagnostics);
     const metadata = publicationMetadata(project, settings, req.body?.citationStyle || "none");
-    const manifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, report, epub.validation);
+    const manifest = buildArchiveManifest(
+      project,
+      metadata,
+      pdfArtifact.pageCount,
+      report,
+      epub.validation,
+      buildReleaseFingerprintInputs(settings, options)
+    );
 
     return res.json({
       ...report,
@@ -2187,7 +2293,15 @@ router.post("/publication-bundle", async (req, res) => {
     const metadata = publicationMetadata(project, settings, citationStyle);
     const report = publicationReport && typeof publicationReport === "object" ? publicationReport : {};
     const productionReport = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation, pdfArtifact.layoutDiagnostics);
-    const archiveManifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, productionReport, epub.validation);
+    const archiveManifest = buildArchiveManifest(
+      project,
+      metadata,
+      pdfArtifact.pageCount,
+      productionReport,
+      epub.validation,
+      buildReleaseFingerprintInputs(settings, options)
+    );
+    const kdpHandoff = buildKdpHandoffPayload(project, metadata, productionReport, epub.validation);
     const description = String(metadata.description || "");
     const keywords = String(metadata.keywords || "");
 
@@ -2199,6 +2313,8 @@ router.post("/publication-bundle", async (req, res) => {
       "- manuscript/" + slug + ".docx — editable manuscript export",
       "- ebook/" + slug + ".epub — reflowable EPUB 3 for Kindle upload",
       "- metadata/publishing-metadata.json — title, author, listing, category, trim, citation settings",
+      "- metadata/kdp-handoff.json — copy-ready KDP field handoff with manual-upload safeguards",
+      "- listing/kdp-copy-paste.txt — plain-text KDP copy/paste helper",
       "- reports/evidence-audit.json — retained source usage and claim review",
       "- reports/kdp-preflight.json — deterministic pre-export checks",
       "- reports/publication-consistency.json — manuscript/cover/listing consistency checks",
@@ -2219,6 +2335,8 @@ router.post("/publication-bundle", async (req, res) => {
       { name: "manuscript/" + slug + ".docx", data: docxBuffer },
       { name: "ebook/" + slug + ".epub", data: epub.bytes },
       { name: "metadata/publishing-metadata.json", data: JSON.stringify(metadata, null, 2) },
+      { name: "metadata/kdp-handoff.json", data: JSON.stringify(kdpHandoff, null, 2) },
+      { name: "listing/kdp-copy-paste.txt", data: formatKdpHandoffText(kdpHandoff) },
       { name: "reports/evidence-audit.json", data: JSON.stringify(report.evidenceAudit || {}, null, 2) },
       { name: "reports/kdp-preflight.json", data: JSON.stringify(report.publishingPreflight || {}, null, 2) },
       { name: "reports/publication-consistency.json", data: JSON.stringify(report.publicationConsistency || {}, null, 2) },
