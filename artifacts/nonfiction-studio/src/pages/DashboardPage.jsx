@@ -1119,7 +1119,7 @@ export default function Dashboard() {
             className="builder-header-button rounded-xl px-3 py-2 text-xs font-semibold transition"
           >
             <span aria-hidden className="mr-1">{sidebarVisible ? "◀" : "▶"}</span>
-            {sidebarVisible ? "Hide sidebar" : "Show sidebar"}
+            {sidebarVisible ? "Hide" : "Show"}
           </button>
           <button
             type="button"
