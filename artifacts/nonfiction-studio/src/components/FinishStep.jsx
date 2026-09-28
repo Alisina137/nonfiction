@@ -1699,6 +1699,10 @@ function ReleaseOperationsPanel({
 }
 
 export default function FinishStep({ project, onMarkComplete, bookOutline, lessons, setLessons, fullProject, updateProject }) {
+  const persistedRelease = fullProject?.releaseValidation || {};
+  const initialFrontMatter = persistedRelease.frontMatter && typeof persistedRelease.frontMatter === "object"
+    ? persistedRelease.frontMatter
+    : loadFrontMatter();
   const [pdfBusy, setPdfBusy] = useState(false);
   const [docxBusy, setDocxBusy] = useState(false);
   const [epubBusy, setEpubBusy] = useState(false);
@@ -1709,7 +1713,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
   const [productionError, setProductionError] = useState("");
   const [citationStyle, setCitationStyle] = useState(() => {
     try {
-      const saved = window.localStorage.getItem(CITATION_STYLE_KEY) || "none";
+      const saved = persistedRelease.citationStyle || window.localStorage.getItem(CITATION_STYLE_KEY) || "none";
       if (saved === "numbered") return "ieee";
       if (saved === "author-year") return "apa7";
       return CITATION_STYLE_OPTIONS.some((option) => option.id === saved) ? saved : "none";
@@ -1718,12 +1722,17 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     }
   });
   const [status, setStatus] = useState("");
-  const [settings, setSettings] = useState(DEFAULT_EXPORT_SETTINGS);
-  const [dedication, setDedication] = useState(() => loadFrontMatter().dedication || "");
-  const [preface, setPreface] = useState(() => loadFrontMatter().preface || "");
-  const [howToUseThisBook, setHowToUseThisBook] = useState(() => loadFrontMatter().howToUseThisBook || "");
-  const [whatYouWillLearn, setWhatYouWillLearn] = useState(() => loadFrontMatter().whatYouWillLearn || "");
-  const [whoThisBookIsFor, setWhoThisBookIsFor] = useState(() => loadFrontMatter().whoThisBookIsFor || "");
+  const [settings, setSettings] = useState(() => ({
+    ...DEFAULT_EXPORT_SETTINGS,
+    ...(persistedRelease.exportSettings && typeof persistedRelease.exportSettings === "object"
+      ? persistedRelease.exportSettings
+      : {}),
+  }));
+  const [dedication, setDedication] = useState(() => initialFrontMatter.dedication || "");
+  const [preface, setPreface] = useState(() => initialFrontMatter.preface || "");
+  const [howToUseThisBook, setHowToUseThisBook] = useState(() => initialFrontMatter.howToUseThisBook || "");
+  const [whatYouWillLearn, setWhatYouWillLearn] = useState(() => initialFrontMatter.whatYouWillLearn || "");
+  const [whoThisBookIsFor, setWhoThisBookIsFor] = useState(() => initialFrontMatter.whoThisBookIsFor || "");
   const [showOptional, setShowOptional] = useState(() => {
     const fm = loadFrontMatter();
     return Object.values(fm).some((v) => typeof v === "string" && v.trim().length > 0);
@@ -1751,12 +1760,42 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
 
   useEffect(() => {
     try { window.localStorage.setItem(CITATION_STYLE_KEY, citationStyle); } catch { /* ignore */ }
-  }, [citationStyle]);
+    if (updateProject) {
+      updateProject((current) => ({
+        ...current,
+        releaseValidation: {
+          ...(current?.releaseValidation || {}),
+          citationStyle,
+        },
+      }));
+    }
+  }, [citationStyle]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist front matter to localStorage whenever any field changes
   useEffect(() => {
-    saveFrontMatter({ dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
-  }, [dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor]);
+    if (!updateProject) return;
+    updateProject((current) => ({
+      ...current,
+      releaseValidation: {
+        ...(current?.releaseValidation || {}),
+        exportSettings: settings,
+      },
+    }));
+  }, [settings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist front matter to the project, with localStorage retained for legacy projects.
+  useEffect(() => {
+    const frontMatter = { dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor };
+    saveFrontMatter(frontMatter);
+    if (updateProject) {
+      updateProject((current) => ({
+        ...current,
+        releaseValidation: {
+          ...(current?.releaseValidation || {}),
+          frontMatter,
+        },
+      }));
+    }
+  }, [dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-trigger all three engines on mount (if no cached result)
   useEffect(() => {
@@ -2463,7 +2502,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
           <p className="mt-1 text-xs text-slate-500">Configure a KDP-ready layout — trim size, margins, typography, and page elements. The preview updates live.</p>
         </div>
 
-        <ExportSettingsPanel settings={settings} onChange={setSettings} />
+        <ExportSettingsPanel settings={settings} onChange={setSettings} disabled={publicationFrozen} />
       </section>
 
       {/* Optional front matter */}
@@ -2493,7 +2532,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
               </div>
               <button
                 type="button"
-                disabled={generatingAll || Boolean(busyId)}
+                disabled={publicationFrozen || generatingAll || Boolean(busyId)}
                 onClick={generateAllFrontMatter}
                 className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:from-violet-700 disabled:opacity-50"
               >
@@ -2523,7 +2562,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
                     <label className="text-xs font-semibold text-slate-700">{label}</label>
                     <button
                       type="button"
-                      disabled={Boolean(busyId) || generatingAll}
+                      disabled={publicationFrozen || Boolean(busyId) || generatingAll}
                       onClick={() => generateSimpleFrontMatter(kind, label)}
                       className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -2544,7 +2583,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     placeholder={hint}
-                    disabled={isThisBusy}
+                    disabled={publicationFrozen || isThisBusy}
                   />
                 </div>
               );
