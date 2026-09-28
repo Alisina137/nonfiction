@@ -15,8 +15,18 @@ import {
   buildCitationReadyProject,
   buildCitationRegistry,
   buildPrecisionEvidenceAudit,
-  buildPublicationConsistencyReport
+  buildPublicationConsistencyReport,
+  CITATION_STYLE_OPTIONS
 } from "@/lib/resources/publicationEvidence";
+import {
+  PAPERBACK_PREVIEW_CHECKS,
+  buildKdpMetadataHandoff,
+  buildPublicationFreezeRecord,
+  canFreezePublication,
+  compareProductionArchives,
+  formatKdpMetadataHandoffText,
+  normalizePreviewChecks
+} from "@/lib/releaseOperations";
 import { intelligenceService } from "@/intelligence";
 
 const FM_STORAGE_KEY = "nonfiction-ai-front-matter";
@@ -1513,24 +1523,216 @@ function FinalProductionPanel({ report, busy, error, onRun, onSync, canSync, arc
   );
 }
 
+function ReleaseOperationsPanel({
+  frozen,
+  freezeRecord,
+  freezeGate,
+  previewChecks,
+  onTogglePreviewCheck,
+  onOpenPreview,
+  previewBusy,
+  archiveDiff,
+  currentArchive,
+  previousArchive,
+  handoff,
+  onCopyHandoff,
+  onDownloadHandoff,
+  onFreeze,
+  onUnfreeze,
+}) {
+  return (
+    <section className="book-panel space-y-5 border border-violet-200 bg-gradient-to-br from-violet-50/45 via-white to-sky-50/35">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Phase 05 · Release Operations</p>
+          <h3 className="mt-1 text-sm font-bold text-slate-900">Release validation & publishing handoff</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600">
+            Visually review the final paperback, compare production versions, prepare copy-ready KDP metadata,
+            and freeze the reviewed release so later edits cannot silently change it.
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
+          frozen ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
+        }`}>
+          {frozen ? "Frozen" : "Editable"}
+        </span>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-800">Paperback visual preview</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+              Opens the exact generated interior PDF in a browser tab so you can inspect real pages before freeze.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenPreview}
+            disabled={previewBusy}
+            className="shrink-0 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-50"
+          >
+            {previewBusy ? "Opening preview…" : "Open final PDF preview"}
+          </button>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {PAPERBACK_PREVIEW_CHECKS.map((item) => (
+            <label key={item.id} className={`flex gap-2 rounded-lg border px-3 py-2 text-[11px] leading-relaxed ${
+              previewChecks[item.id] ? "border-emerald-200 bg-emerald-50/60 text-emerald-900" : "border-slate-100 bg-slate-50/60 text-slate-600"
+            }`}>
+              <input
+                type="checkbox"
+                checked={Boolean(previewChecks[item.id])}
+                disabled={frozen}
+                onChange={(event) => onTogglePreviewCheck(item.id, event.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                {item.label}
+                {!item.required && <span className="ml-1 text-slate-400">(recommended)</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
+          <p className="text-xs font-bold text-slate-800">Production archive comparison</p>
+          {!currentArchive && (
+            <p className="mt-2 text-[11px] text-slate-500">Create a Final Publication Archive to establish the first release snapshot.</p>
+          )}
+          {currentArchive && !previousArchive && (
+            <p className="mt-2 text-[11px] text-slate-500">
+              Current archive: <span className="font-semibold text-slate-700">{currentArchive.archiveId}</span>. Create another archive after a revision to see a production diff.
+            </p>
+          )}
+          {archiveDiff && (
+            <>
+              <p className="mt-2 text-[11px] text-slate-500">
+                Comparing the latest archive with the previous saved production snapshot.
+              </p>
+              <div className="mt-3 space-y-1.5">
+                {archiveDiff.changes.length ? archiveDiff.changes.map((change) => (
+                  <div key={change.field} className="rounded-lg bg-slate-50 px-2.5 py-2 text-[10px]">
+                    <p className="font-bold text-slate-700">{change.label}</p>
+                    <p className="mt-0.5 break-all text-slate-500">
+                      {String(change.before || "—")} → <span className="text-slate-800">{String(change.after || "—")}</span>
+                    </p>
+                  </div>
+                )) : (
+                  <p className="rounded-lg bg-emerald-50 px-2.5 py-2 text-[10px] font-medium text-emerald-700">
+                    No tracked production fields changed.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
+          <p className="text-xs font-bold text-slate-800">KDP metadata handoff</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+            Prepare your title, author, description, keywords, categories, trim, page count, EPUB status, and file guidance for manual KDP entry.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
+            <div className="rounded-lg bg-slate-50 p-2">
+              <p className="text-slate-400">Keywords</p>
+              <p className="mt-0.5 font-bold text-slate-700">{handoff?.listing?.keywords?.length || 0}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-2">
+              <p className="text-slate-400">Paperback pages</p>
+              <p className="mt-0.5 font-bold text-slate-700">{handoff?.paperback?.exactPageCount || "—"}</p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={onCopyHandoff} className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[10px] font-bold text-indigo-800 hover:bg-indigo-100">
+              Copy KDP fields
+            </button>
+            <button type="button" onClick={onDownloadHandoff} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50">
+              Download handoff JSON
+            </button>
+          </div>
+          <p className="mt-2 text-[10px] text-slate-400">No KDP field is submitted automatically; final review and upload stay under your control.</p>
+        </div>
+      </div>
+
+      <div className={`rounded-xl border p-4 ${frozen ? "border-amber-200 bg-amber-50/70" : "border-slate-200 bg-white/80"}`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-800">Publication freeze</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+              {frozen
+                ? `Frozen to archive ${freezeRecord?.archiveId || "snapshot"}. Browse the project read-only or unfreeze to make a new revision.`
+                : "Freeze only after the production archive and required visual-review checks represent the version you intend to publish."}
+            </p>
+          </div>
+          {frozen ? (
+            <button
+              type="button"
+              onClick={onUnfreeze}
+              className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-bold text-amber-800 hover:bg-amber-50"
+            >
+              Unfreeze for revision
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onFreeze}
+              disabled={!freezeGate.ok}
+              className="shrink-0 rounded-lg bg-violet-700 px-3 py-2 text-[11px] font-bold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Freeze reviewed publication
+            </button>
+          )}
+        </div>
+        {!frozen && !freezeGate.ok && (
+          <div className="mt-3 space-y-1">
+            {freezeGate.reasons.map((reason) => (
+              <p key={reason} className="text-[10px] text-amber-700">• {reason}</p>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function FinishStep({ project, onMarkComplete, bookOutline, lessons, setLessons, fullProject, updateProject }) {
+  const persistedRelease = fullProject?.releaseValidation || {};
+  const initialFrontMatter = persistedRelease.frontMatter && typeof persistedRelease.frontMatter === "object"
+    ? persistedRelease.frontMatter
+    : loadFrontMatter();
   const [pdfBusy, setPdfBusy] = useState(false);
   const [docxBusy, setDocxBusy] = useState(false);
   const [epubBusy, setEpubBusy] = useState(false);
   const [bundleBusy, setBundleBusy] = useState(false);
+  const [previewBusy, setPreviewBusy] = useState(false);
   const [productionBusy, setProductionBusy] = useState(false);
   const [productionReport, setProductionReport] = useState(null);
   const [productionError, setProductionError] = useState("");
   const [citationStyle, setCitationStyle] = useState(() => {
-    try { return window.localStorage.getItem(CITATION_STYLE_KEY) || "none"; } catch { return "none"; }
+    try {
+      const saved = persistedRelease.citationStyle || window.localStorage.getItem(CITATION_STYLE_KEY) || "none";
+      if (saved === "numbered") return "ieee";
+      if (saved === "author-year") return "apa7";
+      return CITATION_STYLE_OPTIONS.some((option) => option.id === saved) ? saved : "none";
+    } catch {
+      return "none";
+    }
   });
   const [status, setStatus] = useState("");
-  const [settings, setSettings] = useState(DEFAULT_EXPORT_SETTINGS);
-  const [dedication, setDedication] = useState(() => loadFrontMatter().dedication || "");
-  const [preface, setPreface] = useState(() => loadFrontMatter().preface || "");
-  const [howToUseThisBook, setHowToUseThisBook] = useState(() => loadFrontMatter().howToUseThisBook || "");
-  const [whatYouWillLearn, setWhatYouWillLearn] = useState(() => loadFrontMatter().whatYouWillLearn || "");
-  const [whoThisBookIsFor, setWhoThisBookIsFor] = useState(() => loadFrontMatter().whoThisBookIsFor || "");
+  const [settings, setSettings] = useState(() => ({
+    ...DEFAULT_EXPORT_SETTINGS,
+    ...(persistedRelease.exportSettings && typeof persistedRelease.exportSettings === "object"
+      ? persistedRelease.exportSettings
+      : {}),
+  }));
+  const [dedication, setDedication] = useState(() => initialFrontMatter.dedication || "");
+  const [preface, setPreface] = useState(() => initialFrontMatter.preface || "");
+  const [howToUseThisBook, setHowToUseThisBook] = useState(() => initialFrontMatter.howToUseThisBook || "");
+  const [whatYouWillLearn, setWhatYouWillLearn] = useState(() => initialFrontMatter.whatYouWillLearn || "");
+  const [whoThisBookIsFor, setWhoThisBookIsFor] = useState(() => initialFrontMatter.whoThisBookIsFor || "");
   const [showOptional, setShowOptional] = useState(() => {
     const fm = loadFrontMatter();
     return Object.values(fm).some((v) => typeof v === "string" && v.trim().length > 0);
@@ -1558,12 +1760,42 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
 
   useEffect(() => {
     try { window.localStorage.setItem(CITATION_STYLE_KEY, citationStyle); } catch { /* ignore */ }
-  }, [citationStyle]);
+    if (updateProject) {
+      updateProject((current) => ({
+        ...current,
+        releaseValidation: {
+          ...(current?.releaseValidation || {}),
+          citationStyle,
+        },
+      }));
+    }
+  }, [citationStyle]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist front matter to localStorage whenever any field changes
   useEffect(() => {
-    saveFrontMatter({ dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor });
-  }, [dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor]);
+    if (!updateProject) return;
+    updateProject((current) => ({
+      ...current,
+      releaseValidation: {
+        ...(current?.releaseValidation || {}),
+        exportSettings: settings,
+      },
+    }));
+  }, [settings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist front matter to the project, with localStorage retained for legacy projects.
+  useEffect(() => {
+    const frontMatter = { dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor };
+    saveFrontMatter(frontMatter);
+    if (updateProject) {
+      updateProject((current) => ({
+        ...current,
+        releaseValidation: {
+          ...(current?.releaseValidation || {}),
+          frontMatter,
+        },
+      }));
+    }
+  }, [dedication, preface, howToUseThisBook, whatYouWillLearn, whoThisBookIsFor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-trigger all three engines on mount (if no cached result)
   useEffect(() => {
@@ -1708,6 +1940,32 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     () => buildCitationReadyProject(baseExportProject, citationStyle),
     [baseExportProject, citationStyle]
   );
+  const previewChecks = useMemo(
+    () => normalizePreviewChecks(fullProject?.releaseValidation?.paperbackPreview),
+    [fullProject?.releaseValidation?.paperbackPreview]
+  );
+  const productionArchives = Array.isArray(fullProject?.productionArchives) ? fullProject.productionArchives : [];
+  const currentArchive = fullProject?.productionSnapshot || productionArchives[0] || null;
+  const previousArchive = currentArchive
+    ? productionArchives.find((item) => item?.archiveId && item.archiveId !== currentArchive.archiveId) || null
+    : null;
+  const archiveDiff = useMemo(
+    () => currentArchive && previousArchive ? compareProductionArchives(currentArchive, previousArchive) : null,
+    [currentArchive, previousArchive]
+  );
+  const kdpHandoff = useMemo(
+    () => buildKdpMetadataHandoff(fullProject || project || {}, productionReport, citationStyle),
+    [fullProject, project, productionReport, citationStyle]
+  );
+  const freezeGate = useMemo(
+    () => canFreezePublication({
+      productionReport,
+      productionSnapshot: currentArchive,
+      previewChecks,
+    }),
+    [productionReport, currentArchive, previewChecks]
+  );
+  const publicationFrozen = Boolean(fullProject?.publicationFreeze?.frozen);
   const slug = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "book";
 
   const exportPayload = {
@@ -1843,6 +2101,136 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     setStatus(`Synced ${count} final pages to Cover Studio. Re-open Book Cover to review the final spine.`);
   }
 
+  function updatePreviewCheck(id, checked) {
+    if (!updateProject || publicationFrozen) return;
+    updateProject((current) => ({
+      ...current,
+      releaseValidation: {
+        ...(current?.releaseValidation || {}),
+        paperbackPreview: {
+          ...(current?.releaseValidation?.paperbackPreview || {}),
+          [id]: Boolean(checked),
+        },
+      },
+    }));
+  }
+
+  async function openPaperbackPreview() {
+    setPreviewBusy(true);
+    setStatus("");
+    const previewWindow = window.open("", "_blank");
+    try {
+      const res = await fetch("/api/export/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(exportPayload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Paperback preview failed.");
+      }
+      const blob = await res.blob();
+      if (!blob.size || !(res.headers.get("content-type") || "").toLowerCase().includes("application/pdf")) {
+        throw new Error("Paperback preview returned an invalid PDF.");
+      }
+      const url = URL.createObjectURL(blob);
+      if (previewWindow) {
+        previewWindow.location.href = url;
+      } else {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      updatePreviewCheck("interior-preview-opened", true);
+      setStatus("Paperback preview opened. Complete the visual review checklist before freezing.");
+    } catch (e) {
+      if (previewWindow) previewWindow.close();
+      setStatus(e.message || "Could not open paperback preview.");
+    } finally {
+      setPreviewBusy(false);
+    }
+  }
+
+  async function copyKdpHandoff() {
+    const text = formatKdpMetadataHandoffText(kdpHandoff);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      setStatus("KDP metadata fields copied. Review them in KDP before saving.");
+    } catch {
+      setStatus("Could not copy KDP metadata. Download the handoff JSON instead.");
+    }
+  }
+
+  function downloadKdpHandoff() {
+    const blob = new Blob([JSON.stringify(kdpHandoff, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slug}-kdp-metadata-handoff.json`;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setStatus("KDP metadata handoff downloaded.");
+  }
+
+  function freezePublication() {
+    if (!updateProject) return;
+    const record = buildPublicationFreezeRecord({
+      productionReport,
+      productionSnapshot: currentArchive,
+      previewChecks,
+      citationStyle,
+    });
+    if (!record.frozen) {
+      setStatus(record.reasons?.join(" ") || "Publication is not ready to freeze.");
+      return;
+    }
+    updateProject((current) => {
+      const history = Array.isArray(current?.publicationFreeze?.history)
+        ? current.publicationFreeze.history
+        : [];
+      const historyEntry = { ...record };
+      delete historyEntry.history;
+      return {
+        ...current,
+        publicationFreeze: {
+          ...record,
+          history: [historyEntry, ...history].slice(0, 10),
+        },
+      };
+    }, { allowFrozen: true });
+    setStatus(`Publication frozen to archive ${record.archiveId}. The project is now read-only until you unfreeze it.`);
+  }
+
+  function unfreezePublication() {
+    if (!updateProject) return;
+    const ok = window.confirm(
+      "Unfreeze this publication for revision? The frozen archive remains in history, but project content can be edited again."
+    );
+    if (!ok) return;
+    updateProject((current) => ({
+      ...current,
+      publicationFreeze: {
+        ...(current?.publicationFreeze || {}),
+        frozen: false,
+        unfrozenAt: new Date().toISOString(),
+      },
+    }), { allowFrozen: true });
+    setStatus("Publication unfrozen. Make your revision, rerun production checks, create a new archive, and freeze the new release when ready.");
+  }
+
   async function downloadFromApi(endpoint, filename, mimeType, setBusy, label) {
     setBusy(true);
     setStatus("");
@@ -1917,15 +2305,21 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
     );
     if (!result?.archiveId || !updateProject) return;
 
+    const finalCoverExport = fullProject?.bookCover?.coverStudio?.finalExport || fullProject?.bookCover?.finalExport || null;
     const snapshot = {
       archiveId: result.archiveId,
       pageCount: result.pageCount || productionReport?.exactPageCount || null,
       status: productionReport?.status || null,
+      productionStatus: productionReport?.status || null,
+      epubStatus: productionReport?.epub?.status || null,
+      citationStyle,
       fingerprintSha256: productionReport?.archiveManifest?.fingerprintSha256 || null,
       trimSize: productionReport?.trim?.id || settings.trimSize,
-      coverExportedAt: fullProject?.bookCover?.coverStudio?.finalExport?.exportedAt
-        || fullProject?.bookCover?.finalExport?.exportedAt
-        || null,
+      coverDesignHash: finalCoverExport?.coverDesignHash || null,
+      coverExportedAt: finalCoverExport?.exportedAt || null,
+      previewChecklistComplete: PAPERBACK_PREVIEW_CHECKS
+        .filter((item) => item.required)
+        .every((item) => previewChecks[item.id]),
       createdAt: new Date().toISOString(),
     };
 
@@ -2048,7 +2442,25 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
         onRun={runProductionReport}
         onSync={syncFinalPageCountToCover}
         canSync={Boolean(productionReport?.exactPageCount) && !productionReport?.cover?.synced}
-        archiveHistory={Array.isArray(fullProject?.productionArchives) ? fullProject.productionArchives : []}
+        archiveHistory={productionArchives}
+      />
+
+      <ReleaseOperationsPanel
+        frozen={publicationFrozen}
+        freezeRecord={fullProject?.publicationFreeze}
+        freezeGate={freezeGate}
+        previewChecks={previewChecks}
+        onTogglePreviewCheck={updatePreviewCheck}
+        onOpenPreview={openPaperbackPreview}
+        previewBusy={previewBusy}
+        archiveDiff={archiveDiff}
+        currentArchive={currentArchive}
+        previousArchive={previousArchive}
+        handoff={kdpHandoff}
+        onCopyHandoff={copyKdpHandoff}
+        onDownloadHandoff={downloadKdpHandoff}
+        onFreeze={freezePublication}
+        onUnfreeze={unfreezePublication}
       />
 
       <section className="book-panel space-y-4">
@@ -2058,24 +2470,21 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
             Citation markers are added only to supported claim-like sentences in the downloaded files. Your saved manuscript is not modified.
           </p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {[
-            ["none", "No markers", "Keep prose clean; retain References only."],
-            ["numbered", "Numbered", "Use [1], [2] markers tied to verified used sources."],
-            ["author-year", "Author–year", "Use (Author, Year) markers tied to verified used sources."]
-          ].map(([value, label, help]) => (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {CITATION_STYLE_OPTIONS.map((option) => (
             <button
-              key={value}
+              key={option.id}
               type="button"
-              onClick={() => setCitationStyle(value)}
-              className={`rounded-xl border p-3 text-left transition ${
-                citationStyle === value
+              onClick={() => setCitationStyle(option.id)}
+              disabled={publicationFrozen}
+              className={`rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-55 ${
+                citationStyle === option.id
                   ? "border-indigo-300 bg-indigo-50 ring-1 ring-indigo-200"
                   : "border-slate-200 bg-white hover:border-indigo-200"
               }`}
             >
-              <p className="text-xs font-bold text-slate-800">{label}</p>
-              <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{help}</p>
+              <p className="text-xs font-bold text-slate-800">{option.label}</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{option.help}</p>
             </button>
           ))}
         </div>
@@ -2093,7 +2502,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
           <p className="mt-1 text-xs text-slate-500">Configure a KDP-ready layout — trim size, margins, typography, and page elements. The preview updates live.</p>
         </div>
 
-        <ExportSettingsPanel settings={settings} onChange={setSettings} />
+        <ExportSettingsPanel settings={settings} onChange={setSettings} disabled={publicationFrozen} />
       </section>
 
       {/* Optional front matter */}
@@ -2123,7 +2532,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
               </div>
               <button
                 type="button"
-                disabled={generatingAll || Boolean(busyId)}
+                disabled={publicationFrozen || generatingAll || Boolean(busyId)}
                 onClick={generateAllFrontMatter}
                 className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-2 text-[11px] font-semibold text-white shadow-sm transition hover:from-violet-700 disabled:opacity-50"
               >
@@ -2153,7 +2562,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
                     <label className="text-xs font-semibold text-slate-700">{label}</label>
                     <button
                       type="button"
-                      disabled={Boolean(busyId) || generatingAll}
+                      disabled={publicationFrozen || Boolean(busyId) || generatingAll}
                       onClick={() => generateSimpleFrontMatter(kind, label)}
                       className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -2174,7 +2583,7 @@ export default function FinishStep({ project, onMarkComplete, bookOutline, lesso
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     placeholder={hint}
-                    disabled={isThisBusy}
+                    disabled={publicationFrozen || isThisBusy}
                   />
                 </div>
               );

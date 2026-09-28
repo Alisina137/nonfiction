@@ -34,6 +34,7 @@ import {
   PDF_FONT_FILES,
 } from "./exportSettings.js";
 import { buildFinalProductionReport } from "./productionQa.js";
+import { buildEpubAccessibilityProfile } from "./epubAccessibility.js";
 
 const router = Router();
 
@@ -1752,16 +1753,22 @@ function proseBlocksToXhtml(prose: string): string {
   return out.join("\n");
 }
 
-function epubXhtmlDocument(title: string, body: string, language: string): string {
+function epubXhtmlDocument(
+  title: string,
+  body: string,
+  language: string,
+  direction: "ltr" | "rtl" = "ltr",
+  stylesheetHref = "styles/book.css"
+): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="${xmlEscape(language)}" lang="${xmlEscape(language)}">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="${xmlEscape(language)}" lang="${xmlEscape(language)}" dir="${direction}">
 <head>
   <meta charset="utf-8"/>
   <title>${xmlEscape(title)}</title>
-  <link rel="stylesheet" type="text/css" href="styles/book.css"/>
+  <link rel="stylesheet" type="text/css" href="${xmlEscape(stylesheetHref)}"/>
 </head>
-<body>
+<body dir="${direction}">
 ${body}
 </body>
 </html>`;
@@ -1879,22 +1886,41 @@ function buildEpubArtifact(project: any, options: any = {}): {
   ).join("\n    ");
   const spineItems = sections.map((_, i) => `<itemref idref="s${i + 1}"/>`).join("\n    ");
   const navItems = sections.map((s) => `<li><a href="text/${s.id}.xhtml">${xmlEscape(s.title)}</a></li>`).join("\n        ");
+  const hasImages = sections.some((section) => /<img\b/i.test(section.body));
+  const accessibility = buildEpubAccessibilityProfile({
+    language,
+    sectionCount: sections.length,
+    navCount: sections.length,
+    hasImages,
+  });
+  const direction = accessibility.direction;
+  const accessibilityMetadata = accessibility.metadata
+    .map((item) => `<meta property="${xmlEscape(item.property)}">${xmlEscape(item.value)}</meta>`)
+    .join("\n    ");
+  const bodyStart = sections.find((section) => /^(introduction|chapter-|conclusion)/.test(section.id)) || sections[0];
 
   const nav = epubXhtmlDocument("Contents", `<nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="toc" id="toc">
   <h1>Contents</h1>
   <ol>
         ${navItems}
   </ol>
-</nav>`, language);
+</nav>
+<nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="landmarks" aria-label="Landmarks">
+  <h2>Landmarks</h2>
+  <ol>
+    <li><a epub:type="bodymatter" href="text/${bodyStart?.id || "title-page"}.xhtml">Start of content</a></li>
+  </ol>
+</nav>`, language, direction);
 
   const opf = `<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${xmlEscape(language)}">
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${xmlEscape(language)}" dir="${direction}" prefix="schema: http://schema.org/">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="book-id">${xmlEscape(identifier)}</dc:identifier>
     <dc:title>${xmlEscape(title)}</dc:title>
     <dc:creator>${xmlEscape(author)}</dc:creator>
     <dc:language>${xmlEscape(language)}</dc:language>
     <meta property="dcterms:modified">${modified}</meta>
+    ${accessibilityMetadata}
   </metadata>
   <manifest>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
@@ -1913,7 +1939,7 @@ function buildEpubArtifact(project: any, options: any = {}): {
   </rootfiles>
 </container>`;
 
-  const css = `body{font-family:serif;line-height:1.45;margin:5%;color:#111}h1{font-size:1.7em;margin:1.8em 0 .8em}h2{font-size:1.35em;margin:1.5em 0 .7em}h3{font-size:1.1em;margin:1.2em 0 .5em}p{margin:0 0 .8em;text-indent:1.25em}.title-page{text-align:center;margin-top:30%}.title-page p{text-indent:0}.subtitle{font-style:italic}.author{margin-top:2em}.chapter-intro,.section-intro{font-style:italic;text-indent:0;color:#444}li{margin:.35em 0}nav ol{padding-left:1.4em}`;
+  const css = `body{font-family:serif;line-height:1.45;margin:5%;color:#111}html[dir="rtl"] body{direction:rtl;text-align:right}h1{font-size:1.7em;margin:1.8em 0 .8em}h2{font-size:1.35em;margin:1.5em 0 .7em}h3{font-size:1.1em;margin:1.2em 0 .5em}p{margin:0 0 .8em;text-indent:1.25em}.title-page{text-align:center;margin-top:30%}.title-page p{text-indent:0}.subtitle{font-style:italic}.author{margin-top:2em}.chapter-intro,.section-intro{font-style:italic;text-indent:0;color:#444}li{margin:.35em 0}nav ol{padding-inline-start:1.4em}`;
 
   const files: Array<{ name: string; data: Buffer | Uint8Array | string }> = [
     { name: "mimetype", data: "application/epub+zip" },
@@ -1923,7 +1949,7 @@ function buildEpubArtifact(project: any, options: any = {}): {
     { name: "OEBPS/styles/book.css", data: css },
     ...sections.map((s) => ({
       name: `OEBPS/text/${s.id}.xhtml`,
-      data: epubXhtmlDocument(s.title, s.body, language)
+      data: epubXhtmlDocument(s.title, s.body, language, direction, "../styles/book.css")
     }))
   ];
 
@@ -1934,7 +1960,8 @@ function buildEpubArtifact(project: any, options: any = {}): {
   add("epub-author", "EPUB author", author.trim() ? "pass" : "review", author.trim() ? "Author metadata is present." : "Author metadata is missing.");
   add("epub-navigation", "EPUB navigation", sections.length > 1 ? "pass" : "block", `${sections.length} reading-order document(s) are included in the EPUB navigation.`);
   add("epub-language", "EPUB language", language ? "pass" : "review", `EPUB language is ${language || "not set"}.`);
-  add("kindle-previewer", "Kindle Previewer validation", "review", "Run the exported EPUB through Kindle Previewer before KDP upload.");
+  checks.push(...accessibility.checks);
+  add("kindle-previewer", "Kindle Previewer validation", "review", "Run the exported EPUB through Kindle Previewer and inspect navigation, text resizing, reading order, and device rendering before KDP upload.");
 
   const blocked = checks.filter((x) => x.status === "block").length;
   const reviews = checks.filter((x) => x.status === "review").length;
@@ -1948,7 +1975,29 @@ function buildEpubArtifact(project: any, options: any = {}): {
   return { bytes: buildStoredZip(files), validation };
 }
 
-function buildArchiveManifest(project: any, metadata: any, pageCount: number, productionReport: any, epubValidation: any) {
+function buildReleaseFingerprintInputs(settings: any, options: any = {}) {
+  return {
+    exportSettings: normalizeExportSettings(settings),
+    frontMatter: {
+      dedication: String(options.dedication || ""),
+      acknowledgments: String(options.acknowledgments || ""),
+      preface: String(options.preface || ""),
+      howToUseThisBook: String(options.howToUseThisBook || ""),
+      whatYouWillLearn: String(options.whatYouWillLearn || ""),
+      whoThisBookIsFor: String(options.whoThisBookIsFor || ""),
+    },
+  };
+}
+
+function buildArchiveManifest(
+  project: any,
+  metadata: any,
+  pageCount: number,
+  productionReport: any,
+  epubValidation: any,
+  releaseInputs: any
+) {
+  const finalCoverExport = project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || null;
   const snapshot = {
     title: metadata.title,
     author: metadata.author,
@@ -1957,7 +2006,8 @@ function buildArchiveManifest(project: any, metadata: any, pageCount: number, pr
     citationStyle: metadata.citationStyle,
     productionStatus: productionReport?.status || "unknown",
     epubStatus: epubValidation?.status || "unknown",
-    finalCoverExport: project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || null,
+    finalCoverExport,
+    releaseInputs: releaseInputs || null,
     outline: project?.bookOutline || null,
     lessons: project?.lessons || {},
   };
@@ -1965,15 +2015,91 @@ function buildArchiveManifest(project: any, metadata: any, pageCount: number, pr
   const createdAt = new Date().toISOString();
   const version = createdAt.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     archiveId: `${String(metadata.title || "book").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "book"}-${version}-${fingerprint.slice(0, 8)}`,
     fingerprintSha256: fingerprint,
     createdAt,
     exactPageCount: pageCount,
     trimSize: metadata.trimSize,
+    citationStyle: metadata.citationStyle || "none",
     productionStatus: productionReport?.status || "unknown",
     epubStatus: epubValidation?.status || "unknown",
+    coverDesignHash: finalCoverExport?.coverDesignHash || null,
   };
+}
+
+function buildKdpHandoffPayload(project: any, metadata: any, productionReport: any, epubValidation: any) {
+  const finalCoverExport = project?.bookCover?.coverStudio?.finalExport || project?.bookCover?.finalExport || null;
+  const keywords = String(metadata?.keywords || "")
+    .split(/[\n,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    book: {
+      title: metadata?.title || "",
+      subtitle: metadata?.subtitle || "",
+      author: metadata?.author || "",
+      language: metadata?.language || "English",
+      description: metadata?.description || "",
+    },
+    listing: {
+      keywords,
+      primaryCategory: metadata?.primaryCategory || "",
+      secondaryCategory: metadata?.secondaryCategory || "",
+    },
+    paperback: {
+      trimSize: metadata?.trimSize || "",
+      exactPageCount: productionReport?.exactPageCount || null,
+      productionStatus: productionReport?.status || "unknown",
+      finalCoverExported: Boolean(finalCoverExport),
+      finalCoverExportedAt: finalCoverExport?.exportedAt || null,
+    },
+    ebook: {
+      epubStatus: epubValidation?.status || "unknown",
+      citationStyle: metadata?.citationStyle || "none",
+    },
+    files: {
+      paperbackInterior: "Use the final exported interior PDF.",
+      paperbackCover: "Use the separately exported flattened print-cover PDF.",
+      kindleManuscript: "Use the final exported EPUB.",
+      kindleCover: "Upload the front-cover image separately in KDP.",
+    },
+    control: {
+      uploadsRemainManual: true,
+      note: "Review every field in KDP before saving or publishing. This handoff does not submit anything to Amazon.",
+    },
+  };
+}
+
+function formatKdpHandoffText(handoff: any) {
+  const keywords = Array.isArray(handoff?.listing?.keywords) ? handoff.listing.keywords : [];
+  return [
+    "KDP METADATA HANDOFF",
+    "",
+    `Title: ${handoff?.book?.title || ""}`,
+    `Subtitle: ${handoff?.book?.subtitle || ""}`,
+    `Author: ${handoff?.book?.author || ""}`,
+    `Language: ${handoff?.book?.language || ""}`,
+    "",
+    "DESCRIPTION",
+    handoff?.book?.description || "",
+    "",
+    "KEYWORDS",
+    ...keywords.map((item: string, index: number) => `${index + 1}. ${item}`),
+    "",
+    `Primary category: ${handoff?.listing?.primaryCategory || ""}`,
+    `Secondary category: ${handoff?.listing?.secondaryCategory || ""}`,
+    "",
+    `Paperback trim: ${handoff?.paperback?.trimSize || ""}`,
+    `Paperback pages: ${handoff?.paperback?.exactPageCount || ""}`,
+    `Production status: ${handoff?.paperback?.productionStatus || ""}`,
+    `EPUB status: ${handoff?.ebook?.epubStatus || ""}`,
+    `Citation style: ${handoff?.ebook?.citationStyle || ""}`,
+    "",
+    "Final KDP review and publication remain manual.",
+  ].join("\n");
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -2055,7 +2181,14 @@ router.post("/production-report", async (req, res) => {
     ]);
     const report = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation, pdfArtifact.layoutDiagnostics);
     const metadata = publicationMetadata(project, settings, req.body?.citationStyle || "none");
-    const manifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, report, epub.validation);
+    const manifest = buildArchiveManifest(
+      project,
+      metadata,
+      pdfArtifact.pageCount,
+      report,
+      epub.validation,
+      buildReleaseFingerprintInputs(settings, options)
+    );
 
     return res.json({
       ...report,
@@ -2160,7 +2293,15 @@ router.post("/publication-bundle", async (req, res) => {
     const metadata = publicationMetadata(project, settings, citationStyle);
     const report = publicationReport && typeof publicationReport === "object" ? publicationReport : {};
     const productionReport = buildFinalProductionReport(project, settings, pdfArtifact.pageCount, epub.validation, pdfArtifact.layoutDiagnostics);
-    const archiveManifest = buildArchiveManifest(project, metadata, pdfArtifact.pageCount, productionReport, epub.validation);
+    const archiveManifest = buildArchiveManifest(
+      project,
+      metadata,
+      pdfArtifact.pageCount,
+      productionReport,
+      epub.validation,
+      buildReleaseFingerprintInputs(settings, options)
+    );
+    const kdpHandoff = buildKdpHandoffPayload(project, metadata, productionReport, epub.validation);
     const description = String(metadata.description || "");
     const keywords = String(metadata.keywords || "");
 
@@ -2172,6 +2313,8 @@ router.post("/publication-bundle", async (req, res) => {
       "- manuscript/" + slug + ".docx — editable manuscript export",
       "- ebook/" + slug + ".epub — reflowable EPUB 3 for Kindle upload",
       "- metadata/publishing-metadata.json — title, author, listing, category, trim, citation settings",
+      "- metadata/kdp-handoff.json — copy-ready KDP field handoff with manual-upload safeguards",
+      "- listing/kdp-copy-paste.txt — plain-text KDP copy/paste helper",
       "- reports/evidence-audit.json — retained source usage and claim review",
       "- reports/kdp-preflight.json — deterministic pre-export checks",
       "- reports/publication-consistency.json — manuscript/cover/listing consistency checks",
@@ -2192,6 +2335,8 @@ router.post("/publication-bundle", async (req, res) => {
       { name: "manuscript/" + slug + ".docx", data: docxBuffer },
       { name: "ebook/" + slug + ".epub", data: epub.bytes },
       { name: "metadata/publishing-metadata.json", data: JSON.stringify(metadata, null, 2) },
+      { name: "metadata/kdp-handoff.json", data: JSON.stringify(kdpHandoff, null, 2) },
+      { name: "listing/kdp-copy-paste.txt", data: formatKdpHandoffText(kdpHandoff) },
       { name: "reports/evidence-audit.json", data: JSON.stringify(report.evidenceAudit || {}, null, 2) },
       { name: "reports/kdp-preflight.json", data: JSON.stringify(report.publishingPreflight || {}, null, 2) },
       { name: "reports/publication-consistency.json", data: JSON.stringify(report.publicationConsistency || {}, null, 2) },

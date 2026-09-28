@@ -171,6 +171,19 @@ function sourceSurname(author, title) {
   return clean(title).split(/\s+/).filter(Boolean).slice(0, 2).join(" ") || "Source";
 }
 
+export const CITATION_STYLE_OPTIONS = [
+  { id: "none", label: "No markers", help: "Keep prose clean; retain verified References only." },
+  { id: "apa7", label: "APA 7", help: "Author–year markers with practical APA-style reference lines." },
+  { id: "chicago-author-date", label: "Chicago author–date", help: "Author–date markers and Chicago-style reference lines." },
+  { id: "ieee", label: "IEEE", help: "Numbered in-text markers and numbered reference lines." },
+];
+
+function citationMarker(source, style) {
+  if (style === "apa7" || style === "author-year") return source.authorYearLabel;
+  if (style === "chicago-author-date") return source.chicagoAuthorDateLabel;
+  return source.numberedLabel;
+}
+
 export function buildCitationRegistry(project) {
   const audit = buildPrecisionEvidenceAudit(project && project.lessons);
   const verified = new Map(buildVerifiedSourceList(project).map(function (source) {
@@ -199,7 +212,8 @@ export function buildCitationRegistry(project) {
       citationId: "S" + (index + 1),
       number: index + 1,
       numberedLabel: "[" + (index + 1) + "]",
-      authorYearLabel: "(" + row.surname + ", " + row.year + suffix + ")"
+      authorYearLabel: "(" + row.surname + ", " + row.year + suffix + ")",
+      chicagoAuthorDateLabel: "(" + row.surname + " " + row.year + suffix + ")"
     });
   });
 
@@ -214,7 +228,40 @@ function escapeRegExp(value) {
 }
 
 function formatReferenceLine(source, style) {
-  const details = [clean(source.author), clean(source.title), clean(source.publication), clean(source.year), clean(source.url)].filter(Boolean).join(". ");
+  const author = clean(source.author);
+  const title = clean(source.title);
+  const publication = clean(source.publication);
+  const year = clean(source.year) || "n.d.";
+  const url = clean(source.url);
+
+  if (style === "apa7") {
+    return [author, "(" + year + ").", title ? title + "." : "", publication ? publication + "." : "", url]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  if (style === "chicago-author-date") {
+    return [author ? author + "." : "", year ? year + "." : "", title ? title + "." : "", publication ? publication + "." : "", url]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  if (style === "ieee") {
+    const body = [
+      author ? author + "," : "",
+      title ? "\"" + title + ",\"" : "",
+      publication ? publication + "," : "",
+      year ? year + "." : "",
+      url,
+    ].filter(Boolean).join(" ");
+    return source.numberedLabel + " " + body.replace(/\s+/g, " ").trim();
+  }
+
+  const details = [author, title, publication, clean(source.year), url].filter(Boolean).join(". ");
   return style === "numbered" ? source.numberedLabel + " " + details : details;
 }
 
@@ -237,7 +284,7 @@ export function buildCitationReadyProject(project, style) {
       const sourceId = claim.evidence && claim.evidence[0] && claim.evidence[0].sourceId;
       const source = registry.bySourceId[String(sourceId || "")];
       if (!source) return;
-      const marker = citationStyle === "author-year" ? source.authorYearLabel : source.numberedLabel;
+      const marker = citationMarker(source, citationStyle);
       if (!marker || claim.text.includes(marker)) return;
       const parts = claim.text.split(/\s+/).map(escapeRegExp);
       const pattern = new RegExp(parts.join("\\s+"));

@@ -47,7 +47,7 @@ Private, personal-use AI nonfiction publishing studio for creating original, sou
 - Tests for evidence tracking, claims, references, and preflight.
 - GitHub Actions verification passed for tests, typecheck, and production build.
 
-## Current phase
+## Historical phase record
 
 ### Phase 03 — Evidence Precision & Publishing Automation
 
@@ -341,14 +341,37 @@ Objective: convert the finished manuscript and cover design into reproducible fi
 - Verified implementation head: `28f728216673ef389531b6d3f0eeebf430460e1e`.
 - A final documentation-only verification run is expected after this state update.
 
-## Next phase candidate
+## Current phase
 
 ### Phase 05 — Release Validation & Publishing Operations
 
-Potential scope:
-- richer visual/manual preview assistance for final paperback pages,
-- enhanced EPUB/Kindle accessibility checks,
-- archive comparison/diff between production versions,
-- richer citation-style templates when a book requires formal academic formatting,
-- publication freeze/unfreeze workflow,
-- optional KDP metadata handoff helpers while keeping final publication decisions and uploads under the author's control.
+Objective: turn Phase 04 production outputs into a deliberate release workflow with final-page visual review, stronger EPUB/Kindle accessibility validation, release-to-release archive comparison, formal citation templates, publication freeze/unfreeze, and manual KDP metadata handoff.
+
+Implemented:
+- browser-based exact paperback PDF preview plus persisted manual visual-review checklist,
+- required visual-review gating before publication freeze,
+- EPUB accessibility metadata, structural navigation checks, landmarks, RTL/LTR semantics, and corrected text-document stylesheet references,
+- practical APA 7, Chicago author-date, and IEEE citation templates over verified used evidence,
+- production snapshot comparison for page count, trim, citation style, production/EPUB status, cover design hash, and release fingerprint,
+- project-scoped release settings for citation style, layout, optional front matter, and visual-review state,
+- central publication freeze protection that keeps frozen projects read-only across wizard steps until explicit unfreeze,
+- KDP metadata copy/download helpers while keeping Amazon review/upload/publish actions manual,
+- stronger publication archive fingerprinting that includes normalized layout/front-matter release inputs,
+- final publication archives now include KDP handoff JSON and copy/paste text helpers,
+- Phase 05 regression tests for release operations, citation templates, EPUB accessibility, RTL direction, and navigation mismatch handling.
+
+Detailed workflow and boundaries: `docs/PHASE-05-RELEASE-OPERATIONS.md`.
+
+### Phase 05 verification status
+
+- GitHub Actions `Verify phase` run #40: PASS on implementation head `9b77035bf1a7ae7f6cb6235533ee4ca426b617a2`.
+- Nonfiction Studio unit/regression tests: 23 PASS, 0 FAIL.
+- API server unit/regression tests: 11 PASS, 0 FAIL.
+- Full TypeScript typecheck: PASS.
+- Production build: PASS.
+- The commits after the verified implementation head only add/update Phase 05 documentation and project-state records; no runtime code changed after run #40.
+- Pull request: #17 from `phase-05-release-validation-publishing-operations` into `main`.
+
+## Next phase candidate
+
+Not defined yet. Choose Phase 06 only after Phase 05 is verified and reviewed in the real app.
