@@ -373,6 +373,20 @@ Detailed workflow and boundaries: `docs/PHASE-05-RELEASE-OPERATIONS.md`.
 - Phase 05 status: COMPLETE.
 - Merged to `main` via pull request #17 as `f1430f7f9ea975467d763e7141fbd59c82e43d60`.
 
+
+### Post-Phase 05 hotfix — PDF custom-font glyph rendering
+
+- Real-app review on 2026-09-28 exposed a downloaded paperback PDF rendering defect: Garamond/Georgia exports could show scattered or missing characters instead of readable prose.
+- Root cause: the PDF builder embedded the custom TTF families through `@pdf-lib/fontkit` with `subset: true`; that subsetting path can produce incomplete/corrupted glyph programs for otherwise valid fonts.
+- Fix: custom publication fonts are now embedded in full with `subset: false`. Times New Roman continues to use pdf-lib's built-in standard font path.
+- Scope is intentionally narrow: no pagination, trim, margin, alignment, DOCX, EPUB, cover, archive, or release-operation behavior changed.
+- Added `pdfFontEmbedding.test.mjs` so the reliable full-embedding policy is covered by the API regression suite.
+- GitHub Actions `Verify phase` run #44: PASS on runtime implementation head `cad462129e83165e00ec2a1b39ec260e726f98a4`.
+- Nonfiction Studio unit/regression tests: 23 PASS, 0 FAIL.
+- API server unit/regression tests: 12 PASS, 0 FAIL.
+- Full TypeScript typecheck: PASS.
+- Production build: PASS.
+
 ## Next phase candidate
 
 Not defined yet. Choose Phase 06 only after Phase 05 is verified and reviewed in the real app.
