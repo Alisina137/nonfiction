@@ -23,6 +23,7 @@ import {
 import { generateContent, extractJSON } from "../ai/aiRouter.js";
 import { chapterArchitecturePrompt } from "../ai/prompts.js";
 import { normalizePdfPunctuation } from "./pdfText.js";
+import { CUSTOM_PDF_FONT_EMBED_OPTIONS } from "./pdfFontEmbedding.js";
 import {
   ExportSettings,
   normalizeExportSettings,
@@ -418,10 +419,10 @@ async function buildBookPdfArtifact(project: any, options: any = {}): Promise<{
   const fontFiles = PDF_FONT_FILES[settings.font];
   let regular: PDFFont, bold: PDFFont, italic: PDFFont, boldItalic: PDFFont;
   if (fontFiles) {
-    regular    = await pdf.embedFont(loadFontBytes(fontFiles.regular), { subset: true });
-    bold       = await pdf.embedFont(loadFontBytes(fontFiles.bold), { subset: true });
-    italic     = await pdf.embedFont(loadFontBytes(fontFiles.italic), { subset: true });
-    boldItalic = await pdf.embedFont(loadFontBytes(fontFiles.boldItalic), { subset: true });
+    regular    = await pdf.embedFont(loadFontBytes(fontFiles.regular), CUSTOM_PDF_FONT_EMBED_OPTIONS);
+    bold       = await pdf.embedFont(loadFontBytes(fontFiles.bold), CUSTOM_PDF_FONT_EMBED_OPTIONS);
+    italic     = await pdf.embedFont(loadFontBytes(fontFiles.italic), CUSTOM_PDF_FONT_EMBED_OPTIONS);
+    boldItalic = await pdf.embedFont(loadFontBytes(fontFiles.boldItalic), CUSTOM_PDF_FONT_EMBED_OPTIONS);
   } else {
     regular    = await pdf.embedFont(StandardFonts.TimesRoman);
     bold       = await pdf.embedFont(StandardFonts.TimesRomanBold);
