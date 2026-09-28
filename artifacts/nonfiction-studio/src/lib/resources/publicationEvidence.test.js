@@ -107,3 +107,31 @@ test("publication consistency identifies manuscript and cover metadata mismatche
   assert.ok(report.checks.some((check) => check.id === "subtitle" && check.status === "pass"));
   assert.ok(report.checks.some((check) => check.id === "citation-style" && check.status === "pass"));
 });
+
+
+test("formal citation templates emit APA, Chicago author-date, and IEEE markers", () => {
+  const project = {
+    resources: { files: [sourceA], links: [] },
+    bookOutline: { references: { id: "refs", title: "References" } },
+    lessons: {
+      body: {
+        targetSubsectionTitle: "Practice",
+        prose: "A controlled study found that focused practice improved retention by 25%.",
+        sourceEvidence: [supportedEvidence]
+      },
+      refs: { targetSubsectionTitle: "References", prose: "" }
+    }
+  };
+
+  const apa = buildCitationReadyProject(project, "apa7");
+  assert.match(apa.lessons.body.prose, /\(Author, 2024\)/);
+  assert.match(apa.lessons.refs.prose, /Ada Author \(2024\)\./);
+
+  const chicago = buildCitationReadyProject(project, "chicago-author-date");
+  assert.match(chicago.lessons.body.prose, /\(Author 2024\)/);
+  assert.match(chicago.lessons.refs.prose, /Ada Author\. 2024\./);
+
+  const ieee = buildCitationReadyProject(project, "ieee");
+  assert.match(ieee.lessons.body.prose, /\[1\]/);
+  assert.match(ieee.lessons.refs.prose, /^\[1\]/);
+});
