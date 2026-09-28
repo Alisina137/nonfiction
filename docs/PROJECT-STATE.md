@@ -403,6 +403,17 @@ Detailed workflow and boundaries: `docs/PHASE-05-RELEASE-OPERATIONS.md`.
 - Production build: PASS.
 - Merged to `main` via pull request #19 as `0f059a379173769aad067cbaca4dd80c7abe7522`.
 
+
+### Post-Phase 05 hotfix — sidebar toggle label
+
+- Navbar sidebar toggle copy was shortened from `Hide sidebar` / `Show sidebar` to `Hide` / `Show`.
+- Existing arrow icon, sidebar visibility behavior, persistence, and descriptive tooltip remain unchanged.
+- GitHub Actions `Verify phase` run #48: PASS on runtime implementation head `ef232554981be13baa7dfbd49a8d0dfa4b460f3a`.
+- Nonfiction Studio unit/regression tests: 23 PASS, 0 FAIL.
+- API server unit/regression tests: 12 PASS, 0 FAIL.
+- Full TypeScript typecheck: PASS.
+- Production build: PASS.
+
 ## Next phase candidate
 
 Not defined yet. Choose Phase 06 only after Phase 05 is verified and reviewed in the real app.
