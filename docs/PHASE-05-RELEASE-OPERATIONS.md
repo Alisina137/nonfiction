@@ -75,7 +75,7 @@ Phase 05 archive fingerprints include normalized export/layout settings, optiona
 
 Phase 05 adds regression coverage for archive comparison, preview checklist freeze gating, freeze records, KDP metadata handoff, APA/Chicago/IEEE citation formatting, EPUB accessibility profiles, RTL direction, and navigation mismatch handling.
 
-The repository-level **Verify phase** workflow remains the source of truth for full tests, TypeScript validation, and production build status.
+GitHub Actions **Verify phase** run #40 completed successfully on the Phase 05 pull request. The workflow ran dependency installation, repository tests, full TypeScript validation, and the production build.
 
 ## Intentional boundaries
 
