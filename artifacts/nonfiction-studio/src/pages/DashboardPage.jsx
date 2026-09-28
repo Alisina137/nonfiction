@@ -194,6 +194,10 @@ const baseProject = {
   lessons: {},
   bookMarketing: { ...emptyBookMarketing },
   bookCover: { ...emptyBookCover },
+  releaseValidation: { paperbackPreview: {} },
+  publicationFreeze: { frozen: false },
+  productionArchives: [],
+  productionSnapshot: null,
   finishedAt: null,
   step: "idea"
 };
@@ -508,6 +512,23 @@ function migrateProject(raw) {
     };
   }
 
+  if (!p.releaseValidation || typeof p.releaseValidation !== "object") {
+    p.releaseValidation = { paperbackPreview: {} };
+  } else {
+    p.releaseValidation = {
+      ...p.releaseValidation,
+      paperbackPreview: p.releaseValidation.paperbackPreview && typeof p.releaseValidation.paperbackPreview === "object"
+        ? p.releaseValidation.paperbackPreview
+        : {},
+    };
+  }
+  if (!p.publicationFreeze || typeof p.publicationFreeze !== "object") {
+    p.publicationFreeze = { frozen: false };
+  } else {
+    p.publicationFreeze = { ...p.publicationFreeze, frozen: Boolean(p.publicationFreeze.frozen) };
+  }
+  if (!Array.isArray(p.productionArchives)) p.productionArchives = [];
+  p.productionSnapshot = p.productionSnapshot && typeof p.productionSnapshot === "object" ? p.productionSnapshot : null;
   p.finishedAt = p.finishedAt ?? null;
   if (typeof p.description !== "string") p.description = "";
 
@@ -755,8 +776,26 @@ function canAccessStep(completedSteps, index) {
   return true;
 }
 
+function isFrozenNavigationOnlyChange(current, next) {
+  if (!current?.publicationFreeze?.frozen) return true;
+  if (!next || typeof next !== "object") return false;
+  const currentComparable = {
+    ...current,
+    wizard: { ...(current.wizard || {}), currentStep: 0 },
+  };
+  const nextComparable = {
+    ...next,
+    wizard: { ...(next.wizard || {}), currentStep: 0 },
+  };
+  try {
+    return JSON.stringify(currentComparable) === JSON.stringify(nextComparable);
+  } catch {
+    return false;
+  }
+}
+
 export default function Dashboard() {
-  const [project, setProject] = useState(() => migrateProject(baseProject));
+  const [project, setProjectState] = useState(() => migrateProject(baseProject));
   const [researchErrors, setResearchErrors] = useState({});
   const [analysisErrors, setAnalysisErrors] = useState({});
   const [bookTitleErrors, setBookTitleErrors] = useState({});
@@ -781,8 +820,23 @@ export default function Dashboard() {
   const currentStep = project.wizard.currentStep;
   const completedSteps = project.wizard.completedSteps;
   const wizardComplete = completedSteps.every(Boolean);
+  const publicationFrozen = Boolean(project?.publicationFreeze?.frozen);
 
   const stepMeta = BOOK_BUILDER_STEPS[currentStep];
+
+  function setProject(updater, options = {}) {
+    setProjectState((current) => {
+      const next = typeof updater === "function" ? updater(current) : updater;
+      if (
+        current?.publicationFreeze?.frozen
+        && !options.allowFrozen
+        && !isFrozenNavigationOnlyChange(current, next)
+      ) {
+        return current;
+      }
+      return next;
+    });
+  }
 
   function patchWizard(patch) {
     setProject((p) => ({
@@ -798,10 +852,10 @@ export default function Dashboard() {
   useEffect(() => {
     try {
       const stored = loadBook(bookId);
-      if (stored) setProject(migrateProject(stored));
-      else setProject(migrateProject(baseProject));
+      if (stored) setProjectState(migrateProject(stored));
+      else setProjectState(migrateProject(baseProject));
     } catch {
-      setProject(migrateProject(baseProject));
+      setProjectState(migrateProject(baseProject));
     }
   }, [bookId]);
 
@@ -1061,8 +1115,9 @@ export default function Dashboard() {
           <button
             type="button"
             onClick={handleResetBook}
-            title="Clears book progress but keeps your author name, persona, and biography"
-            className="builder-header-button builder-header-button-warm rounded-xl px-3 py-2 text-xs font-semibold transition"
+            disabled={publicationFrozen}
+            title={publicationFrozen ? "Unfreeze the publication in Finish before resetting." : "Clears book progress but keeps your author name, persona, and biography"}
+            className="builder-header-button builder-header-button-warm rounded-xl px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45"
           >
             ↺ Reset
           </button>
@@ -1076,6 +1131,11 @@ export default function Dashboard() {
         </div>
         <div className="builder-title-block flex min-w-[220px] flex-1 flex-col items-center justify-center px-2 text-center">
           <p className="builder-title-kicker">Manuscript workspace <span aria-hidden>·</span> {String(currentStep + 1).padStart(2, "0")} / {String(STEP_COUNT).padStart(2, "0")}</p>
+          {publicationFrozen && (
+            <p className="mt-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">
+              Publication frozen · read-only until unfrozen in Finish
+            </p>
+          )}
           <h1 className="font-serif text-[1.05rem] font-bold leading-snug tracking-tight text-slate-900 md:text-xl">
             {stepMeta.label}
           </h1>
@@ -1472,9 +1532,10 @@ export default function Dashboard() {
                 }))
               }
               fullProject={project}
-              updateProject={(updater) =>
-                setProject((current) =>
-                  typeof updater === "function" ? updater(current) : { ...current, ...updater }
+              updateProject={(updater, options = {}) =>
+                setProject(
+                  (current) => typeof updater === "function" ? updater(current) : { ...current, ...updater },
+                  options
                 )
               }
             />
