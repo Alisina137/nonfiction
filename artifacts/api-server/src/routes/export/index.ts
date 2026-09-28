@@ -34,6 +34,7 @@ import {
   PDF_FONT_FILES,
 } from "./exportSettings.js";
 import { buildFinalProductionReport } from "./productionQa.js";
+import { buildEpubAccessibilityProfile } from "./epubAccessibility.js";
 
 const router = Router();
 
@@ -1752,16 +1753,22 @@ function proseBlocksToXhtml(prose: string): string {
   return out.join("\n");
 }
 
-function epubXhtmlDocument(title: string, body: string, language: string): string {
+function epubXhtmlDocument(
+  title: string,
+  body: string,
+  language: string,
+  direction: "ltr" | "rtl" = "ltr",
+  stylesheetHref = "styles/book.css"
+): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="${xmlEscape(language)}" lang="${xmlEscape(language)}">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="${xmlEscape(language)}" lang="${xmlEscape(language)}" dir="${direction}">
 <head>
   <meta charset="utf-8"/>
   <title>${xmlEscape(title)}</title>
-  <link rel="stylesheet" type="text/css" href="styles/book.css"/>
+  <link rel="stylesheet" type="text/css" href="${xmlEscape(stylesheetHref)}"/>
 </head>
-<body>
+<body dir="${direction}">
 ${body}
 </body>
 </html>`;
@@ -1879,22 +1886,41 @@ function buildEpubArtifact(project: any, options: any = {}): {
   ).join("\n    ");
   const spineItems = sections.map((_, i) => `<itemref idref="s${i + 1}"/>`).join("\n    ");
   const navItems = sections.map((s) => `<li><a href="text/${s.id}.xhtml">${xmlEscape(s.title)}</a></li>`).join("\n        ");
+  const hasImages = sections.some((section) => /<img\b/i.test(section.body));
+  const accessibility = buildEpubAccessibilityProfile({
+    language,
+    sectionCount: sections.length,
+    navCount: sections.length,
+    hasImages,
+  });
+  const direction = accessibility.direction;
+  const accessibilityMetadata = accessibility.metadata
+    .map((item) => `<meta property="${xmlEscape(item.property)}">${xmlEscape(item.value)}</meta>`)
+    .join("\n    ");
+  const bodyStart = sections.find((section) => /^(introduction|chapter-|conclusion)/.test(section.id)) || sections[0];
 
   const nav = epubXhtmlDocument("Contents", `<nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="toc" id="toc">
   <h1>Contents</h1>
   <ol>
         ${navItems}
   </ol>
-</nav>`, language);
+</nav>
+<nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="landmarks" aria-label="Landmarks">
+  <h2>Landmarks</h2>
+  <ol>
+    <li><a epub:type="bodymatter" href="text/${bodyStart?.id || "title-page"}.xhtml">Start of content</a></li>
+  </ol>
+</nav>`, language, direction);
 
   const opf = `<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${xmlEscape(language)}">
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="${xmlEscape(language)}" dir="${direction}" prefix="schema: http://schema.org/">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="book-id">${xmlEscape(identifier)}</dc:identifier>
     <dc:title>${xmlEscape(title)}</dc:title>
     <dc:creator>${xmlEscape(author)}</dc:creator>
     <dc:language>${xmlEscape(language)}</dc:language>
     <meta property="dcterms:modified">${modified}</meta>
+    ${accessibilityMetadata}
   </metadata>
   <manifest>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
@@ -1913,7 +1939,7 @@ function buildEpubArtifact(project: any, options: any = {}): {
   </rootfiles>
 </container>`;
 
-  const css = `body{font-family:serif;line-height:1.45;margin:5%;color:#111}h1{font-size:1.7em;margin:1.8em 0 .8em}h2{font-size:1.35em;margin:1.5em 0 .7em}h3{font-size:1.1em;margin:1.2em 0 .5em}p{margin:0 0 .8em;text-indent:1.25em}.title-page{text-align:center;margin-top:30%}.title-page p{text-indent:0}.subtitle{font-style:italic}.author{margin-top:2em}.chapter-intro,.section-intro{font-style:italic;text-indent:0;color:#444}li{margin:.35em 0}nav ol{padding-left:1.4em}`;
+  const css = `body{font-family:serif;line-height:1.45;margin:5%;color:#111}html[dir="rtl"] body{direction:rtl;text-align:right}h1{font-size:1.7em;margin:1.8em 0 .8em}h2{font-size:1.35em;margin:1.5em 0 .7em}h3{font-size:1.1em;margin:1.2em 0 .5em}p{margin:0 0 .8em;text-indent:1.25em}.title-page{text-align:center;margin-top:30%}.title-page p{text-indent:0}.subtitle{font-style:italic}.author{margin-top:2em}.chapter-intro,.section-intro{font-style:italic;text-indent:0;color:#444}li{margin:.35em 0}nav ol{padding-inline-start:1.4em}`;
 
   const files: Array<{ name: string; data: Buffer | Uint8Array | string }> = [
     { name: "mimetype", data: "application/epub+zip" },
@@ -1923,7 +1949,7 @@ function buildEpubArtifact(project: any, options: any = {}): {
     { name: "OEBPS/styles/book.css", data: css },
     ...sections.map((s) => ({
       name: `OEBPS/text/${s.id}.xhtml`,
-      data: epubXhtmlDocument(s.title, s.body, language)
+      data: epubXhtmlDocument(s.title, s.body, language, direction, "../styles/book.css")
     }))
   ];
 
@@ -1934,7 +1960,8 @@ function buildEpubArtifact(project: any, options: any = {}): {
   add("epub-author", "EPUB author", author.trim() ? "pass" : "review", author.trim() ? "Author metadata is present." : "Author metadata is missing.");
   add("epub-navigation", "EPUB navigation", sections.length > 1 ? "pass" : "block", `${sections.length} reading-order document(s) are included in the EPUB navigation.`);
   add("epub-language", "EPUB language", language ? "pass" : "review", `EPUB language is ${language || "not set"}.`);
-  add("kindle-previewer", "Kindle Previewer validation", "review", "Run the exported EPUB through Kindle Previewer before KDP upload.");
+  checks.push(...accessibility.checks);
+  add("kindle-previewer", "Kindle Previewer validation", "review", "Run the exported EPUB through Kindle Previewer and inspect navigation, text resizing, reading order, and device rendering before KDP upload.");
 
   const blocked = checks.filter((x) => x.status === "block").length;
   const reviews = checks.filter((x) => x.status === "review").length;
